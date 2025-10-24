@@ -23,6 +23,10 @@
     },
     "testing": {
       "distribution": "internal",
+      "node": "22.11.0",
+      "env": {
+        "npm_config_legacy_peer_deps": "true"
+      },
       "android": {
         "buildType": "apk",
         "gradleCommand": ":app:assembleRelease"
