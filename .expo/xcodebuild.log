@@ -1,0 +1,3 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -workspace /Users/icebergslim/projects/voyager-RN/ios/VoyagerRN.xcworkspace -configuration Debug -scheme VoyagerRN -destination id=85CFB14D-A578-4232-AE7C-1E19A20B3805
+

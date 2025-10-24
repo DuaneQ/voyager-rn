@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "Voyager RN",
+    "slug": "voyager-rn",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.voyager.rn",
+      "deploymentTarget": "15.0"
+    },
+    "android": {
+      "package": "com.voyager.rn"
+    },
+    "web": {},
+    "scheme": "voyager-rn",
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "6fc90234-4d23-427c-918f-75d141efe8ed"
+      }
+    }
+  }
+}
