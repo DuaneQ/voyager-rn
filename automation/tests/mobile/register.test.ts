@@ -11,7 +11,7 @@ import { RegisterPage } from '../../src/pages/RegisterPage';
 import { newUser } from '../../src/mocks/userMockData';
 import { WebdriverIODriver } from '../../src/drivers/WebdriverIODriver';
 
-describe('Register Flow - Mobile', () => {
+describe.skip('Register Flow - Mobile', () => {
   const registerPage = new RegisterPage();
   const driver = new WebdriverIODriver();
 

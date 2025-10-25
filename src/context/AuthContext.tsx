@@ -89,19 +89,37 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Use Firebase onAuthStateChanged listener
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        const userCredentials: UserCredentials = {
-          user: {
-            uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            emailVerified: firebaseUser.emailVerified,
-            isAnonymous: firebaseUser.isAnonymous,
-            providerData: firebaseUser.providerData,
-          },
-        };
+        // Only treat the user as authenticated when their email is verified.
+        // This prevents newly-created but unverified accounts from driving
+        // navigation into the app before email verification.
+        if (firebaseUser.emailVerified) {
+          const userCredentials: UserCredentials = {
+            user: {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              emailVerified: firebaseUser.emailVerified,
+              isAnonymous: firebaseUser.isAnonymous,
+              providerData: firebaseUser.providerData,
+            },
+          };
 
-        await storage.setItem('USER_CREDENTIALS', JSON.stringify(userCredentials));
-        setUser(firebaseUser);
-        setStatus('authenticated');
+          await storage.setItem('USER_CREDENTIALS', JSON.stringify(userCredentials));
+          setUser(firebaseUser);
+          setStatus('authenticated');
+        } else {
+          // Unverified user - clear any stored credentials and ensure app
+          // treats them as signed-out so UI will present sign-in / verify flow.
+          await storage.removeItem('USER_CREDENTIALS');
+          await storage.removeItem('PROFILE_INFO');
+          // Try to sign out to fully clear the auth session (safe to ignore errors)
+          try {
+            await firebaseSignOut(auth);
+          } catch (e) {
+            // ignore
+          }
+          setUser(null);
+          setStatus('idle');
+        }
       } else {
         await storage.removeItem('USER_CREDENTIALS');
         await storage.removeItem('PROFILE_INFO');
@@ -192,20 +210,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Store profile in local storage (matches PWA)
       await storage.setItem('PROFILE_INFO', JSON.stringify(userData));
-      
-      // Store credentials
-      const userCredentials: UserCredentials = {
-        user: {
-          uid: userCredential.user.uid,
-          email: userCredential.user.email,
-          emailVerified: userCredential.user.emailVerified,
-          isAnonymous: userCredential.user.isAnonymous,
-          providerData: userCredential.user.providerData,
-        },
-      };
-      
-      await storage.setItem('USER_CREDENTIALS', JSON.stringify(userCredentials));
-  setStatus('idle'); // User needs to verify email before being authenticated
+
+      // Send verification email already sent above. Now sign the user out so
+      // the app does not treat an unverified session as an authenticated user.
+      // The onAuthStateChanged listener will keep the app on the sign-in/idle
+      // state until the user verifies their email (or signs in again).
+      try {
+        await firebaseSignOut(auth);
+      } catch (e) {
+        // ignore sign-out errors
+      }
+
+      setStatus('idle'); // User needs to verify email before being authenticated
     } catch (error) {
   setStatus('idle');
       throw error;

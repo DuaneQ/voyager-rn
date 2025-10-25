@@ -45,10 +45,22 @@ const AuthPage: React.FC = () => {
    * Login Handler - Matches PWA's SignInForm.tsx handleSubmit exactly
    */
   const handleLogin = async (email: string, password: string) => {
+    // Debug: log incoming credentials for automation troubleshooting
+    try {
+      console.log('[AuthPage] handleLogin called with email:', email, 'password length:', password ? password.length : 0);
+    } catch (e) {
+      // ignore logging errors
+    }
     setIsSubmitting(true);
     try {
       await signIn(email, password);
-      showAlert('success', 'Login successful! Welcome back.');
+      // Avoid showing a native success dialog on mobile automation runs.
+      // On web we keep the friendly success alert, but on iOS/Android we log instead
+      if (Platform.OS === 'web') {
+        showAlert('success', 'Login successful! Welcome back.');
+      } else {
+        console.log('[AuthPage] Login successful (mobile) - suppressing success alert for automation');
+      }
       // Navigation will be handled by auth state change in AppNavigator
     } catch (error: any) {
       if (error.message.includes('Email not verified')) {

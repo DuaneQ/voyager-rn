@@ -12,8 +12,8 @@ const platform = process.env.PLATFORM || 'ios'; // 'ios' or 'android'
  */
 const iosCapabilities = {
   platformName: 'iOS',
-  'appium:deviceName': 'iPhone 16 Pro',
-  'appium:platformVersion': '18.0',
+  'appium:deviceName': process.env.IOS_DEVICE_NAME || 'iPhone 16 Pro',
+  'appium:platformVersion': process.env.IOS_SIM_VERSION || '18.6',
   'appium:automationName': 'XCUITest',
   // Path to .app file - update this after building the app
   'appium:app': process.env.IOS_APP_PATH || '/Users/icebergslim/projects/voyager-RN/ios/build/Build/Products/Debug-iphonesimulator/voyagerRN.app',
@@ -37,11 +37,12 @@ const androidCapabilities = {
   'appium:automationName': 'UiAutomator2',
   'appium:app': path.resolve(
     __dirname,
-    '../android/app/build/outputs/apk/release/app-release.apk'
+    '../android/app/build/outputs/apk/debug/app-debug.apk'
   ),
   'appium:autoGrantPermissions': true,
-  'appium:fullReset': true,
-  'appium:noReset': false,
+  // fullReset disabled - we handle pm clear manually in beforeEach for better control
+  'appium:fullReset': false,
+  'appium:noReset': true,
 };
 
 export const config = {
@@ -78,6 +79,8 @@ export const config = {
   mochaOpts: {
     ui: 'bdd',
     timeout: 300000, // 5 minutes for mobile tests
+    // Ensure no implicit retries at the framework level
+    retries: 0,
   },
   
   // Hooks

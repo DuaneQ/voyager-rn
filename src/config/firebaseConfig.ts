@@ -2,10 +2,9 @@
 // Replicating EXACT same config as voyager-pwa to share the database
 
 import { initializeApp } from 'firebase/app';
-import { initializeAuth, getAuth } from 'firebase/auth';
+import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
@@ -35,13 +34,9 @@ const firebaseConfig = __DEV__ ? devConfig : prodConfig;
 
 export const app = initializeApp(firebaseConfig);
 
-// Initialize Auth with AsyncStorage persistence for React Native
-// Web will use the default browser persistence
-export const auth = Platform.OS === 'web' 
-  ? getAuth(app)
-  : initializeAuth(app, {
-      persistence: AsyncStorage as any, // Firebase 10.x uses AsyncStorage directly as persistence
-    });
+// Use getAuth for both platforms
+// React Native AsyncStorage persistence is automatically used
+export const auth = getAuth(app);
 
 export const db = getFirestore(app);
 export const storage = getStorage(app);

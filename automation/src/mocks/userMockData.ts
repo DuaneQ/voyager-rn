@@ -1,7 +1,9 @@
+// Valid test account that exists in Firebase
 export const validUser = {
-  email: 'appium_user@gmail.com',
+  // Updated to the account you manually created for tests
+  email: 'usertravaltest@gmail.com',
   password: '1234567890',
-  displayName: 'Appium Test User'
+  displayName: 'Test User'
 };
 
 export const newUser = {

@@ -1,0 +1,27 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-error.log
+
+# Expo / React Native
+.expo/
+.expo-shared/
+android/build/
+ios/build/
+ios/Pods/
+*.keystore
+*.jks
+
+# Editor / macOS
+.vscode/
+.idea/
+.DS_Store
+
+# Tests / coverage
+coverage/
+logs/
+
+# Local env
+.env
+.env.local
+firebase-config.js
