@@ -29,6 +29,7 @@
         <array>
           <string>voyager-rn</string>
           <string>com.voyager.rn</string>
+          <string>com.googleusercontent.apps.296095212837-rtahvr97ah2u3hhs6783t4cofnlis0jj</string>
         </array>
       </dict>
     </array>
@@ -43,6 +44,12 @@
       <key>NSAllowsLocalNetworking</key>
       <true/>
     </dict>
+    <key>NSCameraUsageDescription</key>
+    <string>Allow $(PRODUCT_NAME) to access your camera</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Allow $(PRODUCT_NAME) to access your microphone</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Allow $(PRODUCT_NAME) to access your photos</string>
     <key>UILaunchStoryboardName</key>
     <string>SplashScreen</string>
     <key>UIRequiredDeviceCapabilities</key>

@@ -4,7 +4,19 @@ Production-grade end-to-end test automation for the TravalPass React Native (Exp
 
 ## 🚀 Quick Start
 
-### Run Tests (Headless Mode - Default)
+### Mobile E2E Tests (Appium)
+```bash
+# Profile Edit Test (iOS)
+./scripts/run-profile-edit-test.sh ios
+
+# Profile Edit Test (Android)
+./scripts/run-profile-edit-test.sh android
+
+# All mobile tests
+npx wdio run wdio.mobile.conf.ts
+```
+
+### Web E2E Tests (Headless Mode - Default)
 ```bash
 npm test
 # or
@@ -13,7 +25,7 @@ npm run test:headless
 
 Tests run in headless Chrome - you won't see a browser window. Perfect for CI/CD pipelines.
 
-### Run Tests (Watch Mode - See the Browser)
+### Web E2E Tests (Watch Mode - See the Browser)
 ```bash
 npm run test:headed
 # or
@@ -26,14 +38,43 @@ Opens a visible Chrome window so you can watch the test execution in real-time. 
 
 | Command | Description | Use Case |
 |---------|-------------|----------|
-| `npm test` | Run all tests in headless mode | Default testing, CI/CD |
-| `npm run test:headless` | Explicitly run headless | Automated environments |
+| `npm test` | Run web tests in headless mode | Default testing, CI/CD |
+| `npm run test:headless` | Explicitly run headless web tests | Automated environments |
 | `npm run test:headed` | Run with visible browser | Debugging, demos, development |
 | `npm run test:watch` | Same as headed mode | Interactive development |
 | `npm run test:unit` | Run Jest unit tests | Component/unit testing |
+| `./scripts/run-profile-edit-test.sh ios` | Run profile edit E2E (iOS) | Mobile testing |
+| `./scripts/run-profile-edit-test.sh android` | Run profile edit E2E (Android) | Mobile testing |
+
+## 🎯 New: Profile Edit E2E Test
+
+Complete end-to-end test that:
+1. **Auto-logins** using optimized UI authentication (no manual login needed!)
+2. **Navigates** to Profile tab
+3. **Opens** Edit Profile modal
+4. **Updates** multiple fields:
+   - Text fields: username, bio
+   - Pickers: gender, status, drinking, smoking
+5. **Saves** changes
+6. **Verifies** changes appear in accordions:
+   - Personal Info accordion (gender, status)
+   - Lifestyle accordion (drinking, smoking)
+
+**See full documentation**: [docs/PROFILE_EDIT_E2E_TEST.md](./docs/PROFILE_EDIT_E2E_TEST.md)
 
 ## 👀 What You'll See When Watching Tests
 
+### Mobile Tests (Appium)
+When running profile edit test, you'll see:
+- App launches in simulator/emulator
+- Automatic login (email/password entry and sign in)
+- Navigation to Profile tab
+- Edit modal opens
+- Fields update with new values
+- Changes save and accordions expand
+- Test assertions verify updates
+
+### Web Tests
 When running in headed mode (`npm run test:headed`), you'll observe:
 
 ### ✅ What Works

@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "296095212837",
+    "project_id": "mundo1-dev",
+    "storage_bucket": "mundo1-dev.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:296095212837:android:YOUR_ANDROID_APP_ID",
+        "android_client_info": {
+          "package_name": "com.voyager.rn"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "296095212837-tg2mm4k2d72hmcf9ncmsa2b6jn7hakhg.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDjw9fsMDm1Ep7WPzj4m-efjECzzDecy0k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "296095212837-tg2mm4k2d72hmcf9ncmsa2b6jn7hakhg.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

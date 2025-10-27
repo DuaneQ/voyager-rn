@@ -84,6 +84,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [status, setStatus] = useState<AuthStatus>('loading');
 
+  // Initialize Google Sign-In for mobile
+  useEffect(() => {
+    if (Platform.OS !== 'web') {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { GoogleSignin } = require('@react-native-google-signin/google-signin');
+        
+        // Configure Google Sign-In
+        GoogleSignin.configure({
+          // Web Client ID from Firebase Console (for ID token verification)
+          webClientId: '296095212837-tg2mm4k2d72hmcf9ncmsa2b6jn7hakhg.apps.googleusercontent.com',
+          
+          // iOS Client ID from GoogleService-Info.plist
+          iosClientId: '296095212837-rtahvr97ah2u3hhs6783t4cofnlis0jj.apps.googleusercontent.com',
+          
+          offlineAccess: true,
+        });
+      } catch (error) {
+        console.warn('Google Sign-In configuration failed:', error);
+      }
+    }
+  }, []);
+
   // Listen to auth state changes (same pattern as PWA)
   useEffect(() => {
     // Use Firebase onAuthStateChanged listener
@@ -109,14 +132,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         } else {
           // Unverified user - clear any stored credentials and ensure app
           // treats them as signed-out so UI will present sign-in / verify flow.
+          // Note: We do NOT call firebaseSignOut here to avoid triggering
+          // the onAuthStateChanged listener recursively (infinite loop).
           await storage.removeItem('USER_CREDENTIALS');
           await storage.removeItem('PROFILE_INFO');
-          // Try to sign out to fully clear the auth session (safe to ignore errors)
-          try {
-            await firebaseSignOut(auth);
-          } catch (e) {
-            // ignore
-          }
           setUser(null);
           setStatus('idle');
         }
@@ -243,8 +262,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const { GoogleSignin } = require('@react-native-google-signin/google-signin');
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
       const userInfo = await GoogleSignin.signIn();
-      const idToken = userInfo.idToken;
-      if (!idToken) throw new Error('No idToken from Google Signin');
+      
+      // Extract idToken from the response (v7+ uses data property)
+      const idToken = userInfo?.data?.idToken || userInfo?.idToken;
+      if (!idToken) {
+        console.error('Google Sign-In response:', JSON.stringify(userInfo, null, 2));
+        throw new Error('No idToken from Google Signin');
+      }
+      
       const credential = GoogleAuthProvider.credential(idToken);
       const result = await signInWithCredential(auth, credential as any);
       return result;

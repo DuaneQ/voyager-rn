@@ -5,7 +5,7 @@
 
 import React, { createContext, useContext, useCallback, useState, useEffect, ReactNode } from 'react';
 import { auth, db } from '../config/firebaseConfig';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface UserProfile {
@@ -15,6 +15,7 @@ interface UserProfile {
   dob?: string;
   gender?: string;
   sexualOrientation?: string;
+  status?: string;
   edu?: string;
   drinking?: string;
   smoking?: string;
@@ -29,13 +30,20 @@ interface UserProfile {
       count: number;
     };
   };
+  // Phase 1 additions
+  displayName?: string;
+  photoURL?: string;
+  location?: string;
+  phoneNumber?: string;
 }
 
 interface UserProfileContextValue {
   userProfile: UserProfile | null;
   setUserProfile: (profile: UserProfile | null) => void;
   updateUserProfile: (newProfile: UserProfile) => void;
+  updateProfile: (data: Partial<UserProfile>) => Promise<void>;
   isLoading: boolean;
+  loading: boolean;
 }
 
 const UserProfileContext = createContext<UserProfileContextValue | undefined>(undefined);
@@ -51,6 +59,30 @@ const UserProfileProvider: React.FC<UserProfileProviderProps> = ({ children }) =
   const updateUserProfile = useCallback((newProfile: UserProfile) => {
     setUserProfile(newProfile);
   }, []);
+
+  // Update specific profile fields and persist to Firestore
+  const updateProfile = useCallback(async (data: Partial<UserProfile>) => {
+    const userId = auth?.currentUser?.uid;
+    if (!userId) {
+      throw new Error('User not authenticated');
+    }
+
+    try {
+      // Update Firestore
+      const userRef = doc(db, 'users', userId);
+      await updateDoc(userRef, data);
+
+      // Update local state
+      setUserProfile((prev) => (prev ? { ...prev, ...data } : null));
+
+      // Update AsyncStorage cache
+      const updatedProfile = { ...userProfile, ...data };
+      await AsyncStorage.setItem('PROFILE_INFO', JSON.stringify(updatedProfile));
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      throw error;
+    }
+  }, [userProfile]);
 
   // Load user profile data (same logic as PWA)
   useEffect(() => {
@@ -106,7 +138,16 @@ const UserProfileProvider: React.FC<UserProfileProviderProps> = ({ children }) =
   }, []);
 
   return (
-    <UserProfileContext.Provider value={{ userProfile, setUserProfile, updateUserProfile, isLoading }}>
+    <UserProfileContext.Provider 
+      value={{ 
+        userProfile, 
+        setUserProfile, 
+        updateUserProfile, 
+        updateProfile,
+        isLoading,
+        loading: isLoading 
+      }}
+    >
       {children}
     </UserProfileContext.Provider>
   );

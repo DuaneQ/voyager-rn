@@ -12,10 +12,10 @@ import { Ionicons } from '@expo/vector-icons';
 
 // Pages
 import AuthPage from '../pages/AuthPage';
-import ProfileScreen from '../pages/ProfileScreenWorking';
-import SearchScreen from '../pages/SearchScreenWorking';
-import ChatScreen from '../pages/ChatScreenWorking';
-import VideoFeedScreen from '../pages/VideoFeedScreenWorking';
+import ProfilePage from '../pages/ProfilePage';
+import SearchPage from '../pages/SearchPage';
+import ChatPage from '../pages/ChatPage';
+import VideoFeedPage from '../pages/VideoFeedPage';
 
 // Context Providers
 import { AlertProvider } from '../context/AlertContext';
@@ -55,22 +55,22 @@ const MainTabNavigator: React.FC = () => {
     >
       <Tab.Screen 
         name="Search" 
-        component={SearchScreen}
+        component={SearchPage}
         options={{ title: 'TravalMatch' }} 
       />
       <Tab.Screen 
         name="Videos" 
-        component={VideoFeedScreen}
+        component={VideoFeedPage}
         options={{ title: 'Travals' }} 
       />
       <Tab.Screen 
         name="Chat" 
-        component={ChatScreen}
+        component={ChatPage}
         options={{ title: 'Chat' }} 
       />
       <Tab.Screen 
         name="Profile" 
-        component={ProfileScreen}
+        component={ProfilePage}
         options={{ title: 'Profile' }} 
       />
     </Tab.Navigator>
