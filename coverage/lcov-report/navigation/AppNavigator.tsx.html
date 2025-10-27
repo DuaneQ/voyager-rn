@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/24</span>
+                <span class='fraction'>0/22</span>
             </div>
         
             
@@ -39,14 +39,14 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/6</span>
+                <span class='fraction'>0/5</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/24</span>
+                <span class='fraction'>0/22</span>
             </div>
         
             
@@ -182,24 +182,7 @@
 <a name='L117'></a><a href='#L117'>117</a>
 <a name='L118'></a><a href='#L118'>118</a>
 <a name='L119'></a><a href='#L119'>119</a>
-<a name='L120'></a><a href='#L120'>120</a>
-<a name='L121'></a><a href='#L121'>121</a>
-<a name='L122'></a><a href='#L122'>122</a>
-<a name='L123'></a><a href='#L123'>123</a>
-<a name='L124'></a><a href='#L124'>124</a>
-<a name='L125'></a><a href='#L125'>125</a>
-<a name='L126'></a><a href='#L126'>126</a>
-<a name='L127'></a><a href='#L127'>127</a>
-<a name='L128'></a><a href='#L128'>128</a>
-<a name='L129'></a><a href='#L129'>129</a>
-<a name='L130'></a><a href='#L130'>130</a>
-<a name='L131'></a><a href='#L131'>131</a>
-<a name='L132'></a><a href='#L132'>132</a>
-<a name='L133'></a><a href='#L133'>133</a>
-<a name='L134'></a><a href='#L134'>134</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L120'></a><a href='#L120'>120</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -270,17 +253,6 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -341,15 +313,12 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 &nbsp;
-// Auth Screens
-import LoginScreen from '../components/auth/LoginScreen';
-import RegisterScreen from '../components/auth/RegisterScreen';
-&nbsp;
-// Main App Screens  
-import ProfileScreen from '../components/pages/ProfileScreenWorking';
-import SearchScreen from '../components/pages/SearchScreenWorking';
-import ChatScreen from '../components/pages/ChatScreenWorking';
-import VideoFeedScreen from '../components/pages/VideoFeedScreenWorking';
+// Pages
+import AuthPage from '../pages/AuthPage';
+import ProfilePage from '../pages/ProfilePage';
+import SearchPage from '../pages/SearchPage';
+import ChatPage from '../pages/ChatPage';
+import VideoFeedPage from '../pages/VideoFeedPage';
 &nbsp;
 // Context Providers
 import { AlertProvider } from '../context/AlertContext';
@@ -389,41 +358,30 @@ const MainTabNavigator: React.FC = <span class="cstat-no" title="statement not c
     &gt;
       &lt;Tab.Screen 
         name="Search" 
-        component={SearchScreen}
+        component={SearchPage}
         options={{ title: 'TravalMatch' }} 
       /&gt;
       &lt;Tab.Screen 
         name="Videos" 
-        component={VideoFeedScreen}
+        component={VideoFeedPage}
         options={{ title: 'Travals' }} 
       /&gt;
       &lt;Tab.Screen 
         name="Chat" 
-        component={ChatScreen}
+        component={ChatPage}
         options={{ title: 'Chat' }} 
       /&gt;
       &lt;Tab.Screen 
         name="Profile" 
-        component={ProfileScreen}
+        component={ProfilePage}
         options={{ title: 'Profile' }} 
       /&gt;
     &lt;/Tab.Navigator&gt;
   );
 };
 &nbsp;
-// Auth screens wrapper component
-const AuthStackNavigator: React.FC = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >()</span> =&gt; {</span>
-<span class="cstat-no" title="statement not covered" >  return (</span>
-    &lt;Stack.Navigator 
-      id={undefined}
-      initialRouteName="Login"
-      screenOptions={{ headerShown: false }}
-    &gt;
-      &lt;Stack.Screen name="Login" component={LoginScreen} /&gt;
-      &lt;Stack.Screen name="Register" component={RegisterScreen} /&gt;
-    &lt;/Stack.Navigator&gt;
-  );
-};
+// Removed: Old AuthStackNavigator with separate Login/Register screens
+// Now using single AuthScreen that handles all auth flows internally
 &nbsp;
 // Main Stack Navigator with conditional rendering based on auth state
 const RootNavigator: React.FC = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >()</span> =&gt; {</span>
@@ -444,8 +402,8 @@ const RootNavigator: React.FC = <span class="cstat-no" title="statement not cove
         // User is authenticated - show main app
         &lt;Stack.Screen name="MainApp" component={MainTabNavigator} /&gt;
       ) : (
-        // User is not authenticated - show auth screens
-        &lt;Stack.Screen name="Auth" component={AuthStackNavigator} /&gt;
+        // User is not authenticated - show single auth page
+        &lt;Stack.Screen name="Auth" component={AuthPage} /&gt;
       )}
     &lt;/Stack.Navigator&gt;
   );
@@ -469,7 +427,7 @@ export default AppNavigator;</pre></td></tr></table></pre>
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-10-23T15:37:44.685Z
+                at 2025-10-27T21:50:54.914Z
             </div>
         <script src="../prettify.js"></script>
         <script>

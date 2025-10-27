@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   View, 
   Text, 
@@ -7,34 +7,28 @@ import {
   TouchableOpacity, 
   ScrollView,
   Alert,
-  Platform
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
 import { auth } from '../config/firebaseConfig';
 import { signOut } from 'firebase/auth';
 import { useAlert } from '../context/AlertContext';
 import { useUserProfile } from '../context/UserProfileContext';
+import { usePhotoUpload } from '../hooks/photo/usePhotoUpload';
 import { ProfileHeader } from '../components/profile/ProfileHeader';
 import { EditProfileModal, ProfileData } from '../components/profile/EditProfileModal';
 import { PhotoGrid } from '../components/profile/PhotoGrid';
 import { ProfileTab } from '../components/profile/ProfileTab';
-
-interface Photo {
-  id: string;
-  url: string;
-  caption?: string;
-  uploadedAt: Date;
-}
+import { VideoGrid } from '../components/video/VideoGrid';
+import type { PhotoSlot } from '../types/Photo';
 
 type TabType = 'profile' | 'photos' | 'videos' | 'itinerary';
 
 const ProfilePage: React.FC = () => {
   const { showAlert } = useAlert();
   const { userProfile, updateProfile, loading: profileLoading } = useUserProfile();
+  const { selectAndUploadPhoto, deletePhoto, uploadState } = usePhotoUpload();
   
   const [activeTab, setActiveTab] = useState<TabType>('profile');
   const [editModalVisible, setEditModalVisible] = useState(false);
-  const [photos, setPhotos] = useState<Photo[]>([]);
 
   // Calculate profile completeness based on PWA fields
   const calculateCompleteness = (): number => {
@@ -57,13 +51,42 @@ const ProfilePage: React.FC = () => {
     if (userProfile.gender) score += weights.gender;
     if (userProfile.sexualOrientation) score += weights.sexualOrientation;
     if (userProfile.status) score += weights.status;
-    if (userProfile.photoURL) score += weights.photoURL;
+    if (userProfile.photoURL || userProfile.photos?.profile) score += weights.photoURL;
 
     return score;
   };
 
   const handleEditProfile = () => {
     setEditModalVisible(true);
+  };
+
+  /**
+   * Handle when user taps camera icon on profile photo
+   * Directly triggers photo upload
+   */
+  const handleChangeProfilePhoto = async () => {
+    try {
+      const result = await selectAndUploadPhoto('profile' as PhotoSlot);
+      if (result?.url) {
+        showAlert('Profile photo updated successfully', 'success');
+      }
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error('Upload failed');
+      showAlert(`Failed to update profile photo: ${err.message}`, 'error');
+    }
+  };
+
+  /**
+   * Handle profile photo delete
+   */
+  const handleDeleteProfilePhoto = async () => {
+    try {
+      await deletePhoto('profile' as PhotoSlot);
+      showAlert('Profile photo removed', 'success');
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error('Delete failed');
+      showAlert(`Failed to delete profile photo: ${err.message}`, 'error');
+    }
   };
 
   const handleSaveProfile = async (data: ProfileData) => {
@@ -77,56 +100,18 @@ const ProfilePage: React.FC = () => {
     }
   };
 
-  const handleAddPhoto = async () => {
-    try {
-      // Request permissions
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
-      if (status !== 'granted') {
-        showAlert('Permission required', 'error');
-        return;
-      }
-
-      // Launch image picker
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
-      });
-
-      if (!result.canceled && result.assets[0]) {
-        // TODO: Upload to Firebase Storage and save URL to Firestore
-        const newPhoto: Photo = {
-          id: Date.now().toString(),
-          url: result.assets[0].uri,
-          uploadedAt: new Date(),
-        };
-        
-        setPhotos((prev) => [...prev, newPhoto]);
-        showAlert('Photo added successfully', 'success');
-      }
-    } catch (error) {
-      console.error('Error adding photo:', error);
-      showAlert('Failed to add photo', 'error');
-    }
+  /**
+   * Handle gallery photo upload success
+   */
+  const handleGalleryPhotoUploadSuccess = (slot: PhotoSlot, url: string) => {
+    showAlert(`Photo uploaded to ${slot}`, 'success');
   };
 
-  const handlePhotoPress = (photo: Photo) => {
-    // TODO: Open photo viewer/lightbox
-    if (Platform.OS === 'web') {
-      Alert.alert('Photo', photo.caption || 'Travel photo');
-    } else {
-      Alert.alert('Photo', photo.caption || 'Travel photo', [
-        { text: 'Delete', style: 'destructive', onPress: () => handleDeletePhoto(photo.id) },
-        { text: 'Cancel', style: 'cancel' },
-      ]);
-    }
-  };
-
-  const handleDeletePhoto = (photoId: string) => {
-    setPhotos((prev) => prev.filter((p) => p.id !== photoId));
-    showAlert('Photo deleted', 'success');
+  /**
+   * Handle gallery photo delete success
+   */
+  const handleGalleryPhotoDeleteSuccess = (slot: PhotoSlot) => {
+    showAlert(`Photo removed from ${slot}`, 'success');
   };
 
   const handleSignOut = async () => {
@@ -168,19 +153,14 @@ const ProfilePage: React.FC = () => {
       case 'photos':
         return (
           <PhotoGrid
-            photos={photos}
-            onPhotoPress={handlePhotoPress}
-            onAddPhoto={handleAddPhoto}
             isOwnProfile={true}
+            onUploadSuccess={handleGalleryPhotoUploadSuccess}
+            onDeleteSuccess={handleGalleryPhotoDeleteSuccess}
           />
         );
       
       case 'videos':
-        return (
-          <View style={styles.placeholderContainer}>
-            <Text style={styles.placeholderText}>Videos feature coming soon</Text>
-          </View>
-        );
+        return <VideoGrid />;
       
       case 'itinerary':
         return (
@@ -201,11 +181,16 @@ const ProfilePage: React.FC = () => {
         <ProfileHeader
           displayName={userProfile.username || userProfile.displayName || ''}
           email={userProfile.email}
-          photoURL={userProfile.photoURL}
+          photoURL={userProfile.photoURL || userProfile.photos?.profile}
           bio={userProfile.bio}
           location={userProfile.location}
           profileCompleteness={calculateCompleteness()}
           onEditPress={handleEditProfile}
+          onPhotoPress={handleChangeProfilePhoto}
+          onPhotoDelete={handleDeleteProfilePhoto}
+          hasPhoto={!!(userProfile.photoURL || userProfile.photos?.profile)}
+          uploadProgress={uploadState.progress}
+          isUploading={uploadState.loading}
         />
 
         {/* Tab Navigation */}

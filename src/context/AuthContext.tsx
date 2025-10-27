@@ -26,6 +26,7 @@ import { Platform } from 'react-native';
 import { auth, db } from '../config/firebaseConfig';
 import { doc, setDoc } from 'firebase/firestore';
 import storage from '../utils/storage';
+import SafeGoogleSignin from '../utils/SafeGoogleSignin';
 
 interface UserCredentials {
   user: {
@@ -86,13 +87,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Initialize Google Sign-In for mobile
   useEffect(() => {
-    if (Platform.OS !== 'web') {
+    if (Platform.OS !== 'web' && SafeGoogleSignin.isAvailable()) {
       try {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const { GoogleSignin } = require('@react-native-google-signin/google-signin');
-        
         // Configure Google Sign-In
-        GoogleSignin.configure({
+        SafeGoogleSignin.configure({
           // Web Client ID from Firebase Console (for ID token verification)
           webClientId: '296095212837-tg2mm4k2d72hmcf9ncmsa2b6jn7hakhg.apps.googleusercontent.com',
           
@@ -101,9 +99,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           
           offlineAccess: true,
         });
+        
+        console.log('Google Sign-In configured successfully');
       } catch (error) {
-        console.warn('Google Sign-In configuration failed:', error);
+        // Don't crash the app if Google Sign-In configuration fails
+        console.warn('Google Sign-In configuration failed:', error instanceof Error ? error.message : error);
       }
+    } else if (Platform.OS !== 'web') {
+      console.warn('Google Sign-In native module not available - Google login will be disabled');
     }
   }, []);
 
@@ -255,13 +258,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return signInWithPopup(auth, provider);
     }
 
-    // Mobile: use react-native-google-signin if available
+    // Mobile: use SafeGoogleSignin wrapper
     try {
-      // dynamic require to avoid module errors in environments where it's not installed
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { GoogleSignin } = require('@react-native-google-signin/google-signin');
-      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-      const userInfo = await GoogleSignin.signIn();
+      if (!SafeGoogleSignin.isAvailable()) {
+        throw new Error('Google Sign-In is not available. Please ensure the app is properly configured.');
+      }
+
+      await SafeGoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      const userInfo = await SafeGoogleSignin.signIn();
       
       // Extract idToken from the response (v7+ uses data property)
       const idToken = userInfo?.data?.idToken || userInfo?.idToken;
