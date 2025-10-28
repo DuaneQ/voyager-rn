@@ -81,92 +81,100 @@ jobs:
         profile: Nexus 6
         force-avd-creation: false
         emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+        emulator-boot-timeout: 900
         disable-animations: true
         script: |
-          echo "Android emulator started"
+          set -e  # Exit on any error
+          
+          echo "🚀 Starting Android emulator setup and testing workflow"
           
           # Wait for emulator to be fully ready
+          echo "⏳ Waiting for Android emulator to be ready..."
           adb wait-for-device
-          echo "Waiting for emulator to boot..."
           sleep 30
           
+          # Check emulator status
+          echo "📱 Checking emulator status..."
+          adb devices -l
+          
           # Prebuild to create native Android project
+          echo "🔧 Building native Android project..."
           export CI=true
           export EXPO_NO_TELEMETRY=1
-          echo "Running expo prebuild..."
-          npx expo prebuild --platform android --clean || {
-            echo "ERROR: expo prebuild failed"
-            echo "Node modules state:"
-            ls -la node_modules/ | head -10
-            echo "Package.json dependencies:"
-            cat package.json | grep -A 20 '"dependencies"'
-            exit 1
-          }
+          npx expo prebuild --platform android --clean
           
-          # Build the native Android app using gradle (avoids device selection prompt)
+          # Build the APK
+          echo "🏗️ Building Android APK..."
           cd android
           chmod +x gradlew
-          echo "Building Android APK..."
-          ./gradlew assembleDebug --info || {
-            echo "ERROR: Gradle build failed"
-            echo "Android directory contents:"
-            ls -la
-            exit 1
-          }
+          ./gradlew assembleDebug --info
           
-          # Find and install the APK on emulator
-          APK_PATH=$(find . -name "*.apk" | grep debug | head -1)
+          # Find and install the APK
+          echo "📦 Installing APK on emulator..."
+          APK_PATH=$(find . -name "*.apk" -path "*/debug/*" | head -1)
           if [ -z "$APK_PATH" ]; then
-            echo "ERROR: No debug APK found"
+            echo "❌ ERROR: No debug APK found"
             find . -name "*.apk" -ls
             exit 1
           fi
           
-          echo "Installing APK: $APK_PATH"
-          adb install "$APK_PATH" || {
-            echo "ERROR: Failed to install APK"
-            adb devices
-            exit 1
-          }
+          echo "Installing: $APK_PATH"
+          adb install "$APK_PATH"
           
-          # Verify app installation
-          adb shell pm list packages | grep com.voyager.rn || {
-            echo "ERROR: App com.voyager.rn not found on emulator"
-            echo "Installed packages:"
-            adb shell pm list packages | grep voyager
-            exit 1
-          }
-          echo "✅ App com.voyager.rn is installed and ready for testing"
+          # Verify installation
+          echo "✅ Verifying app installation..."
+          adb shell pm list packages | grep com.voyager.rn
           
-          # Install automation dependencies
+          # Setup automation environment
+          echo "🔧 Setting up automation environment..."
           cd ../automation
           npm install --legacy-peer-deps
-          
-          # Install Appium and required drivers
           npm install -g appium
           appium driver install uiautomator2
           
-          # Start Appium server in background
-          appium --log-level warn &
+          # Start Appium
+          echo "🚀 Starting Appium server..."
+          appium --log-level info &
           APPIUM_PID=$!
+          sleep 10
           
-          # Wait for Appium to start
-          echo "Waiting for Appium to start..."
-          sleep 15
+          # Verify Appium
+          echo "🔍 Verifying Appium server..."
+          curl -f http://localhost:4723/status
           
-          # Verify Appium is running
-          curl -f http://localhost:4723/status || {
-            echo "ERROR: Appium server not responding"
-            exit 1
-          }
-          echo "✅ Appium server is running"
-          
-          # Run Android automation tests
-          echo "Running Android automation tests..."
+          # Run tests
+          echo "🧪 Running automation tests..."
           PLATFORM=android npx wdio run wdio.mobile.conf.ts --spec tests/mobile/travel-preferences.test.ts
           
-          # Kill Appium server
+          # Cleanup
+          echo "🧹 Cleaning up..."
           kill $APPIUM_PID || true
+          
+    - name: Kill crashpad_handler processes (Fix for emulator hanging)
+      if: always()
+      run: |
+        echo "🧹 Cleaning up remaining processes..."
+        
+        # Check for running processes
+        echo "Checking for crashpad_handler processes:"
+        pgrep -l crashpad_handler || echo "No crashpad_handler processes found"
+        
+        echo "Checking for qemu processes:"
+        pgrep -l qemu || echo "No qemu processes found"
+        
+        # Kill crashpad_handler processes (known to cause hanging)
+        echo "Terminating crashpad_handler processes..."
+        pkill -SIGTERM crashpad_handler 2>/dev/null || true
+        sleep 5
+        pkill -SIGKILL crashpad_handler 2>/dev/null || true
+        
+        # Also kill any remaining emulator processes
+        echo "Terminating any remaining emulator processes..."
+        pkill -SIGTERM qemu-system 2>/dev/null || true
+        sleep 3
+        pkill -SIGKILL qemu-system 2>/dev/null || true
+        
+        echo "✅ Process cleanup complete"
           
     - name: Capture test artifacts on failure
       if: failure()
