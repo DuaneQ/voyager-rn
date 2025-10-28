@@ -17,7 +17,8 @@ import {
   StyleSheet,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import Slider from '@react-native-community/slider';
+// Note: Temporarily commenting out Slider for build compatibility
+// import Slider from '@react-native-community/slider';
 import { useTravelPreferences } from '../../hooks/useTravelPreferences';
 import {
   TravelPreferenceProfile,
@@ -453,20 +454,20 @@ export const TravelPreferencesTab: React.FC<TravelPreferencesTabProps> = ({
 
           <Text style={styles.label}>Minimum Star Rating: {formData.accommodation?.starRating || 3}</Text>
           <View style={styles.sliderContainer}>
-            <Slider
-              style={styles.slider}
-              minimumValue={1}
-              maximumValue={5}
-              step={1}
-              value={formData.accommodation?.starRating || 3}
-              onValueChange={(value) => {
-                updateFormField('accommodation', {
-                  ...(formData.accommodation || { type: 'any' }),
-                  starRating: value,
-                });
+            <TextInput
+              style={[styles.input, { width: '100%' }]}
+              value={String(formData.accommodation?.starRating || 3)}
+              onChangeText={(text) => {
+                const value = parseInt(text) || 3;
+                if (value >= 1 && value <= 5) {
+                  updateFormField('accommodation', {
+                    ...(formData.accommodation || { type: 'any' }),
+                    starRating: value,
+                  });
+                }
               }}
-              minimumTrackTintColor="#007AFF"
-              maximumTrackTintColor="#E0E0E0"
+              keyboardType="numeric"
+              placeholder="Star Rating (1-5)"
             />
             <View style={styles.sliderLabels}>
               <Text style={styles.sliderLabel}>1</Text>
@@ -479,20 +480,20 @@ export const TravelPreferencesTab: React.FC<TravelPreferencesTabProps> = ({
 
           <Text style={styles.label}>Minimum User Rating: {(formData.accommodation?.minUserRating || 3.0).toFixed(1)}</Text>
           <View style={styles.sliderContainer}>
-            <Slider
-              style={styles.slider}
-              minimumValue={1.0}
-              maximumValue={5.0}
-              step={0.1}
-              value={formData.accommodation?.minUserRating || 3.0}
-              onValueChange={(value) => {
-                updateFormField('accommodation', {
-                  ...(formData.accommodation || { type: 'any', starRating: 3 }),
-                  minUserRating: value,
-                });
+            <TextInput
+              style={[styles.input, { width: '100%' }]}
+              value={String(formData.accommodation?.minUserRating || 3.0)}
+              onChangeText={(text) => {
+                const value = parseFloat(text) || 3.0;
+                if (value >= 1.0 && value <= 5.0) {
+                  updateFormField('accommodation', {
+                    ...(formData.accommodation || { type: 'any', starRating: 3 }),
+                    minUserRating: value,
+                  });
+                }
               }}
-              minimumTrackTintColor="#007AFF"
-              maximumTrackTintColor="#E0E0E0"
+              keyboardType="numeric"
+              placeholder="User Rating (1.0-5.0)"
             />
             <View style={styles.sliderLabels}>
               <Text style={styles.sliderLabel}>1.0</Text>

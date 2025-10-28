@@ -109,16 +109,249 @@ export class ProfilePage extends BasePage {
   }
 
   /**
-   * Navigate to profile page
-   * Assumes bottom navigation is visible
+   * Navigate from Expo Go home screen to our React Native app
    */
-  async navigateToProfile() {
-    console.log('[ProfilePage] Navigating to profile...');
+    async navigateToApp(): Promise<void> {
+        console.log('[ProfilePage] Starting navigation to React Native app...');
+        
+        try {
+            // Wait a moment for Expo Go to fully load
+            await driver.pause(3000);
+            
+            // Get current page source to understand the interface
+            const pageSource = await driver.getPageSource();
+            console.log(`[ProfilePage] Current interface contains 'Enter URL manually': ${pageSource.includes('Enter URL manually')}`);
+            
+            // Strategy 1: Look for "Enter URL manually" text and tap it
+            try {
+                console.log('[ProfilePage] Looking for Enter URL manually button...');
+                
+                // Try multiple selector approaches for "Enter URL manually"
+                const enterUrlSelectors = [
+                    '//XCUIElementTypeOther[contains(@name, "Enter URL manually")]',
+                    '//XCUIElementTypeStaticText[contains(@name, "Enter URL manually")]',
+                    '//XCUIElementTypeButton[contains(@name, "Enter URL manually")]',
+                    '//*[contains(@label, "Enter URL manually")]',
+                    '//*[contains(@name, "Enter URL manually")]'
+                ];
+                
+                let clicked = false;
+                for (const selector of enterUrlSelectors) {
+                    try {
+                        const element = await driver.$(selector);
+                        if (await element.isExisting()) {
+                            console.log(`[ProfilePage] Found Enter URL manually with selector: ${selector}`);
+                            await element.click();
+                            console.log('[ProfilePage] Clicked Enter URL manually');
+                            await driver.pause(2000);
+                            clicked = true;
+                            break;
+                        }
+                    } catch (e) {
+                        console.log(`[ProfilePage] Selector ${selector} failed: ${e.message}`);
+                    }
+                }
+                
+                // If no specific element found, try tapping in the general area where "Enter URL manually" appears
+                if (!clicked) {
+                    console.log('[ProfilePage] No specific element found, trying coordinate tap...');
+                    // Tap in the center-lower area where "Enter URL manually" typically appears
+                    await driver.touchAction({
+                        action: 'tap',
+                        x: 200,
+                        y: 400
+                    });
+                    await driver.pause(2000);
+                    console.log('[ProfilePage] Performed coordinate tap for Enter URL manually');
+                }
+                
+            } catch (error) {
+                console.log(`[ProfilePage] Enter URL manually step failed: ${error.message}`);
+            }
+            
+            // Strategy 2: Look for URL input field and enter development server URL
+            try {
+                console.log('[ProfilePage] Looking for URL input field...');
+                
+                // Wait for URL input interface to appear
+                await driver.pause(2000);
+                
+                const inputSelectors = [
+                    '//XCUIElementTypeTextField',
+                    '//XCUIElementTypeTextView',
+                    '//XCUIElementTypeOther[@name="TextInput"]',
+                    '//*[@type="XCUIElementTypeTextField"]'
+                ];
+                
+                let inputFound = false;
+                for (const selector of inputSelectors) {
+                    try {
+                        const urlInput = await driver.$(selector);
+                        if (await urlInput.isExisting() && await urlInput.isDisplayed()) {
+                            console.log(`[ProfilePage] Found URL input with selector: ${selector}`);
+                            
+                            // Clear existing text and enter development server URL
+                            await urlInput.click();
+                            await driver.pause(500);
+                            await urlInput.clearValue();
+                            await urlInput.setValue('exp://192.168.1.171:8083');
+                            console.log('[ProfilePage] Entered development server URL: exp://127.0.0.1:8083');
+                            await driver.pause(1000);
+                            inputFound = true;
+                            break;
+                        }
+                    } catch (e) {
+                        console.log(`[ProfilePage] Input selector ${selector} failed: ${e.message}`);
+                    }
+                }
+                
+                if (!inputFound) {
+                    console.log('[ProfilePage] No URL input field found, trying keyboard input...');
+                    // If no input field found, try typing directly (keyboard might be open)
+                    await driver.execute('mobile: type', { text: 'exp://192.168.1.171:8083' });
+                    console.log('[ProfilePage] Typed URL using mobile: type command');
+                }
+                
+            } catch (error) {
+                console.log(`[ProfilePage] URL input step failed: ${error.message}`);
+            }
+            
+            // Strategy 3: Try direct URL opening via mobile commands
+            try {
+                console.log('[ProfilePage] Trying direct URL opening...');
+                
+                // Try to open URL directly using mobile command
+                await driver.execute('mobile: openUrl', {
+                    url: 'exp://192.168.1.171:8083'
+                });
+                console.log('[ProfilePage] Attempted direct URL opening');
+                await driver.pause(3000);
+                
+            } catch (error) {
+                console.log(`[ProfilePage] Direct URL opening failed: ${error.message}`);
+            }
+            
+            // Strategy 4: Look for and tap Connect/Go/Submit button
+            try {
+                console.log('[ProfilePage] Looking for connect button...');
+                await driver.pause(1000);
+                
+                const buttonSelectors = [
+                    '//XCUIElementTypeButton[contains(@name, "Connect")]',
+                    '//XCUIElementTypeButton[contains(@name, "Go")]',
+                    '//XCUIElementTypeButton[contains(@name, "Submit")]',
+                    '//XCUIElementTypeButton[contains(@name, "Open")]',
+                    '//XCUIElementTypeButton[@type="XCUIElementTypeButton"]'
+                ];
+                
+                let buttonClicked = false;
+                for (const selector of buttonSelectors) {
+                    try {
+                        const button = await driver.$(selector);
+                        if (await button.isExisting() && await button.isDisplayed()) {
+                            console.log(`[ProfilePage] Found connect button with selector: ${selector}`);
+                            await button.click();
+                            console.log('[ProfilePage] Clicked connect button');
+                            buttonClicked = true;
+                            break;
+                        }
+                    } catch (e) {
+                        console.log(`[ProfilePage] Button selector ${selector} failed: ${e.message}`);
+                    }
+                }
+                
+                if (!buttonClicked) {
+                    console.log('[ProfilePage] No connect button found, trying Return key...');
+                    // Try pressing return/enter key
+                    try {
+                        await driver.execute('mobile: pressButton', { name: 'Return' });
+                        console.log('[ProfilePage] Pressed Return key');
+                    } catch (e) {
+                        console.log(`[ProfilePage] Return key failed: ${e.message}`);
+                    }
+                }
+                
+            } catch (error) {
+                console.log(`[ProfilePage] Connect button step failed: ${error.message}`);
+            }
+            
+            // Strategy 5: Try alternative deep link approaches
+            try {
+                console.log('[ProfilePage] Trying alternative deep link methods...');
+                
+                // Method 1: Safari deep link
+                await driver.execute('mobile: safari:open', {
+                    url: 'exp://192.168.1.171:8083'
+                });
+                await driver.pause(2000);
+                console.log('[ProfilePage] Attempted Safari deep link');
+                
+            } catch (error) {
+                console.log(`[ProfilePage] Safari deep link failed: ${error.message}`);
+                
+                // Method 2: Direct app activation with URL
+                try {
+                    await driver.execute('mobile: launchApp', {
+                        bundleId: 'host.exp.exponent',
+                        arguments: ['exp://192.168.1.171:8083']
+                    });
+                    console.log('[ProfilePage] Attempted app launch with URL argument');
+                    await driver.pause(3000);
+                } catch (e) {
+                    console.log(`[ProfilePage] App launch with URL failed: ${e.message}`);
+                }
+            }
+            
+            // Wait for React Native app to load
+            console.log('[ProfilePage] Waiting for React Native app to load...');
+            await driver.pause(8000);
+            
+            // Verify we're now in the React Native app by checking for app-specific elements
+            const finalPageSource = await driver.getPageSource();
+            console.log(`[ProfilePage] After navigation - page source length: ${finalPageSource.length}`);
+            console.log(`[ProfilePage] Looking for React Native app indicators...`);
+            
+            // Check for common React Native app indicators
+            const appIndicators = [
+                'Profile',
+                'Login',
+                'Sign in',
+                'Welcome',
+                'VoyagerRN',
+                'TravalPass'
+            ];
+            
+            let foundIndicator = false;
+            for (const indicator of appIndicators) {
+                if (finalPageSource.includes(indicator)) {
+                    console.log(`[ProfilePage] Found app indicator: ${indicator}`);
+                    foundIndicator = true;
+                    break;
+                }
+            }
+            
+            if (foundIndicator) {
+                console.log('[ProfilePage] Successfully navigated to React Native app!');
+            } else {
+                console.log('[ProfilePage] Warning: May still be in Expo Go interface');
+            }
+            
+            console.log('[ProfilePage] Navigation to app completed');
+            
+        } catch (error) {
+            console.log(`[ProfilePage] Navigation failed with error: ${error}`);
+            throw new Error(`Failed to navigate to React Native app: ${error}`);
+        }
+    }  /**
+   * Navigate to the Profile tab
+   */
+  async navigateToProfile(): Promise<void> {
+    console.log('[ProfilePage] Navigating to Profile...');
     
-    // Wait a moment for any transitions
-    await browser.pause(2000);
+    // First ensure we're in our app, not Expo Go home screen
+    await this.navigateToApp();
     
-    // First, let's see what we have on the page
+    // Now check what we have on the page
     const pageSource = await browser.getPageSource();
     console.log('[ProfilePage] Current page source length:', pageSource.length);
     console.log('[ProfilePage] Checking for key elements...');

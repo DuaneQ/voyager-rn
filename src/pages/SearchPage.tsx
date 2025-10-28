@@ -27,21 +27,21 @@ const SearchPage: React.FC = () => {
       title: 'Amazing Tokyo Adventure',
       destination: 'Tokyo, Japan',
       duration: '7 days',
-      description: 'Explore the vibrant culture, delicious food, and modern attractions of Tokyo.',
+      description: 'AI Generated - Here is where you will search for other travelers going to the same destination with overlapping dates.  If you would like to match with the person click the airplane icon.',
       creator: 'TokyoExplorer'
     },
     {
       title: 'Paris Romance',
       destination: 'Paris, France',
       duration: '5 days',
-      description: 'Experience the city of love with visits to iconic landmarks and cozy cafes.',
+      description: 'You can view their profile and ratings from past travels with others.  If the same traveler likes your itinerary then it is a match!',
       creator: 'ParisianDreamer'
     },
     {
       title: 'NYC Urban Explorer',
       destination: 'New York, USA',
       duration: '4 days',
-      description: 'Dive into the hustle and bustle of the Big Apple with museums, shows, and great food.',
+      description: 'Once you match you can navigate to the Chats tab to start planning your trip together!',
       creator: 'CityWalker'
     }
   ];

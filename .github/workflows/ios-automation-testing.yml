@@ -1,0 +1,167 @@
+name: iOS Automation Testing
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  ios-automation-tests:
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci --legacy-peer-deps
+      
+    - name: Setup iOS Simulator
+      run: |
+        # List available simulators for debugging
+        echo "Available simulators:"
+        xcrun simctl list devices available
+        
+        # Find iPhone 15 Pro or fallback to other available iOS simulators
+        SIMULATOR_ID=$(xcrun simctl list devices available | grep -E "iPhone (15|14|13)" | head -1 | grep -oE '[0-9A-F-]{36}')
+        
+        if [ -z "$SIMULATOR_ID" ]; then
+          echo "No iPhone simulator found, trying iPad..."
+          SIMULATOR_ID=$(xcrun simctl list devices available | grep -E "iPad" | head -1 | grep -oE '[0-9A-F-]{36}')
+        fi
+        
+        if [ -z "$SIMULATOR_ID" ]; then
+          echo "ERROR: No iOS simulator found"
+          xcrun simctl list devices available
+          exit 1
+        fi
+        
+        echo "Using simulator ID: $SIMULATOR_ID"
+        xcrun simctl boot "$SIMULATOR_ID" || true
+        echo "SIMULATOR_ID=$SIMULATOR_ID" >> $GITHUB_ENV
+        
+        # Wait for simulator to boot
+        echo "Waiting for simulator to boot..."
+        xcrun simctl bootstatus "$SIMULATOR_ID" -b
+        
+    - name: Setup Xcode and CocoaPods
+      run: |
+        sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+        gem install cocoapods
+        
+    - name: Install iOS dependencies
+      run: |
+        cd ios
+        pod install
+        
+    - name: Build iOS app for testing
+      run: |
+        # Build the native iOS app (not Expo Go)
+        npx expo run:ios --device --configuration Debug
+        
+        # The app should now be installed on the simulator with bundle ID: com.voyager.rn
+        echo "iOS app built and installed successfully"
+        
+    - name: Install Automation Dependencies
+      run: |
+        cd automation
+        npm ci
+        
+    - name: Verify app installation
+      run: |
+        # Verify the app is installed
+        xcrun simctl listapps "$SIMULATOR_ID" | grep "com.voyager.rn" || {
+          echo "ERROR: App com.voyager.rn not found on simulator"
+          echo "Installed apps:"
+          xcrun simctl listapps "$SIMULATOR_ID"
+          exit 1
+        }
+        echo "✅ App com.voyager.rn is installed and ready for testing"
+        
+    - name: Start Appium Server
+      run: |
+        cd automation
+        # Install Appium and required drivers
+        npm install -g appium
+        appium driver install xcuitest
+        
+        # Start Appium server in background
+        appium --log-level warn &
+        APPIUM_PID=$!
+        echo "APPIUM_PID=$APPIUM_PID" >> $GITHUB_ENV
+        
+        # Wait for Appium to start
+        echo "Waiting for Appium to start..."
+        sleep 15
+        
+        # Verify Appium is running
+        curl -f http://localhost:4723/status || {
+          echo "ERROR: Appium server not responding"
+          exit 1
+        }
+        echo "✅ Appium server is running"
+        
+    - name: Run iOS Automation Tests
+      env:
+        SIMULATOR_ID: ${{ env.SIMULATOR_ID }}
+      run: |
+        cd automation
+        echo "Running tests on simulator: $SIMULATOR_ID"
+        PLATFORM=ios npx wdio run wdio.mobile.conf.ts --spec tests/mobile/travel-preferences.test.ts
+        
+    - name: Capture test artifacts on failure
+      if: failure()
+      run: |
+        echo "Capturing debug information..."
+        
+        # Capture simulator screenshot
+        xcrun simctl io "$SIMULATOR_ID" screenshot "automation/simulator-screenshot.png" || true
+        
+        # Capture simulator logs
+        xcrun simctl spawn "$SIMULATOR_ID" log collect --output "automation/simulator.log" || true
+        
+        # List running apps for debugging
+        xcrun simctl listapps "$SIMULATOR_ID" > "automation/installed-apps.txt" || true
+        
+    - name: Upload Test Results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ios-test-results-${{ github.run_number }}
+        path: |
+          automation/logs/
+          automation/screenshots/
+          automation/*.log
+          automation/*.png
+          automation/*.txt
+          
+    - name: Cleanup
+      if: always()
+      run: |
+        echo "Cleaning up..."
+        
+        # Kill Appium server
+        if [ ! -z "$APPIUM_PID" ]; then
+          echo "Killing Appium server (PID: $APPIUM_PID)"
+          kill $APPIUM_PID || true
+        fi
+        
+        # Kill any remaining appium processes
+        pkill -f appium || true
+        
+        # Shutdown simulator
+        if [ ! -z "$SIMULATOR_ID" ]; then
+          echo "Shutting down simulator: $SIMULATOR_ID"
+          xcrun simctl shutdown "$SIMULATOR_ID" || true
+        fi
+        
+        # Clean up build artifacts to save space
+        rm -rf ios/build || true
+        rm -rf ~/Library/Developer/Xcode/DerivedData/* || true

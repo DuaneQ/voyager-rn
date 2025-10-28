@@ -1,0 +1,122 @@
+# Azure DevOps Pipeline for iOS Automation Testing
+# Trigger on main and develop branches
+
+trigger:
+- main
+- develop
+
+pr:
+- main 
+- develop
+
+pool:
+  vmImage: 'macOS-latest'
+
+variables:
+  NODE_VERSION: '18.x'
+
+stages:
+- stage: iOSAutomationTests
+  displayName: 'iOS Automation Testing'
+  
+  jobs:
+  - job: RuniOSTests
+    displayName: 'Run iOS Automation Tests'
+    
+    steps:
+    - task: NodeTool@0
+      displayName: 'Setup Node.js'
+      inputs:
+        versionSpec: '$(NODE_VERSION)'
+        
+    - task: Npm@1
+      displayName: 'Install Dependencies'
+      inputs:
+        command: 'ci'
+        
+    - script: |
+        # List available simulators
+        xcrun simctl list devices available
+        
+        # Boot iPhone 15 simulator (or fallback to available) 
+        SIMULATOR_ID=$(xcrun simctl list devices available | grep "iPhone 15" | head -1 | grep -o '[A-F0-9-]\{36\}')
+        if [ -z "$SIMULATOR_ID" ]; then
+          # Fallback to iPhone 14 if iPhone 15 not available
+          SIMULATOR_ID=$(xcrun simctl list devices available | grep "iPhone 14" | head -1 | grep -o '[A-F0-9-]\{36\}')
+        fi
+        
+        echo "Using simulator: $SIMULATOR_ID"
+        xcrun simctl boot "$SIMULATOR_ID"
+        echo "##vso[task.setvariable variable=SIMULATOR_ID]$SIMULATOR_ID"
+      displayName: 'Setup iOS Simulator'
+      
+    - script: |
+        # Download and install Expo Go
+        curl -L -o expo-go.app.tar.gz "https://dpq5q02fu5f55.cloudfront.net/Exponent-2.31.7.tar.gz"
+        tar -xzf expo-go.app.tar.gz
+        xcrun simctl install "$(SIMULATOR_ID)" "Exponent-2.31.7.app"
+      displayName: 'Install Expo Go on Simulator'
+      
+    - script: |
+        # Start Expo dev server in background
+        npm start &
+        DEV_SERVER_PID=$!
+        echo "##vso[task.setvariable variable=DEV_SERVER_PID]$DEV_SERVER_PID"
+        
+        # Wait for server to be ready
+        sleep 30
+      displayName: 'Start React Native Development Server'
+      
+    - task: Npm@1
+      displayName: 'Install Automation Dependencies'
+      inputs:
+        command: 'ci'
+        workingDir: 'automation'
+        
+    - script: |
+        cd automation
+        npx appium &
+        APPIUM_PID=$!
+        echo "##vso[task.setvariable variable=APPIUM_PID]$APPIUM_PID"
+        
+        # Wait for Appium to start
+        sleep 10
+      displayName: 'Start Appium Server'
+      
+    - script: |
+        cd automation
+        PLATFORM=ios npx wdio run wdio.mobile.conf.ts --spec tests/mobile/travel-preferences.test.ts
+      displayName: 'Run iOS Automation Tests'
+      condition: always()
+      
+    - task: PublishTestResults@2
+      displayName: 'Publish Test Results'
+      condition: always()
+      inputs:
+        testResultsFormat: 'JUnit'
+        testResultsFiles: 'automation/test-results/*.xml'
+        failTaskOnFailedTests: false
+        
+    - task: PublishBuildArtifacts@1
+      displayName: 'Upload Test Artifacts'
+      condition: always()
+      inputs:
+        PathtoPublish: |
+          automation/logs/
+          automation/screenshots/
+          automation/*.log
+        ArtifactName: 'ios-test-results'
+        
+    - script: |
+        # Kill background processes
+        if [ ! -z "$(DEV_SERVER_PID)" ]; then
+          kill $(DEV_SERVER_PID) || true
+        fi
+        if [ ! -z "$(APPIUM_PID)" ]; then
+          kill $(APPIUM_PID) || true
+        fi
+        
+        # Shutdown simulator
+        xcrun simctl shutdown "$(SIMULATOR_ID)" || true
+      displayName: 'Cleanup'
+      condition: always()

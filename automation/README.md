@@ -45,6 +45,8 @@ Opens a visible Chrome window so you can watch the test execution in real-time. 
 | `npm run test:unit` | Run Jest unit tests | Component/unit testing |
 | `./scripts/run-profile-edit-test.sh ios` | Run profile edit E2E (iOS) | Mobile testing |
 | `./scripts/run-profile-edit-test.sh android` | Run profile edit E2E (Android) | Mobile testing |
+| `./scripts/run-travel-preferences-test.sh ios` | Run travel preferences E2E (iOS) | Mobile testing |
+| `./scripts/run-travel-preferences-test.sh android` | Run travel preferences E2E (Android) | Mobile testing |
 
 ## 🎯 New: Profile Edit E2E Test
 
@@ -62,10 +64,36 @@ Complete end-to-end test that:
 
 **See full documentation**: [docs/PROFILE_EDIT_E2E_TEST.md](./docs/PROFILE_EDIT_E2E_TEST.md)
 
+## 🧳 New: Travel Preferences E2E Test
+
+Complete end-to-end test for travel preferences management that:
+1. **Auto-logins** using optimized UI authentication
+2. **Navigates** to Profile tab → AI Itinerary tab → Travel Preferences sub-tab
+3. **Creates** a new travel profile with:
+   - Profile name
+   - Travel style selection (Budget/Mid-range/Luxury)
+   - Activity preferences (Cultural, Outdoor, Nightlife, etc.)
+   - Accommodation preferences with sliders:
+     - Star rating (1-5 stars)
+     - User rating (0-5.0)
+4. **Tests** accordion interactions (expand/collapse sections)
+5. **Saves** profile and verifies success
+6. **Handles** cross-platform differences (iOS/Android)
+
+The test includes multiple scenarios:
+- Basic profile creation
+- Accordion interactions
+- Slider controls
+- Sub-tab navigation
+- Form validation
+- Platform-specific features
+
+**See full documentation**: [docs/TRAVEL_PREFERENCES_E2E_TEST.md](./docs/TRAVEL_PREFERENCES_E2E_TEST.md)
+
 ## 👀 What You'll See When Watching Tests
 
 ### Mobile Tests (Appium)
-When running profile edit test, you'll see:
+When running **profile edit test**, you'll see:
 - App launches in simulator/emulator
 - Automatic login (email/password entry and sign in)
 - Navigation to Profile tab
@@ -73,6 +101,18 @@ When running profile edit test, you'll see:
 - Fields update with new values
 - Changes save and accordions expand
 - Test assertions verify updates
+
+When running **travel preferences test**, you'll see:
+- App launches in simulator/emulator
+- Automatic login process
+- Navigation: Profile tab → AI Itinerary tab → Travel Preferences sub-tab
+- Profile name input
+- Travel style chip selection
+- Activity selection chips
+- Accordion sections expanding
+- Slider interactions for star/user ratings
+- Profile save and verification
+- Platform-specific behaviors (iOS vs Android)
 
 ### Web Tests
 When running in headed mode (`npm run test:headed`), you'll observe:
