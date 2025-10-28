@@ -57,6 +57,7 @@ jobs:
       run: |
         sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
         gem install cocoapods
+        echo "✅ Xcode and CocoaPods setup complete"
         
     - name: Generate Native iOS Project
       run: |
@@ -64,34 +65,82 @@ jobs:
         export CI=true
         export EXPO_NO_TELEMETRY=1
         # Skip expo install --fix as it may cause dependency conflicts
-        npx expo prebuild --platform ios --clean
+        echo "Running expo prebuild for iOS..."
+        npx expo prebuild --platform ios --clean || {
+          echo "ERROR: expo prebuild failed"
+          echo "Node modules status:"
+          ls -la node_modules/ | head -5
+          echo "Package.json dependencies:"
+          cat package.json | grep -A 10 '"dependencies"'
+          exit 1
+        }
+        
+        # Verify ios directory was created
+        if [ ! -d "ios" ]; then
+          echo "ERROR: ios directory not created by prebuild"
+          exit 1
+        fi
+        
+        echo "✅ Native iOS project generated successfully"
         
     - name: Build iOS app for testing
       run: |
         cd ios
         
+        # Verify workspace exists
+        if [ ! -d "VoyagerRN.xcworkspace" ]; then
+          echo "ERROR: VoyagerRN.xcworkspace not found"
+          echo "Available files in ios directory:"
+          ls -la
+          exit 1
+        fi
+        
+        # Install pods first
+        pod install || {
+          echo "ERROR: pod install failed"
+          exit 1
+        }
+        
         # Build for iOS Simulator using xcodebuild (avoids device detection)
-        xcodebuild -workspace voyager.xcworkspace \
-          -scheme voyager \
+        xcodebuild -workspace VoyagerRN.xcworkspace \
+          -scheme VoyagerRN \
           -configuration Debug \
           -sdk iphonesimulator \
           -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
           -derivedDataPath build \
-          build
+          build || {
+          echo "ERROR: Xcode build failed"
+          echo "Available schemes:"
+          xcodebuild -workspace VoyagerRN.xcworkspace -list
+          exit 1
+        }
           
         # Find the built app
         APP_PATH=$(find build -name "*.app" | head -1)
+        if [ -z "$APP_PATH" ]; then
+          echo "ERROR: No .app bundle found after build"
+          echo "Build directory contents:"
+          find build -type f -name "*.app" -o -name "*.ipa" | head -10
+          exit 1
+        fi
+        
         echo "Built app at: $APP_PATH"
         echo "APP_PATH=$APP_PATH" >> $GITHUB_ENV
         
         # Install the app on simulator
-        xcrun simctl install "$SIMULATOR_ID" "$APP_PATH"
-        echo "iOS app built and installed successfully"
+        xcrun simctl install "$SIMULATOR_ID" "$APP_PATH" || {
+          echo "ERROR: Failed to install app on simulator"
+          echo "Simulator status:"
+          xcrun simctl list devices | grep "$SIMULATOR_ID"
+          exit 1
+        }
+        echo "✅ iOS app built and installed successfully"
         
     - name: Install Automation Dependencies
       run: |
         cd automation
-        npm ci
+        npm install --legacy-peer-deps
+        echo "✅ Automation dependencies installed"
         
     - name: Verify app installation
       run: |
