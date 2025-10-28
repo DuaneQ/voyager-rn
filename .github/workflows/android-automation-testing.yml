@@ -86,128 +86,51 @@ jobs:
         emulator-boot-timeout: 900
         disable-animations: true
         script: |
-          set -e  # Exit on any error
-          
+          set -e
           echo "🚀 Starting Android emulator setup and testing workflow"
-          
-          # Wait for emulator to be fully ready
           echo "⏳ Waiting for Android emulator to be ready..."
           adb wait-for-device
           sleep 30
-          
-          # Check emulator status
           echo "📱 Checking emulator status..."
           adb devices -l
-          
-          # Prebuild to create native Android project
           echo "🔧 Building native Android project..."
           export CI=true
           export EXPO_NO_TELEMETRY=1
-          
-          if ! npx expo prebuild --platform android --clean; then
-            echo "❌ ERROR: expo prebuild failed"
-            echo "Current directory contents:"
-            ls -la
-            exit 1
-          fi
-          
-          # Verify android directory was created
-          if [ ! -d "android" ]; then
-            echo "❌ ERROR: android directory not created by prebuild"
-            echo "Available directories:"
-            ls -la
-            exit 1
-          fi
-          
-          # Verify essential Android files were created
-          REQUIRED_FILES=("android/build.gradle" "android/app/build.gradle" "android/settings.gradle")
-          for file in "${REQUIRED_FILES[@]}"; do
-            if [ ! -f "$file" ]; then
-              echo "❌ ERROR: Required Android file missing: $file"
-              echo "This indicates prebuild did not complete successfully"
-              exit 1
-            fi
-          done
-          
+          npx expo prebuild --platform android --clean
+          test -d "android" || (echo "❌ ERROR: android directory not created" && ls -la && exit 1)
+          test -f "android/build.gradle" || (echo "❌ ERROR: android/build.gradle missing" && exit 1)
+          test -f "android/app/build.gradle" || (echo "❌ ERROR: android/app/build.gradle missing" && exit 1)
+          test -f "android/settings.gradle" || (echo "❌ ERROR: android/settings.gradle missing" && exit 1)
           echo "✅ Android project generated successfully"
           echo "📁 Android directory contents:"
           ls -la android/
-          echo ""
           echo "🔍 Checking for gradle files:"
           find android/ -name "*gradle*" -type f | head -10
-          
-          # Build the APK
           echo "🏗️ Building Android APK..."
           cd android
-          
-          # Verify gradlew exists, generate if missing
-          if [ ! -f "gradlew" ]; then
-            echo "⚠️ WARNING: gradlew not found, attempting to generate gradle wrapper"
-            echo "Android directory contents:"
-            ls -la
-            echo ""
-            
-            # Try to generate gradle wrapper if gradle is available
-            if command -v gradle >/dev/null 2>&1; then
-              echo "Generating gradle wrapper..."
-              if ! gradle wrapper; then
-                echo "❌ ERROR: Failed to generate gradle wrapper"
-                exit 1
-              fi
-            else
-              echo "❌ ERROR: Neither gradlew nor gradle found"
-              echo "This suggests expo prebuild did not complete successfully"
-              exit 1
-            fi
-          fi
-          
+          test -f "gradlew" || (echo "⚠️ WARNING: gradlew not found, generating gradle wrapper" && gradle wrapper)
           chmod +x gradlew
-          
-          if ! ./gradlew assembleDebug --info; then
-            echo "❌ ERROR: Gradle build failed"
-            echo "Gradle wrapper info:"
-            ls -la gradlew gradle/
-            exit 1
-          fi
-          
-          # Find and install the APK
+          ./gradlew assembleDebug --info
           echo "📦 Installing APK on emulator..."
           APK_PATH=$(find . -name "*.apk" -path "*/debug/*" | head -1)
-          if [ -z "$APK_PATH" ]; then
-            echo "❌ ERROR: No debug APK found"
-            find . -name "*.apk" -ls
-            exit 1
-          fi
-          
+          test -n "$APK_PATH" || (echo "❌ ERROR: No debug APK found" && find . -name "*.apk" -ls && exit 1)
           echo "Installing: $APK_PATH"
           adb install "$APK_PATH"
-          
-          # Verify installation
           echo "✅ Verifying app installation..."
           adb shell pm list packages | grep com.voyager.rn
-          
-          # Setup automation environment
           echo "🔧 Setting up automation environment..."
           cd ../automation
           npm install --legacy-peer-deps
           npm install -g appium
           appium driver install uiautomator2
-          
-          # Start Appium
           echo "🚀 Starting Appium server..."
           appium --log-level info &
           APPIUM_PID=$!
           sleep 10
-          
-          # Verify Appium
           echo "🔍 Verifying Appium server..."
           curl -f http://localhost:4723/status
-          
-          # Run tests
           echo "🧪 Running automation tests..."
           PLATFORM=android npx wdio run wdio.mobile.conf.ts --spec tests/mobile/travel-preferences.test.ts
-          
-          # Cleanup
           echo "🧹 Cleaning up..."
           kill $APPIUM_PID || true
           
