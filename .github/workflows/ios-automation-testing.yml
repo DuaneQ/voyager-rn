@@ -166,22 +166,44 @@ jobs:
     - name: Start Appium Server
       run: |
         cd automation
-        # Install Appium and required drivers
-        npm install -g appium
-        appium driver install xcuitest
         
-        # Start Appium server in background
-        appium --log-level warn &
+        # Use local Appium installation from package.json (v3.1.0)
+        echo "📦 Using local Appium installation (v3.1.0)..."
+        
+        # Check if drivers are already installed and clean up
+        echo "🔍 Checking existing drivers..."
+        npx appium driver list --installed 2>/dev/null || echo "No drivers currently installed"
+        
+        # Remove any existing drivers to avoid conflicts
+        echo "🧹 Cleaning up existing drivers..."
+        npx appium driver uninstall xcuitest 2>/dev/null || echo "xcuitest not installed"
+        npx appium driver uninstall uiautomator2 2>/dev/null || echo "uiautomator2 not installed"
+        
+        # Install compatible drivers for Appium 3.x
+        echo "🔧 Installing iOS driver for Appium 3.x..."
+        npx appium driver install xcuitest
+        
+        # Verify driver installation
+        echo "✅ Installed drivers:"
+        npx appium driver list --installed
+        
+        # Start Appium server in background using local installation
+        echo "🚀 Starting Appium server..."
+        npx appium server --log-level warn &
         APPIUM_PID=$!
         echo "APPIUM_PID=$APPIUM_PID" >> $GITHUB_ENV
         
         # Wait for Appium to start
-        echo "Waiting for Appium to start..."
+        echo "⏳ Waiting for Appium to start..."
         sleep 15
         
         # Verify Appium is running
         curl -f http://localhost:4723/status || {
-          echo "ERROR: Appium server not responding"
+          echo "❌ ERROR: Appium server not responding"
+          echo "Checking Appium process..."
+          ps aux | grep appium || echo "No Appium process found"
+          echo "Checking if port 4723 is in use:"
+          lsof -i :4723 || echo "Port 4723 not in use"
           exit 1
         }
         echo "✅ Appium server is running"
@@ -236,7 +258,9 @@ jobs:
         fi
         
         # Kill any remaining appium processes
+        echo "Cleaning up any remaining Appium processes..."
         pkill -f appium || true
+        pkill -f "node.*appium" || true
         
         # Shutdown simulator
         if [ ! -z "$SIMULATOR_ID" ]; then
