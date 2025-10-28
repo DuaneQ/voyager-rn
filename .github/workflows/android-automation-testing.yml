@@ -101,13 +101,70 @@ jobs:
           echo "🔧 Building native Android project..."
           export CI=true
           export EXPO_NO_TELEMETRY=1
-          npx expo prebuild --platform android --clean
+          npx expo prebuild --platform android --clean || {
+            echo "❌ ERROR: expo prebuild failed"
+            echo "Current directory contents:"
+            ls -la
+            exit 1
+          }
+          
+          # Verify android directory was created
+          if [ ! -d "android" ]; then
+            echo "❌ ERROR: android directory not created by prebuild"
+            echo "Available directories:"
+            ls -la
+            exit 1
+          fi
+          
+          # Verify essential Android files were created
+          REQUIRED_FILES=("android/build.gradle" "android/app/build.gradle" "android/settings.gradle")
+          for file in "${REQUIRED_FILES[@]}"; do
+            if [ ! -f "$file" ]; then
+              echo "❌ ERROR: Required Android file missing: $file"
+              echo "This indicates prebuild did not complete successfully"
+              exit 1
+            fi
+          done
+          
+          echo "✅ Android project generated successfully"
+          echo "📁 Android directory contents:"
+          ls -la android/
+          echo ""
+          echo "🔍 Checking for gradle files:"
+          find android/ -name "*gradle*" -type f | head -10
           
           # Build the APK
           echo "🏗️ Building Android APK..."
           cd android
+          
+          # Verify gradlew exists, generate if missing
+          if [ ! -f "gradlew" ]; then
+            echo "⚠️ WARNING: gradlew not found, attempting to generate gradle wrapper"
+            echo "Android directory contents:"
+            ls -la
+            echo ""
+            
+            # Try to generate gradle wrapper if gradle is available
+            if command -v gradle >/dev/null 2>&1; then
+              echo "Generating gradle wrapper..."
+              gradle wrapper || {
+                echo "❌ ERROR: Failed to generate gradle wrapper"
+                exit 1
+              }
+            else
+              echo "❌ ERROR: Neither gradlew nor gradle found"
+              echo "This suggests expo prebuild did not complete successfully"
+              exit 1
+            fi
+          fi
+          
           chmod +x gradlew
-          ./gradlew assembleDebug --info
+          ./gradlew assembleDebug --info || {
+            echo "❌ ERROR: Gradle build failed"
+            echo "Gradle wrapper info:"
+            ls -la gradlew gradle/
+            exit 1
+          }
           
           # Find and install the APK
           echo "📦 Installing APK on emulator..."
