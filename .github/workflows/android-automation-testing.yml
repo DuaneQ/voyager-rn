@@ -23,11 +23,8 @@ jobs:
         
     - name: Install dependencies
       run: |
-        # Try npm ci first, fallback to npm install if lock file is out of sync
-        npm ci --legacy-peer-deps || {
-          echo "Lock file out of sync, running npm install..."
-          npm install --legacy-peer-deps
-        }
+        # Install dependencies with legacy peer deps to handle compatibility issues
+        npm install --legacy-peer-deps
       
     - name: Setup Java
       uses: actions/setup-java@v4
