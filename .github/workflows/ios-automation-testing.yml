@@ -81,6 +81,13 @@ jobs:
           exit 1
         fi
         
+        # Check what was generated
+        echo "iOS project structure created:"
+        ls -la ios/
+        echo ""
+        echo "Workspace files found:"
+        find ios/ -name "*.xcworkspace" -type d || echo "No .xcworkspace files found"
+        
         echo "✅ Native iOS project generated successfully"
         
     - name: Build iOS app for testing
@@ -88,10 +95,13 @@ jobs:
         cd ios
         
         # Verify workspace exists
-        if [ ! -d "VoyagerRN.xcworkspace" ]; then
-          echo "ERROR: VoyagerRN.xcworkspace not found"
+        if [ ! -d "Traval.xcworkspace" ]; then
+          echo "ERROR: Traval.xcworkspace not found"
           echo "Available files in ios directory:"
           ls -la
+          echo ""
+          echo "Looking for .xcworkspace files:"
+          find . -name "*.xcworkspace" -type d
           exit 1
         fi
         
@@ -102,8 +112,8 @@ jobs:
         }
         
         # Build for iOS Simulator using xcodebuild (avoids device detection)
-        xcodebuild -workspace VoyagerRN.xcworkspace \
-          -scheme VoyagerRN \
+        xcodebuild -workspace Traval.xcworkspace \
+          -scheme Traval \
           -configuration Debug \
           -sdk iphonesimulator \
           -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
@@ -111,7 +121,7 @@ jobs:
           build || {
           echo "ERROR: Xcode build failed"
           echo "Available schemes:"
-          xcodebuild -workspace VoyagerRN.xcworkspace -list
+          xcodebuild -workspace Traval.xcworkspace -list
           exit 1
         }
           
