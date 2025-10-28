@@ -139,7 +139,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   signOutButton: {
-    backgroundColor: '#d32f2f',
+    backgroundColor: '#E0E0E0',
     marginHorizontal: 16,
     paddingVertical: 16,
     borderRadius: 8,
@@ -149,6 +149,6 @@ const styles = StyleSheet.create({
   signOutText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: '#000000',
   },
 });

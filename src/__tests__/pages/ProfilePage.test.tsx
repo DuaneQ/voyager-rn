@@ -220,7 +220,9 @@ describe('ProfilePage', () => {
       const aiTab = getByText('AI Itinerary');
       fireEvent.press(aiTab);
       
-      expect(getByText('AI Itinerary feature coming soon')).toBeTruthy();
+      // Should show the AIItinerarySection with sub-tabs
+      expect(getByText('Travel Preferences')).toBeTruthy();
+      expect(getByText('My AI Itineraries')).toBeTruthy();
     });
 
     it('should switch back to Profile tab', () => {

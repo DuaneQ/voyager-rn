@@ -18,6 +18,7 @@ import { EditProfileModal, ProfileData } from '../components/profile/EditProfile
 import { PhotoGrid } from '../components/profile/PhotoGrid';
 import { ProfileTab } from '../components/profile/ProfileTab';
 import { VideoGrid } from '../components/video/VideoGrid';
+import { AIItinerarySection } from '../components/profile/AIItinerarySection';
 import type { PhotoSlot } from '../types/Photo';
 
 type TabType = 'profile' | 'photos' | 'videos' | 'itinerary';
@@ -163,11 +164,7 @@ const ProfilePage: React.FC = () => {
         return <VideoGrid />;
       
       case 'itinerary':
-        return (
-          <View style={styles.placeholderContainer}>
-            <Text style={styles.placeholderText}>AI Itinerary feature coming soon</Text>
-          </View>
-        );
+        return <AIItinerarySection />;
       
       default:
         return null;

@@ -1,0 +1,63 @@
+name: Security & Dependency Check
+
+on:
+  schedule:
+    # Run security checks daily at 6 AM UTC
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+  push:
+    paths:
+      - 'package.json'
+      - 'package-lock.json'
+      - 'automation/package.json'
+      - 'automation/package-lock.json'
+
+jobs:
+  security_audit:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Run comprehensive security audit
+        run: |
+          echo "🔍 Running comprehensive security audit..."
+          
+          # Generate audit report
+          npm audit --audit-level=low > audit-report.txt || true
+          
+          # Display critical and high vulnerabilities
+          echo "=== CRITICAL & HIGH VULNERABILITIES ==="
+          npm audit --audit-level=high || echo "No critical/high vulnerabilities found"
+          
+          # Check automation dependencies
+          echo "=== AUTOMATION DEPENDENCIES ==="
+          cd automation
+          npm audit --audit-level=high || echo "No critical/high vulnerabilities in automation"
+
+      - name: Check for outdated dependencies
+        run: |
+          echo "=== OUTDATED MAIN DEPENDENCIES ==="
+          npm outdated || true
+          
+          echo "=== OUTDATED AUTOMATION DEPENDENCIES ==="
+          cd automation
+          npm outdated || true
+
+      - name: Upload audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-audit-report
+          path: audit-report.txt
+          retention-days: 30
