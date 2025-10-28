@@ -25,14 +25,16 @@ jobs:
       run: |
         # Install dependencies with legacy peer deps to handle compatibility issues
         echo "Installing dependencies..."
-        npm install --legacy-peer-deps || {
+        
+        if ! npm install --legacy-peer-deps; then
           echo "ERROR: npm install failed"
           echo "Package.json content:"
           cat package.json
           echo "Detailed npm error log:"
           tail -50 ~/.npm/_logs/*.log 2>/dev/null || echo "No npm logs found"
           exit 1
-        }
+        fi
+        
         echo "✅ Dependencies installed successfully"
       
     - name: Setup Java
@@ -101,12 +103,13 @@ jobs:
           echo "🔧 Building native Android project..."
           export CI=true
           export EXPO_NO_TELEMETRY=1
-          npx expo prebuild --platform android --clean || {
+          
+          if ! npx expo prebuild --platform android --clean; then
             echo "❌ ERROR: expo prebuild failed"
             echo "Current directory contents:"
             ls -la
             exit 1
-          }
+          fi
           
           # Verify android directory was created
           if [ ! -d "android" ]; then
@@ -147,10 +150,10 @@ jobs:
             # Try to generate gradle wrapper if gradle is available
             if command -v gradle >/dev/null 2>&1; then
               echo "Generating gradle wrapper..."
-              gradle wrapper || {
+              if ! gradle wrapper; then
                 echo "❌ ERROR: Failed to generate gradle wrapper"
                 exit 1
-              }
+              fi
             else
               echo "❌ ERROR: Neither gradlew nor gradle found"
               echo "This suggests expo prebuild did not complete successfully"
@@ -159,12 +162,13 @@ jobs:
           fi
           
           chmod +x gradlew
-          ./gradlew assembleDebug --info || {
+          
+          if ! ./gradlew assembleDebug --info; then
             echo "❌ ERROR: Gradle build failed"
             echo "Gradle wrapper info:"
             ls -la gradlew gradle/
             exit 1
-          }
+          fi
           
           # Find and install the APK
           echo "📦 Installing APK on emulator..."

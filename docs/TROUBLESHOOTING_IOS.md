@@ -1,5 +1,46 @@
 # iOS Troubleshooting Guide
 
+## ✅ Recent Fixes (October 28, 2025)
+
+### iOS CI Pipeline Workspace Error - RESOLVED
+
+**Issues Fixed:** Workspace and scheme name mismatches
+
+**Issue 1:** `xcodebuild: error: 'voyager.xcworkspace' does not exist.`
+**Root Cause:** iOS CI workflow was using incorrect workspace and scheme names:
+- Used: `voyager.xcworkspace` and `voyager` scheme  
+- Actual: `VoyagerRN.xcworkspace` and `VoyagerRN` scheme
+
+**Issue 2:** `ERROR: VoyagerRN.xcworkspace not found`
+**Root Cause:** Expo prebuild generates workspace based on app.json "name" field:
+- Expected: `VoyagerRN.xcworkspace`
+- Actual: `Traval.xcworkspace` (from app.json: `"name": "Traval"`)
+
+**Solutions Applied:**
+```yaml
+# Final corrected xcodebuild command in .github/workflows/ios-automation-testing.yml:
+xcodebuild -workspace Traval.xcworkspace \
+  -scheme Traval \
+  -configuration Debug \
+  -sdk iphonesimulator \
+  -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
+  -derivedDataPath build \
+  build
+```
+
+**Key Learning:** Expo prebuild uses `app.json` → `"name"` field to determine:
+- Xcode project name: `{name}.xcodeproj` 
+- Workspace name: `{name}.xcworkspace`
+- Scheme name: `{name}`
+
+**Additional Improvements:**
+- Added `pod install` before xcodebuild  
+- Enhanced error diagnostics for workspace/scheme issues
+- Added verification for .app bundle creation
+- Updated automation dependencies to use `--legacy-peer-deps`
+
+---
+
 ## Common iOS Errors and Solutions
 
 ### Error: `RNGoogleSignin` could not be found
