@@ -34,8 +34,8 @@ jobs:
         echo "Available simulators:"
         xcrun simctl list devices available
         
-        # Find iPhone 15 Pro or fallback to other available iOS simulators
-        SIMULATOR_ID=$(xcrun simctl list devices available | grep -E "iPhone (15|14|13)" | head -1 | grep -oE '[0-9A-F-]{36}')
+        # Find any iPhone simulator available in CI  
+        SIMULATOR_ID=$(xcrun simctl list devices available | grep "iPhone" | head -1 | grep -oE '[0-9A-F-]{36}')
         
         if [ -z "$SIMULATOR_ID" ]; then
           echo "No iPhone simulator found, trying iPad..."

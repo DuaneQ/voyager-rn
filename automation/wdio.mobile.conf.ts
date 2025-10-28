@@ -52,9 +52,9 @@ const androidCapabilities = {
   ...(process.env.ANDROID_AVD_NAME ? { 'appium:avd': process.env.ANDROID_AVD_NAME } : {}),
   ...(process.env.ANDROID_AVD_LAUNCH_TIMEOUT ? { 'appium:avdLaunchTimeout': Number(process.env.ANDROID_AVD_LAUNCH_TIMEOUT) } : {}),
   ...(process.env.ANDROID_AVD_READY_TIMEOUT ? { 'appium:avdReadyTimeout': Number(process.env.ANDROID_AVD_READY_TIMEOUT) } : {}),
-  // Use Expo Go app instead of production APK for development testing
-  'appium:appPackage': 'host.exp.exponent',
-  'appium:appActivity': 'host.exp.exponent.experience.HomeActivity',
+  // Use native Android app built with expo run:android (same as iOS approach)
+  'appium:appPackage': 'com.voyager.rn',
+  'appium:appActivity': '.MainActivity',
   'appium:autoGrantPermissions': true,
   // Use noReset for faster tests, rely on afterEach cleanup for isolation
   'appium:fullReset': false,
