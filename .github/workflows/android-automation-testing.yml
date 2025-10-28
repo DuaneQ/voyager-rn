@@ -9,6 +9,7 @@ on:
 jobs:
   android-automation-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 45  # Prevent hanging workflows
     
     steps:
     - name: Checkout code
@@ -78,8 +79,37 @@ jobs:
         script: |
           echo "Android emulator started"
           
-          # Build the native Android app
-          npx expo run:android --device
+          # Wait for emulator to be fully ready
+          adb wait-for-device
+          echo "Waiting for emulator to boot..."
+          sleep 30
+          
+          # Prebuild to create native Android project
+          export CI=true
+          export EXPO_NO_TELEMETRY=1
+          npx expo install --fix
+          npx expo prebuild --platform android --clean
+          
+          # Build the native Android app using gradle (avoids device selection prompt)
+          cd android
+          chmod +x gradlew
+          echo "Building Android APK..."
+          ./gradlew assembleDebug --info
+          
+          # Find and install the APK on emulator
+          APK_PATH=$(find . -name "*.apk" | grep debug | head -1)
+          if [ -z "$APK_PATH" ]; then
+            echo "ERROR: No debug APK found"
+            find . -name "*.apk" -ls
+            exit 1
+          fi
+          
+          echo "Installing APK: $APK_PATH"
+          adb install "$APK_PATH" || {
+            echo "ERROR: Failed to install APK"
+            adb devices
+            exit 1
+          }
           
           # Verify app installation
           adb shell pm list packages | grep com.voyager.rn || {
