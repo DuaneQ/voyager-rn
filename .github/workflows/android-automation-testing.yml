@@ -24,7 +24,16 @@ jobs:
     - name: Install dependencies
       run: |
         # Install dependencies with legacy peer deps to handle compatibility issues
-        npm install --legacy-peer-deps
+        echo "Installing dependencies..."
+        npm install --legacy-peer-deps || {
+          echo "ERROR: npm install failed"
+          echo "Package.json content:"
+          cat package.json
+          echo "Detailed npm error log:"
+          tail -50 ~/.npm/_logs/*.log 2>/dev/null || echo "No npm logs found"
+          exit 1
+        }
+        echo "✅ Dependencies installed successfully"
       
     - name: Setup Java
       uses: actions/setup-java@v4
@@ -84,14 +93,26 @@ jobs:
           # Prebuild to create native Android project
           export CI=true
           export EXPO_NO_TELEMETRY=1
-          npx expo install --fix
-          npx expo prebuild --platform android --clean
+          echo "Running expo prebuild..."
+          npx expo prebuild --platform android --clean || {
+            echo "ERROR: expo prebuild failed"
+            echo "Node modules state:"
+            ls -la node_modules/ | head -10
+            echo "Package.json dependencies:"
+            cat package.json | grep -A 20 '"dependencies"'
+            exit 1
+          }
           
           # Build the native Android app using gradle (avoids device selection prompt)
           cd android
           chmod +x gradlew
           echo "Building Android APK..."
-          ./gradlew assembleDebug --info
+          ./gradlew assembleDebug --info || {
+            echo "ERROR: Gradle build failed"
+            echo "Android directory contents:"
+            ls -la
+            exit 1
+          }
           
           # Find and install the APK on emulator
           APK_PATH=$(find . -name "*.apk" | grep debug | head -1)
@@ -118,8 +139,8 @@ jobs:
           echo "✅ App com.voyager.rn is installed and ready for testing"
           
           # Install automation dependencies
-          cd automation
-          npm ci
+          cd ../automation
+          npm install --legacy-peer-deps
           
           # Install Appium and required drivers
           npm install -g appium
