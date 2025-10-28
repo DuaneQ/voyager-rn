@@ -107,13 +107,12 @@ jobs:
           echo "🔍 Checking for gradle files:"
           find android/ -name "*gradle*" -type f | head -10
           echo "🏗️ Building Android APK..."
-          cd android
-          test -f "gradlew" || (echo "⚠️ WARNING: gradlew not found, generating gradle wrapper" && gradle wrapper)
-          chmod +x gradlew
-          ./gradlew assembleDebug --info
+          cd android && test -f "gradlew" && echo "✅ gradlew found" || (echo "⚠️ WARNING: gradlew not found" && exit 1)
+          cd android && chmod +x gradlew
+          cd android && ./gradlew assembleDebug --info
           echo "📦 Installing APK on emulator..."
-          APK_PATH=$(find . -name "*.apk" -path "*/debug/*" | head -1)
-          test -n "$APK_PATH" || (echo "❌ ERROR: No debug APK found" && find . -name "*.apk" -ls && exit 1)
+          APK_PATH=$(find android/ -name "*.apk" -path "*/debug/*" | head -1)
+          test -n "$APK_PATH" || (echo "❌ ERROR: No debug APK found" && find android/ -name "*.apk" -ls && exit 1)
           echo "Installing: $APK_PATH"
           adb install "$APK_PATH"
           echo "✅ Verifying app installation..."
