@@ -15,8 +15,12 @@ const iosCapabilities = {
   'appium:udid': process.env.SIMULATOR_ID || process.env.IOS_UDID || '69160A0F-7DDF-4442-8C1D-FBA991D48EA7',
   'appium:platformVersion': process.env.IOS_SIM_VERSION || '17.5',
   'appium:automationName': 'XCUITest',
-  // Native iOS app built with expo run:ios (not Expo Go)
-  'appium:bundleId': 'com.voyager.rn',
+  // Use app path for CI builds, bundleId for local development
+  ...(process.env.CI && process.env.APP_PATH ? {
+    'appium:app': process.env.APP_PATH
+  } : {
+    'appium:bundleId': 'com.voyager.rn'
+  }),
   'appium:noReset': false,
   'appium:fullReset': false,
   'appium:newCommandTimeout': 300, // Increased for CI stability

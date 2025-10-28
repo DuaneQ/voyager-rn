@@ -51,21 +51,42 @@ stages:
       displayName: 'Setup iOS Simulator'
       
     - script: |
-        # Download and install Expo Go
-        curl -L -o expo-go.app.tar.gz "https://dpq5q02fu5f55.cloudfront.net/Exponent-2.31.7.tar.gz"
-        tar -xzf expo-go.app.tar.gz
-        xcrun simctl install "$(SIMULATOR_ID)" "Exponent-2.31.7.app"
-      displayName: 'Install Expo Go on Simulator'
+        # Prebuild and generate native iOS project
+        export CI=true
+        export EXPO_NO_TELEMETRY=1
+        npx expo install --fix
+        npx expo prebuild --platform ios --clean
+      displayName: 'Generate Native iOS Project'
       
     - script: |
-        # Start Expo dev server in background
-        npm start &
-        DEV_SERVER_PID=$!
-        echo "##vso[task.setvariable variable=DEV_SERVER_PID]$DEV_SERVER_PID"
+        # Build the native iOS app for simulator testing
+        cd ios
         
-        # Wait for server to be ready
-        sleep 30
-      displayName: 'Start React Native Development Server'
+        # Build for iOS Simulator (bundle ID already correct in app.json)
+        xcodebuild -workspace voyager.xcworkspace \
+          -scheme voyager \
+          -configuration Debug \
+          -sdk iphonesimulator \
+          -destination "platform=iOS Simulator,name=iPhone 15,OS=latest" \
+          -derivedDataPath build \
+          build
+          
+        # Find and copy the built app
+        APP_PATH=$(find build -name "*.app" | head -1)
+        echo "Built app at: $APP_PATH"
+        echo "##vso[task.setvariable variable=APP_PATH]$APP_PATH"
+      displayName: 'Build Native iOS App for Testing'
+      
+    - script: |
+        # Install the built native app on simulator
+        if [ ! -z "$(APP_PATH)" ] && [ -d "$(APP_PATH)" ]; then
+          xcrun simctl install "$(SIMULATOR_ID)" "$(APP_PATH)"
+          echo "Installed native app on simulator: $(APP_PATH)"
+        else
+          echo "Warning: APP_PATH not found, app installation may have failed"
+          exit 1
+        fi
+      displayName: 'Install Native App on Simulator'
       
     - task: Npm@1
       displayName: 'Install Automation Dependencies'
@@ -85,7 +106,13 @@ stages:
       
     - script: |
         cd automation
-        PLATFORM=ios npx wdio run wdio.mobile.conf.ts --spec tests/mobile/travel-preferences.test.ts
+        # Set environment variables for native app testing
+        export PLATFORM=ios
+        export APP_PATH="$(APP_PATH)"
+        export SIMULATOR_ID="$(SIMULATOR_ID)"
+        export CI=true
+        
+        npx wdio run wdio.mobile.conf.ts --spec tests/mobile/travel-preferences.test.ts
       displayName: 'Run iOS Automation Tests'
       condition: always()
       

@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { LogBox } from 'react-native';
 import AppNavigator from './src/navigation/AppNavigator';
 import { AuthProvider } from './src/context/AuthContext';
 import { AlertProvider } from './src/context/AlertContext';
 import { UserProfileProvider } from './src/context/UserProfileContext';
+import testFirebaseAuth from './src/utils/testFirebaseAuth';
 
 // Ignore Firebase Auth warnings in LogBox (development only)
 // These warnings appear as blocking yellow/red boxes during E2E tests
@@ -21,6 +22,14 @@ LogBox.ignoreLogs([
  * Simplified architecture matching PWA patterns exactly.
  */
 export default function App() {
+  // Test Firebase Auth on startup (development only)
+  useEffect(() => {
+    if (__DEV__) {
+      console.log('🚀 Starting Firebase Auth test...');
+      testFirebaseAuth();
+    }
+  }, []);
+
   return (
     <AuthProvider>
       <AlertProvider>

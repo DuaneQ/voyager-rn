@@ -61,17 +61,34 @@ jobs:
         sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
         gem install cocoapods
         
-    - name: Install iOS dependencies
+    - name: Generate Native iOS Project
       run: |
-        cd ios
-        pod install
+        # Prebuild to create native iOS project
+        export CI=true
+        export EXPO_NO_TELEMETRY=1
+        npx expo install --fix
+        npx expo prebuild --platform ios --clean
         
     - name: Build iOS app for testing
       run: |
-        # Build the native iOS app (not Expo Go)
-        npx expo run:ios --device --configuration Debug
+        cd ios
         
-        # The app should now be installed on the simulator with bundle ID: com.voyager.rn
+        # Build for iOS Simulator using xcodebuild (avoids device detection)
+        xcodebuild -workspace voyager.xcworkspace \
+          -scheme voyager \
+          -configuration Debug \
+          -sdk iphonesimulator \
+          -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
+          -derivedDataPath build \
+          build
+          
+        # Find the built app
+        APP_PATH=$(find build -name "*.app" | head -1)
+        echo "Built app at: $APP_PATH"
+        echo "APP_PATH=$APP_PATH" >> $GITHUB_ENV
+        
+        # Install the app on simulator
+        xcrun simctl install "$SIMULATOR_ID" "$APP_PATH"
         echo "iOS app built and installed successfully"
         
     - name: Install Automation Dependencies
@@ -116,10 +133,14 @@ jobs:
     - name: Run iOS Automation Tests
       env:
         SIMULATOR_ID: ${{ env.SIMULATOR_ID }}
+        APP_PATH: ${{ env.APP_PATH }}
       run: |
         cd automation
         echo "Running tests on simulator: $SIMULATOR_ID"
-        PLATFORM=ios npx wdio run wdio.mobile.conf.ts --spec tests/mobile/travel-preferences.test.ts
+        echo "Using app path: $APP_PATH"
+        export PLATFORM=ios
+        export CI=true
+        npx wdio run wdio.mobile.conf.ts --spec tests/mobile/travel-preferences.test.ts
         
     - name: Capture test artifacts on failure
       if: failure()
