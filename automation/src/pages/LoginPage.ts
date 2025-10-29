@@ -247,9 +247,23 @@ export class LoginPage extends BasePage {
       }
 
       // If running inside Expo dev client on Android, the Dev Launcher may show a "Voyager RN" entry.
-      // Click it to open the actual app before proceeding with login.
+      // For Expo Go, navigate directly to the tunnel URL
       try {
         if (driver.isAndroid) {
+          console.log('[LoginPage] Navigating to Expo tunnel URL');
+          // Navigate directly to the tunnel URL
+          await driver.executeScript('mobile: deepLink', [{
+            url: 'exp://f60g7cq-travalpassllc-8082.exp.direct',
+            package: 'host.exp.exponent'
+          }]);
+          console.log('[LoginPage] Deep link opened in Expo Go');
+          // Give the app time to load from tunnel
+          await browser.pause(8000);
+        }
+      } catch (e) {
+        console.log('[LoginPage] Deep link failed, trying manual navigation');
+        // Fallback: try to find and click Voyager RN if it exists
+        try {
           console.log('[LoginPage] Checking for Expo dev launcher (Voyager RN)');
           // try accessibility id / content-desc first
           const voyagerBtn = await $('~Voyager RN');
@@ -272,9 +286,9 @@ export class LoginPage extends BasePage {
               // ignore
             }
           }
+        } catch (e) {
+          // best-effort only; continue to normal login flow if not present
         }
-      } catch (e) {
-        // best-effort only; continue to normal login flow if not present
       }
 
       // Find email input

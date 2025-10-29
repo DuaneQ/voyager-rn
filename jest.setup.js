@@ -41,6 +41,12 @@ jest.mock('./src/config/firebaseConfig', () => ({
 // Mock firebase/auth functions used by AuthContext
 jest.mock('firebase/auth', () => {
   const actual = jest.requireActual('firebase/auth');
+  
+  // Mock GoogleAuthProvider as a constructor
+  class MockGoogleAuthProvider {
+    static credential = jest.fn((idToken) => ({ providerId: 'google.com', idToken }));
+  }
+  
   return {
     // keep other exports if needed
     ...actual,
@@ -59,8 +65,26 @@ jest.mock('firebase/auth', () => {
       // return unsubscribe function
       return () => {};
     }),
+    GoogleAuthProvider: MockGoogleAuthProvider,
+    signInWithPopup: jest.fn(async () => {
+      return { user: { uid: 'google-uid', email: 'google@example.com', emailVerified: true } };
+    }),
+    signInWithCredential: jest.fn(async () => {
+      return { user: { uid: 'google-uid-mobile', email: 'google-mobile@example.com', emailVerified: true } };
+    }),
   };
 });
+
+// Mock firebase/firestore
+jest.mock('firebase/firestore', () => ({
+  doc: jest.fn(() => ({})),
+  setDoc: jest.fn(async () => Promise.resolve()),
+  getDoc: jest.fn(async () => ({ exists: () => false, data: () => null })),
+  collection: jest.fn(() => ({})),
+  query: jest.fn(() => ({})),
+  where: jest.fn(() => ({})),
+  getDocs: jest.fn(async () => ({ docs: [] })),
+}));
 
 // Mock React Navigation
 jest.mock('@react-navigation/native', () => ({

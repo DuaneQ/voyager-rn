@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Voyager RN",
+    "name": "Traval",
     "slug": "voyager-rn",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -14,10 +14,20 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.voyager.rn",
-      "deploymentTarget": "15.0"
+      "deploymentTarget": "15.0",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to upload profile and gallery photos.",
+        "NSCameraUsageDescription": "This app needs access to your camera to take profile and gallery photos.",
+        "NSPhotoLibraryAddUsageDescription": "This app needs permission to save photos to your photo library."
+      }
     },
     "android": {
-      "package": "com.voyager.rn"
+      "package": "com.voyager.rn",
+      "permissions": [
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "CAMERA"
+      ]
     },
     "web": {},
     "scheme": "voyager-rn",

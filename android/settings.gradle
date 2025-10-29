@@ -44,7 +44,7 @@ if (getRNMinorVersion() >= 75) {
   }
 }
 
-rootProject.name = 'Voyager RN'
+rootProject.name = 'Traval'
 
 dependencyResolutionManagement {
   versionCatalogs {

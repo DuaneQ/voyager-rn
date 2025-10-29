@@ -7,8 +7,10 @@ yarn-error.log
 .expo/
 .expo-shared/
 android/build/
+android/gradle.properties
 ios/build/
 ios/Pods/
+ios/Podfile.lock
 *.keystore
 *.jks
 
@@ -16,10 +18,23 @@ ios/Pods/
 .vscode/
 .idea/
 .DS_Store
+*.bak
+*.swp
+*~
 
 # Tests / coverage
 coverage/
 logs/
+
+# Automation test artifacts
+automation/*.log
+automation/android-test-output.log
+automation/ios-test.log
+automation/test-output.log
+automation/debug-page-source*.xml
+automation/appium.log
+automation/appium.out
+automation/appium.pid
 
 # Local env
 .env

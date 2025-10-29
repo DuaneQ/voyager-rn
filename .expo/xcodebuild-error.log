@@ -1,6 +1,0 @@
-2025-10-24 08:47:41.632 xcodebuild[4289:704356] Writing error result bundle to /var/folders/jc/slby98n17f53022r61211q4m0000gn/T/ResultBundle_2025-24-10_08-47-0041.xcresult
-xcodebuild: error: Unable to find a destination matching the provided destination specifier:
-		{ id:85CFB14D-A578-4232-AE7C-1E19A20B3805 }
-
-	Ineligible destinations for the "VoyagerRN" scheme:
-		{ platform:iOS, id:dvtdevice-DVTiPhonePlaceholder-iphoneos:placeholder, name:Any iOS Device, error:iOS 26.0 is not installed. Please download and install the platform from Xcode > Settings > Components. }

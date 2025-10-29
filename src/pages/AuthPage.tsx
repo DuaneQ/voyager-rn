@@ -143,7 +143,7 @@ const AuthPage: React.FC = () => {
     setIsSubmitting(true);
     try {
       await signInWithGoogle();
-      showAlert('success', 'Signed in with Google');
+      // Success - navigation happens automatically via AuthContext
     } catch (error: any) {
       const errorMessage = error instanceof Error ? error.message : 'Google sign-in failed';
       showAlert('error', errorMessage);
@@ -160,7 +160,7 @@ const AuthPage: React.FC = () => {
     setIsSubmitting(true);
     try {
       await signUpWithGoogle();
-      showAlert('success', 'Signed up with Google');
+      // Success - navigation happens automatically via AuthContext
     } catch (error: any) {
       const errorMessage = error instanceof Error ? error.message : 'Google sign-up failed';
       showAlert('error', errorMessage);

@@ -93,7 +93,8 @@ describe('AuthPage', () => {
 
     await waitFor(() => {
       expect(mockSignIn).toHaveBeenCalledWith('test@example.com', 'password123');
-      expect(mockShowAlert).toHaveBeenCalledWith('success', 'Login successful! Welcome back.');
+      // Success alert is suppressed on mobile (Platform.OS !== 'web')
+      // Navigation happens automatically via AuthContext onAuthStateChanged
     });
   });
 
