@@ -107,12 +107,10 @@ jobs:
           echo "🔍 Checking for gradle files:"
           find android/ -name "*gradle*" -type f | head -10
           echo "🏗️ Building Android APK..."
-          cd android
-          test -f "gradlew" && echo "✅ gradlew found" || (echo "⚠️ WARNING: gradlew not found" && exit 1)
-          chmod +x gradlew
-          ./gradlew assembleDebug --info
+          cd android && test -f "gradlew" && echo "✅ gradlew found" || (echo "⚠️ WARNING: gradlew not found" && exit 1)
+          cd android && chmod +x gradlew
+          cd android && ./gradlew assembleDebug --info
           echo "📦 Installing APK on emulator..."
-          cd ..
           APK_PATH="android/app/build/outputs/apk/debug/app-debug.apk"
           test -f "$APK_PATH" || (echo "❌ ERROR: APK not found at expected path: $APK_PATH" && echo "Available APKs:" && find android/ -name "*.apk" -ls 2>/dev/null && echo "Current directory:" && pwd && echo "Directory contents:" && ls -la && exit 1)
           echo "Installing: $APK_PATH"
@@ -120,8 +118,7 @@ jobs:
           echo "✅ Verifying app installation..."
           adb shell pm list packages | grep com.voyager.rn
           echo "🔧 Setting up automation environment..."
-          cd automation
-          npm install --legacy-peer-deps
+          cd automation && npm install --legacy-peer-deps
           npm install -g appium
           appium driver install uiautomator2
           echo "🚀 Starting Appium server..."
@@ -131,7 +128,7 @@ jobs:
           echo "🔍 Verifying Appium server..."
           curl -f http://localhost:4723/status
           echo "🧪 Running automation tests..."
-          PLATFORM=android npx wdio run wdio.mobile.conf.ts --spec tests/mobile/travel-preferences.test.ts
+          cd automation && PLATFORM=android npx wdio run wdio.mobile.conf.ts --spec tests/mobile/travel-preferences.test.ts
           echo "🧹 Cleaning up..."
           kill $APPIUM_PID || true
           
