@@ -117,21 +117,18 @@ jobs:
           # Build APK with proper directory context (combine commands with &&)
           cd android && echo "📍 Building from directory: $(pwd)" && ./gradlew assembleDebug --info && cd ..
           
-          # Use absolute path for APK location
-          APK_FILE_PATH="$(pwd)/android/app/build/outputs/apk/debug/app-debug.apk"
-          echo "🔍 Looking for APK at: $APK_FILE_PATH"
-          
-          if [ ! -f "$APK_FILE_PATH" ]; then
-            echo "❌ ERROR: APK not found at: $APK_FILE_PATH"
-            echo " Searching for APK files..."
-            find . -name "*.apk" -type f -ls || echo "No APK files found"
-            exit 1
-          fi
-          
-          echo "✅ APK found, installing on emulator..."
-          adb install "$APK_FILE_PATH"
-          
-          echo "✅ Verifying app installation..."
+          # APK installation with proper shell context (combine all commands)
+          APK_FILE_PATH="$(pwd)/android/app/build/outputs/apk/debug/app-debug.apk" && \
+          echo "🔍 Looking for APK at: $APK_FILE_PATH" && \
+          if [ ! -f "$APK_FILE_PATH" ]; then \
+            echo "❌ ERROR: APK not found at: $APK_FILE_PATH"; \
+            echo "🔍 Searching for APK files..."; \
+            find . -name "*.apk" -type f -ls || echo "No APK files found"; \
+            exit 1; \
+          fi && \
+          echo "✅ APK found, installing on emulator..." && \
+          adb install "$APK_FILE_PATH" && \
+          echo "✅ Verifying app installation..." && \
           adb shell pm list packages | grep com.voyager.rn
 
     - name: Setup Automation Testing
