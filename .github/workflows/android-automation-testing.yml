@@ -163,14 +163,29 @@ jobs:
       run: |
         echo "Capturing debug information..."
         
-        # Capture emulator screenshot
-        adb exec-out screencap -p > automation/android-screenshot.png || true
+        # Check if any devices are available first
+        echo "Checking for available devices..."
+        adb devices -l || echo "No adb available"
         
-        # Capture logcat
-        adb logcat -d > automation/android-logcat.log || true
+        # Only attempt to capture artifacts if emulator is still running
+        if adb devices | grep -q "device$"; then
+          echo "Emulator still running, capturing artifacts..."
+          
+          # Capture emulator screenshot
+          timeout 30 adb exec-out screencap -p > automation/android-screenshot.png 2>/dev/null || echo "Failed to capture screenshot"
+          
+          # Capture logcat
+          timeout 30 adb logcat -d > automation/android-logcat.log 2>/dev/null || echo "Failed to capture logcat"
+          
+          # List installed packages for debugging
+          timeout 30 adb shell pm list packages > automation/android-packages.txt 2>/dev/null || echo "Failed to list packages"
+        else
+          echo "No active emulator found, skipping artifact capture"
+          echo "No active emulator at time of failure" > automation/android-debug-info.txt
+        fi
         
-        # List installed packages for debugging
-        adb shell pm list packages > automation/android-packages.txt || true
+        # Always create logs directory for upload
+        mkdir -p automation/logs automation/screenshots
         
     - name: Upload Test Results
       if: always()

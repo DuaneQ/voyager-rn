@@ -179,9 +179,10 @@ jobs:
         npx appium driver uninstall xcuitest 2>/dev/null || echo "xcuitest not installed"
         npx appium driver uninstall uiautomator2 2>/dev/null || echo "uiautomator2 not installed"
         
-        # Install compatible drivers for Appium 2.x (more stable)
-        echo "🔧 Installing iOS driver for Appium 2.x..."
-        npx appium driver install xcuitest
+        # Install compatible drivers for Appium 2.x using package.json versions
+        echo "🔧 Installing iOS driver for Appium 2.x (using package.json version)..."
+        echo "Installing xcuitest driver compatible with Appium 2.x..."
+        npx appium driver install xcuitest@5.16.1
         
         # Verify driver installation
         echo "✅ Installed drivers:"
