@@ -112,36 +112,93 @@ jobs:
         }
         
         # Build for iOS Simulator using xcodebuild (avoids device detection)
+        # Use absolute derivedDataPath to ensure consistent build location
+        BUILD_DIR="$(pwd)/build"
+        
         xcodebuild -workspace Traval.xcworkspace \
           -scheme Traval \
           -configuration Debug \
           -sdk iphonesimulator \
           -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
-          -derivedDataPath build \
+          -derivedDataPath "$BUILD_DIR" \
           build || {
           echo "ERROR: Xcode build failed"
           echo "Available schemes:"
           xcodebuild -workspace Traval.xcworkspace -list
           exit 1
         }
+        
+        # Research-based solution: Use standard Xcode build products path structure
+        # Debug-iphonesimulator apps are located at: Build/Products/Debug-iphonesimulator/
+        EXPECTED_APP_PATH="$BUILD_DIR/Build/Products/Debug-iphonesimulator/Traval.app"
+        
+        # Verify the expected path exists first
+        if [ -d "$EXPECTED_APP_PATH" ]; then
+          APP_PATH="$EXPECTED_APP_PATH"
+          echo "✅ Found app at expected location: $APP_PATH"
+        else
+          echo "⚠️  App not found at expected location: $EXPECTED_APP_PATH"
+          echo "🔍 Searching entire build directory..."
           
-        # Find the built app
-        APP_PATH=$(find build -name "*.app" | head -1)
-        if [ -z "$APP_PATH" ]; then
-          echo "ERROR: No .app bundle found after build"
-          echo "Build directory contents:"
-          find build -type f -name "*.app" -o -name "*.ipa" | head -10
+          # Fallback: search the entire build directory
+          APP_PATH=$(find "$BUILD_DIR" -name "Traval.app" -type d | head -1)
+          
+          if [ -z "$APP_PATH" ]; then
+            echo "❌ ERROR: No Traval.app bundle found after build"
+            echo "Build directory structure:"
+            echo "==========================="
+            find "$BUILD_DIR" -type d -name "*.app" 2>/dev/null || echo "No .app directories found"
+            echo ""
+            echo "Complete build directory contents:"
+            find "$BUILD_DIR" -name "*" | head -20
+            echo ""
+            echo "Checking for common iOS build patterns..."
+            find "$BUILD_DIR" -name "*Debug*" -type d | head -10
+            find "$BUILD_DIR" -name "*iphonesimulator*" -type d | head -10
+            exit 1
+          else
+            echo "✅ Found app via search: $APP_PATH"
+          fi
+        fi
+        
+        # Verify app bundle is valid
+        if [ ! -d "$APP_PATH" ]; then
+          echo "❌ ERROR: APP_PATH is not a directory: $APP_PATH"
           exit 1
         fi
         
-        echo "Built app at: $APP_PATH"
+        # Convert to absolute path for consistency
+        APP_PATH=$(cd "$(dirname "$APP_PATH")" && pwd)/$(basename "$APP_PATH")
+        echo "📱 Final app path (absolute): $APP_PATH"
         echo "APP_PATH=$APP_PATH" >> $GITHUB_ENV
         
-        # Install the app on simulator
+        # Install the app on simulator with enhanced error handling
+        echo "📲 Installing app on simulator..."
+        echo "Simulator ID: $SIMULATOR_ID"
+        echo "App Path: $APP_PATH"
+        
+        # Verify simulator is booted before installation
+        SIMULATOR_STATE=$(xcrun simctl list devices | grep "$SIMULATOR_ID" | awk '{print $NF}' | tr -d '()')
+        echo "Simulator state: $SIMULATOR_STATE"
+        
+        if [ "$SIMULATOR_STATE" != "Booted" ]; then
+          echo "⚠️  Simulator not booted, attempting to boot..."
+          xcrun simctl boot "$SIMULATOR_ID" || true
+          sleep 10
+        fi
+        
         xcrun simctl install "$SIMULATOR_ID" "$APP_PATH" || {
-          echo "ERROR: Failed to install app on simulator"
+          echo "❌ ERROR: Failed to install app on simulator"
+          echo "Debug information:"
+          echo "=================="
           echo "Simulator status:"
           xcrun simctl list devices | grep "$SIMULATOR_ID"
+          echo ""
+          echo "App path verification:"
+          ls -la "$APP_PATH"
+          echo ""
+          echo "App bundle info:"
+          file "$APP_PATH" || echo "Could not determine file type"
           exit 1
         }
         echo "✅ iOS app built and installed successfully"
@@ -215,8 +272,33 @@ jobs:
         APP_PATH: ${{ env.APP_PATH }}
       run: |
         cd automation
-        echo "Running tests on simulator: $SIMULATOR_ID"
-        echo "Using app path: $APP_PATH"
+        
+        # Validate environment variables before testing
+        echo "🧪 Pre-test validation:"
+        echo "Simulator ID: $SIMULATOR_ID"
+        echo "App Path: $APP_PATH"
+        
+        # Verify app path exists and is accessible
+        if [ ! -d "$APP_PATH" ]; then
+          echo "❌ ERROR: App path does not exist or is not accessible: $APP_PATH"
+          echo "Current working directory: $(pwd)"
+          echo "Parent directory listing:"
+          ls -la ../ios/build/ || echo "Build directory not found"
+          exit 1
+        fi
+        
+        # Verify app bundle structure
+        echo "📱 App bundle validation:"
+        echo "App bundle exists: ✅"
+        echo "App bundle contents:"
+        ls -la "$APP_PATH/" | head -5
+        
+        # Check app info
+        if [ -f "$APP_PATH/Info.plist" ]; then
+          echo "Bundle identifier: $(plutil -extract CFBundleIdentifier raw "$APP_PATH/Info.plist" 2>/dev/null || echo 'Could not read')"
+        fi
+        
+        echo "🚀 Starting iOS automation tests..."
         export PLATFORM=ios
         export CI=true
         npx wdio run wdio.mobile.conf.ts --spec tests/mobile/travel-preferences.test.ts
