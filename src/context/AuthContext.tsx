@@ -26,6 +26,7 @@ import { Platform } from 'react-native';
 import { auth, db } from '../config/firebaseConfig';
 import { doc, setDoc } from 'firebase/firestore';
 import storage from '../utils/storage';
+import SafeGoogleSignin from '../utils/SafeGoogleSignin';
 
 interface UserCredentials {
   user: {
@@ -69,6 +70,8 @@ interface AuthContextValue {
   signOut: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
   resendVerification: (email?: string) => Promise<void>;
+  refreshAuthState: () => Promise<void>;
+  hasUnverifiedUser: () => boolean;
   // Google flows (web + mobile)
   signInWithGoogle: () => Promise<any>;
   signUpWithGoogle: () => Promise<any>;
@@ -84,47 +87,97 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [status, setStatus] = useState<AuthStatus>('loading');
 
-  // Listen to auth state changes (same pattern as PWA)
+  // Initialize authentication state from storage
+  useEffect(() => {
+    const initializeAuth = async () => {
+      try {
+        console.log('🔄 Initializing authentication state...');
+        const storedCreds = await storage.getItem('USER_CREDENTIALS');
+        
+        if (storedCreds) {
+          const credentials: UserCredentials = JSON.parse(storedCreds);
+          console.log('📱 Found stored credentials for user:', credentials.user.uid);
+          
+          // Let onAuthStateChanged handle the actual authentication state
+          // This just helps us know we should expect a user
+        } else {
+          console.log('📱 No stored credentials found');
+        }
+      } catch (error) {
+        console.warn('⚠️ Failed to initialize auth state:', error);
+      }
+    };
+
+    initializeAuth();
+  }, []);
+
+  // Initialize Google Sign-In for mobile
+  useEffect(() => {
+    if (Platform.OS !== 'web' && SafeGoogleSignin.isAvailable()) {
+      try {
+        // Configure Google Sign-In
+        SafeGoogleSignin.configure({
+          // Web Client ID from Firebase Console (for ID token verification)
+          webClientId: '296095212837-tg2mm4k2d72hmcf9ncmsa2b6jn7hakhg.apps.googleusercontent.com',
+          
+          // iOS Client ID from GoogleService-Info.plist
+          iosClientId: '296095212837-rtahvr97ah2u3hhs6783t4cofnlis0jj.apps.googleusercontent.com',
+          
+          offlineAccess: true,
+        });
+        
+        console.log('Google Sign-In configured successfully');
+      } catch (error) {
+        // Don't crash the app if Google Sign-In configuration fails
+        console.warn('Google Sign-In configuration failed:', error instanceof Error ? error.message : error);
+      }
+    } else if (Platform.OS !== 'web') {
+      console.warn('Google Sign-In native module not available - Google login will be disabled');
+    }
+  }, []);
+
+    // Listen to auth state changes (same pattern as PWA)
   useEffect(() => {
     // Use Firebase onAuthStateChanged listener
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      console.log('🔥 Auth state changed:', firebaseUser ? `User ${firebaseUser.uid} (verified: ${firebaseUser.emailVerified})` : 'No user');
+      
       if (firebaseUser) {
-        // Only treat the user as authenticated when their email is verified.
-        // This prevents newly-created but unverified accounts from driving
-        // navigation into the app before email verification.
-        if (firebaseUser.emailVerified) {
-          const userCredentials: UserCredentials = {
-            user: {
-              uid: firebaseUser.uid,
-              email: firebaseUser.email,
-              emailVerified: firebaseUser.emailVerified,
-              isAnonymous: firebaseUser.isAnonymous,
-              providerData: firebaseUser.providerData,
-            },
-          };
+        // Store user credentials regardless of email verification status
+        // This allows resendVerification to work properly
+        const userCredentials: UserCredentials = {
+          user: {
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            emailVerified: firebaseUser.emailVerified,
+            isAnonymous: firebaseUser.isAnonymous,
+            providerData: firebaseUser.providerData,
+          },
+        };
 
-          await storage.setItem('USER_CREDENTIALS', JSON.stringify(userCredentials));
+        await storage.setItem('USER_CREDENTIALS', JSON.stringify(userCredentials));
+
+        if (firebaseUser.emailVerified) {
+          // User is verified - grant full access
+          console.log('✅ User authenticated with verified email');
           setUser(firebaseUser);
           setStatus('authenticated');
         } else {
-          // Unverified user - clear any stored credentials and ensure app
-          // treats them as signed-out so UI will present sign-in / verify flow.
-          await storage.removeItem('USER_CREDENTIALS');
-          await storage.removeItem('PROFILE_INFO');
-          // Try to sign out to fully clear the auth session (safe to ignore errors)
-          try {
-            await firebaseSignOut(auth);
-          } catch (e) {
-            // ignore
-          }
-          setUser(null);
-          setStatus('idle');
+          // User exists but email not verified
+          // Keep them signed out from the app's perspective but don't clear Firebase auth
+          // This preserves auth.currentUser for resendVerification to work
+          console.log('⚠️ User has unverified email, keeping in idle state');
+          setUser(null);  // App treats them as not authenticated
+          setStatus('idle');  // Show login/verification UI
+          // Note: We do NOT call firebaseSignOut or clear USER_CREDENTIALS
+          // This preserves the Firebase auth session for resendVerification
         }
       } else {
+        // No Firebase user at all
+        console.log('ℹ️ No Firebase user, clearing stored data');
         await storage.removeItem('USER_CREDENTIALS');
         await storage.removeItem('PROFILE_INFO');
         setUser(null);
-        // match legacy tests which expect 'idle' on no user
         setStatus('idle');
       }
     });
@@ -211,17 +264,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Store profile in local storage (matches PWA)
       await storage.setItem('PROFILE_INFO', JSON.stringify(userData));
 
-      // Send verification email already sent above. Now sign the user out so
-      // the app does not treat an unverified session as an authenticated user.
-      // The onAuthStateChanged listener will keep the app on the sign-in/idle
-      // state until the user verifies their email (or signs in again).
-      try {
-        await firebaseSignOut(auth);
-      } catch (e) {
-        // ignore sign-out errors
-      }
-
-      setStatus('idle'); // User needs to verify email before being authenticated
+      // Don't sign out the user after account creation!
+      // Keep them signed in to Firebase Auth so resendVerification can work
+      // The onAuthStateChanged listener will set status to 'idle' because email is unverified
+      // but will preserve auth.currentUser for verification functionality
+      console.log('✅ Account created successfully, user remains in Firebase auth for verification');
+      
+      // Status will be set to 'idle' by onAuthStateChanged due to unverified email
+      // but auth.currentUser will remain available for resendVerification
     } catch (error) {
   setStatus('idle');
       throw error;
@@ -236,15 +286,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return signInWithPopup(auth, provider);
     }
 
-    // Mobile: use react-native-google-signin if available
+    // Mobile: use SafeGoogleSignin wrapper
     try {
-      // dynamic require to avoid module errors in environments where it's not installed
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { GoogleSignin } = require('@react-native-google-signin/google-signin');
-      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-      const userInfo = await GoogleSignin.signIn();
-      const idToken = userInfo.idToken;
-      if (!idToken) throw new Error('No idToken from Google Signin');
+      if (!SafeGoogleSignin.isAvailable()) {
+        throw new Error('Google Sign-In is not available. Please ensure the app is properly configured.');
+      }
+
+      await SafeGoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      const userInfo = await SafeGoogleSignin.signIn();
+      
+      // Extract idToken from the response (v7+ uses data property)
+      const idToken = userInfo?.data?.idToken || userInfo?.idToken;
+      if (!idToken) {
+        console.error('Google Sign-In response:', JSON.stringify(userInfo, null, 2));
+        throw new Error('No idToken from Google Signin');
+      }
+      
       const credential = GoogleAuthProvider.credential(idToken);
       const result = await signInWithCredential(auth, credential as any);
       return result;
@@ -264,31 +321,147 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
    * Matches PWA logout logic
    */
   const signOut = async () => {
-    await firebaseSignOut(auth);
-    await storage.removeItem('USER_CREDENTIALS');
-    await storage.removeItem('PROFILE_INFO');
-    setUser(null);
-    setStatus('idle');
+    console.log('🚪 Signing out user...');
+    try {
+      await firebaseSignOut(auth);
+      await storage.removeItem('USER_CREDENTIALS');
+      await storage.removeItem('PROFILE_INFO');
+      setUser(null);
+      setStatus('idle');
+      console.log('✅ User signed out successfully');
+    } catch (error) {
+      console.error('❌ Error during sign out:', error);
+      // Force cleanup even if Firebase signOut fails
+      await storage.removeItem('USER_CREDENTIALS');
+      await storage.removeItem('PROFILE_INFO');
+      setUser(null);
+      setStatus('idle');
+    }
+  };
+
+  /**
+   * Refresh authentication state
+   * Useful for recovering from session issues
+   */
+  const refreshAuthState = async () => {
+    console.log('🔄 Refreshing authentication state...');
+    
+    if (auth.currentUser) {
+      try {
+        await auth.currentUser.reload();
+        console.log('✅ Auth state refreshed successfully');
+      } catch (error) {
+        console.error('❌ Failed to refresh auth state:', error);
+        throw error;
+      }
+    } else {
+      console.log('ℹ️ No current user to refresh');
+    }
+  };
+
+  /**
+   * Check if there's an unverified user session available for resend verification
+   */
+  const hasUnverifiedUser = () => {
+    return auth.currentUser && !auth.currentUser.emailVerified;
   };
 
   /**
    * Send password reset email
-   * Matches PWA's Reset.tsx onSubmit logic exactly
+   * Enhanced with better error handling and validation
    */
   const sendPasswordReset = async (email: string) => {
-    return sendPasswordResetEmail(auth, email);
+    console.log('🔑 Sending password reset email to:', email);
+    
+    if (!email || !email.trim()) {
+      throw new Error('Email address is required');
+    }
+    
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      throw new Error('Please enter a valid email address');
+    }
+    
+    try {
+      await sendPasswordResetEmail(auth, email.trim());
+      console.log('✅ Password reset email sent successfully');
+    } catch (error: any) {
+      console.error('❌ Password reset email failed:', error);
+      
+      // Provide more specific error messages based on Firebase error codes
+      switch (error.code) {
+        case 'auth/user-not-found':
+          throw new Error('No account found with this email address');
+        case 'auth/invalid-email':
+          throw new Error('Invalid email address');
+        case 'auth/too-many-requests':
+          throw new Error('Too many requests. Please try again later');
+        case 'auth/network-request-failed':
+          throw new Error('Network error. Please check your connection and try again');
+        default:
+          throw new Error(error.message || 'Failed to send password reset email');
+      }
+    }
   };
 
   /**
    * Resend verification email
-   * Matches PWA's ResendEmail.tsx resendEmailVerification logic
+   * Works with unverified users by preserving Firebase auth session
    */
   const resendVerification = async (email?: string) => {
+    console.log('📧 Resend verification called - auth.currentUser:', !!auth.currentUser, 'emailVerified:', auth.currentUser?.emailVerified, 'email param:', email);
+    
+    // Check if we have a Firebase auth user (including unverified ones)
     if (auth.currentUser) {
-      return sendEmailVerification(auth.currentUser);
+      try {
+        // Reload user to get fresh auth state
+        await auth.currentUser.reload();
+        
+        // Check if email is already verified
+        if (auth.currentUser.emailVerified) {
+          console.log('ℹ️ Email is already verified');
+          throw new Error('Email is already verified. Please refresh the app.');
+        }
+        
+        console.log('📤 Sending verification email to:', auth.currentUser.email);
+        await sendEmailVerification(auth.currentUser);
+        console.log('✅ Verification email sent successfully');
+        return;
+      } catch (error: any) {
+        console.error('❌ Failed to send verification email:', error);
+        
+        // Provide more specific error messages
+        switch (error.code) {
+          case 'auth/too-many-requests':
+            throw new Error('Too many requests. Please wait before requesting another verification email');
+          case 'auth/network-request-failed':
+            throw new Error('Network error. Please check your connection and try again');
+          case 'auth/user-token-expired':
+            throw new Error('Session expired. Please sign in again to resend verification email');
+          default:
+            throw error;
+        }
+      }
     }
 
-    throw new Error('No user logged in. Please sign in first.');
+    // No Firebase auth user - check if we have stored credentials to help the user
+    try {
+      const storedCreds = await storage.getItem('USER_CREDENTIALS');
+      if (storedCreds) {
+        const credentials: UserCredentials = JSON.parse(storedCreds);
+        console.log('⚠️ Found stored credentials but no Firebase user:', credentials.user.email);
+        
+        if (credentials.user.email && !credentials.user.emailVerified) {
+          throw new Error(`Your session has expired. Please sign in again with ${credentials.user.email} to resend the verification email.`);
+        }
+      }
+    } catch (storageError) {
+      console.warn('Could not check stored credentials:', storageError);
+    }
+
+    // No current user and no helpful stored data
+    throw new Error('No user session found. Please sign in first to resend the verification email.');
   };
 
   return (
@@ -300,6 +473,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       signOut,
       sendPasswordReset,
       resendVerification,
+      refreshAuthState,
+      hasUnverifiedUser,
       // Google flows
       signInWithGoogle,
       signUpWithGoogle,

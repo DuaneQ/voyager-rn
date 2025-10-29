@@ -38,6 +38,17 @@ export const app = initializeApp(firebaseConfig);
 // React Native AsyncStorage persistence is automatically used
 export const auth = getAuth(app);
 
+// Ensure auth persistence is properly configured
+// React Native automatically uses AsyncStorage, but we can be explicit about it
+if (Platform.OS !== 'web') {
+  // For React Native, persistence is automatic via AsyncStorage
+  // No need to explicitly set persistence
+  console.log('🔐 Firebase Auth configured with AsyncStorage persistence');
+} else {
+  // For web (if running on web), ensure local persistence
+  console.log('🔐 Firebase Auth configured with browser persistence');
+}
+
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 

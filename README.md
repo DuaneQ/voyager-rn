@@ -35,18 +35,36 @@ expo start
 
 4. **Run on specific platforms:**
 ```bash
-# Start Metro/Expo first
-npm start           # or `npx expo start`
+# Start Expo dev server
+npm start
 
-# Then open a platform (or run directly):
-npm run ios         # Start iOS simulator (equivalent to `expo start --ios`)
-npm run android     # Start Android emulator (equivalent to `expo start --android`)
-npm run web         # Open in web browser
+# Launch directly (builds and runs)
+npm run start:ios       # iOS simulator
+npm run start:android   # Android emulator
+npm run start:web       # Web browser
+```
 
-# While `npm start`/Metro is running you can also press keys shown in the terminal:
-#  - a : open Android
-#  - i : open iOS
-#  - w : open web
+## 📚 Complete Scripts Documentation
+
+For comprehensive guide to all available scripts including testing, CI/CD, and troubleshooting:
+
+**See: [docs/SCRIPTS_GUIDE.md](docs/SCRIPTS_GUIDE.md)**
+
+Quick command reference:
+```bash
+# Development
+npm start                    # Start dev server
+npm run start:ios            # Launch iOS
+
+# Unit Tests
+npm test                     # Run once
+npm run test:watch           # Watch mode
+
+# E2E Tests
+npm run e2e:ios              # iOS (headed)
+npm run e2e:android          # Android (headed)
+npm run e2e:all:headless     # Both platforms (CI/CD)
+npm run e2e:all:headless:3x  # Stability validation
 ```
 
 ### Development Environment Setup

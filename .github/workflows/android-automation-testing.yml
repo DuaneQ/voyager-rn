@@ -1,0 +1,243 @@
+name: Android Automation Testing
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  android-automation-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45  # Prevent hanging workflows
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: |
+        # Install dependencies with legacy peer deps to handle compatibility issues
+        echo "Installing dependencies..."
+        
+        if ! npm install --legacy-peer-deps; then
+          echo "ERROR: npm install failed"
+          echo "Package.json content:"
+          cat package.json
+          echo "Detailed npm error log:"
+          tail -50 ~/.npm/_logs/*.log 2>/dev/null || echo "No npm logs found"
+          exit 1
+        fi
+        
+        echo "✅ Dependencies installed successfully"
+      
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+        
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+      
+    - name: Enable KVM group perms
+      run: |
+        echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+        sudo udevadm control --reload-rules
+        sudo udevadm trigger --name-match=kvm
+        
+    - name: Cache AVD
+      uses: actions/cache@v4
+      id: avd-cache
+      with:
+        path: |
+          ~/.android/avd/*
+          ~/.android/adb*
+        key: avd-29
+        
+    - name: Create AVD and generate snapshot for caching
+      if: steps.avd-cache.outputs.cache-hit != 'true'
+      uses: reactivecircus/android-emulator-runner@v2
+      with:
+        api-level: 29
+        target: google_apis
+        arch: x86_64
+        profile: Nexus 6
+        force-avd-creation: false
+        emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+        disable-animations: false
+        script: echo "Generated AVD snapshot for caching."
+        
+    - name: Generate Android Project
+      run: |
+        echo "🔧 Building native Android project..."
+        export CI=true
+        export EXPO_NO_TELEMETRY=1
+        npx expo prebuild --platform android --clean
+        
+        # Verify project structure
+        test -d "android" || (echo "❌ ERROR: android directory not created" && ls -la && exit 1)
+        test -f "android/build.gradle" || (echo "❌ ERROR: android/build.gradle missing" && exit 1)
+        test -f "android/app/build.gradle" || (echo "❌ ERROR: android/app/build.gradle missing" && exit 1)
+        test -f "android/settings.gradle" || (echo "❌ ERROR: android/settings.gradle missing" && exit 1)
+        
+        echo "✅ Android project generated successfully"
+        echo "📁 Android directory contents:"
+        ls -la android/
+
+    - name: Setup Android Emulator and Build APK
+      uses: reactivecircus/android-emulator-runner@v2
+      with:
+        api-level: 29
+        target: google_apis
+        arch: x86_64
+        profile: Nexus 6
+        force-avd-creation: false
+        emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+        emulator-boot-timeout: 900
+        disable-animations: true
+        script: |
+          set -e
+          echo "🚀 Starting Android emulator and APK build"
+          echo "⏳ Waiting for Android emulator to be ready..."
+          adb wait-for-device
+          sleep 30
+          echo "📱 Checking emulator status..."
+          adb devices -l
+          
+          echo "🏗️ Building Android APK..."
+          chmod +x android/gradlew
+          
+          # Build APK with proper directory context (combine commands with &&)
+          cd android && echo "📍 Building from directory: $(pwd)" && ./gradlew assembleDebug --info && cd ..
+          
+          # APK installation with proper shell context (combine all commands)
+          APK_FILE_PATH="$(pwd)/android/app/build/outputs/apk/debug/app-debug.apk" && \
+          echo "🔍 Looking for APK at: $APK_FILE_PATH" && \
+          if [ ! -f "$APK_FILE_PATH" ]; then \
+            echo "❌ ERROR: APK not found at: $APK_FILE_PATH"; \
+            echo "🔍 Searching for APK files..."; \
+            find . -name "*.apk" -type f -ls || echo "No APK files found"; \
+            exit 1; \
+          fi && \
+          echo "✅ APK found, installing on emulator..." && \
+          adb install "$APK_FILE_PATH" && \
+          echo "✅ Verifying app installation..." && \
+          adb shell pm list packages | grep com.voyager.rn
+
+    - name: Setup Automation Testing
+      run: |
+        echo "🔧 Setting up automation environment..."
+        cd automation
+        npm install --legacy-peer-deps
+        cd ..
+        
+        echo "🔧 Installing Appium and drivers..."
+        npm install -g appium
+        appium driver install uiautomator2
+
+    - name: Run Android Automation Tests  
+      uses: reactivecircus/android-emulator-runner@v2
+      with:
+        api-level: 29
+        target: google_apis
+        arch: x86_64
+        profile: Nexus 6
+        force-avd-creation: false
+        emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+        disable-animations: true
+        script: |
+          echo "🚀 Starting Appium server and running tests..."
+          
+          # Start Appium server in background
+          appium --log-level info &
+          APPIUM_PID=$!
+          sleep 15
+          
+          # Verify Appium is running
+          curl -f http://localhost:4723/status || {
+            echo "❌ ERROR: Appium server not responding"
+            exit 1
+          }
+          
+          # Run automation tests
+          cd automation
+          echo "🧪 Running Android automation tests..."
+          PLATFORM=android npx wdio run wdio.mobile.conf.ts --spec tests/mobile/travel-preferences.test.ts
+          
+          # Cleanup
+          echo "🧹 Cleaning up Appium..."
+          kill $APPIUM_PID || true
+        
+    - name: Kill crashpad_handler processes (Fix for emulator hanging)
+      if: always()
+      run: |
+        echo "🧹 Cleaning up remaining processes..."
+        
+        # Check for running processes
+        echo "Checking for crashpad_handler processes:"
+        pgrep -l crashpad_handler || echo "No crashpad_handler processes found"
+        
+        echo "Checking for qemu processes:"
+        pgrep -l qemu || echo "No qemu processes found"
+        
+        # Kill crashpad_handler processes (known to cause hanging)
+        echo "Terminating crashpad_handler processes..."
+        pkill -SIGTERM crashpad_handler 2>/dev/null || true
+        sleep 5
+        pkill -SIGKILL crashpad_handler 2>/dev/null || true
+        
+        # Also kill any remaining emulator processes
+        echo "Terminating any remaining emulator processes..."
+        pkill -SIGTERM qemu-system 2>/dev/null || true
+        sleep 3
+        pkill -SIGKILL qemu-system 2>/dev/null || true
+        
+        echo "✅ Process cleanup complete"
+          
+    - name: Capture test artifacts on failure
+      if: failure()
+      run: |
+        echo "Capturing debug information..."
+        
+        # Check if any devices are available first
+        echo "Checking for available devices..."
+        adb devices -l || echo "No adb available"
+        
+        # Only attempt to capture artifacts if emulator is still running
+        if adb devices | grep -q "device$"; then
+          echo "Emulator still running, capturing artifacts..."
+          
+          # Capture emulator screenshot
+          timeout 30 adb exec-out screencap -p > automation/android-screenshot.png 2>/dev/null || echo "Failed to capture screenshot"
+          
+          # Capture logcat
+          timeout 30 adb logcat -d > automation/android-logcat.log 2>/dev/null || echo "Failed to capture logcat"
+          
+          # List installed packages for debugging
+          timeout 30 adb shell pm list packages > automation/android-packages.txt 2>/dev/null || echo "Failed to list packages"
+        else
+          echo "No active emulator found, skipping artifact capture"
+          echo "No active emulator at time of failure" > automation/android-debug-info.txt
+        fi
+        
+        # Always create logs directory for upload
+        mkdir -p automation/logs automation/screenshots
+        
+    - name: Upload Test Results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: android-test-results-${{ github.run_number }}
+        path: |
+          automation/logs/
+          automation/screenshots/
+          automation/*.log
+          automation/*.png
+          automation/*.txt

@@ -1,0 +1,174 @@
+Role: You are a senior React Native engineer modernizing a PWA profile page for the TravalPass app.
+Goal: Rebuild the Profile page for mobile-first React Native while preserving the exact UI structure and behavior from the existing PWA components:
+
+ProfileHeader.tsx
+
+ProfilePhoto.tsx
+
+ProfileForm.tsx
+
+EditProfileModal.tsx
+
+TravelPreferencesTab.tsx
+
+Profile.tsx
+
+The new implementation must follow S.O.L.I.D. principles, use React Context for Auth/UserProfile, and be cross-platform (mobile + web).
+
+🧩 Functional Requirements
+
+Single AuthContext + UserProfileContext:
+
+When a user logs in, store their profile in context.
+
+Include profile image, username, bio, and travel preferences.
+
+Ensure all updates sync with Firebase or local storage abstraction.
+
+Header Component:
+
+Displays profile picture (use placeholder if none).
+
+Shows username and edit/logout icons.
+
+Appears across all Profile tabs.
+
+Tabs (below header):
+
+Tabs: Profile, Photos, Videos, AI.
+
+Shared white background for now (no background image).
+
+Each tab reuses a consistent styling system from a shared/styles module.
+
+Edit Profile Modal:
+
+Implement as a bottom sheet on mobile (react-native-modal or BottomSheetModal).
+
+Fields: username, bio, DOB, gender, status, education, smoking/drinking habits, etc.
+
+Add validation and age check logic (port isUserOver18()).
+
+Sanitize inputs.
+
+Reusable Architecture:
+
+Extract common logic (validation, formatting, sanitization) into /utils/auth and /utils/profile.
+
+Keep form inputs modular using atomic components (TextInputField, SelectField, etc.).
+
+Travel Preferences Tab:
+
+Maintain existing logic for preferences, AI itinerary generation, and travel style.
+
+Convert MUI components into React Native equivalents (use react-native-paper, react-native-elements, or custom components).
+
+Keep Accordion-style collapsibles using react-native-collapsible or similar.
+
+Cross-Platform Layout:
+
+Use SafeAreaView, ScrollView, and KeyboardAvoidingView for layout.
+
+Use Platform checks to adjust spacing/styling between web and mobile.
+
+🧱 Architecture & Code Standards
+
+Structure
+
+/src
+  /components
+    ProfileHeader.tsx
+    ProfileTabs.tsx
+    ProfileForm.tsx
+    EditProfileModal.tsx
+  /contexts
+    AuthContext.tsx
+    UserProfileContext.tsx
+  /pages
+    Profilepage.tsx
+  /styles
+    colors.ts
+    spacing.ts
+    typography.ts
+  /utils
+    validation.ts
+    sanitize.ts
+
+
+Design Principles
+
+Single Responsibility: each file handles one concept (header, modal, etc.).
+
+Open/Closed: components extend via props, not internal edits.
+
+Liskov Substitution: mobile/web implementations can swap seamlessly.
+
+Interface Segregation: separate interfaces for profile, preferences, media.
+
+Dependency Inversion: components depend on context and abstracted services, not direct Firebase or Storage APIs.
+
+Testing
+
+Write unit tests with Jest + React Native Testing Library.
+
+Create reusable mocks under /__mocks__/.
+
+Test form validation, modal behavior, and profile updates.
+
+💡 Implementation Notes
+
+Replace localStorage with AsyncStorage for mobile persistence.
+
+Use Expo ImagePicker for profile photo updates.
+
+Use React Navigation for tab management.
+
+Style using StyleSheet or Tailwind RN for consistent spacing.
+
+Keep tab and modal transitions smooth with Reanimated or React Native Gesture Handler.
+
+🧰 Example Context Snippet
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { createContext, useState, useEffect } from 'react';
+
+export const UserProfileContext = createContext(null);
+
+export const UserProfileProvider = ({ children }) => {
+  const [userProfile, setUserProfile] = useState(null);
+
+  useEffect(() => {
+    AsyncStorage.getItem('userProfile').then(data => {
+      if (data) setUserProfile(JSON.parse(data));
+    });
+  }, []);
+
+  const updateProfile = async (updates) => {
+    const newProfile = { ...userProfile, ...updates };
+    setUserProfile(newProfile);
+    await AsyncStorage.setItem('userProfile', JSON.stringify(newProfile));
+  };
+
+  return (
+    <UserProfileContext.Provider value={{ userProfile, updateProfile }}>
+      {children}
+    </UserProfileContext.Provider>
+  );
+};
+
+✅ Final Instructions for Copilot
+
+Generate the React Native Profile page using the files above as reference for UI layout and data flow.
+
+Keep identical tab order, structure, and component hierarchy.
+
+Convert MUI components to native equivalents.
+
+Adhere strictly to S.O.L.I.D. and cross-platform best practices.
+
+Use modular architecture with contexts, hooks, and shared styles.
+
+Include example Jest tests and mocks.
+
+Prefer TypeScript and strong typing for maintainability.
+
+You can improve upon the code references in the PWA, just don't change functionality.  The PWA's code is overly complicated.

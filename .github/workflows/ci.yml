@@ -1,0 +1,52 @@
+name: CI - Unit & E2E Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+
+permissions:
+  checks: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  unit_tests:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          # Try npm ci first, fallback to npm install if lock file is out of sync
+          npm ci --legacy-peer-deps || {
+            echo "Lock file out of sync, running npm install..."
+            npm install --legacy-peer-deps
+          }
+
+      - name: Security audit (fail on critical only)
+        run: npm audit --audit-level=critical
+
+      - name: Run TypeScript type check
+        run: npx tsc --noEmit --skipLibCheck
+
+      - name: Run Jest unit tests with coverage
+        run: npm run test:coverage -- --watchAll=false
+        env:
+          CI: true
+
+      - name: Upload coverage reports to Codecov
+        if: success()
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./coverage/lcov.info
+          flags: unittests
+          fail_ci_if_error: false
