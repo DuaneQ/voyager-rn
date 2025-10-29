@@ -111,11 +111,9 @@ jobs:
           cd android && chmod +x gradlew
           cd android && ./gradlew assembleDebug --info
           echo "📦 Installing APK on emulator..."
-          cd ..
-          APK_PATH="android/app/build/outputs/apk/debug/app-debug.apk"
-          test -f "$APK_PATH" || (echo "❌ ERROR: APK not found at expected path: $APK_PATH" && echo "Available APKs:" && find android/ -name "*.apk" -ls && exit 1)
-          echo "Installing: $APK_PATH"
-          adb install "$APK_PATH"
+          cd .. && APK_PATH="android/app/build/outputs/apk/debug/app-debug.apk" && test -f "$APK_PATH" || (echo "❌ ERROR: APK not found at expected path: $APK_PATH" && echo "Available APKs:" && find android/ -name "*.apk" -ls && exit 1)
+          echo "Installing: android/app/build/outputs/apk/debug/app-debug.apk"
+          adb install "android/app/build/outputs/apk/debug/app-debug.apk"
           echo "✅ Verifying app installation..."
           adb shell pm list packages | grep com.voyager.rn
           echo "🔧 Setting up automation environment..."
