@@ -107,17 +107,20 @@ jobs:
           echo "🔍 Checking for gradle files:"
           find android/ -name "*gradle*" -type f | head -10
           echo "🏗️ Building Android APK..."
-          cd android && test -f "gradlew" && echo "✅ gradlew found" || (echo "⚠️ WARNING: gradlew not found" && exit 1)
-          cd android && chmod +x gradlew
-          cd android && ./gradlew assembleDebug --info
+          cd android
+          test -f "gradlew" && echo "✅ gradlew found" || (echo "⚠️ WARNING: gradlew not found" && exit 1)
+          chmod +x gradlew
+          ./gradlew assembleDebug --info
           echo "📦 Installing APK on emulator..."
-          cd .. && APK_PATH="android/app/build/outputs/apk/debug/app-debug.apk" && test -f "$APK_PATH" || (echo "❌ ERROR: APK not found at expected path: $APK_PATH" && echo "Available APKs:" && find android/ -name "*.apk" -ls && exit 1)
-          echo "Installing: android/app/build/outputs/apk/debug/app-debug.apk"
-          adb install "android/app/build/outputs/apk/debug/app-debug.apk"
+          cd ..
+          APK_PATH="android/app/build/outputs/apk/debug/app-debug.apk"
+          test -f "$APK_PATH" || (echo "❌ ERROR: APK not found at expected path: $APK_PATH" && echo "Available APKs:" && find android/ -name "*.apk" -ls 2>/dev/null && echo "Current directory:" && pwd && echo "Directory contents:" && ls -la && exit 1)
+          echo "Installing: $APK_PATH"
+          adb install "$APK_PATH"
           echo "✅ Verifying app installation..."
           adb shell pm list packages | grep com.voyager.rn
           echo "🔧 Setting up automation environment..."
-          cd ../automation
+          cd automation
           npm install --legacy-peer-deps
           npm install -g appium
           appium driver install uiautomator2

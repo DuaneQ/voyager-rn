@@ -167,8 +167,8 @@ jobs:
       run: |
         cd automation
         
-        # Use local Appium installation from package.json (v3.1.0)
-        echo "📦 Using local Appium installation (v3.1.0)..."
+        # Use local Appium installation from package.json (v2.11.5 - stable)
+        echo "📦 Using stable Appium installation (v2.11.5)..."
         
         # Check if drivers are already installed and clean up
         echo "🔍 Checking existing drivers..."
@@ -179,17 +179,17 @@ jobs:
         npx appium driver uninstall xcuitest 2>/dev/null || echo "xcuitest not installed"
         npx appium driver uninstall uiautomator2 2>/dev/null || echo "uiautomator2 not installed"
         
-        # Install compatible drivers for Appium 3.x
-        echo "🔧 Installing iOS driver for Appium 3.x..."
+        # Install compatible drivers for Appium 2.x (more stable)
+        echo "🔧 Installing iOS driver for Appium 2.x..."
         npx appium driver install xcuitest
         
         # Verify driver installation
         echo "✅ Installed drivers:"
         npx appium driver list --installed
         
-        # Start Appium server in background using local installation
+        # Start Appium server in background using local installation (Appium 2.x syntax)
         echo "🚀 Starting Appium server..."
-        npx appium server --log-level warn &
+        npx appium --log-level warn &
         APPIUM_PID=$!
         echo "APPIUM_PID=$APPIUM_PID" >> $GITHUB_ENV
         
