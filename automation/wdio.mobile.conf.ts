@@ -39,6 +39,13 @@ const iosCapabilities = {
   // Additional iOS stability settings for CI
   'appium:shouldUseSingletonTestManager': false,
   'appium:shouldUseTestManagerForVisibilityDetection': false,
+  // Fix for XCUIApplicationProcess waitForQuiescenceIncludingAnimationsIdle error on iOS 17+
+  'appium:waitForIdleTimeout': 0,
+  'appium:animationCoolOffTimeout': 0,
+  'appium:shouldWaitForQuiescence': false,
+  // Modern XCUITest settings for iOS 17 compatibility
+  'appium:useFirstMatch': true,
+  'appium:reduceMotion': true,
 };
 
 /**
