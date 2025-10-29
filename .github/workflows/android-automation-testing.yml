@@ -74,7 +74,24 @@ jobs:
         disable-animations: false
         script: echo "Generated AVD snapshot for caching."
         
-    - name: Setup Android Emulator and Build App
+    - name: Generate Android Project
+      run: |
+        echo "🔧 Building native Android project..."
+        export CI=true
+        export EXPO_NO_TELEMETRY=1
+        npx expo prebuild --platform android --clean
+        
+        # Verify project structure
+        test -d "android" || (echo "❌ ERROR: android directory not created" && ls -la && exit 1)
+        test -f "android/build.gradle" || (echo "❌ ERROR: android/build.gradle missing" && exit 1)
+        test -f "android/app/build.gradle" || (echo "❌ ERROR: android/app/build.gradle missing" && exit 1)
+        test -f "android/settings.gradle" || (echo "❌ ERROR: android/settings.gradle missing" && exit 1)
+        
+        echo "✅ Android project generated successfully"
+        echo "📁 Android directory contents:"
+        ls -la android/
+
+    - name: Setup Android Emulator and Build APK
       uses: reactivecircus/android-emulator-runner@v2
       with:
         api-level: 29
@@ -87,112 +104,82 @@ jobs:
         disable-animations: true
         script: |
           set -e
-          echo "🚀 Starting Android emulator setup and testing workflow"
+          echo "🚀 Starting Android emulator and APK build"
           echo "⏳ Waiting for Android emulator to be ready..."
           adb wait-for-device
           sleep 30
           echo "📱 Checking emulator status..."
           adb devices -l
-          echo "🔧 Building native Android project..."
-          export CI=true
-          export EXPO_NO_TELEMETRY=1
-          npx expo prebuild --platform android --clean
-          test -d "android" || (echo "❌ ERROR: android directory not created" && ls -la && exit 1)
-          test -f "android/build.gradle" || (echo "❌ ERROR: android/build.gradle missing" && exit 1)
-          test -f "android/app/build.gradle" || (echo "❌ ERROR: android/app/build.gradle missing" && exit 1)
-          test -f "android/settings.gradle" || (echo "❌ ERROR: android/settings.gradle missing" && exit 1)
-          echo "✅ Android project generated successfully"
-          echo "📁 Android directory contents:"
-          ls -la android/
-          echo "🔍 Checking for gradle files:"
-          find android/ -name "*gradle*" -type f | head -10
+          
           echo "🏗️ Building Android APK..."
-          echo "🔍 Checking Android project structure..."
-          if [ ! -d "android" ]; then
-            echo "❌ ERROR: android directory not found"
-            exit 1
-          fi
-          
-          if [ ! -f "android/gradlew" ]; then
-            echo "❌ ERROR: gradlew not found in android directory"
-            ls -la android/
-            exit 1
-          fi
-          
-          echo "✅ Making gradlew executable and building APK..."
           chmod +x android/gradlew
           
-          # Build from android directory with explicit working directory
           cd android
-          echo "📍 Current directory: $(pwd)"
-          echo "🔨 Running gradle build..."
+          echo "� Building from directory: $(pwd)"
           ./gradlew assembleDebug --info
           cd ..
-          echo "📦 Installing APK on emulator..."
-          echo "🔍 Current working directory: $(pwd)"
-          echo "🔍 Checking APK build location..."
-          find . -name "*.apk" -type f -ls 2>/dev/null || echo "No APK files found"
           
-          # Use absolute path and explicit file check
+          # Use absolute path for APK location
           APK_FILE_PATH="$(pwd)/android/app/build/outputs/apk/debug/app-debug.apk"
-          echo "Looking for APK at: $APK_FILE_PATH"
+          echo "🔍 Looking for APK at: $APK_FILE_PATH"
           
           if [ ! -f "$APK_FILE_PATH" ]; then
-            echo "❌ ERROR: APK not found at expected path: $APK_FILE_PATH"
-            echo "📁 Current directory contents:"
-            ls -la
-            echo "🔍 Android directory contents:"
-            ls -la android/ 2>/dev/null || echo "Android directory not found"
-            echo "🔍 All APK files in project:"
-            find . -name "*.apk" -type f 2>/dev/null || echo "No APK files found in project"
+            echo "❌ ERROR: APK not found at: $APK_FILE_PATH"
+            echo " Searching for APK files..."
+            find . -name "*.apk" -type f -ls || echo "No APK files found"
             exit 1
           fi
           
-          echo "✅ APK found at: $APK_FILE_PATH"
-          echo "📦 Installing APK..."
+          echo "✅ APK found, installing on emulator..."
           adb install "$APK_FILE_PATH"
+          
           echo "✅ Verifying app installation..."
           adb shell pm list packages | grep com.voyager.rn
-          echo "🔧 Setting up automation environment..."
-          echo "📍 Current directory before automation setup: $(pwd)"
+
+    - name: Setup Automation Testing
+      run: |
+        echo "🔧 Setting up automation environment..."
+        cd automation
+        npm install --legacy-peer-deps
+        cd ..
+        
+        echo "🔧 Installing Appium and drivers..."
+        npm install -g appium
+        appium driver install uiautomator2
+
+    - name: Run Android Automation Tests  
+      uses: reactivecircus/android-emulator-runner@v2
+      with:
+        api-level: 29
+        target: google_apis
+        arch: x86_64
+        profile: Nexus 6
+        force-avd-creation: false
+        emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+        disable-animations: true
+        script: |
+          echo "🚀 Starting Appium server and running tests..."
           
-          # Ensure we're in the correct directory for automation setup
-          if [ ! -d "automation" ]; then
-            echo "❌ ERROR: automation directory not found"
-            ls -la
-            exit 1
-          fi
-          
-          cd automation
-          echo "📍 Now in automation directory: $(pwd)"
-          npm install --legacy-peer-deps
-          
-          cd ..
-          echo "📍 Back to root directory: $(pwd)"
-          
-          echo "🔧 Installing Appium globally..."
-          npm install -g appium
-          appium driver install uiautomator2
-          
-          echo "🚀 Starting Appium server..."
+          # Start Appium server in background
           appium --log-level info &
           APPIUM_PID=$!
-          sleep 10
+          sleep 15
           
-          echo "🔍 Verifying Appium server..."
-          curl -f http://localhost:4723/status
+          # Verify Appium is running
+          curl -f http://localhost:4723/status || {
+            echo "❌ ERROR: Appium server not responding"
+            exit 1
+          }
           
-          echo "🧪 Running automation tests..."
+          # Run automation tests
           cd automation
-          echo "📍 Running tests from: $(pwd)"
+          echo "🧪 Running Android automation tests..."
           PLATFORM=android npx wdio run wdio.mobile.conf.ts --spec tests/mobile/travel-preferences.test.ts
           
-          cd ..
-          echo "📍 Back to root for cleanup: $(pwd)"
-          
-          echo "🧹 Cleaning up..."
+          # Cleanup
+          echo "🧹 Cleaning up Appium..."
           kill $APPIUM_PID || true
-          
+        
     - name: Kill crashpad_handler processes (Fix for emulator hanging)
       if: always()
       run: |
