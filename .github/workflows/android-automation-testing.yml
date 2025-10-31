@@ -114,11 +114,9 @@ jobs:
           echo "🏗️ Building Android APK..."
           chmod +x android/gradlew
           
-          # Build APK with proper directory context
-          cd android
-          echo "📍 Building from directory: $(pwd)"
-          ./gradlew assembleDebug --info
-          cd ..
+          # Build APK - run gradlew from android directory
+          echo "📍 Building from directory: $(pwd)/android"
+          cd android && ./gradlew assembleDebug --info && cd ..
           
           # APK installation with proper error handling
           APK_FILE_PATH="$(pwd)/android/app/build/outputs/apk/debug/app-debug.apk"
