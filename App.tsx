@@ -1,19 +1,11 @@
-import React, { useEffect } from 'react';
-import { LogBox } from 'react-native';
+// Import crypto polyfill first (must be before any other imports)
+import 'react-native-get-random-values';
+
+import React from 'react';
 import AppNavigator from './src/navigation/AppNavigator';
 import { AuthProvider } from './src/context/AuthContext';
 import { AlertProvider } from './src/context/AlertContext';
 import { UserProfileProvider } from './src/context/UserProfileContext';
-import testFirebaseAuth from './src/utils/testFirebaseAuth';
-
-// Ignore Firebase Auth warnings in LogBox (development only)
-// These warnings appear as blocking yellow/red boxes during E2E tests
-// Reference: https://github.com/firebase/firebase-js-sdk/issues/7481
-LogBox.ignoreLogs([
-  '@firebase/auth',
-  'AsyncStorage has been extracted',
-  'Attempted to log a message with',
-]);
 
 /**
  * Main App Component
@@ -22,14 +14,6 @@ LogBox.ignoreLogs([
  * Simplified architecture matching PWA patterns exactly.
  */
 export default function App() {
-  // Test Firebase Auth on startup (development only)
-  useEffect(() => {
-    if (__DEV__) {
-      console.log('🚀 Starting Firebase Auth test...');
-      testFirebaseAuth();
-    }
-  }, []);
-
   return (
     <AuthProvider>
       <AlertProvider>

@@ -32,15 +32,15 @@ export interface TravelPreferenceProfile {
   
   // Accommodation Preferences
   accommodation: {
-    type: 'hotel' | 'hostel' | 'resort' | 'any';
+    type: 'hotel' | 'hostel' | 'airbnb' | 'resort' | 'any';
     starRating: number; // 1-5
     minUserRating?: number; // 1.0-5.0 (user review rating)
   };
   
   // Transportation Preferences
   transportation: {
-    primaryMode: 'walking' | 'public' | 'taxi' | 'rental' | 'airplane' | 'bus' | 'train';
-    maxWalkingDistance?: number; // in minutes (optional)
+    primaryMode: 'walking' | 'public' | 'taxi' | 'rental' | 'airplane' | 'bus' | 'train' | 'mixed';
+    maxWalkingDistance: number; // in minutes
     // Whether this profile intends to include flight booking/search results
     includeFlights?: boolean;
   };
@@ -207,6 +207,7 @@ export const TRANSPORTATION_MODES: Array<{
   { value: 'airplane', label: 'Airplane' },
   { value: 'bus', label: 'Bus' },
   { value: 'train', label: 'Train' },
+  { value: 'mixed', label: 'Mixed' },
 ];
 
 // Accommodation types
@@ -216,6 +217,7 @@ export const ACCOMMODATION_TYPES: Array<{
 }> = [
   { value: 'hotel', label: 'Hotel' },
   { value: 'hostel', label: 'Hostel' },
+  { value: 'airbnb', label: 'Airbnb' },
   { value: 'resort', label: 'Resort' },
   { value: 'any', label: 'Any' },
 ];

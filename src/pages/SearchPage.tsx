@@ -11,6 +11,7 @@ import {
   SafeAreaView,
   TouchableOpacity,
   Alert,
+  ImageBackground,
 } from 'react-native';
 import { auth } from '../config/firebaseConfig';
 import { useAlert } from '../context/AlertContext';
@@ -27,21 +28,21 @@ const SearchPage: React.FC = () => {
       title: 'Amazing Tokyo Adventure',
       destination: 'Tokyo, Japan',
       duration: '7 days',
-      description: 'AI Generated - Here is where you will search for other travelers going to the same destination with overlapping dates.  If you would like to match with the person click the airplane icon.',
+      description: 'AI Generated - Here is where you will search for other travelers going to the same destination with overlapping dates.  After saving your user profile, you can click the Add Itinerary button above to manually create an itinerary.',
       creator: 'TokyoExplorer'
     },
     {
       title: 'Paris Romance',
       destination: 'Paris, France',
       duration: '5 days',
-      description: 'You can view their profile and ratings from past travels with others.  If the same traveler likes your itinerary then it is a match!',
+      description: 'You can use AI to create an itinerary for you after saving your travel preference profile. After you have itineraries you will select one from the combobox above. If you have any potential matches they will appear here.',
       creator: 'ParisianDreamer'
     },
     {
       title: 'NYC Urban Explorer',
       destination: 'New York, USA',
       duration: '4 days',
-      description: 'Once you match you can navigate to the Chats tab to start planning your trip together!',
+      description: 'You can view their profile and ratings from past travels with others.  Click the airplane to like their itinerary. If the same traveler likes your itinerary then it is a match! Once you match you can navigate to the Chats tab to start planning your trip together!',
       creator: 'CityWalker'
     }
   ];
@@ -94,23 +95,36 @@ const SearchPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.centerContent}>
-          <Text style={styles.loadingText}>Loading...</Text>
-        </View>
-      </SafeAreaView>
+      <ImageBackground 
+        source={require('../../assets/images/login-image.jpeg')}
+        style={styles.container}
+        resizeMode="cover"
+        imageStyle={styles.backgroundImage}
+      >
+        <SafeAreaView style={styles.safeArea}>
+          <View style={styles.centerContent}>
+            <Text style={styles.loadingText}>Loading...</Text>
+          </View>
+        </SafeAreaView>
+      </ImageBackground>
     );
   }
 
   return (
-    <SafeAreaView
-      testID="homeScreen"
-      accessible={true}
-      accessibilityLabel="homeScreen"
+    <ImageBackground 
+      source={require('../../assets/images/login-image.jpeg')}
       style={styles.container}
+      resizeMode="cover"
+      imageStyle={styles.backgroundImage}
     >
-      {/* Header */}
-      <View style={styles.header}>
+      <SafeAreaView
+        testID="homeScreen"
+        accessible={true}
+        accessibilityLabel="homeScreen"
+        style={styles.safeArea}
+      >
+        {/* Header */}
+        <View style={styles.header}>
         <Text style={styles.headerTitle}>Find Matches</Text>
         <TouchableOpacity style={styles.addButton}>
           <Text style={styles.addButtonText}>+ Add Itinerary</Text>
@@ -144,7 +158,7 @@ const SearchPage: React.FC = () => {
                 <Text style={styles.buttonText}>✕</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.likeButton} onPress={handleLike}>
-                <Text style={styles.buttonText}>♡</Text>
+                <Text style={styles.buttonText}>✈️</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -160,13 +174,23 @@ const SearchPage: React.FC = () => {
         <Text style={styles.instructionText}>Tap buttons to like or pass</Text>
       </View>
     </SafeAreaView>
+    </ImageBackground>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fafafa',
+    width: '100%',
+    height: '100%',
+  },
+  backgroundImage: {
+    width: '100%',
+    height: '100%',
+  },
+  safeArea: {
+    flex: 1,
+    backgroundColor: 'transparent',
   },
   header: {
     flexDirection: 'row',

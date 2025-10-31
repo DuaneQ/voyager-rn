@@ -5,7 +5,7 @@
  * This wraps TravelPreferencesTab and AIItineraryListTab in a tabbed interface
  */
 
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import {
   View,
   Text,
@@ -15,14 +15,67 @@ import {
 } from 'react-native';
 import { TravelPreferencesTab } from './TravelPreferencesTab';
 import { AIItineraryListTab } from './AIItineraryListTab';
+import { AIItineraryGenerationModal } from '../modals/AIItineraryGenerationModal';
+import { UserProfileContext } from '../../context/UserProfileContext';
+import { useTravelPreferences } from '../../hooks/useTravelPreferences';
+import { useAlert } from '../../context/AlertContext';
+import { validateProfileForItinerary, getProfileValidationMessage } from '../../utils/profileValidation';
 
 type SubTabType = 'preferences' | 'itineraries';
 
-export const AIItinerarySection: React.FC = () => {
+interface AIItinerarySectionProps {
+  onRequestEditProfile?: () => void;
+}
+
+export const AIItinerarySection: React.FC<AIItinerarySectionProps> = ({
+  onRequestEditProfile,
+}) => {
   const [activeSubTab, setActiveSubTab] = useState<SubTabType>('preferences');
+  const [modalVisible, setModalVisible] = useState(false);
+  
+  // Get user profile and travel preferences
+  const { userProfile } = useContext(UserProfileContext);
+  const { preferences } = useTravelPreferences();
+  const { showAlert } = useAlert();
 
   const handleGenerateItinerary = () => {
-    // After generation, switch to itineraries tab
+    // Validate profile before opening modal
+    const validationResult = validateProfileForItinerary(userProfile);
+    
+    if (!validationResult.isValid) {
+      // Show informative alert with clear explanation
+      const missingFieldsList = validationResult.missingFields.join(', ');
+      
+      let message: string;
+      if (onRequestEditProfile) {
+        message = `Your profile is missing required information to generate an AI itinerary.\n\nRequired fields: ${missingFieldsList}\n\nYour profile editor will open automatically in a moment so you can add this information.`;
+      } else {
+        message = `Your profile is missing required information to generate an AI itinerary.\n\nRequired fields: ${missingFieldsList}\n\nPlease complete your profile before trying again.`;
+      }
+      
+      showAlert('warning', message);
+      
+      // Auto-open edit profile modal if callback provided
+      if (onRequestEditProfile) {
+        // Delay so user can read the message
+        setTimeout(() => {
+          onRequestEditProfile();
+        }, 2500); // 2.5 seconds to read the message
+      }
+      return;
+    }
+    
+    // Profile is valid, open the AI generation modal
+    setModalVisible(true);
+  };
+
+  const handleModalClose = () => {
+    setModalVisible(false);
+  };
+
+  const handleItineraryGenerated = (result: any) => {
+    // Close modal and switch to itineraries tab to show the new itinerary
+    setModalVisible(false);
     setActiveSubTab('itineraries');
   };
 
@@ -59,6 +112,15 @@ export const AIItinerarySection: React.FC = () => {
           <AIItineraryListTab />
         )}
       </ScrollView>
+
+      {/* AI Generation Modal */}
+      <AIItineraryGenerationModal
+        visible={modalVisible}
+        onClose={handleModalClose}
+        onGenerated={handleItineraryGenerated}
+        userProfile={userProfile}
+        preferences={preferences}
+      />
     </View>
   );
 };
@@ -73,7 +135,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
     paddingHorizontal: 16,
     paddingTop: 8,
-    paddingBottom: 4,
+    paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
   },

@@ -41,6 +41,7 @@ describe('TravelPreferencesTab', () => {
     },
     transportation: {
       primaryMode: 'public',
+      maxWalkingDistance: 1000,
     },
     groupSize: {
       preferred: 2,
@@ -808,7 +809,7 @@ describe('TravelPreferencesTab', () => {
       const mockGenerateItinerary = jest.fn();
       const { getByText } = render(<TravelPreferencesTab onGenerateItinerary={mockGenerateItinerary} />);
       
-      fireEvent.press(getByText('✨ Generate AI Itinerary'));
+      fireEvent.press(getByText('✨ GENERATE AI ITINERARY'));
       
       expect(mockGenerateItinerary).toHaveBeenCalled();
     });
@@ -816,7 +817,7 @@ describe('TravelPreferencesTab', () => {
     it('should show coming soon alert when onGenerateItinerary not provided', () => {
       const { getByText } = render(<TravelPreferencesTab />);
       
-      fireEvent.press(getByText('✨ Generate AI Itinerary'));
+      fireEvent.press(getByText('✨ GENERATE AI ITINERARY'));
       
       expect(Alert.alert).toHaveBeenCalledWith(
         'Coming Soon',

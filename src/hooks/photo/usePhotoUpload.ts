@@ -173,12 +173,10 @@ export const usePhotoUpload = (userId?: string): UsePhotoUploadReturn => {
         // Request permission
         const hasPermission = await requestMediaLibraryPermission();
         if (!hasPermission) {
-          console.log('[usePhotoUpload] Permission denied, aborting upload');
           return null;
         }
 
         // Select image
-        console.log('[usePhotoUpload] Launching image picker...');
         const result = await ImagePicker.launchImageLibraryAsync({
           mediaTypes: ImagePicker.MediaTypeOptions.Images,
           allowsEditing: options?.allowsEditing ?? IMAGE_PICKER_SETTINGS.allowsEditing,

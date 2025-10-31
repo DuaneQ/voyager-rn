@@ -19,6 +19,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 // iOS Picker Modal Component
 const IOSPickerModal: React.FC<{
@@ -113,6 +114,18 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   const [eduModalVisible, setEduModalVisible] = useState(false);
   const [drinkingModalVisible, setDrinkingModalVisible] = useState(false);
   const [smokingModalVisible, setSmokingModalVisible] = useState(false);
+  
+  // Date picker state
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [tempDate, setTempDate] = useState<Date>(() => {
+    if (initialData.dob) {
+      return new Date(initialData.dob);
+    }
+    // Default to 25 years ago
+    const defaultDate = new Date();
+    defaultDate.setFullYear(defaultDate.getFullYear() - 25);
+    return defaultDate;
+  });
 
   useEffect(() => {
     setFormData(initialData);
@@ -272,14 +285,44 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
           {/* Date of Birth */}
           <View style={styles.fieldContainer}>
             <Text style={styles.label}>Date of Birth *</Text>
-            <TextInput
+            <TouchableOpacity
               testID="dob-input"
               style={[styles.input, errors.dob && styles.inputError]}
-              value={formData.dob}
-              onChangeText={(value) => handleChange('dob', value)}
-              placeholder="YYYY-MM-DD"
-              maxLength={10}
-            />
+              onPress={() => setShowDatePicker(true)}
+            >
+              <Text style={[styles.inputText, !formData.dob && styles.placeholderText]}>
+                {formData.dob || 'Select date of birth...'}
+              </Text>
+              <Ionicons name="calendar-outline" size={20} color="#999" />
+            </TouchableOpacity>
+            {showDatePicker && (
+              <DateTimePicker
+                testID="dateTimePicker"
+                value={tempDate}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={(event, selectedDate) => {
+                  if (Platform.OS === 'android') {
+                    setShowDatePicker(false);
+                  }
+                  if (event.type === 'set' && selectedDate) {
+                    setTempDate(selectedDate);
+                    // Format as YYYY-MM-DD
+                    const year = selectedDate.getFullYear();
+                    const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                    const day = String(selectedDate.getDate()).padStart(2, '0');
+                    const formattedDate = `${year}-${month}-${day}`;
+                    handleChange('dob', formattedDate);
+                    if (Platform.OS === 'ios') {
+                      setShowDatePicker(false);
+                    }
+                  } else if (event.type === 'dismissed') {
+                    setShowDatePicker(false);
+                  }
+                }}
+                maximumDate={new Date()} // Prevent future dates
+              />
+            )}
             {errors.dob && (
               <Text style={styles.errorText}>{errors.dob}</Text>
             )}
