@@ -13,7 +13,6 @@ import {
   TouchableOpacity,
   TextInput,
   Share,
-  Platform,
   Alert,
   Clipboard,
 } from 'react-native';
