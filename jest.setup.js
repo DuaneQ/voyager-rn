@@ -1,3 +1,15 @@
+// Polyfill for fetch (required by Firebase Functions)
+try {
+  global.fetch = global.fetch || require('node-fetch');
+} catch (error) {
+  // Fallback if node-fetch is not available
+  global.fetch = jest.fn(() => Promise.resolve({
+    ok: true,
+    json: () => Promise.resolve({}),
+    text: () => Promise.resolve(''),
+  }));
+}
+
 // Polyfill for React Native's setImmediate
 global.setImmediate = global.setImmediate || ((fn, ...args) => global.setTimeout(fn, 0, ...args));
 

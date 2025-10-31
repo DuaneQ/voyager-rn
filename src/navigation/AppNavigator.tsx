@@ -4,8 +4,8 @@
  * Uses React Navigation instead of React Router
  */
 
-import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import React, { useEffect, useRef } from 'react';
+import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,8 +19,11 @@ import VideoFeedPage from '../pages/VideoFeedPage';
 
 // Context Providers
 import { AlertProvider } from '../context/AlertContext';
-import { UserProfileProvider } from '../context/UserProfileContext';
+import { UserProfileProvider, useUserProfile } from '../context/UserProfileContext';
 import { useAuth } from '../context/AuthContext';
+
+// Validation utility
+import { validateProfileForItinerary } from '../utils/profileValidation';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -108,13 +111,56 @@ const RootNavigator: React.FC = () => {
 
 // Main App Navigator (replicates Routes from PWA)
 const AppNavigator: React.FC = () => {
+  const navigationRef = useRef<NavigationContainerRef<any>>(null);
+
   return (
     <AlertProvider>
-      <NavigationContainer>
-        <RootNavigator />
+      <NavigationContainer ref={navigationRef}>
+        <ProfileValidationWrapper navigationRef={navigationRef}>
+          <RootNavigator />
+        </ProfileValidationWrapper>
       </NavigationContainer>
     </AlertProvider>
   );
+};
+
+// Profile Validation Wrapper - checks profile completeness after login
+const ProfileValidationWrapper: React.FC<{ 
+  children: React.ReactNode; 
+  navigationRef: React.RefObject<NavigationContainerRef<any>>; 
+}> = ({ children, navigationRef }) => {
+  const { userProfile, isLoading } = useUserProfile();
+  const { user } = useAuth();
+  const hasCheckedProfile = useRef(false);
+
+  useEffect(() => {
+    // Reset flag when user changes (logout/login)
+    if (!user) {
+      hasCheckedProfile.current = false;
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (!isLoading && userProfile && user && !hasCheckedProfile.current && navigationRef.current) {
+      hasCheckedProfile.current = true;
+      
+      const validationResult = validateProfileForItinerary(userProfile);
+      if (!validationResult.isValid) {
+        // Small delay to ensure navigation is ready
+        setTimeout(() => {
+          navigationRef.current?.navigate('MainApp', {
+            screen: 'Profile',
+            params: { 
+              openEditModal: true,
+              incompleteProfile: true 
+            }
+          });
+        }, 100);
+      }
+    }
+  }, [isLoading, userProfile, user, navigationRef]);
+
+  return <>{children}</>;
 };
 
 export default AppNavigator;
