@@ -114,20 +114,26 @@ jobs:
           echo "🏗️ Building Android APK..."
           chmod +x android/gradlew
           
-          # Build APK with proper directory context (combine commands with &&)
-          cd android && echo "📍 Building from directory: $(pwd)" && ./gradlew assembleDebug --info && cd ..
+          # Build APK with proper directory context
+          cd android
+          echo "📍 Building from directory: $(pwd)"
+          ./gradlew assembleDebug --info
+          cd ..
           
-          # APK installation with proper shell context (all on single lines, no backslashes)
+          # APK installation with proper error handling
           APK_FILE_PATH="$(pwd)/android/app/build/outputs/apk/debug/app-debug.apk"
           echo "🔍 Looking for APK at: $APK_FILE_PATH"
+          
           if [ ! -f "$APK_FILE_PATH" ]; then
             echo "❌ ERROR: APK not found at: $APK_FILE_PATH"
             echo "🔍 Searching for APK files..."
             find . -name "*.apk" -type f -ls || echo "No APK files found"
             exit 1
           fi
+          
           echo "✅ APK found, installing on emulator..."
           adb install "$APK_FILE_PATH"
+          
           echo "✅ Verifying app installation..."
           adb shell pm list packages | grep com.voyager.rn
 

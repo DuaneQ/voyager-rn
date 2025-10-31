@@ -239,10 +239,10 @@ jobs:
         # Install compatible drivers for Appium 2.x
         echo "🔧 Installing iOS driver for Appium 2.x..."
         
-        # Use known stable version that doesn't have waitForQuiescence issues
-        # Version 7.x has better compatibility with shouldWaitForQuiescence capability
-        echo "Installing xcuitest driver (v7.24.0 - known stable)..."
-        npx appium driver install xcuitest@7.24.0 || {
+        # Use latest stable version with better quiescence handling
+        # Version 8.x has improved compatibility and better capability support
+        echo "Installing xcuitest driver (latest stable)..."
+        npx appium driver install xcuitest || {
           echo "❌ Failed to install xcuitest driver"
           exit 1
         }
