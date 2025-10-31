@@ -39,12 +39,17 @@ const iosCapabilities = {
   // Additional iOS stability settings for CI
   'appium:shouldUseSingletonTestManager': false,
   'appium:shouldUseTestManagerForVisibilityDetection': false,
-  // Fix for XCUIApplicationProcess waitForQuiescence errors - disable quiescence checking
+  // Fix for XCUIApplicationProcess waitForQuiescence errors - comprehensive quiescence disabling
   'appium:shouldWaitForQuiescence': false,
+  'appium:waitForQuiescence': false, // Alternative capability name
   'appium:waitForIdleTimeout': 0,
+  'appium:animationCoolOffTimeout': 0,
   // Conservative settings for better compatibility
   'appium:includeNonModalElements': false,
   'appium:snapshotMaxDepth': 50,
+  // XCUITest 7.x specific settings for better compatibility
+  'appium:simpleIsVisibleCheck': true, // Use simpler visibility check to avoid quiescence
+  'appium:maxTypingFrequency': 60, // Reduce typing speed to avoid quiescence checks
 };
 
 /**

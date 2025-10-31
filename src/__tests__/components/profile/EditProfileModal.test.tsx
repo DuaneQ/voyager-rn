@@ -369,7 +369,7 @@ describe('EditProfileModal', () => {
     });
 
     it('should update date of birth on text change', () => {
-      const { getByTestId, getByText } = render(
+      const { getByTestId } = render(
         <EditProfileModal
           visible={true}
           onClose={mockOnClose}

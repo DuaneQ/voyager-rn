@@ -236,18 +236,16 @@ jobs:
         npx appium driver uninstall xcuitest 2>/dev/null || echo "xcuitest not installed"
         npx appium driver uninstall uiautomator2 2>/dev/null || echo "uiautomator2 not installed"
         
-        # Install compatible drivers for Appium 2.x - with fallback versions
+        # Install compatible drivers for Appium 2.x
         echo "🔧 Installing iOS driver for Appium 2.x..."
-        echo "Installing xcuitest driver (trying latest stable)..."
         
-        # Try to install the latest xcuitest driver, with fallback to known working version
-        if ! npx appium driver install xcuitest; then
-          echo "⚠️ Latest xcuitest failed, trying known stable version..."
-          npx appium driver install xcuitest@5.16.1 || {
-            echo "❌ Failed to install xcuitest driver"
-            exit 1
-          }
-        fi
+        # Use known stable version that doesn't have waitForQuiescence issues
+        # Version 7.x has better compatibility with shouldWaitForQuiescence capability
+        echo "Installing xcuitest driver (v7.24.0 - known stable)..."
+        npx appium driver install xcuitest@7.24.0 || {
+          echo "❌ Failed to install xcuitest driver"
+          exit 1
+        }
         
         # Verify driver installation
         echo "✅ Installed drivers:"

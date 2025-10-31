@@ -39,8 +39,8 @@ export interface TravelPreferenceProfile {
   
   // Transportation Preferences
   transportation: {
-    primaryMode: 'walking' | 'public' | 'taxi' | 'rental' | 'airplane' | 'bus' | 'train' | 'mixed';
-    maxWalkingDistance: number; // in minutes
+    primaryMode: 'walking' | 'public' | 'taxi' | 'rental' | 'airplane' | 'bus' | 'train';
+    maxWalkingDistance?: number; // in minutes (optional)
     // Whether this profile intends to include flight booking/search results
     includeFlights?: boolean;
   };
@@ -207,7 +207,6 @@ export const TRANSPORTATION_MODES: Array<{
   { value: 'airplane', label: 'Airplane' },
   { value: 'bus', label: 'Bus' },
   { value: 'train', label: 'Train' },
-  { value: 'mixed', label: 'Mixed' },
 ];
 
 // Accommodation types

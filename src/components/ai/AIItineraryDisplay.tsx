@@ -90,8 +90,6 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
   // Also read any raw assumptions saved on the itinerary
   const assumptions = (itinerary as any)?.response?.data?.assumptions as any;
   
-  const accommodations = parsedData?.accommodations || (itinerary as any)?.accommodations;
-  
   // CRITICAL FIX: Read dailyPlans from the correct location matching PWA
   // Priority: response.data.itinerary.days -> response.data.itinerary.dailyPlans -> parsedData -> top-level
   const itineraryData = itinerary?.response?.data?.itinerary;
