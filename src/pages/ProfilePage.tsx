@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -8,6 +8,7 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
+import { useRoute, RouteProp } from '@react-navigation/native';
 import { auth } from '../config/firebaseConfig';
 import { signOut } from 'firebase/auth';
 import { useAlert } from '../context/AlertContext';
@@ -23,13 +24,27 @@ import type { PhotoSlot } from '../types/Photo';
 
 type TabType = 'profile' | 'photos' | 'videos' | 'itinerary';
 
+type ProfilePageRouteParams = {
+  openEditModal?: boolean;
+  incompleteProfile?: boolean;
+};
+
 const ProfilePage: React.FC = () => {
+  const route = useRoute<RouteProp<{ Profile: ProfilePageRouteParams }, 'Profile'>>();
   const { showAlert } = useAlert();
-  const { userProfile, updateProfile, loading: profileLoading } = useUserProfile();
+  const { userProfile, updateProfile } = useUserProfile();
   const { selectAndUploadPhoto, deletePhoto, uploadState } = usePhotoUpload();
   
   const [activeTab, setActiveTab] = useState<TabType>('profile');
   const [editModalVisible, setEditModalVisible] = useState(false);
+
+  // Check navigation params to auto-open EditProfileModal
+  useEffect(() => {
+    if (route.params?.openEditModal && route.params?.incompleteProfile) {
+      setEditModalVisible(true);
+      showAlert('warning', 'Please complete your profile to use all features');
+    }
+  }, [route.params]);
 
   // Calculate profile completeness based on PWA fields
   const calculateCompleteness = (): number => {
@@ -164,7 +179,7 @@ const ProfilePage: React.FC = () => {
         return <VideoGrid />;
       
       case 'itinerary':
-        return <AIItinerarySection />;
+        return <AIItinerarySection onRequestEditProfile={handleEditProfile} />;
       
       default:
         return null;
@@ -266,6 +281,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     marginHorizontal: 16,
     marginTop: 12,
+    marginBottom: 16,
     borderRadius: 12,
     padding: 4,
     shadowColor: '#000',

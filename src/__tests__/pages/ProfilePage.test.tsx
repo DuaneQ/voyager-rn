@@ -26,6 +26,16 @@ jest.mock('firebase/auth', () => ({
   })),
 }));
 
+// Mock React Navigation
+jest.mock('@react-navigation/native', () => ({
+  useRoute: jest.fn(() => ({
+    params: {}
+  })),
+  useNavigation: jest.fn(() => ({
+    navigate: jest.fn(),
+  })),
+}));
+
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';

@@ -637,7 +637,7 @@ export const TravelPreferencesTab: React.FC<TravelPreferencesTabProps> = ({
           }
         }}
       >
-        <Text style={styles.buttonAIText}>✨ Generate AI Itinerary</Text>
+        <Text style={styles.buttonAIText}>✨ GENERATE AI ITINERARY</Text>
       </TouchableOpacity>
 
       <View style={styles.bottomPadding} />
@@ -891,15 +891,24 @@ const styles = StyleSheet.create({
   },
   buttonAI: {
     margin: 16,
-    paddingVertical: 16,
-    borderRadius: 8,
-    backgroundColor: '#4CAF50',
+    paddingVertical: 18,
+    borderRadius: 12,
+    backgroundColor: '#10B981',
     alignItems: 'center',
+    shadowColor: '#10B981',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   buttonAIText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
   buttonDisabled: {
     backgroundColor: '#9E9E9E',

@@ -39,12 +39,30 @@ const iosCapabilities = {
   // Additional iOS stability settings for CI
   'appium:shouldUseSingletonTestManager': false,
   'appium:shouldUseTestManagerForVisibilityDetection': false,
-  // Fix for XCUIApplicationProcess waitForQuiescence errors - disable quiescence checking
+  // Fix for XCUIApplicationProcess waitForQuiescence errors - comprehensive quiescence disabling
   'appium:shouldWaitForQuiescence': false,
+  'appium:waitForQuiescence': false, // Alternative capability name
   'appium:waitForIdleTimeout': 0,
+  'appium:animationCoolOffTimeout': 0,
+  // Additional quiescence-related capabilities to ensure it's completely disabled
+  'appium:waitForAnimations': false,
+  'appium:commandTimeouts': {
+    'default': 30000
+  },
   // Conservative settings for better compatibility
   'appium:includeNonModalElements': false,
   'appium:snapshotMaxDepth': 50,
+  // XCUITest 7.x specific settings for better compatibility
+  'appium:simpleIsVisibleCheck': true, // Use simpler visibility check to avoid quiescence
+  'appium:maxTypingFrequency': 60, // Reduce typing speed to avoid quiescence checks
+  // Additional WebDriverAgent settings to prevent quiescence issues
+  'appium:wdaStartupRetries': 2,
+  'appium:wdaStartupRetryInterval': 10000,
+  'appium:iosInstallPause': 5000, // Pause after app install before testing
+  'appium:waitForAppScript': '', // Disable custom wait scripts that might trigger quiescence
+  // Additional iOS-specific capabilities to avoid XCUITest compatibility issues
+  'appium:skipLogCapture': true, // Skip log capture to avoid overhead
+  'appium:wdaConnectionTimeout': 120000, // 2 minutes to connect to WDA
 };
 
 /**
