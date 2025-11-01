@@ -42,7 +42,9 @@ jobs:
 
         # Ensure expo-modules-core is installed with the correct Expo-compatible version
         echo "🔧 Ensuring expo-modules-core is installed for Expo SDK"
-        npx expo install expo-modules-core --non-interactive || {
+        # The Expo CLI flags differ between CI and interactive shells. Use CI=1
+        # instead of `--non-interactive` which may not be supported in some CLI versions.
+        CI=1 npx expo install expo-modules-core || {
           echo "❌ Failed to install expo-modules-core via expo install";
           echo "Listing node_modules for debugging:"; ls -la node_modules | head -200 || true;
           exit 1;
@@ -202,14 +204,22 @@ jobs:
 
     - name: Setup Automation Testing
       run: |
-        echo "🔧 Setting up automation environment..."
+        echo "🔧 Setting up automation environment (automation/)..."
         cd automation
-        npm install --legacy-peer-deps
+        # Prefer deterministic installs in CI using the lockfile. Fallback to npm install
+        if [ -f package-lock.json ]; then
+          npm ci --legacy-peer-deps || npm install --legacy-peer-deps
+        else
+          npm install --legacy-peer-deps
+        fi
+
+        # Use the project-local Appium (via npx) instead of installing globally.
+        # This matches iOS workflow changes and avoids global ESM/version conflicts.
+        echo "🔧 Installing Appium drivers via project-local appium (npx)"
+        npx appium driver install uiautomator2 || {
+          echo "⚠️ Warning: appium driver install failed; attempting to continue";
+        }
         cd ..
-        
-        echo "🔧 Installing Appium and drivers..."
-        npm install -g appium
-        appium driver install uiautomator2
 
     - name: Run Android Automation Tests  
       uses: reactivecircus/android-emulator-runner@v2
