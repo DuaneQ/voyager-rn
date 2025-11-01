@@ -36,6 +36,23 @@ jobs:
         fi
         
         echo "✅ Dependencies installed successfully"
+        
+        # Verify critical expo modules exist
+        echo "🔍 Verifying expo-modules-core installation..."
+        if [ ! -d "node_modules/expo-modules-core" ]; then
+          echo "❌ ERROR: expo-modules-core not found in node_modules"
+          echo "Listing node_modules/expo-* directories:"
+          ls -la node_modules/expo-* 2>/dev/null || echo "No expo modules found"
+          exit 1
+        fi
+        
+        if [ ! -d "node_modules/expo-modules-core/android" ]; then
+          echo "⚠️ WARNING: expo-modules-core/android directory not found"
+          echo "Directory contents:"
+          ls -la node_modules/expo-modules-core/
+        else
+          echo "✅ expo-modules-core Android files verified"
+        fi
       
     - name: Setup Java
       uses: actions/setup-java@v4
@@ -91,7 +108,34 @@ jobs:
         echo "📁 Android directory contents:"
         ls -la android/
 
-    - name: Setup Android Emulator and Build APK
+    - name: Build Android APK
+      run: |
+        echo "🏗️ Building Android APK..."
+        cd android
+        chmod +x gradlew
+        ./gradlew assembleDebug --info
+        cd ..
+        echo "✅ APK build completed"
+        
+    - name: Verify APK Creation
+      run: |
+        APK_PATH="android/app/build/outputs/apk/debug/app-debug.apk"
+        
+        echo "🔍 Looking for APK at: $APK_PATH"
+        
+        if [ ! -f "$APK_PATH" ]; then
+          echo "❌ ERROR: APK not found at: $APK_PATH"
+          echo "🔍 Directory structure:"
+          ls -R android/app/build/outputs/ 2>/dev/null || echo "build/outputs directory not found"
+          echo "🔍 Searching for any APK files..."
+          find android -name "*.apk" -type f
+          exit 1
+        fi
+        
+        echo "✅ APK found at: $APK_PATH"
+        ls -lh "$APK_PATH"
+
+    - name: Setup Android Emulator and Install APK
       uses: reactivecircus/android-emulator-runner@v2
       with:
         api-level: 29
@@ -104,33 +148,16 @@ jobs:
         disable-animations: true
         script: |
           set -e
-          echo "🚀 Starting Android emulator and APK build"
+          echo "🚀 Starting Android emulator"
           echo "⏳ Waiting for Android emulator to be ready..."
           adb wait-for-device
           sleep 30
           echo "📱 Checking emulator status..."
           adb devices -l
           
-          echo "🏗️ Building Android APK..."
-          chmod +x android/gradlew
-          
-          # Build APK - run gradlew from android directory
-          echo "📍 Building from directory: $(pwd)/android"
-          cd android && ./gradlew assembleDebug --info && cd ..
-          
-          # APK installation with proper error handling
-          APK_FILE_PATH="$(pwd)/android/app/build/outputs/apk/debug/app-debug.apk"
-          echo "🔍 Looking for APK at: $APK_FILE_PATH"
-          
-          if [ ! -f "$APK_FILE_PATH" ]; then
-            echo "❌ ERROR: APK not found at: $APK_FILE_PATH"
-            echo "🔍 Searching for APK files..."
-            find . -name "*.apk" -type f -ls || echo "No APK files found"
-            exit 1
-          fi
-          
-          echo "✅ APK found, installing on emulator..."
-          adb install "$APK_FILE_PATH"
+          APK_PATH="android/app/build/outputs/apk/debug/app-debug.apk"
+          echo "� Installing APK: $APK_PATH"
+          adb install "$APK_PATH"
           
           echo "✅ Verifying app installation..."
           adb shell pm list packages | grep com.voyager.rn
