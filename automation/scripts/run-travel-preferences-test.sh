@@ -32,7 +32,7 @@ echo ""
 export PLATFORM="$PLATFORM"
 
 # Run specific test file
-npx wdio run wdio.mobile.conf.ts --spec tests/mobile/travel-preferences.test.ts
+npx wdio run wdio.mobile.conf.ts --spec tests/mobile/travel-preferences-success.test.ts
 
 echo ""
 echo "✅ Travel Preferences E2E Test complete!"

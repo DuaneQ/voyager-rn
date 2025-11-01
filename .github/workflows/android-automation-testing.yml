@@ -187,23 +187,27 @@ jobs:
             echo "📱 Checking emulator status..."
             adb devices -l
 
-            # Run APK existence check and install in a single shell invocation to
-            # prevent the action from splitting lines into separate sh calls
-            /bin/sh -lc 'APK_DOWNLOAD_PATH="./android-app-apk/app-debug.apk"; \
-              APK_BUILT_PATH="android/app/build/outputs/apk/debug/app-debug.apk"; \
-              if [ -f "$APK_DOWNLOAD_PATH" ]; then \
-                APK="$APK_DOWNLOAD_PATH"; \
-              else \
-                APK="$APK_BUILT_PATH"; \
-              fi; \
-              echo "📦 Installing APK: $APK" && \
-              if [ ! -f "$APK" ]; then \
-                echo "❌ ERROR: APK not found at: $APK"; \
-                echo "🔍 Directory listing (downloaded):"; ls -R ./android-app-apk 2>/dev/null || true; \
-                echo "🔍 Directory listing (built):"; ls -R android/app/build/outputs/ 2>/dev/null || true; \
-                exit 1; \
-              fi && \
-              adb install "$APK"'
+            # Determine APK path (prefer downloaded artifact, otherwise built APK)
+            APK_DOWNLOAD_PATH="./android-app-apk/app-debug.apk"
+            APK_BUILT_PATH="android/app/build/outputs/apk/debug/app-debug.apk"
+
+            if [ -f "$APK_DOWNLOAD_PATH" ]; then
+              APK="$APK_DOWNLOAD_PATH"
+            else
+              APK="$APK_BUILT_PATH"
+            fi
+
+            echo "📦 Installing APK: $APK"
+            if [ ! -f "$APK" ]; then
+              echo "❌ ERROR: APK not found at: $APK"
+              echo "🔍 Directory listing (downloaded):"
+              ls -R ./android-app-apk 2>/dev/null || true
+              echo "🔍 Directory listing (built):"
+              ls -R android/app/build/outputs/ 2>/dev/null || true
+              exit 1
+            fi
+
+            adb install "$APK"
 
             echo "✅ Verifying app installation..."
             adb shell pm list packages | grep com.voyager.rn || true
@@ -254,7 +258,7 @@ jobs:
           # Run automation tests
           cd automation
           echo "🧪 Running Android automation tests..."
-          PLATFORM=android npx wdio run wdio.mobile.conf.ts --spec tests/mobile/travel-preferences.test.ts
+          PLATFORM=android npx wdio run wdio.mobile.conf.ts --spec tests/mobile/travel-preferences-success.test.ts
           
           # Cleanup
           echo "🧹 Cleaning up Appium..."
