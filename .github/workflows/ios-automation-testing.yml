@@ -234,12 +234,31 @@ jobs:
           npm install --legacy-peer-deps || { echo "❌ npm install failed"; exit 1; }
         fi
 
-        # Verify local appium is available
+        # Verify local appium is available and ensure Appium 3.x is installed when required
         echo "🔍 Verifying local Appium installation via npx"
         APPIUM_VERSION=$(npx --no-install appium --version 2>/dev/null || npx appium --version 2>/dev/null || true)
         echo "Appium version reported: $APPIUM_VERSION"
 
-        # Clean up any existing drivers and install xcuitest via npx (works for Appium 2 and 3)
+        # If Appium is not present or is < 3, install Appium 3.x RC locally in automation
+        MAJOR_VERSION=$(echo "$APPIUM_VERSION" | cut -d. -f1 2>/dev/null || echo "0")
+        if [ -z "$APPIUM_VERSION" ] || [ "$MAJOR_VERSION" -lt 3 ]; then
+          echo "🔧 Installing Appium 3.x (appium@3.0.0-rc.2) locally in automation..."
+          npm install appium@3.0.0-rc.2 --no-save --legacy-peer-deps || {
+            echo "❌ Failed to install appium@3.0.0-rc.2 locally"; tail -50 automation/simulator.log/appium.log 2>/dev/null || true; exit 1;
+          }
+          APPIUM_VERSION=$(npx appium --version 2>/dev/null || true)
+          echo "New Appium version reported: $APPIUM_VERSION"
+        fi
+
+        # Recompute major version and validate compatibility
+        MAJOR_VERSION=$(echo "$APPIUM_VERSION" | cut -d. -f1 2>/dev/null || echo "0")
+        if [ "$MAJOR_VERSION" -lt 3 ]; then
+          echo "❌ Appium major version is < 3; xcuitest driver requires Appium 3.x"
+          echo "Appium version: $APPIUM_VERSION"
+          exit 1
+        fi
+
+        # Clean up any existing drivers and install xcuitest via npx appium
         echo "🧹 Ensuring drivers are installed via npx appium"
         npx appium driver list --installed 2>/dev/null || true
         npx appium driver uninstall xcuitest 2>/dev/null || true
