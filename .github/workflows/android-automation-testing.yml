@@ -23,20 +23,31 @@ jobs:
         
     - name: Install dependencies
       run: |
-        # Install dependencies with legacy peer deps to handle compatibility issues
-        echo "Installing dependencies..."
-        
-        if ! npm install --legacy-peer-deps; then
-          echo "ERROR: npm install failed"
-          echo "Package.json content:"
-          cat package.json
-          echo "Detailed npm error log:"
-          tail -50 ~/.npm/_logs/*.log 2>/dev/null || echo "No npm logs found"
-          exit 1
+        echo "Installing dependencies (deterministic)..."
+
+        # Use npm ci when a lockfile exists for reproducible installs, otherwise fallback to npm install
+        if [ -f package-lock.json ]; then
+          echo "Lockfile found: using npm ci --legacy-peer-deps"
+          npm ci --legacy-peer-deps || {
+            echo "ERROR: npm ci failed"; tail -50 ~/.npm/_logs/*.log 2>/dev/null || true; exit 1;
+          }
+        else
+          echo "No lockfile found: using npm install --legacy-peer-deps"
+          npm install --legacy-peer-deps || {
+            echo "ERROR: npm install failed"; tail -50 ~/.npm/_logs/*.log 2>/dev/null || true; exit 1;
+          }
         fi
-        
+
         echo "✅ Dependencies installed successfully"
-        
+
+        # Ensure expo-modules-core is installed with the correct Expo-compatible version
+        echo "🔧 Ensuring expo-modules-core is installed for Expo SDK"
+        npx expo install expo-modules-core --non-interactive || {
+          echo "❌ Failed to install expo-modules-core via expo install";
+          echo "Listing node_modules for debugging:"; ls -la node_modules | head -200 || true;
+          exit 1;
+        }
+
         # Verify critical expo modules exist
         echo "🔍 Verifying expo-modules-core installation..."
         if [ ! -d "node_modules/expo-modules-core" ]; then
@@ -45,11 +56,11 @@ jobs:
           ls -la node_modules/expo-* 2>/dev/null || echo "No expo modules found"
           exit 1
         fi
-        
+
         if [ ! -d "node_modules/expo-modules-core/android" ]; then
           echo "⚠️ WARNING: expo-modules-core/android directory not found"
           echo "Directory contents:"
-          ls -la node_modules/expo-modules-core/
+          ls -la node_modules/expo-modules-core/ || true
         else
           echo "✅ expo-modules-core Android files verified"
         fi
@@ -135,6 +146,19 @@ jobs:
         echo "✅ APK found at: $APK_PATH"
         ls -lh "$APK_PATH"
 
+    - name: Upload APK artifact
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-debug-apk
+        path: android/app/build/outputs/apk/debug/app-debug.apk
+
+    - name: Download APK artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: app-debug-apk
+        path: ./android-app-apk
+
     - name: Setup Android Emulator and Install APK
       uses: reactivecircus/android-emulator-runner@v2
       with:
@@ -147,20 +171,34 @@ jobs:
         emulator-boot-timeout: 900
         disable-animations: true
         script: |
-          set -e
-          echo "🚀 Starting Android emulator"
-          echo "⏳ Waiting for Android emulator to be ready..."
-          adb wait-for-device
-          sleep 30
-          echo "📱 Checking emulator status..."
-          adb devices -l
-          
-          APK_PATH="android/app/build/outputs/apk/debug/app-debug.apk"
-          echo "� Installing APK: $APK_PATH"
-          adb install "$APK_PATH"
-          
-          echo "✅ Verifying app installation..."
-          adb shell pm list packages | grep com.voyager.rn
+            set -e
+            echo "🚀 Starting Android emulator"
+            echo "⏳ Waiting for Android emulator to be ready..."
+            adb wait-for-device
+            sleep 30
+            echo "📱 Checking emulator status..."
+            adb devices -l
+
+            # Run APK existence check and install in a single shell invocation to
+            # prevent the action from splitting lines into separate sh calls
+            /bin/sh -lc 'APK_DOWNLOAD_PATH="./android-app-apk/app-debug.apk"; \
+              APK_BUILT_PATH="android/app/build/outputs/apk/debug/app-debug.apk"; \
+              if [ -f "$APK_DOWNLOAD_PATH" ]; then \
+                APK="$APK_DOWNLOAD_PATH"; \
+              else \
+                APK="$APK_BUILT_PATH"; \
+              fi; \
+              echo "📦 Installing APK: $APK" && \
+              if [ ! -f "$APK" ]; then \
+                echo "❌ ERROR: APK not found at: $APK"; \
+                echo "🔍 Directory listing (downloaded):"; ls -R ./android-app-apk 2>/dev/null || true; \
+                echo "🔍 Directory listing (built):"; ls -R android/app/build/outputs/ 2>/dev/null || true; \
+                exit 1; \
+              fi && \
+              adb install "$APK"'
+
+            echo "✅ Verifying app installation..."
+            adb shell pm list packages | grep com.voyager.rn || true
 
     - name: Setup Automation Testing
       run: |

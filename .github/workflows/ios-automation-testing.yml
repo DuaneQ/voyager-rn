@@ -224,64 +224,44 @@ jobs:
       run: |
         # Create automation log directory
         mkdir -p automation/simulator.log
-        
-        # Install Appium 3.x (required for latest xcuitest driver)
-        echo "📦 Installing Appium 3.x server (required for xcuitest driver compatibility)..."
-        npm install -g appium@3.0.0-rc.2 || {
-          echo "❌ Failed to install Appium 3.x"
-          echo "Trying alternative installation method..."
-          npm install -g appium@next || {
-            echo "❌ All Appium installation methods failed"
-            exit 1
-          }
-        }
-        
-        # Verify Appium version
-        APPIUM_VERSION=$(appium --version)
-        echo "✅ Appium server version: $APPIUM_VERSION"
-        
-        # Verify version is 3.x or higher
-        MAJOR_VERSION=$(echo "$APPIUM_VERSION" | cut -d. -f1)
-        if [ "$MAJOR_VERSION" -lt 3 ]; then
-          echo "❌ ERROR: Appium version must be 3.x or higher, got: $APPIUM_VERSION"
-          exit 1
+        # Use the project's automation devDependencies to run Appium via npx
+        # This avoids global install/version mismatches and ESM/CommonJS issues
+        echo "📦 Installing automation devDependencies (including Appium)..."
+        cd automation
+        if [ -f package-lock.json ]; then
+          npm ci --legacy-peer-deps || { echo "❌ npm ci failed"; exit 1; }
+        else
+          npm install --legacy-peer-deps || { echo "❌ npm install failed"; exit 1; }
         fi
-        
-        # Check if drivers are already installed and clean up
-        echo "🔍 Checking existing drivers..."
-        appium driver list --installed 2>/dev/null || echo "No drivers currently installed"
-        
-        # Remove any existing drivers to avoid conflicts
-        echo "🧹 Cleaning up existing drivers..."
-        appium driver uninstall xcuitest 2>/dev/null || echo "xcuitest not installed"
-        appium driver uninstall uiautomator2 2>/dev/null || echo "uiautomator2 not installed"
-        
-        # Install xcuitest driver (now compatible with Appium 3.x)
-        echo "🔧 Installing xcuitest driver (Appium 3.x compatible)..."
-        appium driver install xcuitest || {
-          echo "❌ Failed to install xcuitest driver"
-          echo "📋 Debug information:"
-          echo "Appium version: $(appium --version)"
-          echo "Available drivers:"
-          appium driver list 2>/dev/null || echo "Could not list drivers"
-          exit 1
-        }
-        
-        # Verify driver installation
-        echo "✅ Installed drivers:"
-        appium driver list --installed
-        
-        # Start Appium server in background (Appium 3.x syntax)
-        echo "🚀 Starting Appium 3.x server..."
-        nohup appium --log-level warn --port 4723 &> automation/simulator.log/appium.log &
+
+        # Verify local appium is available
+        echo "🔍 Verifying local Appium installation via npx"
+        APPIUM_VERSION=$(npx --no-install appium --version 2>/dev/null || npx appium --version 2>/dev/null || true)
+        echo "Appium version reported: $APPIUM_VERSION"
+
+        # Clean up any existing drivers and install xcuitest via npx (works for Appium 2 and 3)
+        echo "🧹 Ensuring drivers are installed via npx appium"
+        npx appium driver list --installed 2>/dev/null || true
+        npx appium driver uninstall xcuitest 2>/dev/null || true
+        npx appium driver uninstall uiautomator2 2>/dev/null || true
+
+        echo "🔧 Installing xcuitest driver via npx appium"
+        npx appium driver install xcuitest || { echo "❌ Failed to install xcuitest driver via npx"; tail -50 automation/simulator.log/appium.log 2>/dev/null || true; exit 1; }
+
+        echo "✅ Installed drivers (if applicable):"
+        npx appium driver list --installed || true
+
+        # Start Appium server in background using npx to ensure correct dependency tree
+        echo "🚀 Starting Appium server via npx appium..."
+        nohup npx appium --log-level warn --port 4723 &> ../automation/simulator.log/appium.log &
         APPIUM_PID=$!
         echo "APPIUM_PID=$APPIUM_PID" >> $GITHUB_ENV
         echo "Appium PID: $APPIUM_PID"
-        
+
         # Wait for Appium to start
         echo "⏳ Waiting for Appium to start..."
         sleep 15
-        
+
         # Verify Appium is running
         echo "🔍 Checking Appium server status..."
         if ! curl -f http://localhost:4723/status; then
@@ -291,11 +271,11 @@ jobs:
           ps aux | grep appium || echo "No Appium process found"
           echo "Checking if port 4723 is in use:"
           lsof -i :4723 || echo "Port 4723 not in use"
-          echo "Last 50 lines of Appium log:"
-          tail -50 automation/simulator.log/appium.log 2>/dev/null || echo "No log file found"
+          echo "Last 50 lines of Appium log:" 
+          tail -50 ../automation/simulator.log/appium.log 2>/dev/null || echo "No log file found"
           exit 1
         fi
-        echo "✅ Appium 3.x server is running and responding"
+        echo "✅ Appium server is running and responding"
         
     - name: Run iOS Automation Tests
       env:
