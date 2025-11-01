@@ -17,12 +17,14 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '18'
+        # Use Node 20 to satisfy newer automation dependencies (cheerio, undici, etc.)
+        node-version: '20'
         cache: 'npm'
         
     - name: Install dependencies
       run: |
-        # Install dependencies with legacy peer deps to handle compatibility issues
+        # Use legacy peer deps to handle known upstream peer conflicts in CI
+        export npm_config_legacy_peer_deps=true
         npm install --legacy-peer-deps
       
     - name: Setup iOS Simulator
@@ -206,8 +208,15 @@ jobs:
     - name: Install Automation Dependencies
       run: |
         cd automation
-        npm install --legacy-peer-deps
-        echo "✅ Automation dependencies installed"
+        # Prevent chromedriver auto-download (often fails on CI) and allow legacy peer deps
+        export npm_config_legacy_peer_deps=true
+        export APPIUM_SKIP_CHROMEDRIVER_INSTALL=true
+        if [ -f package-lock.json ]; then
+          npm ci --legacy-peer-deps || npm install --legacy-peer-deps
+        else
+          npm install --legacy-peer-deps
+        fi
+        echo "✅ Automation dependencies installed (chromedriver download skipped)"
         
     - name: Verify app installation
       run: |

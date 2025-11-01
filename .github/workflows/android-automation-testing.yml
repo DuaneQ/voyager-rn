@@ -42,10 +42,16 @@ jobs:
 
         # Ensure expo-modules-core is installed with the correct Expo-compatible version
         echo "🔧 Ensuring expo-modules-core is installed for Expo SDK"
+        # The Expo CLI performs an internal npm install which may fail on
+        # strict peer dependency resolution (ERESOLVE). Force npm to accept
+        # legacy peer deps in CI so expo install succeeds.
+        export npm_config_legacy_peer_deps=true
         # The Expo CLI flags differ between CI and interactive shells. Use CI=1
         # instead of `--non-interactive` which may not be supported in some CLI versions.
         CI=1 npx expo install expo-modules-core || {
           echo "❌ Failed to install expo-modules-core via expo install";
+          echo "Tip: the failure is often caused by npm peerDependency resolution (ERESOLVE).";
+          echo "For CI we set npm_config_legacy_peer_deps=true so npm accepts legacy peer deps.";
           echo "Listing node_modules for debugging:"; ls -la node_modules | head -200 || true;
           exit 1;
         }
