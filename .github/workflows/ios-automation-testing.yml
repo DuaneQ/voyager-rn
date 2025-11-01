@@ -331,16 +331,18 @@ jobs:
         echo "App bundle exists: ✅"
         echo "App bundle contents:"
         ls -la "$APP_PATH/" | head -5
-        
+
         # Check app info
         if [ -f "$APP_PATH/Info.plist" ]; then
-          echo "Bundle identifier: $(plutil -extract CFBundleIdentifier raw "$APP_PATH/Info.plist" 2>/dev/null || echo 'Could not read')"
+          echo "Bundle identifier: $(plutil -extract CFBundleIdentifier raw \"$APP_PATH/Info.plist\" 2>/dev/null || echo 'Could not read')"
         fi
-        
+
         echo "🚀 Starting iOS automation tests..."
         export PLATFORM=ios
         export CI=true
-        npx wdio run wdio.mobile.conf.ts --spec tests/mobile/travel-preferences.test.ts
+        # Run the specific travel-preferences test that exists in the repository.
+        # The test file was renamed to travel-preferences-success.test.ts; use the exact path.
+        npx wdio run wdio.mobile.conf.ts --spec tests/mobile/travel-preferences-success.test.ts
         
     - name: Capture test artifacts on failure
       if: failure()
