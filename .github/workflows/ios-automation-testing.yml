@@ -222,55 +222,80 @@ jobs:
         
     - name: Start Appium Server
       run: |
-        cd automation
+        # Create automation log directory
+        mkdir -p automation/simulator.log
         
-        # Use local Appium installation from package.json (v2.11.5 - stable)
-        echo "📦 Using stable Appium installation (v2.11.5)..."
+        # Install Appium 3.x (required for latest xcuitest driver)
+        echo "📦 Installing Appium 3.x server (required for xcuitest driver compatibility)..."
+        npm install -g appium@3.0.0-rc.2 || {
+          echo "❌ Failed to install Appium 3.x"
+          echo "Trying alternative installation method..."
+          npm install -g appium@next || {
+            echo "❌ All Appium installation methods failed"
+            exit 1
+          }
+        }
+        
+        # Verify Appium version
+        APPIUM_VERSION=$(appium --version)
+        echo "✅ Appium server version: $APPIUM_VERSION"
+        
+        # Verify version is 3.x or higher
+        MAJOR_VERSION=$(echo "$APPIUM_VERSION" | cut -d. -f1)
+        if [ "$MAJOR_VERSION" -lt 3 ]; then
+          echo "❌ ERROR: Appium version must be 3.x or higher, got: $APPIUM_VERSION"
+          exit 1
+        fi
         
         # Check if drivers are already installed and clean up
         echo "🔍 Checking existing drivers..."
-        npx appium driver list --installed 2>/dev/null || echo "No drivers currently installed"
+        appium driver list --installed 2>/dev/null || echo "No drivers currently installed"
         
         # Remove any existing drivers to avoid conflicts
         echo "🧹 Cleaning up existing drivers..."
-        npx appium driver uninstall xcuitest 2>/dev/null || echo "xcuitest not installed"
-        npx appium driver uninstall uiautomator2 2>/dev/null || echo "uiautomator2 not installed"
+        appium driver uninstall xcuitest 2>/dev/null || echo "xcuitest not installed"
+        appium driver uninstall uiautomator2 2>/dev/null || echo "uiautomator2 not installed"
         
-        # Install compatible drivers for Appium 2.x
-        echo "🔧 Installing iOS driver for Appium 2.x..."
-        
-        # Use latest stable version with better quiescence handling
-        # Version 8.x has improved compatibility and better capability support
-        echo "Installing xcuitest driver (latest stable)..."
-        npx appium driver install xcuitest || {
+        # Install xcuitest driver (now compatible with Appium 3.x)
+        echo "🔧 Installing xcuitest driver (Appium 3.x compatible)..."
+        appium driver install xcuitest || {
           echo "❌ Failed to install xcuitest driver"
+          echo "📋 Debug information:"
+          echo "Appium version: $(appium --version)"
+          echo "Available drivers:"
+          appium driver list 2>/dev/null || echo "Could not list drivers"
           exit 1
         }
         
         # Verify driver installation
         echo "✅ Installed drivers:"
-        npx appium driver list --installed
+        appium driver list --installed
         
-        # Start Appium server in background using local installation (Appium 2.x syntax)
-        echo "🚀 Starting Appium server..."
-        npx appium --log-level warn &
+        # Start Appium server in background (Appium 3.x syntax)
+        echo "🚀 Starting Appium 3.x server..."
+        nohup appium --log-level warn --port 4723 &> automation/simulator.log/appium.log &
         APPIUM_PID=$!
         echo "APPIUM_PID=$APPIUM_PID" >> $GITHUB_ENV
+        echo "Appium PID: $APPIUM_PID"
         
         # Wait for Appium to start
         echo "⏳ Waiting for Appium to start..."
         sleep 15
         
         # Verify Appium is running
-        curl -f http://localhost:4723/status || {
+        echo "🔍 Checking Appium server status..."
+        if ! curl -f http://localhost:4723/status; then
           echo "❌ ERROR: Appium server not responding"
+          echo "📋 Debug information:"
           echo "Checking Appium process..."
           ps aux | grep appium || echo "No Appium process found"
           echo "Checking if port 4723 is in use:"
           lsof -i :4723 || echo "Port 4723 not in use"
+          echo "Last 50 lines of Appium log:"
+          tail -50 automation/simulator.log/appium.log 2>/dev/null || echo "No log file found"
           exit 1
-        }
-        echo "✅ Appium server is running"
+        fi
+        echo "✅ Appium 3.x server is running and responding"
         
     - name: Run iOS Automation Tests
       env:
@@ -312,16 +337,53 @@ jobs:
     - name: Capture test artifacts on failure
       if: failure()
       run: |
-        echo "Capturing debug information..."
+        echo "📸 Capturing debug information..."
+        
+        # Ensure directories exist
+        mkdir -p automation/logs
+        mkdir -p automation/screenshots
+        mkdir -p automation/simulator.log
         
         # Capture simulator screenshot
-        xcrun simctl io "$SIMULATOR_ID" screenshot "automation/simulator-screenshot.png" || true
+        if [ ! -z "$SIMULATOR_ID" ]; then
+          echo "Taking simulator screenshot..."
+          xcrun simctl io "$SIMULATOR_ID" screenshot "automation/screenshots/simulator-screenshot.png" 2>/dev/null || echo "Failed to capture screenshot"
+        fi
         
         # Capture simulator logs
-        xcrun simctl spawn "$SIMULATOR_ID" log collect --output "automation/simulator.log" || true
+        if [ ! -z "$SIMULATOR_ID" ]; then
+          echo "Collecting simulator logs..."
+          xcrun simctl spawn "$SIMULATOR_ID" log collect --output "automation/simulator.log/system.log" 2>/dev/null || echo "Failed to collect logs"
+        fi
         
         # List running apps for debugging
-        xcrun simctl listapps "$SIMULATOR_ID" > "automation/installed-apps.txt" || true
+        if [ ! -z "$SIMULATOR_ID" ]; then
+          echo "Listing installed apps..."
+          xcrun simctl listapps "$SIMULATOR_ID" > "automation/logs/installed-apps.txt" 2>/dev/null || echo "Failed to list apps"
+        fi
+        
+        # Copy Appium logs if they exist
+        if [ -f "automation/simulator.log/appium.log" ]; then
+          echo "Appium log found, size: $(wc -l < automation/simulator.log/appium.log) lines"
+          tail -200 automation/simulator.log/appium.log > automation/logs/appium-tail.log || true
+        else
+          echo "⚠️ No Appium log file found at automation/simulator.log/appium.log"
+        fi
+        
+        echo "✅ Artifact capture complete"
+        
+    - name: Dump Appium logs on failure
+      if: failure()
+      run: |
+        echo "📋 Displaying last 200 lines of Appium log for quick debugging:"
+        echo "================================================================"
+        if [ -f "automation/simulator.log/appium.log" ]; then
+          tail -200 automation/simulator.log/appium.log
+        else
+          echo "⚠️ Appium log file not found"
+          echo "Searching for any Appium-related logs..."
+          find automation -name "*appium*" -type f 2>/dev/null || echo "No Appium logs found"
+        fi
         
     - name: Upload Test Results
       if: always()
