@@ -7,7 +7,7 @@
 | Platform | Status | Last Error | Fix Attempts |
 |----------|--------|------------|--------------|
 | **Android** | 🔧 FIXING | Gradle plugin not found + expo-modules-core config error (IN PROGRESS) | 6 attempts |
-| **iOS** | 🟡 FIXED (PENDING CI VALIDATION) | Only one test running + app launch timeout (FIXED) | 5 attempts |ne Troubleshooting Log
+| **iOS** | � FIXING | Login screen not found - app launches but UI doesn't render (IN PROGRESS) | 6 attempts |ne Troubleshooting Log
 
 **Purpose**: Track all Android and iOS pipeline issues, attempted fixes, and outcomes to prevent repeated mistakes and wasted effort.
 
@@ -593,6 +593,227 @@ expo-file-system/ios/EXFileSystem/*.h: warning: pointer is missing a nullability
 1. Update `expo-file-system` to latest version with proper annotations
 2. Disable nullability warnings for pods in Podfile
 3. Add post_install hook to remove -Werror from pod builds
+
+---
+
+### Issue #6: iOS Login Screen Not Rendering (November 2, 2025)
+
+#### ❌ Error Details
+All 4 iOS test suites failing with identical error:
+```bash
+Error: Could not find email input with testID="login-email-input" (not existing)
+    at LoginPage.login (/Users/runner/work/voyager-rn/voyager-rn/automation/src/pages/LoginPage.ts:317:15)
+```
+
+**Test Results**:
+- `create-manual-itinerary-success.test.ts`: ❌ FAILED (26.6s)
+- `login.test.ts`: ❌ FAILED (1m 8.4s)
+- `profile-edit.test.ts`: ❌ FAILED (58.9s) - "Could not find Profile tab button"
+- `travel-preferences-success.test.ts`: ❌ FAILED (16.6s)
+
+**Git ref**: Current (November 2, 2025)
+
+#### 🔍 Root Cause Analysis
+1. **App Launches Successfully**: iOS app installs and launches without errors
+2. **React Native Bundle Not Loading**: Login screen doesn't render within timeout (25-45s)
+3. **Possible Causes**:
+   - RN JavaScript bundle loading timeout
+   - App stuck on splash screen
+   - Silent crash in React Native initialization
+   - iOS-specific JS/native bridge initialization failure
+
+**Why this happened**:
+- Native iOS builds take longer to initialize than Expo Go
+- React Native bundle loading can be slower on CI simulators
+- 15-second wait after app launch is insufficient for RN initialization
+- Tests timeout waiting for login screen elements that never render
+
+#### 🛠️ Fix Applied (November 2, 2025) - ⏳ PENDING CI VALIDATION
+
+**What was changed**:
+
+1. **Extended App Launch Wait Times** (`.github/workflows/ios-automation-testing.yml`):
+```yaml
+# ❌ BEFORE: 15 second wait
+sleep 15
+
+# ✅ AFTER: 30 second wait + explicit launch + diagnostics
+xcrun simctl launch "$SIMULATOR_ID" com.voyager.rn
+sleep 30  # Double the wait time for RN bundle
+mkdir -p automation/logs/launch-diagnostics
+xcrun simctl io "$SIMULATOR_ID" screenshot "automation/logs/launch-diagnostics/initial-state.png"
+```
+
+2. **Increased iOS-Specific Timeouts** (`automation/wdio.mobile.conf.ts`):
+```typescript
+// ❌ BEFORE: 60s app launch timeout
+'appium:appLaunchTimeout': process.env.CI ? 60000 : 30000
+
+// ✅ AFTER: 90s app launch timeout
+'appium:appLaunchTimeout': process.env.CI ? 90000 : 30000
+```
+
+3. **Enhanced Login Screen Detection** (`automation/src/pages/LoginPage.ts`):
+```typescript
+// ❌ BEFORE: Fixed 15s timeout
+async waitForLoginScreen(timeout = 15000)
+
+// ✅ AFTER: 45s timeout for iOS in CI
+const effectiveTimeout = (driver.isIOS && process.env.CI) ? 45000 : timeout;
+// Added progress logging every 5 seconds
+// Added page source capture on timeout for debugging
+```
+
+4. **Test BeforeEach Hook Updates** (`automation/tests/mobile/login.test.ts`):
+```typescript
+// ❌ BEFORE: 5s initial wait, 25s login screen timeout
+await browser.pause(5000);
+const found = await loginPage.waitForLoginScreen(25000);
+
+// ✅ AFTER: 10s initial wait (iOS/CI), 45s login screen timeout
+const initialWait = (isIOS && process.env.CI) ? 10000 : 5000;
+await browser.pause(initialWait);
+const loginTimeout = (isIOS && process.env.CI) ? 45000 : 25000;
+const found = await loginPage.waitForLoginScreen(loginTimeout);
+// Added page source capture for debugging
+```
+
+5. **Enhanced Diagnostic Capture** (`.github/workflows/ios-automation-testing.yml`):
+```yaml
+# New: Capture initial app state after launch
+xcrun simctl io "$SIMULATOR_ID" screenshot "initial-state.png"
+xcrun simctl spawn "$SIMULATOR_ID" ps aux | grep traval
+
+# Enhanced: Test failure diagnostics
+xcrun simctl spawn "$SIMULATOR_ID" log show --predicate 'processImagePath contains "Traval"' --last 5m
+find ~/Library/Logs/DiagnosticReports -name "*Traval*" -mtime -1  # Crash logs
+```
+
+**Files Modified**:
+1. `.github/workflows/ios-automation-testing.yml` (lines ~205-220, 365-430)
+2. `automation/wdio.mobile.conf.ts` (line 30)
+3. `automation/src/pages/LoginPage.ts` (lines 150-220)
+4. `automation/tests/mobile/login.test.ts` (lines 96-125)
+
+#### 📊 Changes Summary
+
+| Aspect | Before | After | Improvement |
+|--------|--------|-------|-------------|
+| **App launch wait** | 15s | 30s | +100% |
+| **Appium launch timeout** | 60s | 90s | +50% |
+| **Login screen timeout** | 15-25s | 45s (iOS/CI) | +80-200% |
+| **Initial wait (tests)** | 5s | 10s (iOS/CI) | +100% |
+| **Progress logging** | None | Every 5s | ✅ Added |
+| **Page source capture** | None | On timeout | ✅ Added |
+| **Launch diagnostics** | None | Screenshot + logs | ✅ Added |
+| **Crash log capture** | None | Last 24h | ✅ Added |
+
+#### 🔎 Expected Outcomes
+
+**If Successful**:
+1. ✅ App launches and RN bundle loads within 30s
+2. ✅ Login screen renders and testID="login-email-input" found
+3. ✅ All 4 test suites pass with login successful
+4. ✅ No "not existing" errors for UI elements
+
+**If Still Failing**:
+1. **Check launch diagnostics**: `automation/logs/launch-diagnostics/initial-state.png`
+2. **Check app process**: Is Traval app running after launch?
+3. **Check system logs**: `automation/logs/traval-app.log` for RN errors
+4. **Check crash logs**: `automation/logs/crash-logs/` for native crashes
+5. **Check page source**: LoginPage logs page source XML on timeout
+
+#### 📝 Debugging Steps If Issue Persists
+
+1. **Verify App Launches**:
+```bash
+# Check launch diagnostics screenshot - what's visible?
+open automation/logs/launch-diagnostics/initial-state.png
+
+# Is it splash screen? Login screen? Blank? Crash?
+```
+
+2. **Check React Native Logs**:
+```bash
+# Look for RN initialization errors
+grep -i "error\|exception\|fatal" automation/logs/traval-app.log
+```
+
+3. **Check for Crashes**:
+```bash
+# Crash logs indicate native crashes
+ls -lah automation/logs/crash-logs/
+cat automation/logs/crash-logs/*Traval*
+```
+
+4. **Analyze Page Source**:
+```bash
+# LoginPage logs page source on timeout
+# Look for what UI elements ARE present
+grep "XCUIElement" test-output.log | head -50
+```
+
+5. **Try Manual Launch**:
+```bash
+# Launch app manually and observe behavior
+xcrun simctl launch <SIMULATOR_ID> com.voyager.rn
+# Wait 30s and take screenshot
+xcrun simctl io <SIMULATOR_ID> screenshot manual-test.png
+```
+
+#### 🎯 Alternative Fixes (If Current Fix Doesn't Work)
+
+**Option A: Use Expo Go Instead of Native Build** (Documented in `PIPELINE_IOS_SETUP.md`)
+```yaml
+# Install Expo Go on simulator
+# Change bundleId from com.voyager.rn to host.exp.Exponent
+'appium:bundleId': 'host.exp.Exponent'
+```
+
+**Option B: Add Metro Bundler to CI** (For Development Builds)
+```yaml
+# Start Metro bundler before launching app
+npx react-native start --port 8081 &
+sleep 10
+# Then launch app
+```
+
+**Option C: Increase Timeouts Further**
+```typescript
+// Try even longer timeouts
+'appium:appLaunchTimeout': 120000  // 2 minutes
+waitForLoginScreen(60000)  // 1 minute
+```
+
+**Option D: Check for iOS-Specific Initialization Issues**
+```typescript
+// Add iOS-specific initialization check
+if (Platform.OS === 'ios') {
+  // Add longer splash screen display
+  // Check for iOS-specific permissions blocking UI
+}
+```
+
+#### 📝 Lessons Learned (DO NOT REPEAT)
+1. ❌ **DON'T**: Assume native builds initialize as fast as Expo Go
+2. ❌ **DON'T**: Use fixed 15s waits for React Native bundle loading
+3. ❌ **DON'T**: Skip capturing initial app state for debugging
+4. ❌ **DON'T**: Use same timeouts for Android and iOS
+5. ✅ **DO**: Give iOS RN apps 30+ seconds to initialize in CI
+6. ✅ **DO**: Capture screenshots and logs immediately after app launch
+7. ✅ **DO**: Add platform-specific timeout logic
+8. ✅ **DO**: Log progress during long waits for visibility
+9. ✅ **DO**: Capture page source when elements not found
+10. ✅ **DO**: Check for crash logs when app doesn't render UI
+
+#### 🔗 Related Documentation
+- **iOS Pipeline Setup**: `automation/docs/PIPELINE_IOS_SETUP.md`
+- **Previous iOS Fixes**: `docs/IOS_CI_PIPELINE_FIX.md`
+- **Appium Version Fix**: `docs/IOS_PIPELINE_APPIUM_VERSION_FIX.md`
+- **E2E Test Guide**: `automation/E2E.md`
+
+#### ⚠️ Status
+⏳ **PENDING CI VALIDATION** - Fix applied, awaiting next iOS pipeline run
 
 ---
 

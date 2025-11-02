@@ -44,34 +44,55 @@ jobs:
         echo "🔧 Ensuring critical Expo modules are installed..."
         export npm_config_legacy_peer_deps=true
         
-        # Install expo-modules-core and expo-modules-autolinking explicitly
+        # Install expo-modules-core and expo-modules-autolinking explicitly with --save flag
         echo "📦 Installing expo-modules-core and expo-modules-autolinking..."
-        npm install expo-modules-core expo-modules-autolinking --legacy-peer-deps || {
-          echo "⚠️ Direct npm install failed, trying expo install...";
+        npm install expo-modules-core expo-modules-autolinking --legacy-peer-deps --save || {
+          echo "⚠️ npm install with --save failed, trying without --save...";
+          npm install expo-modules-core expo-modules-autolinking --legacy-peer-deps || {
+            echo "❌ Both npm install attempts failed";
+            echo "Listing package.json dependencies:";
+            cat package.json | grep -A 20 "dependencies" || true;
+            exit 1;
+          }
         }
         
-        # Then run expo install to ensure version compatibility
-        CI=1 npx expo install expo-modules-core expo-modules-autolinking || {
-          echo "❌ Failed to install expo modules via expo install";
-          echo "Tip: the failure is often caused by npm peerDependency resolution (ERESOLVE).";
-          echo "For CI we set npm_config_legacy_peer_deps=true so npm accepts legacy peer deps.";
-          echo "Listing node_modules for debugging:"; ls -la node_modules | head -200 || true;
-          exit 1;
-        }
-
-        # Verify critical expo modules exist
-        echo "🔍 Verifying expo-modules-core installation..."
+        echo "✅ npm install completed successfully"
+        
+        # Verify packages are in node_modules BEFORE expo install
+        echo "🔍 Verifying packages in node_modules..."
         if [ ! -d "node_modules/expo-modules-core" ]; then
-          echo "❌ ERROR: expo-modules-core not found in node_modules"
+          echo "❌ ERROR: expo-modules-core not found after npm install"
           echo "Listing node_modules/expo-* directories:"
           ls -la node_modules/expo-* 2>/dev/null || echo "No expo modules found"
           exit 1
         fi
         
-        echo "🔍 Verifying expo-modules-autolinking installation..."
         if [ ! -d "node_modules/expo-modules-autolinking" ]; then
-          echo "❌ ERROR: expo-modules-autolinking not found in node_modules"
+          echo "❌ ERROR: expo-modules-autolinking not found after npm install"
           echo "This is required for Gradle plugin resolution"
+          echo "Listing node_modules/expo-* directories:"
+          ls -la node_modules/expo-* 2>/dev/null || echo "No expo modules found"
+          exit 1
+        fi
+        
+        echo "✅ Both packages verified in node_modules"
+        
+        # Then run expo install for version compatibility (non-fatal if fails)
+        echo "📦 Running expo install for version compatibility..."
+        CI=1 npx expo install expo-modules-core expo-modules-autolinking || {
+          echo "⚠️ WARNING: expo install failed, but packages already installed via npm";
+          echo "Continuing with npm-installed versions...";
+        }
+
+        # Final verification after expo install
+        echo "🔍 Final verification of expo modules..."
+        if [ ! -d "node_modules/expo-modules-core" ]; then
+          echo "❌ ERROR: expo-modules-core disappeared after expo install"
+          exit 1
+        fi
+        
+        if [ ! -d "node_modules/expo-modules-autolinking" ]; then
+          echo "❌ ERROR: expo-modules-autolinking disappeared after expo install"
           exit 1
         fi
 

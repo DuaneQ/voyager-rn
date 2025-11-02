@@ -148,9 +148,16 @@ export class LoginPage extends BasePage {
    * This polls for the email input (best indicator) and returns the element when found.
    */
   async waitForLoginScreen(timeout = 15000): Promise<WebdriverIO.Element | null> {
+    // Increase timeout for iOS in CI - RN bundle loading can take longer
+    const effectiveTimeout = (driver.isIOS && process.env.CI) ? 45000 : timeout;
     const start = Date.now();
     const pollInterval = 500;
-    while (Date.now() - start < timeout) {
+    let attemptCount = 0;
+    
+    console.log(`[LoginPage] waitForLoginScreen: starting (timeout: ${effectiveTimeout}ms, platform: ${driver.isIOS ? 'iOS' : 'Android'})`);
+    
+    while (Date.now() - start < effectiveTimeout) {
+      attemptCount++;
       try {
         const el = await this.findByTestID('login-email-input');
         if (el) {
@@ -162,7 +169,7 @@ export class LoginPage extends BasePage {
               } catch (e) {
                 // ignore - we'll still treat existing as acceptable
               }
-              console.log('[LoginPage] waitForLoginScreen: login email input is present');
+              console.log(`[LoginPage] waitForLoginScreen: login email input found after ${attemptCount} attempts (${Date.now() - start}ms)`);
               return el;
             }
           } catch (e) {
@@ -172,6 +179,12 @@ export class LoginPage extends BasePage {
       } catch (e) {
         // ignore intermittent find errors and retry
       }
+      
+      // Log progress every 5 seconds
+      if (attemptCount % 10 === 0) {
+        console.log(`[LoginPage] waitForLoginScreen: still waiting after ${attemptCount} attempts (${Math.floor((Date.now() - start) / 1000)}s elapsed)`);
+      }
+      
       // If we repeatedly land on the Android launcher or another package, try to start the app
       try {
         if (driver.isAndroid && typeof driver.getCurrentPackage === 'function') {
@@ -203,7 +216,21 @@ export class LoginPage extends BasePage {
       }
       await browser.pause(pollInterval);
     }
-    console.log('[LoginPage] waitForLoginScreen: timed out waiting for login screen');
+    console.log(`[LoginPage] waitForLoginScreen: timed out after ${attemptCount} attempts (${effectiveTimeout}ms)`);
+    
+    // On iOS, try to capture page source for debugging
+    if (driver.isIOS) {
+      try {
+        console.log('[LoginPage] Capturing page source for debugging...');
+        const source = await driver.getPageSource();
+        console.log('[LoginPage] Page source length:', source.length);
+        // Log first 1000 chars to see what's visible
+        console.log('[LoginPage] Page source preview:', source.substring(0, 1000));
+      } catch (e) {
+        console.log('[LoginPage] Could not capture page source:', (e as Error).message);
+      }
+    }
+    
     return null;
   }
 
