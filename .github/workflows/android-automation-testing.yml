@@ -213,59 +213,26 @@ jobs:
 
     - name: Build Android APK
       run: |
-        echo "🏗️ Building Android APK..."
+        echo "🏗️ Building Android APK with comprehensive diagnostics..."
         
         # Clear Gradle cache to prevent stale plugin issues
         echo "🧹 Clearing Gradle cache..."
         rm -rf ~/.gradle/caches/
         rm -rf android/.gradle/
         
-        cd android
-        
-        # Make gradlew executable
-        chmod +x gradlew
-        
-        # Verify Gradle wrapper
-        echo "🔍 Verifying Gradle wrapper..."
-        ./gradlew --version || {
-          echo "❌ ERROR: Gradle wrapper verification failed"
+        # Use dedicated build script with better error capture
+        chmod +x .github/scripts/build-android-debug.sh
+        .github/scripts/build-android-debug.sh || {
+          echo ""
+          echo "=========================================="
+          echo "❌ BUILD SCRIPT FAILED"
+          echo "=========================================="
+          echo ""
+          echo "📋 Uploading full build log as artifact..."
           exit 1
         }
         
-        # List all included projects to verify expo-modules-core is found
-        echo "🔍 Listing Gradle projects..."
-        ./gradlew projects || true
-        
-        # Build with info logging and capture FULL error output
-        echo "🚀 Building APK with full error logging..."
-        ./gradlew assembleDebug --info --stacktrace 2>&1 | tee gradle-build.log || {
-          echo "❌ ERROR: Gradle build failed"
-          echo ""
-          echo "=========================================="
-          echo "📋 LAST 100 LINES OF BUILD OUTPUT:"
-          echo "=========================================="
-          tail -100 gradle-build.log
-          echo ""
-          echo "=========================================="
-          echo "🔍 SEARCHING FOR ERROR PATTERNS:"
-          echo "=========================================="
-          grep -i "error\|exception\|failed\|FAILURE" gradle-build.log | head -50 || echo "No obvious errors found in grep"
-          echo ""
-          echo "=========================================="
-          echo "📋 Checking settings.gradle:"
-          echo "=========================================="
-          cat ../android/settings.gradle || cat settings.gradle || true
-          echo ""
-          echo "=========================================="
-          echo "📋 Checking app/build.gradle (first 100 lines):"
-          echo "=========================================="
-          head -100 app/build.gradle || true
-          echo ""
-          exit 1
-        }
-        
-        cd ..
-        echo "✅ APK build completed"
+        echo "✅ APK build completed successfully"
         
     - name: Verify APK Creation
       run: |
@@ -278,12 +245,21 @@ jobs:
           echo "🔍 Directory structure:"
           ls -R android/app/build/outputs/ 2>/dev/null || echo "build/outputs directory not found"
           echo "🔍 Searching for any APK files..."
-          find android -name "*.apk" -type f
+          find android -name "*.apk" -type f 2>/dev/null || echo "No APK files found"
           exit 1
         fi
         
         echo "✅ APK found at: $APK_PATH"
         ls -lh "$APK_PATH"
+        
+    - name: Upload Gradle Build Log
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: gradle-build-log
+        path: android/gradle-build-full.log
+        retention-days: 5
+        if-no-files-found: warn
 
     - name: Upload APK artifact
       if: always()
@@ -291,13 +267,6 @@ jobs:
       with:
         name: app-debug-apk
         path: android/app/build/outputs/apk/debug/app-debug.apk
-        
-    - name: Upload Gradle build log
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: gradle-build-log
-        path: android/gradle-build.log
 
     - name: Download APK artifact
       uses: actions/download-artifact@v4
