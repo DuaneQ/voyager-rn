@@ -3,24 +3,16 @@
  * Tests itinerary dropdown, mock itineraries display, and user interactions
  */
 
+// Mock both firebase config files
+jest.mock('../../../firebase-config');
+jest.mock('../../config/firebaseConfig');
+
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import SearchPage from '../../pages/SearchPage';
-import { auth } from '../../config/firebaseConfig';
+import { auth } from '../../../firebase-config';
 import * as useAllItinerariesModule from '../../hooks/useAllItineraries';
 import { UserProfileProvider } from '../../context/UserProfileContext';
-
-// Mock dependencies
-jest.mock('../../config/firebaseConfig', () => ({
-  auth: {
-    currentUser: { uid: 'test-user-123' },
-    onAuthStateChanged: jest.fn((callback) => {
-      callback({ uid: 'test-user-123' });
-      return jest.fn(); // Unsubscribe function
-    }),
-  },
-  db: {},
-}));
 
 jest.mock('../../context/AlertContext', () => ({
   useAlert: () => ({

@@ -1,9 +1,14 @@
 /**
  * ItineraryCard Component - Exact replica of PWA ItineraryCard.tsx
  * Mimics Material-UI Card design with React Native components
+ * 
+ * @module components/forms/ItineraryCard
+ * @description Displays an itinerary card with user profile, destination, dates,
+ * description, activities, and like/dislike action buttons. Matches PWA functionality
+ * while using React Native components.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,33 +17,21 @@ import {
   ScrollView,
   Image,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
+import { getStorage, ref, getDownloadURL } from 'firebase/storage';
+import { Itinerary } from '../../types/Itinerary';
+import { ViewProfileModal } from '../modals/ViewProfileModal';
+import { auth } from '../../../firebase-config';
 
 const { width: screenWidth } = Dimensions.get('window');
 
-interface UserInfo {
-  uid: string;
-  email?: string;
-  username?: string;
-}
+const DEFAULT_AVATAR = 'https://firebasestorage.googleapis.com/v0/b/mundo1-dev.appspot.com/o/defaults%2FDEFAULT_AVATAR.png?alt=media';
 
-interface Itinerary {
-  id: string;
-  destination?: string;
-  startDate?: string;
-  endDate?: string;
-  description?: string;
-  activities?: string[];
-  userInfo?: UserInfo;
-  ai_status?: string;
-  aiGenerated?: boolean;
-  response?: any;
-}
-
-interface ItineraryCardProps {
+export interface ItineraryCardProps {
   itinerary: Itinerary;
-  onLike: (itinerary: Itinerary) => void;
-  onDislike: (itinerary: Itinerary) => void;
+  onLike: (itinerary: Itinerary) => Promise<void>;
+  onDislike: (itinerary: Itinerary) => Promise<void>;
   onEdit?: (itinerary: Itinerary) => void;
   onDelete?: (itinerary: Itinerary) => void;
   showEditDelete?: boolean;
@@ -48,17 +41,51 @@ const ItineraryCard: React.FC<ItineraryCardProps> = ({
   itinerary,
   onLike,
   onDislike,
+  onEdit,
+  onDelete,
   showEditDelete = false,
 }) => {
   const [viewProfileOpen, setViewProfileOpen] = useState(false);
+  const [processingReaction, setProcessingReaction] = useState(false);
+  const [profilePhoto, setProfilePhoto] = useState<string>(DEFAULT_AVATAR);
+  const currentUserId = auth.currentUser?.uid;
 
-  // Fix timezone issue by creating date at noon UTC (same as PWA)
-  const startDate = itinerary.startDate
-    ? new Date(itinerary.startDate + "T12:00:00.000Z").toLocaleDateString()
-    : "N/A";
-  const endDate = itinerary.endDate
-    ? new Date(itinerary.endDate + "T12:00:00.000Z").toLocaleDateString()
-    : "N/A";
+  // Load profile photo from Firebase Storage
+  useEffect(() => {
+    const loadProfilePhoto = async () => {
+      if (!itinerary.userInfo?.uid) return;
+      
+      try {
+        const storage = getStorage();
+        const photoRef = ref(storage, `users/${itinerary.userInfo.uid}/profile/slot_0`);
+        const url = await getDownloadURL(photoRef);
+        setProfilePhoto(url);
+      } catch (error) {
+        // Use default avatar if photo doesn't exist
+        console.log('Profile photo not found, using default');
+      }
+    };
+
+    loadProfilePhoto();
+  }, [itinerary.userInfo?.uid]);
+
+  // Robust date parsing: accept Date instances, epoch numbers, ISO datetimes, or YYYY-MM-DD
+  const parseToDate = (val: any): Date | null => {
+    if (!val && val !== 0) return null;
+    if (val instanceof Date) return val;
+    if (typeof val === 'number') return new Date(val);
+    if (typeof val === 'string' && /^\d+$/.test(val)) return new Date(Number(val));
+    if (typeof val === 'string') {
+      if (val.includes('T')) return new Date(val);
+      return new Date(val + 'T12:00:00.000Z');
+    }
+    return null;
+  };
+
+  const _start = parseToDate(itinerary.startDate);
+  const _end = parseToDate(itinerary.endDate);
+  const startDate = _start ? _start.toLocaleDateString() : 'N/A';
+  const endDate = _end ? _end.toLocaleDateString() : 'N/A';
 
   // Get activities - for AI itineraries, extract from nested structure (same logic as PWA)
   const getActivities = (): string[] => {
@@ -98,12 +125,13 @@ const ItineraryCard: React.FC<ItineraryCardProps> = ({
           <TouchableOpacity 
             style={styles.avatarButton}
             onPress={() => setViewProfileOpen(true)}
+            disabled={!itinerary.userInfo?.uid}
           >
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {(itinerary.userInfo?.username || "A").charAt(0).toUpperCase()}
-              </Text>
-            </View>
+            <Image
+              source={{ uri: profilePhoto }}
+              style={styles.avatar}
+              defaultSource={require('../../../assets/images/DEFAULT_AVATAR.png')}
+            />
           </TouchableOpacity>
           <Text style={styles.username}>
             {itinerary.userInfo?.username || "Anonymous"}
@@ -150,20 +178,80 @@ const ItineraryCard: React.FC<ItineraryCardProps> = ({
 
       {/* Action Buttons - Matching PWA CardActions with like/dislike icons */}
       <View style={styles.cardActions}>
-        <TouchableOpacity 
-          style={styles.dislikeButton}
-          onPress={() => onDislike(itinerary)}
-        >
-          <Text style={styles.dislikeIcon}>✕</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.likeButton}
-          onPress={() => onLike(itinerary)}
-        >
-          <Text style={styles.likeIcon}>♡</Text>
-        </TouchableOpacity>
+        {showEditDelete && currentUserId === itinerary.userInfo?.uid ? (
+          <>
+            {/* Edit/Delete buttons for own itineraries */}
+            <TouchableOpacity 
+              style={styles.editButton}
+              onPress={() => onEdit?.(itinerary)}
+            >
+              <Text style={styles.editIcon}>✏️</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.deleteButton}
+              onPress={() => onDelete?.(itinerary)}
+            >
+              <Text style={styles.deleteIcon}>🗑️</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            {/* Like/Dislike buttons for other itineraries */}
+            <TouchableOpacity 
+              style={styles.dislikeButton}
+              onPress={async () => {
+                if (processingReaction) return;
+                try {
+                  setProcessingReaction(true);
+                  await onDislike(itinerary);
+                } catch (err) {
+                  console.error('Error disliking itinerary:', err);
+                } finally {
+                  setProcessingReaction(false);
+                }
+              }}
+              disabled={processingReaction}
+            >
+              {processingReaction ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.dislikeIcon}>✕</Text>
+              )}
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.likeButton}
+              onPress={async () => {
+                if (processingReaction) return;
+                try {
+                  setProcessingReaction(true);
+                  await onLike(itinerary);
+                } catch (err) {
+                  console.error('Error liking itinerary:', err);
+                } finally {
+                  setProcessingReaction(false);
+                }
+              }}
+              disabled={processingReaction}
+            >
+              {processingReaction ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.likeIcon}>♡</Text>
+              )}
+            </TouchableOpacity>
+          </>
+        )}
       </View>
+
+      {/* ViewProfileModal for read-only profile view */}
+      {itinerary.userInfo?.uid && (
+        <ViewProfileModal
+          visible={viewProfileOpen}
+          onClose={() => setViewProfileOpen(false)}
+          userId={itinerary.userInfo.uid}
+        />
+      )}
     </View>
   );
 };
@@ -209,16 +297,13 @@ const styles = StyleSheet.create({
     marginRight: screenWidth < 600 ? 8 : 16,
   },
 
-  // Avatar - Matching PWA Avatar sx
+  // Avatar - Matching PWA Avatar sx (now using Image component)
   avatar: {
     width: screenWidth < 600 ? 40 : 56,
     height: screenWidth < 600 ? 40 : 56,
     borderRadius: screenWidth < 600 ? 20 : 28,
-    backgroundColor: '#1976d2', // Material-UI primary color
     borderWidth: 2,
     borderColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
 
   avatarText: {
@@ -320,6 +405,34 @@ const styles = StyleSheet.create({
     borderTopColor: 'rgba(0, 0, 0, 0.12)', // Material-UI divider color
   },
 
+  editButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#1976d2', // Material-UI primary color
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+
+  deleteButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#d32f2f', // Material-UI error color
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+
   dislikeButton: {
     width: 56,
     height: 56,
@@ -346,6 +459,16 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 5,
+  },
+
+  editIcon: {
+    fontSize: 24,
+    color: '#fff',
+  },
+
+  deleteIcon: {
+    fontSize: 24,
+    color: '#fff',
   },
 
   dislikeIcon: {

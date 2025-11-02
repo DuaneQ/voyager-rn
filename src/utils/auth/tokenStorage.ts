@@ -7,7 +7,7 @@ try {
   SecureStore = null;
 }
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import storage from '../storage';
 import { AuthTokens } from '../../types/auth';
 
 const KEY = 'AUTH_TOKENS_V1';
@@ -24,8 +24,8 @@ export const secureTokenStorage: TokenStorage = {
       const raw = await SecureStore.getItemAsync(KEY);
       if (raw) return JSON.parse(raw) as AuthTokens;
     } catch (e) {
-      // fallback
-      const raw = await AsyncStorage.getItem(KEY);
+      // fallback to cross-platform storage wrapper
+      const raw = await storage.getItem(KEY);
       return raw ? JSON.parse(raw) : null;
     }
     return null;
@@ -34,14 +34,14 @@ export const secureTokenStorage: TokenStorage = {
     try {
       await SecureStore.setItemAsync(KEY, JSON.stringify(tokens));
     } catch (e) {
-      await AsyncStorage.setItem(KEY, JSON.stringify(tokens));
+      await storage.setItem(KEY, JSON.stringify(tokens));
     }
   },
   async clear() {
     try {
       await SecureStore.deleteItemAsync(KEY);
     } catch (e) {
-      await AsyncStorage.removeItem(KEY);
+      await storage.removeItem(KEY);
     }
   },
 };

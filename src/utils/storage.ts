@@ -18,7 +18,19 @@
  */
 
 import { Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Try to load the community AsyncStorage native module. In some dev/test
+// environments the native module may not be available (Expo managed web-only,
+// or a mislinked native dependency). In that case fall back to an in-memory
+// implementation so the app can continue to run and tests/dev flows don't blow
+// up with `Native module not found` errors.
+let nativeAsyncStorage: any = null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  nativeAsyncStorage = require('@react-native-async-storage/async-storage');
+} catch (e) {
+  // leave nativeAsyncStorage as null and we'll use the fallback below
+}
 
 /**
  * Web localStorage wrapper to match AsyncStorage's async API
@@ -64,12 +76,48 @@ const webStorage = {
 /**
  * Platform-aware storage that matches PWA's localStorage usage pattern
  */
-const storage = Platform.OS === 'web' ? webStorage : AsyncStorage;
+// In order of preference:
+// 1. Web -> localStorage wrapper
+// 2. Native AsyncStorage (if available)
+// 3. In-memory fallback (safe no-op persistence for environments without native modules)
+const inMemoryStore = new Map<string, string>();
+
+const memoryStorage = {
+  async getItem(key: string): Promise<string | null> {
+    return inMemoryStore.has(key) ? (inMemoryStore.get(key) as string) : null;
+  },
+  async setItem(key: string, value: string): Promise<void> {
+    inMemoryStore.set(key, value);
+  },
+  async removeItem(key: string): Promise<void> {
+    inMemoryStore.delete(key);
+  },
+  async clear(): Promise<void> {
+    inMemoryStore.clear();
+  },
+};
+
+// Choose storage implementation only if it provides the expected async methods.
+const candidateNative = nativeAsyncStorage ? (nativeAsyncStorage.default || nativeAsyncStorage) : null;
+const hasAsyncApi = candidateNative && typeof candidateNative.getItem === 'function' && typeof candidateNative.setItem === 'function';
+
+const storage = Platform.OS === 'web' ? webStorage : (hasAsyncApi ? candidateNative : memoryStorage);
 
 export default storage;
 
 // Named exports for convenience
-export const getItem = storage.getItem.bind(storage);
-export const setItem = storage.setItem.bind(storage);
-export const removeItem = storage.removeItem.bind(storage);
-export const clear = storage.clear.bind(storage);
+export const getItem = async (key: string): Promise<string | null> => {
+  return storage.getItem ? storage.getItem(key) : null;
+};
+
+export const setItem = async (key: string, value: string): Promise<void> => {
+  if (storage.setItem) return storage.setItem(key, value);
+};
+
+export const removeItem = async (key: string): Promise<void> => {
+  if (storage.removeItem) return storage.removeItem(key);
+};
+
+export const clear = async (): Promise<void> => {
+  if (storage.clear) return storage.clear();
+};
