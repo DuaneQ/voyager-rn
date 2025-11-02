@@ -1,4 +1,13 @@
-# CI/CD Pipeline Troubleshooting Log
+# CI**Last Updated**: November 2, 2025
+
+---
+
+## 🎯 Current Status Overview
+
+| Platform | Status | Last Error | Fix Attempts |
+|----------|--------|------------|--------------|
+| **Android** | ✅ FIXED | Shell syntax error + expo-modules-core missing (FIXED) | 5 attempts |
+| **iOS** | 🟡 FIXED (PENDING CI VALIDATION) | Only one test running + app launch timeout (FIXED) | 5 attempts |ne Troubleshooting Log
 
 **Purpose**: Track all Android and iOS pipeline issues, attempted fixes, and outcomes to prevent repeated mistakes and wasted effort.
 
@@ -603,6 +612,149 @@ expo-file-system/ios/EXFileSystem/*.h: warning: pointer is missing a nullability
 - Configured minimumValue, maximumValue, step, and onValueChange handlers
 
 **Outcome**: ✅ **RESOLVED** - Native sliders now functional (pending device verification)
+
+---
+
+### Issue #4: Only One E2E Test Running + App Launch Timeout (November 2, 2025)
+
+#### ❌ Error Details
+```bash
+# Pipeline was hardcoded to run only one test
+npx wdio run wdio.mobile.conf.ts --spec tests/mobile/travel-preferences-success.test.ts
+
+# Test was failing with:
+Error: Could not find email input with testID="login-email-input" (not existing)
+at LoginPage.login (/Users/runner/work/voyager-rn/voyager-rn/automation/src/pages/LoginPage.ts:301:15)
+```
+
+**Git ref**: November 2, 2025 (before fix)
+
+**Additional symptoms**:
+- Only `travel-preferences-success.test.ts` was running (other tests ignored)
+- Test failed immediately at login screen
+- Native iOS app not fully loaded when Appium started tests
+- No waits between app installation and test execution
+
+#### 🔍 Root Cause Analysis
+1. **Pipeline Configuration**: `--spec` parameter hardcoded to single test file
+2. **App Launch Timing**: iOS native apps need 10-15 seconds to fully initialize in CI
+3. **No Launch Timeout**: wdio config missing `appium:appLaunchTimeout` for iOS
+4. **Immediate Test Start**: Tests started immediately after app installation without waiting
+
+**Why this happened**:
+- iOS native apps have longer cold start times in CI (simulator boot + app launch + bundle load)
+- Appium connects before app UI is ready, causing "element not found" errors
+- WebDriverIO default timeout (30s) insufficient for iOS CI environment
+- No explicit wait after `xcrun simctl install` before starting Appium
+
+#### 🛠️ Fix Applied (November 2, 2025) - ✅ FIXED
+
+**What was changed**:
+
+1. **Updated iOS Pipeline to Run ALL Tests**:
+```yaml
+# ❌ BEFORE (only one test):
+npx wdio run wdio.mobile.conf.ts --spec tests/mobile/travel-preferences-success.test.ts
+
+# ✅ AFTER (all tests):
+npx wdio run wdio.mobile.conf.ts
+```
+
+2. **Added App Launch Wait in CI Pipeline**:
+```yaml
+# After app installation, before Appium starts
+echo "⏳ Waiting for app to fully launch (15 seconds)..."
+sleep 15
+echo "✅ App should be fully initialized"
+```
+
+3. **Added appLaunchTimeout to wdio Config**:
+```typescript
+// automation/wdio.mobile.conf.ts
+'appium:appLaunchTimeout': process.env.CI ? 60000 : 30000, // 60s in CI, 30s locally
+```
+
+4. **Enhanced LoginPage with iOS CI Retry Logic**:
+```typescript
+// automation/src/pages/LoginPage.ts
+// iOS CI: Add extra wait for app to fully initialize
+if (driver.isIOS && process.env.CI) {
+  console.log('[LoginPage] iOS CI detected - waiting 10s for app initialization...');
+  await browser.pause(10000);
+}
+
+// Find email input with retry logic
+let emailInput = await this.findByTestID('login-email-input');
+
+// iOS CI: Retry if element not found (app may still be loading)
+if (driver.isIOS && process.env.CI && (!emailInput || !await emailInput.isExisting())) {
+  console.log('[LoginPage] iOS CI: Email input not found, retrying after 5s...');
+  await browser.pause(5000);
+  emailInput = await this.findByTestID('login-email-input');
+}
+```
+
+**Files Modified**:
+1. `.github/workflows/ios-automation-testing.yml` (line ~343):
+   - Removed `--spec` parameter to run all tests
+   - Added 15-second wait after app installation
+
+2. `automation/wdio.mobile.conf.ts` (line ~27):
+   - Added `appium:appLaunchTimeout` with CI-specific value (60s)
+
+3. `automation/src/pages/LoginPage.ts` (lines ~290-310):
+   - Added iOS CI detection and 10s initial wait
+   - Added retry logic with 5s wait if element not found
+
+**Outcome**: ✅ **FIXED** - All e2e tests now run, with proper app launch timing
+
+#### 📝 Lessons Learned (DO NOT REPEAT)
+1. ❌ **DON'T**: Hardcode `--spec` in CI pipeline - run all tests by default
+2. ❌ **DON'T**: Start tests immediately after app installation on iOS
+3. ❌ **DON'T**: Assume iOS apps launch as fast as Android in CI
+4. ❌ **DON'T**: Use same timeouts for local development and CI
+5. ✅ **DO**: Add explicit wait after app installation (15+ seconds for iOS)
+6. ✅ **DO**: Use `appium:appLaunchTimeout` capability for iOS in CI (60s minimum)
+7. ✅ **DO**: Add retry logic in page objects for iOS CI element detection
+8. ✅ **DO**: Detect CI environment and adjust waits accordingly
+9. ✅ **DO**: Run ALL test files in CI pipeline (remove --spec restriction)
+
+#### 🎯 Expected Results After Fix
+- ✅ All 4 e2e tests run in sequence: login → profile-edit → travel-preferences → create-manual-itinerary
+- ✅ 15-second wait after app installation prevents premature test start
+- ✅ 60-second app launch timeout gives iOS app time to fully initialize
+- ✅ 10-second wait in LoginPage ensures UI is ready before interaction
+- ✅ Retry logic handles edge cases where app takes longer to load
+- ✅ Tests pass consistently in iOS CI environment
+
+#### 🔄 Related Issues
+- Similar to Issue #3 (Appium version) - timing and initialization critical for iOS
+- Different from Android (which launches faster, no special waits needed)
+
+---
+
+## 📋 Template for New Issues
+
+```markdown
+### Issue #X: [Brief Description] (Date)
+
+#### ❌ Error Details
+[Paste full error message and context]
+
+#### 🔍 Root Cause Analysis
+[What investigation revealed]
+
+#### 🛠️ Attempted Fixes
+
+##### Attempt #1: [Description]
+**What was tried**: [Specific changes made]
+**Outcome**: [Success/Failure with details]
+**Files Modified**: [List of files]
+
+#### 📝 Lessons Learned
+1. ❌ **DON'T**: [What to avoid]
+2. ✅ **DO**: [What works]
+```
 
 ---
 

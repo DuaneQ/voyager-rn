@@ -197,28 +197,13 @@ jobs:
           sleep 30
           echo "📱 Checking emulator status..."
           adb devices -l
-          
+          echo "📦 Preparing to install APK..."
           APK_DOWNLOAD_PATH="./android-app-apk/app-debug.apk"
           APK_BUILT_PATH="android/app/build/outputs/apk/debug/app-debug.apk"
-          
-          if [ -f "$APK_DOWNLOAD_PATH" ]; then
-            APK="$APK_DOWNLOAD_PATH"
-          else
-            APK="$APK_BUILT_PATH"
-          fi
-          
+          if [ -f "$APK_DOWNLOAD_PATH" ]; then APK="$APK_DOWNLOAD_PATH"; else APK="$APK_BUILT_PATH"; fi
           echo "📦 Installing APK: $APK"
-          if [ ! -f "$APK" ]; then
-            echo "❌ ERROR: APK not found at: $APK"
-            echo "🔍 Directory listing (downloaded):"
-            ls -R ./android-app-apk 2>/dev/null || true
-            echo "🔍 Directory listing (built):"
-            ls -R android/app/build/outputs/ 2>/dev/null || true
-            exit 1
-          fi
-          
+          if [ ! -f "$APK" ]; then echo "❌ ERROR: APK not found at: $APK"; echo "🔍 Directory listing (downloaded):"; ls -R ./android-app-apk 2>/dev/null || true; echo "🔍 Directory listing (built):"; ls -R android/app/build/outputs/ 2>/dev/null || true; exit 1; fi
           adb install "$APK"
-          
           echo "✅ Verifying app installation..."
           adb shell pm list packages | grep com.voyager.rn || true
 

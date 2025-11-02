@@ -205,6 +205,11 @@ jobs:
         }
         echo "✅ iOS app built and installed successfully"
         
+        # Wait for app to fully launch - critical for iOS native apps in CI
+        echo "⏳ Waiting for app to fully launch (15 seconds)..."
+        sleep 15
+        echo "✅ App should be fully initialized"
+        
     - name: Install Automation Dependencies
       run: |
         cd automation
@@ -340,9 +345,10 @@ jobs:
         echo "🚀 Starting iOS automation tests..."
         export PLATFORM=ios
         export CI=true
-        # Run the specific travel-preferences test that exists in the repository.
-        # The test file was renamed to travel-preferences-success.test.ts; use the exact path.
-        npx wdio run wdio.mobile.conf.ts --spec tests/mobile/travel-preferences-success.test.ts
+        # Run ALL mobile e2e tests instead of just one test file
+        # Tests will run in sequence: login, profile-edit, travel-preferences, create-manual-itinerary
+        echo "📋 Running all iOS e2e tests..."
+        npx wdio run wdio.mobile.conf.ts
         
     - name: Capture test artifacts on failure
       if: failure()

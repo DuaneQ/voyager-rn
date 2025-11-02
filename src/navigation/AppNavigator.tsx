@@ -31,7 +31,7 @@ const Tab = createBottomTabNavigator();
 // Bottom Tab Navigator (replicates BottomNav from PWA)
 const MainTabNavigator: React.FC = () => {
   return (
-        <Tab.Navigator
+    <Tab.Navigator
       id={undefined}
       screenOptions={({ route }: { route: any }) => ({
         tabBarIcon: ({ focused, color, size }: any) => {
@@ -43,7 +43,7 @@ const MainTabNavigator: React.FC = () => {
             iconName = focused ? 'chatbubble' : 'chatbubble-outline';
           } else if (route.name === 'Profile') {
             iconName = focused ? 'person' : 'person-outline';
-          } else if (route.name === 'VideoFeed') {
+          } else if (route.name === 'Videos') {
             iconName = focused ? 'play-circle' : 'play-circle-outline';
           } else {
             iconName = 'help-outline';
@@ -54,6 +54,13 @@ const MainTabNavigator: React.FC = () => {
         tabBarActiveTintColor: '#1976d2',
         tabBarInactiveTintColor: 'gray',
         headerShown: false,
+        // Make tab bar transparent on video feed page
+        tabBarStyle: route.name === 'Videos' ? {
+          position: 'absolute',
+          backgroundColor: 'transparent',
+          borderTopWidth: 0,
+          elevation: 0,
+        } : undefined,
       })}
     >
       <Tab.Screen 
