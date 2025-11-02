@@ -14,6 +14,12 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
+    - name: Clean committed iOS directory
+      run: |
+        echo "🧹 Removing committed ios directory (will be regenerated)..."
+        rm -rf ios
+        echo "✅ Clean complete - expo prebuild will regenerate fresh iOS project"
+      
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
@@ -96,9 +102,9 @@ jobs:
       run: |
         cd ios
         
-        # Verify workspace exists
-        if [ ! -d "Traval.xcworkspace" ]; then
-          echo "ERROR: Traval.xcworkspace not found"
+        # Verify workspace exists (name changed to TravalPass after regeneration)
+        if [ ! -d "TravalPass.xcworkspace" ]; then
+          echo "ERROR: TravalPass.xcworkspace not found"
           echo "Available files in ios directory:"
           ls -la
           echo ""
@@ -117,8 +123,8 @@ jobs:
         # Use absolute derivedDataPath to ensure consistent build location
         BUILD_DIR="$(pwd)/build"
         
-        xcodebuild -workspace Traval.xcworkspace \
-          -scheme Traval \
+        xcodebuild -workspace TravalPass.xcworkspace \
+          -scheme TravalPass \
           -configuration Debug \
           -sdk iphonesimulator \
           -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
@@ -126,13 +132,13 @@ jobs:
           build || {
           echo "ERROR: Xcode build failed"
           echo "Available schemes:"
-          xcodebuild -workspace Traval.xcworkspace -list
+          xcodebuild -workspace TravalPass.xcworkspace -list
           exit 1
         }
         
         # Research-based solution: Use standard Xcode build products path structure
         # Debug-iphonesimulator apps are located at: Build/Products/Debug-iphonesimulator/
-        EXPECTED_APP_PATH="$BUILD_DIR/Build/Products/Debug-iphonesimulator/Traval.app"
+        EXPECTED_APP_PATH="$BUILD_DIR/Build/Products/Debug-iphonesimulator/TravalPass.app"
         
         # Verify the expected path exists first
         if [ -d "$EXPECTED_APP_PATH" ]; then
@@ -143,10 +149,10 @@ jobs:
           echo "🔍 Searching entire build directory..."
           
           # Fallback: search the entire build directory
-          APP_PATH=$(find "$BUILD_DIR" -name "Traval.app" -type d | head -1)
+          APP_PATH=$(find "$BUILD_DIR" -name "TravalPass.app" -type d | head -1)
           
           if [ -z "$APP_PATH" ]; then
-            echo "❌ ERROR: No Traval.app bundle found after build"
+            echo "❌ ERROR: No TravalPass.app bundle found after build"
             echo "Build directory structure:"
             echo "==========================="
             find "$BUILD_DIR" -type d -name "*.app" 2>/dev/null || echo "No .app directories found"
@@ -219,7 +225,7 @@ jobs:
         
         # Verify app is still running after initial wait
         echo "🔍 Verifying app is running..."
-        APP_PID=$(xcrun simctl spawn "$SIMULATOR_ID" ps aux | grep -i "Traval" | grep -v grep | awk '{print $2}' | head -1)
+        APP_PID=$(xcrun simctl spawn "$SIMULATOR_ID" ps aux | grep -i "TravalPass" | grep -v grep | awk '{print $2}' | head -1)
         if [ -z "$APP_PID" ]; then
           echo "⚠️ WARNING: App process not found after launch, attempting relaunch..."
           xcrun simctl launch "$SIMULATOR_ID" com.voyager.rn || true
@@ -237,16 +243,16 @@ jobs:
         
         # Get app process status
         echo "App process status:" > automation/logs/launch-diagnostics/app-status.txt
-        xcrun simctl spawn "$SIMULATOR_ID" ps aux | grep -i traval >> automation/logs/launch-diagnostics/app-status.txt || true
+        xcrun simctl spawn "$SIMULATOR_ID" ps aux | grep -i TravalPass >> automation/logs/launch-diagnostics/app-status.txt || true
         
         # Check for any crash logs immediately after launch
         echo "🔍 Checking for early crash logs..."
-        CRASH_LOGS=$(find ~/Library/Logs/DiagnosticReports -name "*Traval*" -mmin -2 2>/dev/null || true)
+        CRASH_LOGS=$(find ~/Library/Logs/DiagnosticReports -name "*TravalPass*" -mmin -2 2>/dev/null || true)
         if [ -n "$CRASH_LOGS" ]; then
           echo "⚠️ WARNING: Found recent crash logs:"
           echo "$CRASH_LOGS"
           mkdir -p automation/logs/crash-logs
-          cp ~/Library/Logs/DiagnosticReports/*Traval* automation/logs/crash-logs/ 2>/dev/null || true
+          cp ~/Library/Logs/DiagnosticReports/*TravalPass* automation/logs/crash-logs/ 2>/dev/null || true
         fi
         
         echo "✅ Launch diagnostics captured"
@@ -383,9 +389,9 @@ jobs:
           echo "Bundle identifier: $(plutil -extract CFBundleIdentifier raw \"$APP_PATH/Info.plist\" 2>/dev/null || echo 'Could not read')"
         fi
         
-        # Verify app is running before tests start
-        echo "🔍 Checking if app is running..."
-        APP_RUNNING=$(xcrun simctl spawn "$SIMULATOR_ID" ps aux | grep -i traval | grep -v grep || echo "")
+        # Check app is running before tests start
+          echo "🔍 Checking if app is running..."
+          APP_RUNNING=$(xcrun simctl spawn "$SIMULATOR_ID" ps aux | grep -i TravalPass | grep -v grep || echo "")
         if [ -z "$APP_RUNNING" ]; then
           echo "⚠️ WARNING: App doesn't appear to be running, attempting to launch..."
           xcrun simctl launch "$SIMULATOR_ID" com.voyager.rn || true
@@ -460,7 +466,7 @@ jobs:
           xcrun simctl listapps "$SIMULATOR_ID" > "automation/logs/installed-apps.txt" 2>/dev/null || echo "Failed to list apps"
           
           echo "Checking app process status..."
-          xcrun simctl spawn "$SIMULATOR_ID" ps aux | grep -i traval > automation/logs/app-processes.txt 2>&1 || echo "No Traval processes found"
+          xcrun simctl spawn "$SIMULATOR_ID" ps aux | grep -i TravalPass > automation/logs/app-processes.txt 2>&1 || echo "No TravalPass processes found"
         fi
         
         # Copy Appium logs if they exist
