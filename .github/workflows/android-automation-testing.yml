@@ -192,16 +192,10 @@ jobs:
           exit 1
         fi
         
-        # Verify app/build.gradle applies the plugin
-        echo "🔍 Verifying app/build.gradle applies ExpoModulesCorePlugin..."
-        if grep -q "ExpoModulesCorePlugin.gradle" android/app/build.gradle; then
-          echo "✅ app/build.gradle applies ExpoModulesCorePlugin"
-        else
-          echo "❌ ERROR: app/build.gradle does NOT apply ExpoModulesCorePlugin"
-          echo "First 20 lines of app/build.gradle:"
-          head -20 android/app/build.gradle
-          exit 1
-        fi
+        # Apply ExpoModulesCorePlugin if not already present (prebuild may not add it)
+        echo "� Patching app/build.gradle to include ExpoModulesCorePlugin..."
+        chmod +x .github/scripts/patch-android-build.sh
+        .github/scripts/patch-android-build.sh
           ls -la "$GRADLE_PLUGIN_PATH" || true
         fi
         
