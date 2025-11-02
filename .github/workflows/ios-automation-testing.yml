@@ -205,10 +205,29 @@ jobs:
         }
         echo "✅ iOS app built and installed successfully"
         
-        # Wait for app to fully launch - critical for iOS native apps in CI
-        echo "⏳ Waiting for app to fully launch (15 seconds)..."
-        sleep 15
+        # Launch the app explicitly and wait for it to initialize
+        echo "🚀 Launching app explicitly on simulator..."
+        xcrun simctl launch "$SIMULATOR_ID" com.voyager.rn || {
+          echo "⚠️ WARNING: App launch command failed, but continuing..."
+        }
+        
+        # Wait longer for React Native bundle to load and app to fully initialize
+        echo "⏳ Waiting for React Native bundle to load (30 seconds)..."
+        sleep 30
         echo "✅ App should be fully initialized"
+        
+        # Capture initial app state for debugging
+        echo "📸 Capturing initial app state..."
+        mkdir -p automation/logs/launch-diagnostics
+        
+        # Take screenshot of initial state
+        xcrun simctl io "$SIMULATOR_ID" screenshot "automation/logs/launch-diagnostics/initial-state.png" || true
+        
+        # Get app process status
+        echo "App process status:" > automation/logs/launch-diagnostics/app-status.txt
+        xcrun simctl spawn "$SIMULATOR_ID" ps aux | grep -i traval >> automation/logs/launch-diagnostics/app-status.txt || true
+        
+        echo "✅ Launch diagnostics captured"
         
     - name: Install Automation Dependencies
       run: |
@@ -341,6 +360,17 @@ jobs:
         if [ -f "$APP_PATH/Info.plist" ]; then
           echo "Bundle identifier: $(plutil -extract CFBundleIdentifier raw \"$APP_PATH/Info.plist\" 2>/dev/null || echo 'Could not read')"
         fi
+        
+        # Verify app is running before tests start
+        echo "🔍 Checking if app is running..."
+        APP_RUNNING=$(xcrun simctl spawn "$SIMULATOR_ID" ps aux | grep -i traval | grep -v grep || echo "")
+        if [ -z "$APP_RUNNING" ]; then
+          echo "⚠️ WARNING: App doesn't appear to be running, attempting to launch..."
+          xcrun simctl launch "$SIMULATOR_ID" com.voyager.rn || true
+          sleep 10
+        else
+          echo "✅ App is running"
+        fi
 
         echo "🚀 Starting iOS automation tests..."
         export PLATFORM=ios
@@ -348,7 +378,19 @@ jobs:
         # Run ALL mobile e2e tests instead of just one test file
         # Tests will run in sequence: login, profile-edit, travel-preferences, create-manual-itinerary
         echo "📋 Running all iOS e2e tests..."
-        npx wdio run wdio.mobile.conf.ts
+        npx wdio run wdio.mobile.conf.ts || {
+          echo "❌ Tests failed, capturing post-failure diagnostics..."
+          
+          # Capture screenshot after test failure
+          mkdir -p logs/test-failure
+          xcrun simctl io "$SIMULATOR_ID" screenshot "logs/test-failure/failure-state.png" || true
+          
+          # Capture app process state
+          echo "App process after failure:" > logs/test-failure/app-status-after.txt
+          xcrun simctl spawn "$SIMULATOR_ID" ps aux | grep -i traval >> logs/test-failure/app-status-after.txt || true
+          
+          exit 1
+        }
         
     - name: Capture test artifacts on failure
       if: failure()

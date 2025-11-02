@@ -6,7 +6,7 @@
 
 | Platform | Status | Last Error | Fix Attempts |
 |----------|--------|------------|--------------|
-| **Android** | ✅ FIXED | Shell syntax error + expo-modules-core missing (FIXED) | 5 attempts |
+| **Android** | 🔧 FIXING | Gradle plugin not found + expo-modules-core config error (IN PROGRESS) | 6 attempts |
 | **iOS** | 🟡 FIXED (PENDING CI VALIDATION) | Only one test running + app launch timeout (FIXED) | 5 attempts |ne Troubleshooting Log
 
 **Purpose**: Track all Android and iOS pipeline issues, attempted fixes, and outcomes to prevent repeated mistakes and wasted effort.
@@ -246,6 +246,131 @@ fi
 
 
 
+
+---
+
+### Issue #4: Gradle Plugin Resolution Failure (November 1, 2025)
+
+#### ❌ Error Details
+```bash
+FAILURE: Build completed with 2 failures.
+
+1: Task failed with an exception.
+* Where:
+Build file '/home/runner/work/voyager-rn/voyager-rn/node_modules/expo-clipboard/android/build.gradle' line: 3
+
+* What went wrong:
+Plugin [id: 'expo-module-gradle-plugin'] was not found in any of the following sources:
+- Gradle Core Plugins (not a core plugin)
+- Included Builds (None of the included builds contain this plugin)
+- Plugin Repositories (plugin dependency must include a version number for this source)
+
+2: Task failed with an exception.
+* Where:
+Script '/home/runner/work/voyager-rn/voyager-rn/node_modules/expo-modules-core/android/ExpoModulesCorePlugin.gradle' line: 85
+
+* What went wrong:
+A problem occurred configuring project ':expo'.
+> Could not get unknown property 'release' for SoftwareComponent container
+```
+
+**Git ref**: Current (November 1, 2025)
+
+**Additional Symptoms**:
+- expo-clipboard can't find expo-module-gradle-plugin
+- expo-modules-core Gradle script fails on property 'release'
+- Build completes prebuild but fails during assembleDebug
+- expo-modules-core exists in node_modules but Gradle can't find it
+
+#### 🔍 Root Cause Analysis
+1. **Missing expo-modules-autolinking**: Required for Gradle to discover Expo module plugins
+2. **Incomplete Gradle Plugin Resolution**: expo-modules-core plugin files not properly linked in Gradle
+3. **Stale Gradle Cache**: Previous builds may have cached broken plugin state
+4. **Prebuild Success != Gradle Ready**: expo prebuild succeeds but doesn't fully prepare Gradle plugins
+
+**Why this happened**:
+- expo-modules-autolinking is a critical peer dependency that links Expo modules to Gradle
+- Without it, Gradle can't find expo-module-gradle-plugin even if expo-modules-core is installed
+- The plugin resolution happens at Gradle configuration time, not npm install time
+- Stale Gradle caches can prevent proper plugin discovery even after fixing npm dependencies
+
+#### 🛠️ Fix Applied (November 1, 2025) - ⏳ IN PROGRESS
+
+**What was changed**:
+1. **Added expo-modules-autolinking installation** alongside expo-modules-core
+2. **Enhanced dependency verification** to check for autolinking module
+3. **Added Gradle cache clearing** before build to prevent stale plugin issues
+4. **Enhanced prebuild verification** to check for Gradle plugin files and settings.gradle
+5. **Added Gradle project listing** to verify modules are discovered
+6. **Enhanced error logging** with settings.gradle and build.gradle dumps on failure
+
+**Changes Made**:
+
+```yaml
+# Install dependencies step (lines ~25-75):
+- Added expo-modules-autolinking to explicit install list
+- Verify both expo-modules-core AND expo-modules-autolinking exist
+- Check autolinking is critical for Gradle plugin resolution
+
+# Generate Android Project step (lines ~105-155):
+- Added expo-modules-autolinking pre-check before prebuild
+- Enhanced prebuild error handling with gradle file listing
+- Verify Gradle plugin files exist after prebuild
+- Check settings.gradle includes expo-modules-core
+
+# Build Android APK step (lines ~157-185):
+- Clear Gradle caches (~/.gradle/caches/ and android/.gradle/)
+- Verify Gradle wrapper before build
+- List Gradle projects to confirm module discovery
+- Enhanced error logging with stacktrace and config dumps
+```
+
+**Rationale**:
+- expo-modules-autolinking is the missing link between npm packages and Gradle
+- Gradle plugin resolution requires both the plugin files AND the autolinking configuration
+- Clearing Gradle cache prevents stale plugin references from previous builds
+- Enhanced logging helps identify exactly where Gradle discovery fails
+
+**Outcome**: ⏳ **PENDING** - Awaiting next CI run to verify
+
+**Files Modified**:
+- `.github/workflows/android-automation-testing.yml` (lines ~25-185)
+  - Enhanced dependency installation with autolinking
+  - Enhanced prebuild verification with Gradle checks
+  - Added Gradle cache clearing and enhanced build logging
+
+**Previous Problematic Pattern**:
+```yaml
+# ❌ BAD: Only installing expo-modules-core without autolinking
+npm install expo-modules-core --legacy-peer-deps
+npx expo prebuild --platform android --clean
+cd android && ./gradlew assembleDebug
+```
+
+**New Corrected Pattern**:
+```yaml
+# ✅ GOOD: Install both core and autolinking, clear cache, verify
+npm install expo-modules-core expo-modules-autolinking --legacy-peer-deps
+npx expo install expo-modules-core expo-modules-autolinking
+# Verify autolinking exists before prebuild
+npx expo prebuild --platform android --clean
+# Clear Gradle cache before build
+rm -rf ~/.gradle/caches/ android/.gradle/
+cd android && ./gradlew assembleDebug --info --stacktrace
+```
+
+#### 📝 Lessons Learned (DO NOT REPEAT)
+1. ❌ **DON'T**: Assume expo-modules-core alone is sufficient for Gradle
+2. ❌ **DON'T**: Skip expo-modules-autolinking installation
+3. ❌ **DON'T**: Trust Gradle cache in CI - always clear it
+4. ❌ **DON'T**: Assume prebuild success means Gradle is ready
+5. ✅ **DO**: Install expo-modules-autolinking explicitly
+6. ✅ **DO**: Clear Gradle caches before builds in CI
+7. ✅ **DO**: Verify Gradle plugin files exist after prebuild
+8. ✅ **DO**: Check settings.gradle includes required modules
+9. ✅ **DO**: Use --stacktrace to get full Gradle error context
+
+---
 
 ## 📊 iOS Pipeline Issues
 

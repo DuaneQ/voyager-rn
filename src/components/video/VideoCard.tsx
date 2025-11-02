@@ -206,7 +206,12 @@ export const VideoCard: React.FC<VideoCardProps> = ({
   const renderActionButtons = () => (
     <View style={styles.actionsContainer}>
       {/* Like button */}
-      <TouchableOpacity style={styles.actionButton} onPress={handleLike}>
+      <TouchableOpacity 
+        style={styles.actionButton} 
+        onPress={handleLike}
+        testID="like-button"
+        accessibilityLabel={`Like video. ${likeCount} likes`}
+      >
         <Ionicons
           name={isLiked ? 'heart' : 'heart-outline'}
           size={32}
@@ -217,14 +222,24 @@ export const VideoCard: React.FC<VideoCardProps> = ({
 
       {/* Comment button */}
       {onComment && (
-        <TouchableOpacity style={styles.actionButton} onPress={handleComment}>
+        <TouchableOpacity 
+          style={styles.actionButton} 
+          onPress={handleComment}
+          testID="comment-button"
+          accessibilityLabel={`Comment on video. ${commentCount} comments`}
+        >
           <Ionicons name="chatbubble-outline" size={32} color="#fff" />
           <Text style={styles.actionText}>{commentCount}</Text>
         </TouchableOpacity>
       )}
 
       {/* Share button */}
-      <TouchableOpacity style={styles.actionButton} onPress={onShare}>
+      <TouchableOpacity 
+        style={styles.actionButton} 
+        onPress={onShare}
+        testID="share-button"
+        accessibilityLabel="Share video"
+      >
         <Ionicons name="share-outline" size={32} color="#fff" />
         <Text style={styles.actionText}>Share</Text>
       </TouchableOpacity>
@@ -246,7 +261,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({
   }
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} testID="video-card-container">
       {/* Video Player */}
       <TouchableOpacity
         style={styles.videoContainer}
@@ -282,7 +297,12 @@ export const VideoCard: React.FC<VideoCardProps> = ({
         )}
 
         {/* Mute button */}
-        <TouchableOpacity style={styles.muteButton} onPress={handleMuteToggle}>
+        <TouchableOpacity 
+          style={styles.muteButton} 
+          onPress={handleMuteToggle}
+          testID="mute-button"
+          accessibilityLabel={isMuted ? 'Unmute video' : 'Mute video'}
+        >
           <Ionicons
             name={isMuted ? 'volume-mute' : 'volume-high'}
             size={24}
@@ -292,7 +312,9 @@ export const VideoCard: React.FC<VideoCardProps> = ({
       </TouchableOpacity>
 
       {/* Video info overlay */}
-      {renderVideoInfo()}
+      <View testID="info-overlay">
+        {renderVideoInfo()}
+      </View>
 
       {/* Action buttons */}
       {renderActionButtons()}

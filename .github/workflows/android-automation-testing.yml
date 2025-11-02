@@ -40,24 +40,19 @@ jobs:
 
         echo "✅ Dependencies installed successfully"
 
-        # Ensure expo-modules-core is installed with the correct Expo-compatible version
-        echo "🔧 Ensuring expo-modules-core is installed for Expo SDK"
-        # The Expo CLI performs an internal npm install which may fail on
-        # strict peer dependency resolution (ERESOLVE). Force npm to accept
-        # legacy peer deps in CI so expo install succeeds.
+        # Ensure critical Expo modules are installed
+        echo "🔧 Ensuring critical Expo modules are installed..."
         export npm_config_legacy_peer_deps=true
         
-        # First, try to install expo-modules-core directly to ensure it's in node_modules
-        echo "📦 Installing expo-modules-core directly..."
-        npm install expo-modules-core --legacy-peer-deps || {
-          echo "⚠️ Direct npm install of expo-modules-core failed, trying expo install...";
+        # Install expo-modules-core and expo-modules-autolinking explicitly
+        echo "📦 Installing expo-modules-core and expo-modules-autolinking..."
+        npm install expo-modules-core expo-modules-autolinking --legacy-peer-deps || {
+          echo "⚠️ Direct npm install failed, trying expo install...";
         }
         
         # Then run expo install to ensure version compatibility
-        # The Expo CLI flags differ between CI and interactive shells. Use CI=1
-        # instead of `--non-interactive` which may not be supported in some CLI versions.
-        CI=1 npx expo install expo-modules-core || {
-          echo "❌ Failed to install expo-modules-core via expo install";
+        CI=1 npx expo install expo-modules-core expo-modules-autolinking || {
+          echo "❌ Failed to install expo modules via expo install";
           echo "Tip: the failure is often caused by npm peerDependency resolution (ERESOLVE).";
           echo "For CI we set npm_config_legacy_peer_deps=true so npm accepts legacy peer deps.";
           echo "Listing node_modules for debugging:"; ls -la node_modules | head -200 || true;
@@ -72,6 +67,13 @@ jobs:
           ls -la node_modules/expo-* 2>/dev/null || echo "No expo modules found"
           exit 1
         fi
+        
+        echo "🔍 Verifying expo-modules-autolinking installation..."
+        if [ ! -d "node_modules/expo-modules-autolinking" ]; then
+          echo "❌ ERROR: expo-modules-autolinking not found in node_modules"
+          echo "This is required for Gradle plugin resolution"
+          exit 1
+        fi
 
         if [ ! -d "node_modules/expo-modules-core/android" ]; then
           echo "⚠️ WARNING: expo-modules-core/android directory not found"
@@ -83,6 +85,8 @@ jobs:
         else
           echo "✅ expo-modules-core Android files verified"
         fi
+        
+        echo "✅ All critical Expo modules verified"
       
     - name: Setup Java
       uses: actions/setup-java@v4
@@ -126,13 +130,48 @@ jobs:
         echo "🔧 Building native Android project..."
         export CI=true
         export EXPO_NO_TELEMETRY=1
-        npx expo prebuild --platform android --clean
+        
+        # Verify expo-modules-autolinking is installed (critical for Gradle plugins)
+        echo "🔍 Verifying expo-modules-autolinking..."
+        if [ ! -d "node_modules/expo-modules-autolinking" ]; then
+          echo "⚠️ expo-modules-autolinking missing, installing..."
+          npm install expo-modules-autolinking --legacy-peer-deps
+        fi
+        
+        # Clean any previous Android build
+        rm -rf android
+        
+        # Run prebuild with verbose logging
+        echo "🚀 Running expo prebuild..."
+        npx expo prebuild --platform android --clean || {
+          echo "❌ ERROR: expo prebuild failed"
+          echo "📋 Checking expo-modules-core gradle files:"
+          ls -la node_modules/expo-modules-core/android/ || echo "android directory not found"
+          exit 1
+        }
         
         # Verify project structure
+        echo "🔍 Verifying Android project structure..."
         test -d "android" || (echo "❌ ERROR: android directory not created" && ls -la && exit 1)
         test -f "android/build.gradle" || (echo "❌ ERROR: android/build.gradle missing" && exit 1)
         test -f "android/app/build.gradle" || (echo "❌ ERROR: android/app/build.gradle missing" && exit 1)
         test -f "android/settings.gradle" || (echo "❌ ERROR: android/settings.gradle missing" && exit 1)
+        
+        # Verify Gradle plugin files exist
+        echo "🔍 Verifying expo-module-gradle-plugin..."
+        GRADLE_PLUGIN_PATH="node_modules/expo-modules-core/android"
+        if [ -f "$GRADLE_PLUGIN_PATH/build.gradle" ]; then
+          echo "✅ Found expo-modules-core Gradle plugin at: $GRADLE_PLUGIN_PATH"
+        else
+          echo "⚠️ WARNING: expo-modules-core Gradle files not complete"
+          ls -la "$GRADLE_PLUGIN_PATH" || true
+        fi
+        
+        # Check settings.gradle for expo-modules-core inclusion
+        echo "🔍 Checking settings.gradle for expo-modules-core..."
+        grep -n "expo-modules-core" android/settings.gradle || {
+          echo "⚠️ WARNING: expo-modules-core not found in settings.gradle"
+        }
         
         echo "✅ Android project generated successfully"
         echo "📁 Android directory contents:"
@@ -141,9 +180,39 @@ jobs:
     - name: Build Android APK
       run: |
         echo "🏗️ Building Android APK..."
+        
+        # Clear Gradle cache to prevent stale plugin issues
+        echo "🧹 Clearing Gradle cache..."
+        rm -rf ~/.gradle/caches/
+        rm -rf android/.gradle/
+        
         cd android
+        
+        # Make gradlew executable
         chmod +x gradlew
-        ./gradlew assembleDebug --info
+        
+        # Verify Gradle wrapper
+        echo "🔍 Verifying Gradle wrapper..."
+        ./gradlew --version || {
+          echo "❌ ERROR: Gradle wrapper not working"
+          exit 1
+        }
+        
+        # List all included projects to verify expo-modules-core is found
+        echo "🔍 Listing Gradle projects..."
+        ./gradlew projects || true
+        
+        # Build with info logging
+        echo "🚀 Building APK..."
+        ./gradlew assembleDebug --info --stacktrace || {
+          echo "❌ ERROR: Gradle build failed"
+          echo "📋 Checking settings.gradle:"
+          cat settings.gradle || true
+          echo "📋 Checking app/build.gradle:"
+          head -50 app/build.gradle || true
+          exit 1
+        }
+        
         cd ..
         echo "✅ APK build completed"
         

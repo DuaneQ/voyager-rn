@@ -167,7 +167,12 @@ export const useVideoFeed = (): UseVideoFeedReturn => {
               );
 
               if (loadMore) {
-                setVideos((prev) => [...prev, ...fetchedVideos]);
+                // Deduplicate when loading more to prevent duplicate keys
+                setVideos((prev) => {
+                  const existingIds = new Set(prev.map(v => v.id));
+                  const newVideos = fetchedVideos.filter(v => !existingIds.has(v.id));
+                  return [...prev, ...newVideos];
+                });
               } else {
                 setVideos(fetchedVideos);
               }
@@ -198,7 +203,12 @@ export const useVideoFeed = (): UseVideoFeedReturn => {
               })) as Video[];
 
               if (loadMore) {
-                setVideos((prev) => [...prev, ...fetchedVideos]);
+                // Deduplicate when loading more to prevent duplicate keys
+                setVideos((prev) => {
+                  const existingIds = new Set(prev.map(v => v.id));
+                  const newVideos = fetchedVideos.filter(v => !existingIds.has(v.id));
+                  return [...prev, ...newVideos];
+                });
               } else {
                 setVideos(fetchedVideos);
               }
@@ -231,7 +241,12 @@ export const useVideoFeed = (): UseVideoFeedReturn => {
             })) as Video[];
 
             if (loadMore) {
-              setVideos((prev) => [...prev, ...likedVideos]);
+              // Deduplicate when loading more to prevent duplicate keys
+              setVideos((prev) => {
+                const existingIds = new Set(prev.map(v => v.id));
+                const newVideos = likedVideos.filter(v => !existingIds.has(v.id));
+                return [...prev, ...newVideos];
+              });
             } else {
               setVideos(likedVideos);
             }
@@ -264,7 +279,12 @@ export const useVideoFeed = (): UseVideoFeedReturn => {
             })) as Video[];
 
             if (loadMore) {
-              setVideos((prev) => [...prev, ...myVideos]);
+              // Deduplicate when loading more to prevent duplicate keys
+              setVideos((prev) => {
+                const existingIds = new Set(prev.map(v => v.id));
+                const newVideos = myVideos.filter(v => !existingIds.has(v.id));
+                return [...prev, ...newVideos];
+              });
             } else {
               setVideos(myVideos);
             }
@@ -370,18 +390,29 @@ export const useVideoFeed = (): UseVideoFeedReturn => {
       return;
     }
 
+    // Only track if user is authenticated
+    if (!userId) {
+      return;
+    }
+
     try {
       viewedVideoIds.current.add(videoId);
       const videoRef = doc(db, 'videos', videoId);
       await updateDoc(videoRef, {
         viewCount: increment(1),
       });
-    } catch (err) {
-      console.error('Error tracking video view:', err);
-      // Remove from viewed set if tracking failed
-      viewedVideoIds.current.delete(videoId);
+    } catch (err: any) {
+      // Silently handle permission errors - view tracking is not critical
+      // Some videos may have restricted permissions
+      if (err?.code !== 'permission-denied') {
+        console.error('Error tracking video view:', err);
+      }
+      // Remove from viewed set if tracking failed (but not for permission errors)
+      if (err?.code !== 'permission-denied') {
+        viewedVideoIds.current.delete(videoId);
+      }
     }
-  }, []);
+  }, [userId]);
 
   /**
    * Refresh videos (pull to refresh)
