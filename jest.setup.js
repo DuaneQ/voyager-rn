@@ -158,3 +158,16 @@ jest.mock('@react-native-google-signin/google-signin', () => ({
     signIn: jest.fn(() => Promise.resolve({ idToken: null })),
   },
 }), { virtual: true });
+
+// Mock React Native Settings module
+jest.mock('react-native/Libraries/Settings/Settings', () => ({
+  get: jest.fn(),
+  set: jest.fn(),
+  watchKeys: jest.fn(),
+  clearWatch: jest.fn(),
+}));
+
+// Mock Share API
+jest.mock('react-native/Libraries/Share/Share', () => ({
+  share: jest.fn(() => Promise.resolve({ action: 'sharedAction' })),
+}));

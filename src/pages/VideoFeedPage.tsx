@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { VideoCard } from '../components/video/VideoCard';
+import { VideoCommentsModal } from '../components/video/VideoCommentsModal';
 import { useVideoFeed, VideoFilter } from '../hooks/video/useVideoFeed';
 import { useVideoUpload } from '../hooks/video/useVideoUpload';
 import { shareVideo } from '../utils/videoSharing';
@@ -44,6 +45,8 @@ const VideoFeedPage: React.FC = () => {
   const { uploadState, selectVideo, uploadVideo } = useVideoUpload();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isMuted, setIsMuted] = useState(true); // Persistent mute state across videos
+  const [commentsModalVisible, setCommentsModalVisible] = useState(false);
+  const [selectedVideoForComments, setSelectedVideoForComments] = useState<typeof videos[0] | null>(null);
   const flatListRef = useRef<FlatList>(null);
 
   /**
@@ -78,6 +81,25 @@ const VideoFeedPage: React.FC = () => {
       flatListRef.current.scrollToIndex({ index: 0, animated: false });
     }
   }, [refreshVideos, videos.length]);
+
+  /**
+   * Handle comment button press
+   */
+  const handleCommentPress = useCallback((videoIndex: number) => {
+    const video = videos[videoIndex];
+    if (video) {
+      setSelectedVideoForComments(video);
+      setCommentsModalVisible(true);
+    }
+  }, [videos]);
+
+  /**
+   * Handle comment added - refresh video data
+   */
+  const handleCommentAdded = useCallback(() => {
+    // Refresh videos to get updated comment count
+    refreshVideos();
+  }, [refreshVideos]);
 
   /**
    * Handle filter change
@@ -139,12 +161,13 @@ const VideoFeedPage: React.FC = () => {
           isMuted={isMuted}
           onMuteToggle={setIsMuted}
           onLike={() => handleLike(item)}
+          onComment={() => handleCommentPress(index)}
           onShare={() => handleShare(index)}
           onViewTracked={() => handleViewTracked(item.id)}
         />
       );
     },
-    [currentVideoIndex, isMuted, handleLike, handleShare, handleViewTracked]
+    [currentVideoIndex, isMuted, handleLike, handleCommentPress, handleShare, handleViewTracked]
   );
 
   /**
@@ -327,6 +350,19 @@ const VideoFeedPage: React.FC = () => {
           </Text>
         </View>
       )}
+
+      {/* Comments Modal */}
+      {commentsModalVisible && selectedVideoForComments && (
+        <VideoCommentsModal
+          visible={commentsModalVisible}
+          onClose={() => {
+            setCommentsModalVisible(false);
+            setSelectedVideoForComments(null);
+          }}
+          video={selectedVideoForComments}
+          onCommentAdded={handleCommentAdded}
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -345,7 +381,7 @@ const styles = StyleSheet.create({
     paddingTop: 50,
     paddingHorizontal: 16,
     paddingBottom: 12,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'transparent', // Transparent header for video feed
   },
   title: {
     fontSize: 24,
@@ -451,12 +487,12 @@ const styles = StyleSheet.create({
   },
   floatingUploadButton: {
     position: 'absolute',
-    bottom: 100,
-    right: 16,
+    bottom: 330,
+    right: 4, 
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#1976d2',
+    backgroundColor: '#000', // Black background to match video feed aesthetic
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 4,
@@ -464,6 +500,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
+    zIndex: 20, // Ensure it's above video content
   },
   uploadProgress: {
     position: 'absolute',
