@@ -334,6 +334,37 @@ export class LoginPage extends BasePage {
         console.log('[LoginPage] iOS CI: Email input not found, retrying after 5s...');
         await browser.pause(5000);
         emailInput = await this.findByTestID('login-email-input');
+        
+        // Still not found - dump diagnostics
+        if (!emailInput || !await emailInput.isExisting()) {
+          console.log('[LoginPage] iOS CI: Email input still not found after retry');
+          console.log('[LoginPage] Dumping page source for debugging...');
+          
+          try {
+            const pageSource = await driver.getPageSource();
+            const fs = require('fs');
+            const path = require('path');
+            const logsDir = path.join(process.cwd(), 'logs');
+            if (!fs.existsSync(logsDir)) {
+              fs.mkdirSync(logsDir, { recursive: true });
+            }
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const filename = path.join(logsDir, `page-source-login-fail-${timestamp}.xml`);
+            fs.writeFileSync(filename, pageSource);
+            console.log(`[LoginPage] Page source saved to: ${filename}`);
+            
+            // Also take a screenshot
+            const screenshotDir = path.join(process.cwd(), 'screenshots');
+            if (!fs.existsSync(screenshotDir)) {
+              fs.mkdirSync(screenshotDir, { recursive: true });
+            }
+            const screenshotPath = path.join(screenshotDir, `login-fail-${timestamp}.png`);
+            await driver.saveScreenshot(screenshotPath);
+            console.log(`[LoginPage] Screenshot saved to: ${screenshotPath}`);
+          } catch (diagError) {
+            console.error('[LoginPage] Failed to capture diagnostics:', diagError);
+          }
+        }
       }
       
       if (!emailInput) {

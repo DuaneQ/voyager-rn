@@ -212,9 +212,21 @@ jobs:
         }
         
         # Wait longer for React Native bundle to load and app to fully initialize
-        echo "⏳ Waiting for React Native bundle to load (30 seconds)..."
-        sleep 30
-        echo "✅ App should be fully initialized"
+        # CI environments are slower, so we need more time
+        echo "⏳ Waiting for React Native bundle to load (45 seconds for CI)..."
+        sleep 45
+        echo "✅ Initial wait complete"
+        
+        # Verify app is still running after initial wait
+        echo "🔍 Verifying app is running..."
+        APP_PID=$(xcrun simctl spawn "$SIMULATOR_ID" ps aux | grep -i "Traval" | grep -v grep | awk '{print $2}' | head -1)
+        if [ -z "$APP_PID" ]; then
+          echo "⚠️ WARNING: App process not found after launch, attempting relaunch..."
+          xcrun simctl launch "$SIMULATOR_ID" com.voyager.rn || true
+          sleep 20
+        else
+          echo "✅ App is running with PID: $APP_PID"
+        fi
         
         # Capture initial app state for debugging
         echo "📸 Capturing initial app state..."
@@ -226,6 +238,16 @@ jobs:
         # Get app process status
         echo "App process status:" > automation/logs/launch-diagnostics/app-status.txt
         xcrun simctl spawn "$SIMULATOR_ID" ps aux | grep -i traval >> automation/logs/launch-diagnostics/app-status.txt || true
+        
+        # Check for any crash logs immediately after launch
+        echo "🔍 Checking for early crash logs..."
+        CRASH_LOGS=$(find ~/Library/Logs/DiagnosticReports -name "*Traval*" -mmin -2 2>/dev/null || true)
+        if [ -n "$CRASH_LOGS" ]; then
+          echo "⚠️ WARNING: Found recent crash logs:"
+          echo "$CRASH_LOGS"
+          mkdir -p automation/logs/crash-logs
+          cp ~/Library/Logs/DiagnosticReports/*Traval* automation/logs/crash-logs/ 2>/dev/null || true
+        fi
         
         echo "✅ Launch diagnostics captured"
         

@@ -193,11 +193,13 @@ jobs:
         fi
         
         # Apply ExpoModulesCorePlugin if not already present (prebuild may not add it)
-        echo "� Patching app/build.gradle to include ExpoModulesCorePlugin..."
+        echo "🔧 Patching app/build.gradle to include ExpoModulesCorePlugin..."
         chmod +x .github/scripts/patch-android-build.sh
         .github/scripts/patch-android-build.sh
-          ls -la "$GRADLE_PLUGIN_PATH" || true
-        fi
+        
+        # Debug: List gradle plugin files
+        echo "📋 Gradle plugin files:"
+        ls -la "$GRADLE_PLUGIN_PATH" || true
         
         # Check settings.gradle for expo-modules-core inclusion
         echo "🔍 Checking settings.gradle for expo-modules-core..."
