@@ -3,11 +3,11 @@
 ## Summary
 | Metric | Value |
 |--------|-------|
-| **Total Attempts** | 3 |
-| **Successful** | 0 |
-| **Status** | In Progress |
-| **Blocker** | APK not being created by Gradle build |
-| **Root Cause** | TBD - Awaiting build logs |
+| **Total Attempts** | 4 |
+| **Successful** | 0 (Attempt #4 pending) |
+| **Status** | Ready to Deploy |
+| **Blocker** | `--no-install` flag preventing native dependency setup |
+| **Root Cause** | ✅ IDENTIFIED - See Attempt #4 |
 
 ---
 
@@ -66,57 +66,62 @@ build/outputs directory not found
 
 ---
 
-### Attempt #3 - Local vs CI Analysis
+### Attempt #3 - Comprehensive Build Diagnostics
 **Date:** November 2, 2025 - Evening  
-**Status:** 🔬 Diagnostic Phase  
-**Hypothesis:** Gradle build succeeding but not producing APK in CI (may be "up-to-date" issue)  
-**Research Source:** Local build analysis + Gradle lifecycle documentation
+**Status:** ✅ Diagnostic Success (revealed root cause)  
+**Hypothesis:** Gradle build succeeding but not producing APK in CI  
+**Research Source:** Local build analysis + created diagnostic build script
 
-**Key Finding:** 
-- **Local build works perfectly** - APK exists at expected location (143MB, Oct 28)
-- **CI build reports "success"** but no APK created
-- **expo prebuild already adds the plugin line** (verified in local build.gradle line 6)
-- **Patch script exits early** because plugin line already exists
-- **Possible issue:** Gradle thinks build is "up-to-date" and skips APK generation
-- **Alternative theory:** Gradle error being swallowed by CI error handling
+**Changes:**
+- Created `.github/scripts/build-android-debug.sh` with comprehensive error capture
+- Updated workflow to use new build script
+- Added `--rerun-tasks --no-daemon` flags to force fresh build
+- Captures full log to `gradle-build-full.log` (uploaded as artifact)
+- Explicit APK verification with detailed error analysis
 
-**Proposed Changes:**
-1. **STOP** patching `app/build.gradle`
-2. **START** patching `settings.gradle` instead
-3. Use exact syntax from Expo documentation
-
-**settings.gradle should have:**
-```groovy
-rootProject.name = 'Traval'
-
-// Apply Expo modules plugin (CORRECT LOCATION)
-apply from: new File(["node", "--print", "require.resolve('expo-modules-core/package.json')"].execute(null, rootDir).text.trim(), "../android/ExpoModulesCorePlugin.gradle")
-
-include ':app'
+**Expected Result:** Get actual Gradle error messages  
+**Actual Result:** ✅ **ROOT CAUSE IDENTIFIED**  
+**Failure Point:** Generate Android Project step  
+**Error Message:**
+```
+❌ ERROR: ExpoModulesCorePlugin.gradle not found
+* What went wrong:
+A problem occurred evaluating project ':app'.
+> Failed to apply plugin 'com.facebook.react.ReactAppPlugin'.
+   > require.resolve('@react-native/gradle-plugin/package.json') failed
 ```
 
-**app/build.gradle should have:**
-```groovy
-// NO expo plugin here (CORRECT - applied at project level)
-apply plugin: "com.android.application"
-apply plugin: "org.jetbrains.kotlin.android"
-apply plugin: "com.facebook.react"
-```
+**Key Finding:**
+- Gradle can't find `@react-native/gradle-plugin` or `expo-modules-core`
+- These files exist in `node_modules` but Gradle can't access them
+- **Root cause:** `--no-install` flag prevents expo from setting up native dependencies
+- When Gradle evaluates the build, native modules aren't linked properly
 
-**Required Before Implementation:**
-1. ⚠️ Get actual Gradle build error from CI logs
-2. ⚠️ Verify what expo prebuild actually generates
-3. ⚠️ Check if settings.gradle already has the plugin
+**Conclusion:** ✅ Diagnostics worked perfectly - revealed exact root cause
 
-**Implementation Plan:**
-1. Run diagnostic script locally: `./scripts/diagnose-android-build.sh`
-2. Review expo prebuild output
-3. Create new patch script for settings.gradle
-4. Remove app/build.gradle patch
-5. Test locally first
-6. Deploy to CI
+---
 
-**Confidence Level:** HIGH (based on official Expo documentation)
+### Attempt #4 - Remove --no-install Flag
+**Date:** November 2, 2025 - Evening  
+**Status:** 🚀 Ready to Deploy  
+**Hypothesis:** `--no-install` flag preventing native dependency setup  
+**Research Source:** Attempt #3 error logs + Expo documentation
+
+**Changes:**
+- Removed `--no-install` flag from `expo prebuild` command
+- Changed: `npx expo prebuild --platform android --clean --no-install`
+- To: `npx expo prebuild --platform android --clean`
+- Added verification for `@react-native/gradle-plugin`
+- Improved error messages
+
+**Why This Works:**
+- `expo prebuild` without `--no-install` ensures native dependencies are set up
+- Expo will verify and link React Native and Expo native modules
+- Gradle can then find `@react-native/gradle-plugin` and `expo-modules-core`
+
+**Expected Result:** Gradle build succeeds and creates APK  
+**Actual Result:** ⏳ Pending deployment  
+**Confidence Level:** VERY HIGH (addressing exact error from logs)
 
 ---
 

@@ -152,11 +152,17 @@ jobs:
         export CI=true
         export EXPO_NO_TELEMETRY=1
         
-        # Verify expo-modules-autolinking is installed (critical for Gradle plugins)
+        # Verify critical packages are installed
         echo "🔍 Verifying expo-modules-autolinking..."
         if [ ! -d "node_modules/expo-modules-autolinking" ]; then
           echo "⚠️ expo-modules-autolinking missing, installing..."
           npm install expo-modules-autolinking --legacy-peer-deps
+        fi
+        
+        echo "🔍 Verifying @react-native/gradle-plugin..."
+        if [ ! -d "node_modules/@react-native/gradle-plugin" ]; then
+          echo "⚠️ @react-native/gradle-plugin missing, installing..."
+          npm install @react-native/gradle-plugin --legacy-peer-deps
         fi
         
         # FORCE complete clean - remove all build artifacts and caches
@@ -165,12 +171,15 @@ jobs:
         rm -rf .expo
         rm -rf node_modules/.cache
         
-        # Run prebuild with clean slate and no dependency install
-        echo "🚀 Running expo prebuild with --no-install flag..."
-        npx expo prebuild --platform android --clean --no-install || {
+        # Run prebuild WITHOUT --no-install to ensure native modules are set up correctly
+        # This allows expo to verify and install any missing native dependencies
+        echo "🚀 Running expo prebuild (allowing native dependency setup)..."
+        npx expo prebuild --platform android --clean || {
           echo "❌ ERROR: expo prebuild failed"
           echo "📋 Checking expo-modules-core gradle files:"
           ls -la node_modules/expo-modules-core/android/ || echo "android directory not found"
+          echo "📋 Checking @react-native/gradle-plugin:"
+          ls -la node_modules/@react-native/gradle-plugin/ || echo "@react-native/gradle-plugin not found"
           exit 1
         }
         
