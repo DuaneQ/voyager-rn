@@ -43,6 +43,7 @@ const VideoFeedPage: React.FC = () => {
 
   const { uploadState, selectVideo, uploadVideo } = useVideoUpload();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isMuted, setIsMuted] = useState(true); // Persistent mute state across videos
   const flatListRef = useRef<FlatList>(null);
 
   /**
@@ -135,13 +136,15 @@ const VideoFeedPage: React.FC = () => {
         <VideoCard
           video={item}
           isActive={index === currentVideoIndex}
+          isMuted={isMuted}
+          onMuteToggle={setIsMuted}
           onLike={() => handleLike(item)}
           onShare={() => handleShare(index)}
           onViewTracked={() => handleViewTracked(item.id)}
         />
       );
     },
-    [currentVideoIndex, handleLike, handleShare, handleViewTracked]
+    [currentVideoIndex, isMuted, handleLike, handleShare, handleViewTracked]
   );
 
   /**

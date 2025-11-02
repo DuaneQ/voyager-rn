@@ -26,6 +26,8 @@ const iosCapabilities = {
   'appium:newCommandTimeout': 300, // Increased for CI stability
   'appium:wdaLaunchTimeout': 180000, // Increased for CI stability
   'appium:useNewWDA': false,
+  // Critical: Allow app more time to launch in CI before first command
+  'appium:appLaunchTimeout': process.env.CI ? 60000 : 30000, // 60s in CI, 30s locally
   // Don't provide Metro port in CI - app should be pre-built
   ...(process.env.CI ? {} : {
     'appium:processArguments': {

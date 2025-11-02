@@ -24,6 +24,8 @@ const { width, height } = Dimensions.get('window');
 interface VideoCardProps {
   video: VideoType;
   isActive: boolean; // Whether this video is currently in view
+  isMuted: boolean; // Controlled mute state from parent
+  onMuteToggle: (muted: boolean) => void; // Callback to update parent mute state
   onLike: () => void;
   onComment?: () => void;
   onShare: () => void;
@@ -33,6 +35,8 @@ interface VideoCardProps {
 export const VideoCard: React.FC<VideoCardProps> = ({
   video,
   isActive,
+  isMuted,
+  onMuteToggle,
   onLike,
   onComment,
   onShare,
@@ -40,7 +44,6 @@ export const VideoCard: React.FC<VideoCardProps> = ({
 }) => {
   const videoRef = useRef<Video>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isMuted, setIsMuted] = useState(true); // Start muted for mobile
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
   const [hasTrackedView, setHasTrackedView] = useState(false);
@@ -141,8 +144,9 @@ export const VideoCard: React.FC<VideoCardProps> = ({
     if (!videoRef.current) return;
 
     try {
-      await videoRef.current.setIsMutedAsync(!isMuted);
-      setIsMuted(!isMuted);
+      const newMutedState = !isMuted;
+      await videoRef.current.setIsMutedAsync(newMutedState);
+      onMuteToggle(newMutedState); // Update parent state to persist across videos
     } catch (err) {
       console.error('Error toggling mute:', err);
     }
@@ -334,9 +338,12 @@ const styles = StyleSheet.create({
   },
   infoOverlay: {
     position: 'absolute',
-    bottom: 100,
+    bottom: 140, // Raised from 100 to sit above transparent tab bar (tab bar ~60px + padding)
     left: 16,
     right: 80,
+    backgroundColor: 'rgba(0,0,0,0.4)', // Add semi-transparent background for better readability
+    borderRadius: 8,
+    padding: 12,
   },
   title: {
     fontSize: 18,
@@ -369,7 +376,7 @@ const styles = StyleSheet.create({
   actionsContainer: {
     position: 'absolute',
     right: 16,
-    bottom: 100,
+    bottom: 140, // Raised from 100 to sit above transparent tab bar
     alignItems: 'center',
   },
   actionButton: {

@@ -291,8 +291,24 @@ export class LoginPage extends BasePage {
         }
       }
 
-      // Find email input
-      const emailInput = await this.findByTestID('login-email-input');
+      // iOS CI: Add extra wait for app to fully initialize
+      // Native iOS apps need more time to load in CI environment
+      if (driver.isIOS && process.env.CI) {
+        console.log('[LoginPage] iOS CI detected - waiting 10s for app initialization...');
+        await browser.pause(10000);
+        console.log('[LoginPage] iOS CI wait complete, proceeding with login...');
+      }
+
+      // Find email input with retry logic
+      let emailInput = await this.findByTestID('login-email-input');
+      
+      // iOS CI: Retry if element not found (app may still be loading)
+      if (driver.isIOS && process.env.CI && (!emailInput || !await emailInput.isExisting())) {
+        console.log('[LoginPage] iOS CI: Email input not found, retrying after 5s...');
+        await browser.pause(5000);
+        emailInput = await this.findByTestID('login-email-input');
+      }
+      
       if (!emailInput) {
         throw new Error('Could not find email input with testID="login-email-input" (null)');
       }
