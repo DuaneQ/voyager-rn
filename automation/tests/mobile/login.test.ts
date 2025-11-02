@@ -98,14 +98,30 @@ describe('Login Flow - Mobile', () => {
     // Launch the app (wdio/appium capabilities will install/launch)
     await driver.launchApp();
     console.log('[Test] App launched, waiting for RN bundle to load...');
-    // Give RN 5 seconds to load the bundle and render the login screen
-    await browser.pause(5000);
-    // Wait for the login screen to be present (avoid fixed waits)
+    // Give RN more time on iOS - bundle loading can be slower
+    const isIOS = (browser.capabilities as any)?.platformName?.toLowerCase().includes('ios');
+    const initialWait = (isIOS && process.env.CI) ? 10000 : 5000;
+    console.log(`[Test] Initial wait: ${initialWait}ms (iOS: ${isIOS}, CI: ${!!process.env.CI})`);
+    await browser.pause(initialWait);
+    
+    // Wait for the login screen to be present with extended timeout for iOS
+    const loginTimeout = (isIOS && process.env.CI) ? 45000 : 25000;
+    console.log(`[Test] Waiting for login screen (timeout: ${loginTimeout}ms)...`);
     try {
-      const found = await loginPage.waitForLoginScreen(25000);
+      const found = await loginPage.waitForLoginScreen(loginTimeout);
       if (!found) {
         console.log('[Test] login screen did not appear in beforeEach - capturing logs');
         await captureLogs('before-launch-timeout');
+        // Try to capture page source for debugging
+        try {
+          const source = await browser.getPageSource();
+          console.log('[Test] Page source length:', source.length);
+          console.log('[Test] Page source preview (first 1000 chars):', source.substring(0, 1000));
+        } catch (e) {
+          console.log('[Test] Could not get page source:', (e as Error).message);
+        }
+      } else {
+        console.log('[Test] ✅ Login screen found successfully');
       }
     } catch (e) {
       console.log('[Test] waitForLoginScreen threw:', (e as Error).message);

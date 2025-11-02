@@ -401,6 +401,7 @@ jobs:
         mkdir -p automation/logs
         mkdir -p automation/screenshots
         mkdir -p automation/simulator.log
+        mkdir -p automation/logs/crash-logs
         
         # Capture simulator screenshot
         if [ ! -z "$SIMULATOR_ID" ]; then
@@ -408,16 +409,36 @@ jobs:
           xcrun simctl io "$SIMULATOR_ID" screenshot "automation/screenshots/simulator-screenshot.png" 2>/dev/null || echo "Failed to capture screenshot"
         fi
         
-        # Capture simulator logs
+        # Capture simulator logs focused on Traval app
         if [ ! -z "$SIMULATOR_ID" ]; then
-          echo "Collecting simulator logs..."
-          xcrun simctl spawn "$SIMULATOR_ID" log collect --output "automation/simulator.log/system.log" 2>/dev/null || echo "Failed to collect logs"
+          echo "Collecting Traval app logs (last 5 minutes)..."
+          xcrun simctl spawn "$SIMULATOR_ID" log show --predicate 'processImagePath contains "Traval"' --last 5m \
+            > automation/logs/traval-app.log 2>&1 || echo "⚠️ Could not capture app-specific logs"
+          
+          echo "Collecting system log..."
+          xcrun simctl spawn "$SIMULATOR_ID" log collect --output "automation/simulator.log/system.log" 2>/dev/null || echo "Failed to collect full system log"
+        fi
+        
+        # Check for crash logs
+        if [ ! -z "$SIMULATOR_ID" ]; then
+          echo "Checking for crash logs..."
+          CRASH_LOGS=$(find ~/Library/Logs/DiagnosticReports -name "*Traval*" -mtime -1 2>/dev/null || true)
+          if [ -n "$CRASH_LOGS" ]; then
+            echo "Found crash logs:"
+            echo "$CRASH_LOGS"
+            cp ~/Library/Logs/DiagnosticReports/*Traval* automation/logs/crash-logs/ 2>/dev/null || true
+          else
+            echo "No recent crash logs found for Traval app"
+          fi
         fi
         
         # List running apps for debugging
         if [ ! -z "$SIMULATOR_ID" ]; then
           echo "Listing installed apps..."
           xcrun simctl listapps "$SIMULATOR_ID" > "automation/logs/installed-apps.txt" 2>/dev/null || echo "Failed to list apps"
+          
+          echo "Checking app process status..."
+          xcrun simctl spawn "$SIMULATOR_ID" ps aux | grep -i traval > automation/logs/app-processes.txt 2>&1 || echo "No Traval processes found"
         fi
         
         # Copy Appium logs if they exist
@@ -427,6 +448,15 @@ jobs:
         else
           echo "⚠️ No Appium log file found at automation/simulator.log/appium.log"
         fi
+        
+        # List what we captured
+        echo "📋 Captured artifacts summary:"
+        echo "Screenshots:"
+        ls -lah automation/screenshots/ 2>/dev/null || echo "  None"
+        echo "Logs:"
+        ls -lah automation/logs/ 2>/dev/null || echo "  None"
+        echo "Crash logs:"
+        ls -lah automation/logs/crash-logs/ 2>/dev/null || echo "  None"
         
         echo "✅ Artifact capture complete"
         
