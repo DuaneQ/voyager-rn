@@ -159,12 +159,15 @@ jobs:
           npm install expo-modules-autolinking --legacy-peer-deps
         fi
         
-        # Clean any previous Android build
+        # FORCE complete clean - remove all build artifacts and caches
+        echo "🧹 Performing deep clean..."
         rm -rf android
+        rm -rf .expo
+        rm -rf node_modules/.cache
         
-        # Run prebuild with verbose logging
-        echo "🚀 Running expo prebuild..."
-        npx expo prebuild --platform android --clean || {
+        # Run prebuild with clean slate and no dependency install
+        echo "🚀 Running expo prebuild with --no-install flag..."
+        npx expo prebuild --platform android --clean --no-install || {
           echo "❌ ERROR: expo prebuild failed"
           echo "📋 Checking expo-modules-core gradle files:"
           ls -la node_modules/expo-modules-core/android/ || echo "android directory not found"
@@ -181,10 +184,24 @@ jobs:
         # Verify Gradle plugin files exist
         echo "🔍 Verifying expo-module-gradle-plugin..."
         GRADLE_PLUGIN_PATH="node_modules/expo-modules-core/android"
-        if [ -f "$GRADLE_PLUGIN_PATH/build.gradle" ]; then
-          echo "✅ Found expo-modules-core Gradle plugin at: $GRADLE_PLUGIN_PATH"
+        if [ -f "$GRADLE_PLUGIN_PATH/ExpoModulesCorePlugin.gradle" ]; then
+          echo "✅ Found ExpoModulesCorePlugin.gradle at: $GRADLE_PLUGIN_PATH"
         else
-          echo "⚠️ WARNING: expo-modules-core Gradle files not complete"
+          echo "❌ ERROR: ExpoModulesCorePlugin.gradle not found"
+          ls -la "$GRADLE_PLUGIN_PATH" || echo "Directory doesn't exist"
+          exit 1
+        fi
+        
+        # Verify app/build.gradle applies the plugin
+        echo "🔍 Verifying app/build.gradle applies ExpoModulesCorePlugin..."
+        if grep -q "ExpoModulesCorePlugin.gradle" android/app/build.gradle; then
+          echo "✅ app/build.gradle applies ExpoModulesCorePlugin"
+        else
+          echo "❌ ERROR: app/build.gradle does NOT apply ExpoModulesCorePlugin"
+          echo "First 20 lines of app/build.gradle:"
+          head -20 android/app/build.gradle
+          exit 1
+        fi
           ls -la "$GRADLE_PLUGIN_PATH" || true
         fi
         
@@ -215,7 +232,7 @@ jobs:
         # Verify Gradle wrapper
         echo "🔍 Verifying Gradle wrapper..."
         ./gradlew --version || {
-          echo "❌ ERROR: Gradle wrapper not working"
+          echo "❌ ERROR: Gradle wrapper verification failed"
           exit 1
         }
         
@@ -223,14 +240,31 @@ jobs:
         echo "🔍 Listing Gradle projects..."
         ./gradlew projects || true
         
-        # Build with info logging
-        echo "🚀 Building APK..."
-        ./gradlew assembleDebug --info --stacktrace || {
+        # Build with info logging and capture FULL error output
+        echo "🚀 Building APK with full error logging..."
+        ./gradlew assembleDebug --info --stacktrace 2>&1 | tee gradle-build.log || {
           echo "❌ ERROR: Gradle build failed"
+          echo ""
+          echo "=========================================="
+          echo "📋 LAST 100 LINES OF BUILD OUTPUT:"
+          echo "=========================================="
+          tail -100 gradle-build.log
+          echo ""
+          echo "=========================================="
+          echo "🔍 SEARCHING FOR ERROR PATTERNS:"
+          echo "=========================================="
+          grep -i "error\|exception\|failed\|FAILURE" gradle-build.log | head -50 || echo "No obvious errors found in grep"
+          echo ""
+          echo "=========================================="
           echo "📋 Checking settings.gradle:"
-          cat settings.gradle || true
-          echo "📋 Checking app/build.gradle:"
-          head -50 app/build.gradle || true
+          echo "=========================================="
+          cat ../android/settings.gradle || cat settings.gradle || true
+          echo ""
+          echo "=========================================="
+          echo "📋 Checking app/build.gradle (first 100 lines):"
+          echo "=========================================="
+          head -100 app/build.gradle || true
+          echo ""
           exit 1
         }
         
@@ -261,6 +295,13 @@ jobs:
       with:
         name: app-debug-apk
         path: android/app/build/outputs/apk/debug/app-debug.apk
+        
+    - name: Upload Gradle build log
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: gradle-build-log
+        path: android/gradle-build.log
 
     - name: Download APK artifact
       uses: actions/download-artifact@v4
