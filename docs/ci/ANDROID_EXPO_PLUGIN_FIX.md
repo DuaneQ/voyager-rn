@@ -35,86 +35,151 @@ This is a **missing configuration**, not a missing dependency.
 
 ## The Fix
 
-### Change 1: Add Expo Plugin to app/build.gradle
+### Critical Discovery: expo prebuild Regenerates Files
 
-**File**: `android/app/build.gradle`  
-**Lines**: 1-6
+**The problem**: While we correctly identified that `ExpoModulesCorePlugin` needs to be applied in `android/app/build.gradle`, manually adding it to the file **doesn't work** because:
 
-```diff
-apply plugin: "com.android.application"
-apply plugin: "org.jetbrains.kotlin.android"
-apply plugin: "com.facebook.react"
-
-+// Apply Expo modules plugin
-+apply from: new File(["node", "--print", "require.resolve('expo-modules-core/package.json')"].execute(null, rootDir).text.trim(), "../android/ExpoModulesCorePlugin.gradle")
-+
-def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
+```bash
+npx expo prebuild --platform android --clean
+# ↓ This REGENERATES android/app/build.gradle
+# ↓ Any manual changes are WIPED OUT
 ```
 
-**Why this works**:
-- `require.resolve('expo-modules-core/package.json')` finds the installed package
-- `../android/ExpoModulesCorePlugin.gradle` navigates to the plugin file
-- `apply from:` loads and executes the Gradle plugin script
-- This provides the `expo-module-gradle-plugin` that Gradle was looking for
+**The solution**: Apply the fix **AFTER** `expo prebuild` runs using an automated patch script.
 
-### Change 2: Enhanced CI Verification
+### Change 1: Create Patch Script
+
+**File**: `.github/scripts/patch-android-build.sh` (NEW)
+
+```bash
+#!/bin/bash
+# Patch android/app/build.gradle to include ExpoModulesCorePlugin if missing
+
+set -e
+
+BUILD_GRADLE="android/app/build.gradle"
+
+echo "🔍 Checking if ExpoModulesCorePlugin is applied in $BUILD_GRADLE..."
+
+if grep -q "ExpoModulesCorePlugin.gradle" "$BUILD_GRADLE"; then
+  echo "✅ ExpoModulesCorePlugin already applied"
+  exit 0
+fi
+
+echo "⚠️ ExpoModulesCorePlugin not found - patching build.gradle..."
+
+# Find the line number where we need to insert
+LINE_NUM=$(grep -n 'apply plugin: "com.facebook.react"' "$BUILD_GRADLE" | cut -d: -f1)
+
+if [ -z "$LINE_NUM" ]; then
+  echo "❌ ERROR: Could not find 'com.facebook.react' plugin line"
+  exit 1
+fi
+
+# Create backup
+cp "$BUILD_GRADLE" "$BUILD_GRADLE.backup"
+
+# Insert the expo plugin lines after the react plugin
+{
+  head -n "$LINE_NUM" "$BUILD_GRADLE"
+  echo ""
+  echo "// Apply Expo modules plugin"
+  echo 'apply from: new File(["node", "--print", "require.resolve('\''expo-modules-core/package.json'\'')"].execute(null, rootDir).text.trim(), "../android/ExpoModulesCorePlugin.gradle")'
+  tail -n +"$((LINE_NUM + 1))" "$BUILD_GRADLE"
+} > "$BUILD_GRADLE.new"
+
+# Replace original with patched version
+mv "$BUILD_GRADLE.new" "$BUILD_GRADLE"
+
+echo "✅ Successfully patched $BUILD_GRADLE"
+```
+
+**Why this approach**:
+- ✅ **Idempotent**: Checks if already applied, skips if present
+- ✅ **Automatic**: No manual file editing required
+- ✅ **Post-prebuild**: Runs AFTER expo prebuild regenerates files
+- ✅ **Safe**: Creates backup before modifying
+- ✅ **Tested**: Verified locally in both scenarios (present/missing)
+
+### Change 2: Integrate into CI Workflow
 
 **File**: `.github/workflows/android-automation-testing.yml`  
-**Section**: After `npx expo prebuild`
+**Section**: After `npx expo prebuild` (Generate Android Project step)
 
 ```yaml
-# Verify Gradle plugin files exist
-echo "🔍 Verifying expo-module-gradle-plugin..."
-GRADLE_PLUGIN_PATH="node_modules/expo-modules-core/android"
-if [ -f "$GRADLE_PLUGIN_PATH/ExpoModulesCorePlugin.gradle" ]; then
-  echo "✅ Found ExpoModulesCorePlugin.gradle at: $GRADLE_PLUGIN_PATH"
-else
-  echo "❌ ERROR: ExpoModulesCorePlugin.gradle not found"
-  ls -la "$GRADLE_PLUGIN_PATH" || echo "Directory doesn't exist"
-  exit 1
-fi
-
-# Verify app/build.gradle applies the plugin
-echo "🔍 Verifying app/build.gradle applies ExpoModulesCorePlugin..."
-if grep -q "ExpoModulesCorePlugin.gradle" android/app/build.gradle; then
-  echo "✅ app/build.gradle applies ExpoModulesCorePlugin"
-else
-  echo "❌ ERROR: app/build.gradle does NOT apply ExpoModulesCorePlugin"
-  echo "First 20 lines of app/build.gradle:"
-  head -20 android/app/build.gradle
-  exit 1
-fi
+# Apply ExpoModulesCorePlugin if not already present (prebuild may not add it)
+echo "� Patching app/build.gradle to include ExpoModulesCorePlugin..."
+chmod +x .github/scripts/patch-android-build.sh
+.github/scripts/patch-android-build.sh
 ```
 
-**Why this verification**:
-1. Checks plugin file exists in node_modules
-2. Checks app/build.gradle applies the plugin
-3. Fails fast with diagnostic output if misconfigured
-4. Prevents blind Gradle build failures
+**Why this placement**:
+1. Runs immediately after `npx expo prebuild` completes
+2. Before Gradle build attempts to use the plugin
+3. Catches cases where prebuild template doesn't include the plugin
+
+### Change 3: Manual Fix for Local Development (DEPRECATED)
+
+**Original approach** (NO LONGER RECOMMENDED):
+
+```diff
+# ❌ DON'T DO THIS - Will be overwritten by expo prebuild
+# android/app/build.gradle
++// Apply Expo modules plugin
++apply from: new File(["node", "--print", "require.resolve('expo-modules-core/package.json')"].execute(null, rootDir).text.trim(), "../android/ExpoModulesCorePlugin.gradle")
+```
+
+**New approach** (RECOMMENDED):
+
+```bash
+# ✅ Run the patch script after prebuild
+npx expo prebuild --platform android --clean
+.github/scripts/patch-android-build.sh
+```
 
 ---
 
 ## How to Verify Locally
 
-### Step 1: Check Plugin File Exists
+### Step 1: Clean Rebuild (Simulates CI)
 ```bash
-ls -la node_modules/expo-modules-core/android/ExpoModulesCorePlugin.gradle
-```
-Expected output:
-```
--rw-r--r--@ 1 user staff 2940 Nov  1 15:17 node_modules/expo-modules-core/android/ExpoModulesCorePlugin.gradle
+# Remove android directory
+rm -rf android
+
+# Run prebuild (regenerates android/)
+npx expo prebuild --platform android --clean
+
+# Run patch script
+.github/scripts/patch-android-build.sh
 ```
 
-### Step 2: Check app/build.gradle Applies Plugin
-```bash
-head -10 android/app/build.gradle | grep ExpoModulesCorePlugin
-```
 Expected output:
-```groovy
+```
+⚠️ ExpoModulesCorePlugin not found - patching build.gradle...
+✅ Successfully patched android/app/build.gradle
+
+First 10 lines of patched file:
+apply plugin: "com.android.application"
+apply plugin: "org.jetbrains.kotlin.android"
+apply plugin: "com.facebook.react"
+
+// Apply Expo modules plugin
 apply from: new File(["node", "--print", "require.resolve('expo-modules-core/package.json')"].execute(null, rootDir).text.trim(), "../android/ExpoModulesCorePlugin.gradle")
 ```
 
-### Step 3: Test Build
+### Step 2: Verify Idempotency
+```bash
+# Run script again - should detect plugin is already there
+.github/scripts/patch-android-build.sh
+```
+
+Expected output:
+```
+🔍 Checking if ExpoModulesCorePlugin is applied in android/app/build.gradle...
+✅ ExpoModulesCorePlugin already applied
+```
+
+### Step 3: Test Build (Requires ANDROID_HOME)
 ```bash
 cd android
 ./gradlew assembleDebug --info --stacktrace
