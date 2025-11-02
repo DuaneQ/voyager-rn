@@ -15,6 +15,12 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
+    - name: Clean committed Android directory
+      run: |
+        echo "🧹 Removing committed android directory (will be regenerated)..."
+        rm -rf android
+        echo "✅ Clean complete - expo prebuild will regenerate fresh android project"
+      
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
@@ -116,9 +122,15 @@ jobs:
         fi
         echo "✅ expo-modules-core Android files confirmed"
         
-        # FORCE complete clean - remove all build artifacts and caches
-        echo "🧹 Performing deep clean..."
-        rm -rf android
+        # Verify android directory was cleaned (should not exist yet)
+        if [ -d "android" ]; then
+          echo "⚠️ WARNING: android directory already exists (should have been cleaned)"
+          echo "Removing it now..."
+          rm -rf android
+        fi
+        
+        # Clean other caches
+        echo "🧹 Cleaning Expo and Metro caches..."
         rm -rf .expo
         rm -rf node_modules/.cache
         
