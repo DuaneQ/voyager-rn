@@ -6,7 +6,7 @@
 import React, { createContext, useContext, useCallback, useState, useEffect, ReactNode } from 'react';
 import { auth, db } from '../config/firebaseConfig';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import storage from '../utils/storage';
 
 interface UserProfile {
   username?: string;
@@ -86,9 +86,9 @@ const UserProfileProvider: React.FC<UserProfileProviderProps> = ({ children }) =
       // Update local state
       setUserProfile((prev) => (prev ? { ...prev, ...data } : null));
 
-      // Update AsyncStorage cache
-      const updatedProfile = { ...userProfile, ...data };
-      await AsyncStorage.setItem('PROFILE_INFO', JSON.stringify(updatedProfile));
+  // Update persistent cache using the cross-platform storage wrapper
+  const updatedProfile = { ...userProfile, ...data };
+  await storage.setItem('PROFILE_INFO', JSON.stringify(updatedProfile));
     } catch (error) {
       console.error('Error updating profile:', error);
       throw error;
@@ -108,12 +108,13 @@ const UserProfileProvider: React.FC<UserProfileProviderProps> = ({ children }) =
 
           if (userRef.exists()) {
             const profile = userRef.data() as UserProfile;
-            // Update AsyncStorage with fresh data (React Native equivalent of localStorage)
-            await AsyncStorage.setItem("PROFILE_INFO", JSON.stringify(profile));
+            // Update persistent storage with fresh data (web -> localStorage, native -> AsyncStorage,
+            // or in-memory fallback when native module isn't available).
+            await storage.setItem("PROFILE_INFO", JSON.stringify(profile));
             setUserProfile(profile);
           } else {
             // Fall back to AsyncStorage if Firebase has no data
-            const cachedProfile = await AsyncStorage.getItem("PROFILE_INFO");
+            const cachedProfile = await storage.getItem("PROFILE_INFO");
             if (cachedProfile) {
               setUserProfile(JSON.parse(cachedProfile));
             }
@@ -122,7 +123,7 @@ const UserProfileProvider: React.FC<UserProfileProviderProps> = ({ children }) =
       } catch (error) {
         // On error, try AsyncStorage as fallback (same logic as PWA)
         try {
-          const cachedProfile = await AsyncStorage.getItem("PROFILE_INFO");
+          const cachedProfile = await storage.getItem("PROFILE_INFO");
           if (cachedProfile) {
             setUserProfile(JSON.parse(cachedProfile));
           }

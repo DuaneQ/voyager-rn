@@ -1,24 +1,48 @@
 /**
- * Search Screen - React Native implementation with PostgreSQL integration
- * Fetches all user itineraries (AI + manual) and displays matches
+ * SearchPage - React Native implementation of itinerary matching
+ * 
+ * @module pages/SearchPage
+ * @description Main screen for discovering and matching with other travelers.
+ * Features: itinerary selector, card-based matching UI, like/dislike actions,
+ * mutual match detection, usage limit enforcement.
+ * 
+ * Flow:
+ * 1. User selects own itinerary from dropdown
+ * 2. System searches for matching itineraries
+ * 3. User views matches one-by-one with ItineraryCard
+ * 4. Like/Dislike actions advance to next match
+ * 5. Mutual likes create connection → chat enabled
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   SafeAreaView,
   TouchableOpacity,
-  ImageBackground,
   Alert,
+  ActivityIndicator,
+  ScrollView,
+  ImageBackground,
 } from 'react-native';
-import { auth } from '../config/firebaseConfig';
+import { Picker } from '@react-native-picker/picker';
+import { auth } from '../../firebase-config';
+import { Itinerary } from '../types/Itinerary';
+import ItineraryCard from '../components/forms/ItineraryCard';
+import { ItinerarySelector } from '../components/search/ItinerarySelector';
+// import { AddItineraryModal } from '../components/forms/AddItineraryModal'; // TODO: Create this component
+import useSearchItineraries from '../hooks/useSearchItineraries';
+import { useUsageTracking } from '../hooks/useUsageTracking';
+import { useUpdateItinerary } from '../hooks/useUpdateItinerary';
+import { useNewConnection } from '../context/NewConnectionContext';
 import { useAlert } from '../context/AlertContext';
 import { useUserProfile } from '../context/UserProfileContext';
 import { useAllItineraries } from '../hooks/useAllItineraries';
-import { ItinerarySelector } from '../components/search/ItinerarySelector';
-import AddItineraryModal from '../components/search/AddItineraryModal';
+import { itineraryRepository } from '../repositories/ItineraryRepository';
+import { connectionRepository } from '../repositories/ConnectionRepository';
+import { saveViewedItinerary, hasViewedItinerary } from '../utils/viewedStorage';
+import { filterValidItineraries } from '../utils/itineraryValidator';
 
 const SearchPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -230,7 +254,7 @@ const SearchPage: React.FC = () => {
         )}
       </View>
 
-      {/* Add Itinerary Modal */}
+      {/* Add Itinerary Modal - TODO: Create AddItineraryModal component 
       <AddItineraryModal
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
@@ -238,6 +262,7 @@ const SearchPage: React.FC = () => {
         itineraries={itineraries}
         userProfile={userProfile}
       />
+      */}
     </SafeAreaView>
     </ImageBackground>
   );

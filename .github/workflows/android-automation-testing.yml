@@ -46,6 +46,14 @@ jobs:
         # strict peer dependency resolution (ERESOLVE). Force npm to accept
         # legacy peer deps in CI so expo install succeeds.
         export npm_config_legacy_peer_deps=true
+        
+        # First, try to install expo-modules-core directly to ensure it's in node_modules
+        echo "📦 Installing expo-modules-core directly..."
+        npm install expo-modules-core --legacy-peer-deps || {
+          echo "⚠️ Direct npm install of expo-modules-core failed, trying expo install...";
+        }
+        
+        # Then run expo install to ensure version compatibility
         # The Expo CLI flags differ between CI and interactive shells. Use CI=1
         # instead of `--non-interactive` which may not be supported in some CLI versions.
         CI=1 npx expo install expo-modules-core || {
@@ -69,6 +77,9 @@ jobs:
           echo "⚠️ WARNING: expo-modules-core/android directory not found"
           echo "Directory contents:"
           ls -la node_modules/expo-modules-core/ || true
+          echo "📋 Package info:"
+          cat node_modules/expo-modules-core/package.json | grep -A5 '"version"' || true
+          echo "⚠️ Continuing despite missing android directory - may be present after prebuild"
         else
           echo "✅ expo-modules-core Android files verified"
         fi
@@ -179,38 +190,37 @@ jobs:
         emulator-boot-timeout: 900
         disable-animations: true
         script: |
-            set -e
-            echo "🚀 Starting Android emulator"
-            echo "⏳ Waiting for Android emulator to be ready..."
-            adb wait-for-device
-            sleep 30
-            echo "📱 Checking emulator status..."
-            adb devices -l
-
-            # Determine APK path (prefer downloaded artifact, otherwise built APK)
-            APK_DOWNLOAD_PATH="./android-app-apk/app-debug.apk"
-            APK_BUILT_PATH="android/app/build/outputs/apk/debug/app-debug.apk"
-
-            if [ -f "$APK_DOWNLOAD_PATH" ]; then
-              APK="$APK_DOWNLOAD_PATH"
-            else
-              APK="$APK_BUILT_PATH"
-            fi
-
-            echo "📦 Installing APK: $APK"
-            if [ ! -f "$APK" ]; then
-              echo "❌ ERROR: APK not found at: $APK"
-              echo "🔍 Directory listing (downloaded):"
-              ls -R ./android-app-apk 2>/dev/null || true
-              echo "🔍 Directory listing (built):"
-              ls -R android/app/build/outputs/ 2>/dev/null || true
-              exit 1
-            fi
-
-            adb install "$APK"
-
-            echo "✅ Verifying app installation..."
-            adb shell pm list packages | grep com.voyager.rn || true
+          set -e
+          echo "🚀 Starting Android emulator"
+          echo "⏳ Waiting for Android emulator to be ready..."
+          adb wait-for-device
+          sleep 30
+          echo "📱 Checking emulator status..."
+          adb devices -l
+          
+          APK_DOWNLOAD_PATH="./android-app-apk/app-debug.apk"
+          APK_BUILT_PATH="android/app/build/outputs/apk/debug/app-debug.apk"
+          
+          if [ -f "$APK_DOWNLOAD_PATH" ]; then
+            APK="$APK_DOWNLOAD_PATH"
+          else
+            APK="$APK_BUILT_PATH"
+          fi
+          
+          echo "📦 Installing APK: $APK"
+          if [ ! -f "$APK" ]; then
+            echo "❌ ERROR: APK not found at: $APK"
+            echo "🔍 Directory listing (downloaded):"
+            ls -R ./android-app-apk 2>/dev/null || true
+            echo "🔍 Directory listing (built):"
+            ls -R android/app/build/outputs/ 2>/dev/null || true
+            exit 1
+          fi
+          
+          adb install "$APK"
+          
+          echo "✅ Verifying app installation..."
+          adb shell pm list packages | grep com.voyager.rn || true
 
     - name: Setup Automation Testing
       run: |
