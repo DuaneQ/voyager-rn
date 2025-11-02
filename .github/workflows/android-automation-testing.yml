@@ -366,25 +366,28 @@ jobs:
         script: |
           echo "🚀 Starting Appium server and running tests..."
           
-          # Start Appium server in background
-          appium --log-level info &
+          # Start Appium server in background using npx (project-local)
+          cd automation
+          npx appium --log-level info > appium.log 2>&1 &
           APPIUM_PID=$!
           sleep 15
           
           # Verify Appium is running
           curl -f http://localhost:4723/status || {
             echo "❌ ERROR: Appium server not responding"
+            echo "Last 50 lines of Appium log:"
+            tail -50 appium.log
             exit 1
           }
           
           # Run automation tests
-          cd automation
           echo "🧪 Running Android automation tests..."
           PLATFORM=android npx wdio run wdio.mobile.conf.ts --spec tests/mobile/travel-preferences-success.test.ts
           
           # Cleanup
           echo "🧹 Cleaning up Appium..."
           kill $APPIUM_PID || true
+          cd ..
         
     - name: Kill crashpad_handler processes (Fix for emulator hanging)
       if: always()
