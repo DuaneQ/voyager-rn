@@ -40,74 +40,29 @@ jobs:
 
         echo "✅ Dependencies installed successfully"
 
-        # Ensure critical Expo modules are installed
-        echo "🔧 Ensuring critical Expo modules are installed..."
-        export npm_config_legacy_peer_deps=true
+        # Verify critical Expo modules from package.json
+        echo "🔍 Verifying expo-modules-core installation from package.json..."
         
-        # Install expo-modules-core and expo-modules-autolinking explicitly with --save flag
-        echo "📦 Installing expo-modules-core and expo-modules-autolinking..."
-        npm install expo-modules-core expo-modules-autolinking --legacy-peer-deps --save || {
-          echo "⚠️ npm install with --save failed, trying without --save...";
-          npm install expo-modules-core expo-modules-autolinking --legacy-peer-deps || {
-            echo "❌ Both npm install attempts failed";
-            echo "Listing package.json dependencies:";
-            cat package.json | grep -A 20 "dependencies" || true;
-            exit 1;
-          }
-        }
-        
-        echo "✅ npm install completed successfully"
-        
-        # Verify packages are in node_modules BEFORE expo install
-        echo "🔍 Verifying packages in node_modules..."
         if [ ! -d "node_modules/expo-modules-core" ]; then
-          echo "❌ ERROR: expo-modules-core not found after npm install"
-          echo "Listing node_modules/expo-* directories:"
-          ls -la node_modules/expo-* 2>/dev/null || echo "No expo modules found"
+          echo "❌ ERROR: expo-modules-core not found in node_modules"
+          echo "This should be installed from package.json dependencies"
+          npm ls expo-modules-core || echo "Not in dependency tree"
           exit 1
         fi
         
-        if [ ! -d "node_modules/expo-modules-autolinking" ]; then
-          echo "❌ ERROR: expo-modules-autolinking not found after npm install"
-          echo "This is required for Gradle plugin resolution"
-          echo "Listing node_modules/expo-* directories:"
-          ls -la node_modules/expo-* 2>/dev/null || echo "No expo modules found"
-          exit 1
-        fi
-        
-        echo "✅ Both packages verified in node_modules"
-        
-        # Then run expo install for version compatibility (non-fatal if fails)
-        echo "📦 Running expo install for version compatibility..."
-        CI=1 npx expo install expo-modules-core expo-modules-autolinking || {
-          echo "⚠️ WARNING: expo install failed, but packages already installed via npm";
-          echo "Continuing with npm-installed versions...";
-        }
-
-        # Final verification after expo install
-        echo "🔍 Final verification of expo modules..."
-        if [ ! -d "node_modules/expo-modules-core" ]; then
-          echo "❌ ERROR: expo-modules-core disappeared after expo install"
-          exit 1
-        fi
-        
-        if [ ! -d "node_modules/expo-modules-autolinking" ]; then
-          echo "❌ ERROR: expo-modules-autolinking disappeared after expo install"
-          exit 1
-        fi
-
-        if [ ! -d "node_modules/expo-modules-core/android" ]; then
-          echo "⚠️ WARNING: expo-modules-core/android directory not found"
+        # CRITICAL: Verify Android Gradle files exist (the missing file causing build failure)
+        if [ ! -f "node_modules/expo-modules-core/android/ExpoModulesCorePlugin.gradle" ]; then
+          echo "❌ ERROR: ExpoModulesCorePlugin.gradle not found"
+          echo "Package installed but missing Android platform files"
           echo "Directory contents:"
           ls -la node_modules/expo-modules-core/ || true
-          echo "📋 Package info:"
-          cat node_modules/expo-modules-core/package.json | grep -A5 '"version"' || true
-          echo "⚠️ Continuing despite missing android directory - may be present after prebuild"
-        else
-          echo "✅ expo-modules-core Android files verified"
+          echo "Package version:"
+          cat node_modules/expo-modules-core/package.json | grep -E '"version"|"name"' || true
+          exit 1
         fi
         
-        echo "✅ All critical Expo modules verified"
+        echo "✅ expo-modules-core with Android Gradle files verified"
+        echo "   File: node_modules/expo-modules-core/android/ExpoModulesCorePlugin.gradle"
       
     - name: Setup Java
       uses: actions/setup-java@v4
@@ -152,18 +107,14 @@ jobs:
         export CI=true
         export EXPO_NO_TELEMETRY=1
         
-        # Verify critical packages are installed
-        echo "🔍 Verifying expo-modules-autolinking..."
-        if [ ! -d "node_modules/expo-modules-autolinking" ]; then
-          echo "⚠️ expo-modules-autolinking missing, installing..."
-          npm install expo-modules-autolinking --legacy-peer-deps
+        # Verify expo-modules-core is still present with Android files
+        echo "🔍 Final verification before prebuild..."
+        if [ ! -f "node_modules/expo-modules-core/android/ExpoModulesCorePlugin.gradle" ]; then
+          echo "❌ ERROR: ExpoModulesCorePlugin.gradle missing before prebuild"
+          echo "This should have been verified in the previous step"
+          exit 1
         fi
-        
-        echo "🔍 Verifying @react-native/gradle-plugin..."
-        if [ ! -d "node_modules/@react-native/gradle-plugin" ]; then
-          echo "⚠️ @react-native/gradle-plugin missing, installing..."
-          npm install @react-native/gradle-plugin --legacy-peer-deps
-        fi
+        echo "✅ expo-modules-core Android files confirmed"
         
         # FORCE complete clean - remove all build artifacts and caches
         echo "🧹 Performing deep clean..."

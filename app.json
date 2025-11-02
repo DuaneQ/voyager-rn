@@ -1,41 +1,52 @@
 {
   "expo": {
-    "name": "Traval",
-    "slug": "voyager-rn",
+    "name": "TravalPass",
+    "slug": "travalpass-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+
+    "icon": "./assets/icon.png",
+
     "splash": {
       "backgroundColor": "#ffffff"
     },
+
     "assetBundlePatterns": [
       "**/*"
     ],
+
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.travalpass.app",
-      "deploymentTarget": "15.0",
+      "buildNumber": "1.0.0",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to upload profile and gallery photos.",
         "NSCameraUsageDescription": "This app needs access to your camera to take profile and gallery photos.",
         "NSPhotoLibraryAddUsageDescription": "This app needs permission to save photos to your photo library."
       }
     },
+
     "android": {
       "package": "com.travalpass.app",
+      "icon": "./AppIcons/playstore.png",
       "permissions": [
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
         "CAMERA"
       ]
     },
+
     "web": {},
-    "scheme": "voyager-rn",
+
+    "scheme": "travalpass",
+
     "platforms": [
       "ios",
       "android",
       "web"
     ],
+
     "extra": {
       "eas": {
         "projectId": "6fc90234-4d23-427c-918f-75d141efe8ed"

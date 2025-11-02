@@ -312,7 +312,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({
       </TouchableOpacity>
 
       {/* Video info overlay */}
-      <View testID="info-overlay">
+      <View testID="info-overlay" style={styles.infoOverlayWrapper} pointerEvents="box-none">
         {renderVideoInfo()}
       </View>
 
@@ -357,6 +357,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
     borderRadius: 20,
     padding: 8,
+    zIndex: 10, // Ensure mute button appears above video
+  },
+  infoOverlayWrapper: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10, // Ensure wrapper has proper stacking
   },
   infoOverlay: {
     position: 'absolute',
@@ -366,6 +374,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.4)', // Add semi-transparent background for better readability
     borderRadius: 8,
     padding: 12,
+    zIndex: 10, // Ensure info overlay appears above video
   },
   title: {
     fontSize: 18,
@@ -400,6 +409,7 @@ const styles = StyleSheet.create({
     right: 16,
     bottom: 140, // Raised from 100 to sit above transparent tab bar
     alignItems: 'center',
+    zIndex: 10, // Ensure actions appear above video
   },
   actionButton: {
     alignItems: 'center',
