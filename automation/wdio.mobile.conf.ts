@@ -134,13 +134,32 @@ export const config = {
   beforeSession: function (config, capabilities, specs) {
     console.log(`\n🚀 Starting ${platform.toUpperCase()} test session...`);
     console.log(`📱 Device: ${capabilities['appium:deviceName']}`);
-    console.log(`� UDID: ${capabilities['appium:udid']}`);
+    console.log(`📍 UDID: ${capabilities['appium:udid']}`);
     console.log(`📦 Bundle ID: ${capabilities['appium:bundleId']}`);
     console.log(`🏗️  CI Mode: ${process.env.CI ? 'Yes' : 'No'}`);
     
     if (process.env.CI) {
       console.log(`🔧 Simulator ID: ${process.env.SIMULATOR_ID}`);
       console.log(`⚙️  Platform Version: ${capabilities['appium:platformVersion']}`);
+    }
+  },
+  
+  before: async function (capabilities, specs) {
+    // Wait for app to be fully initialized before any tests run
+    if (process.env.CI && platform === 'ios') {
+      console.log('⏳ CI Mode: Waiting additional 15 seconds for app to fully initialize...');
+      await browser.pause(15000);
+      
+      // Verify app is accessible by checking if we can get page source
+      try {
+        console.log('🔍 Verifying app is responsive...');
+        await driver.getPageSource();
+        console.log('✅ App is responsive and ready for testing');
+      } catch (error) {
+        console.error('⚠️ WARNING: App may not be fully ready:', error);
+        console.log('⏳ Waiting additional 10 seconds...');
+        await browser.pause(10000);
+      }
     }
   },
   

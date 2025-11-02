@@ -35,28 +35,93 @@ describe('Login Flow - Mobile', () => {
       const baseDir = path.join(__dirname, '../../logs');
       fs.mkdirSync(baseDir, { recursive: true });
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      // capture adb logcat via Appium mobile shell
-      try {
-        const logcat = await (browser as any).execute('mobile: shell', { command: 'logcat', args: ['-d', '-v', 'time'] });
-        fs.writeFileSync(path.join(baseDir, `logcat-${label}-${timestamp}.txt`), logcat || '');
-      } catch (e) {
-        fs.writeFileSync(path.join(baseDir, `logcat-${label}-${timestamp}.txt`), `logcat capture failed: ${(e as Error).message}`);
-      }
+      
+      // Detect platform
+      const caps: any = (browser.capabilities || {});
+      const platformName = ((caps.platformName || caps.platform) || process.env.PLATFORM || '').toString().toLowerCase();
+      const isAndroid = platformName.includes('android');
+      const isIOS = platformName.includes('ios');
+      
+      console.log(`[Test][Diagnostics] Capturing logs for platform: ${platformName}`);
+      
+      if (isAndroid) {
+        // Android-specific diagnostics
+        // capture adb logcat via Appium mobile shell
+        try {
+          const logcat = await (browser as any).execute('mobile: shell', { command: 'logcat', args: ['-d', '-v', 'time'] });
+          fs.writeFileSync(path.join(baseDir, `logcat-${label}-${timestamp}.txt`), logcat || '');
+        } catch (e) {
+          fs.writeFileSync(path.join(baseDir, `logcat-${label}-${timestamp}.txt`), `logcat capture failed: ${(e as Error).message}`);
+        }
 
-      // capture dumpsys activities
-      try {
-        const dumpsys = await (browser as any).execute('mobile: shell', { command: 'dumpsys', args: ['activity', 'activities'] });
-        fs.writeFileSync(path.join(baseDir, `dumpsys-activities-${label}-${timestamp}.txt`), dumpsys || '');
-      } catch (e) {
-        fs.writeFileSync(path.join(baseDir, `dumpsys-activities-${label}-${timestamp}.txt`), `dumpsys capture failed: ${(e as Error).message}`);
-      }
+        // capture dumpsys activities
+        try {
+          const dumpsys = await (browser as any).execute('mobile: shell', { command: 'dumpsys', args: ['activity', 'activities'] });
+          fs.writeFileSync(path.join(baseDir, `dumpsys-activities-${label}-${timestamp}.txt`), dumpsys || '');
+        } catch (e) {
+          fs.writeFileSync(path.join(baseDir, `dumpsys-activities-${label}-${timestamp}.txt`), `dumpsys capture failed: ${(e as Error).message}`);
+        }
 
-      // record current package
-      try {
-        const pkg = await (browser as any).getCurrentPackage?.();
-        fs.writeFileSync(path.join(baseDir, `current-package-${label}-${timestamp}.txt`), pkg || '');
-      } catch (e) {
-        fs.writeFileSync(path.join(baseDir, `current-package-${label}-${timestamp}.txt`), `getCurrentPackage failed: ${(e as Error).message}`);
+        // record current package
+        try {
+          const pkg = await (browser as any).getCurrentPackage?.();
+          fs.writeFileSync(path.join(baseDir, `current-package-${label}-${timestamp}.txt`), pkg || '');
+        } catch (e) {
+          fs.writeFileSync(path.join(baseDir, `current-package-${label}-${timestamp}.txt`), `getCurrentPackage failed: ${(e as Error).message}`);
+        }
+      } else if (isIOS) {
+        // iOS-specific diagnostics
+        console.log('[Test][Diagnostics] Capturing iOS-specific diagnostics...');
+        
+        // Capture page source (UI hierarchy)
+        try {
+          const pageSource = await browser.getPageSource();
+          const filename = path.join(baseDir, `page-source-${label}-${timestamp}.xml`);
+          fs.writeFileSync(filename, pageSource);
+          console.log(`[Test][Diagnostics] iOS page source saved to: ${filename}`);
+        } catch (e) {
+          console.error('[Test][Diagnostics] Failed to capture page source:', (e as Error).message);
+          fs.writeFileSync(path.join(baseDir, `page-source-${label}-${timestamp}.txt`), 
+            `Page source capture failed: ${(e as Error).message}`);
+        }
+        
+        // Take screenshot
+        try {
+          const screenshotDir = path.join(baseDir, '../screenshots');
+          fs.mkdirSync(screenshotDir, { recursive: true });
+          const screenshotPath = path.join(screenshotDir, `${label}-${timestamp}.png`);
+          await browser.saveScreenshot(screenshotPath);
+          console.log(`[Test][Diagnostics] iOS screenshot saved to: ${screenshotPath}`);
+        } catch (e) {
+          console.error('[Test][Diagnostics] Failed to capture screenshot:', (e as Error).message);
+        }
+        
+        // Get current activity/screen info
+        try {
+          const activity = await (browser as any).getCurrentActivity?.();
+          if (activity) {
+            fs.writeFileSync(path.join(baseDir, `current-activity-${label}-${timestamp}.txt`), activity);
+          }
+        } catch (e) {
+          // getCurrentActivity might not be available on iOS, that's okay
+          console.log('[Test][Diagnostics] getCurrentActivity not available on iOS (expected)');
+        }
+        
+        // Capture app state
+        try {
+          const appState = await (browser as any).queryAppState(caps['appium:bundleId'] || 'com.voyager.rn');
+          fs.writeFileSync(path.join(baseDir, `app-state-${label}-${timestamp}.txt`), 
+            `App State: ${appState}\n` +
+            `0 = not installed\n` +
+            `1 = not running\n` +
+            `2 = running in background/suspended\n` +
+            `3 = running in background\n` +
+            `4 = running in foreground`
+          );
+          console.log(`[Test][Diagnostics] iOS app state: ${appState}`);
+        } catch (e) {
+          console.error('[Test][Diagnostics] Failed to query app state:', (e as Error).message);
+        }
       }
     } catch (err) {
       console.log('[Test][Diagnostics] captureLogs failed:', (err as Error).message);
