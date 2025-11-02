@@ -13,7 +13,7 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.voyager.rn",
+      "bundleIdentifier": "com.travalpass.app",
       "deploymentTarget": "15.0",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to upload profile and gallery photos.",
@@ -22,7 +22,7 @@
       }
     },
     "android": {
-      "package": "com.voyager.rn",
+      "package": "com.travalpass.app",
       "permissions": [
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
