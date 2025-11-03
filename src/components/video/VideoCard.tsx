@@ -5,6 +5,7 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
+import { Platform } from 'react-native';
 import {
   View,
   Text,
@@ -48,6 +49,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({
   const [error, setError] = useState(false);
   const [hasTrackedView, setHasTrackedView] = useState(false);
   const viewTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isUnmountedRef = useRef(false);
 
   const userId = auth.currentUser?.uid;
   const isLiked = video.likes?.includes(userId || '');
@@ -59,20 +61,67 @@ export const VideoCard: React.FC<VideoCardProps> = ({
    * Control playback based on isActive
    */
   useEffect(() => {
-    if (isActive && videoRef.current) {
-      // Play when active
-      videoRef.current.playAsync().catch((err) => {
-        console.error('Error playing video:', err);
-      });
-      setIsPlaying(true);
-    } else if (!isActive && videoRef.current) {
-      // Pause when inactive
-      videoRef.current.pauseAsync().catch((err) => {
-        console.error('Error pausing video:', err);
-      });
-      setIsPlaying(false);
-    }
-  }, [isActive]);
+    const managePlayback = async () => {
+      if (!videoRef.current || isUnmountedRef.current) return;
+
+      try {
+        if (isActive) {
+          // First stop any existing playback
+          await videoRef.current.stopAsync().catch(() => {});
+          // Reset position
+          await videoRef.current.setPositionAsync(0).catch(() => {});
+          // Ensure mute state is correct before playing. Try to set it, but
+          // don't aggressively unload the native player if the underlying
+          // view has been recycled by the platform (emulator quirk on Android).
+          try {
+            await videoRef.current.setIsMutedAsync(isMuted);
+          } catch (muteErr) {
+            const muteMessage = muteErr?.message || String(muteErr);
+            if (muteMessage.includes('Invalid view returned from registry')) {
+              // Don't unload here — a mute toggle shouldn't destroy the player.
+              // Log and continue to attempt to play; if the player is truly
+              // invalid, subsequent calls will noop safely.
+              console.warn('setIsMutedAsync failed due to recycled native view (ignored).');
+            } else {
+              // Other errors should still be surfaced to the outer handler
+              throw muteErr;
+            }
+          }
+          // Play when active
+          await videoRef.current.playAsync();
+          setIsPlaying(true);
+        } else {
+          // Aggressively stop audio when inactive
+          // Mute first to prevent any audio leakage
+          await videoRef.current.setIsMutedAsync(true);
+          // Stop playback
+          await videoRef.current.stopAsync();
+          // Reset position
+          await videoRef.current.setPositionAsync(0);
+          setIsPlaying(false);
+        }
+      } catch (err) {
+        // Some emulator / native errors (for example: "Invalid view returned from registry")
+        // may be thrown when the native view backed by the Video ref has been recycled
+        // by the platform. Treat these as recoverable on emulator (no-redbox) and
+        // attempt a safe cleanup to prevent the app showing a red error screen.
+        const message = err?.message || String(err);
+        if (message.includes('Invalid view returned from registry')) {
+          // The native view backing the player was recycled by the platform
+          // (common on Android emulator when views are aggressively recycled).
+          // Don't forcefully unload the player on this error — unloading can
+          // make mute/unmute toggles irrecoverable. Instead log a warning and
+          // mark playback as stopped so the UI stays consistent.
+          console.warn('Video playback native view recycled - skipping aggressive cleanup.');
+          setIsPlaying(false);
+        } else if (!isUnmountedRef.current) {
+          console.error('Error managing video playback:', err);
+        }
+      }
+    };
+
+    managePlayback();
+  }, [isActive, isMuted]);
 
   /**
    * Track view after 3 seconds of play
@@ -83,24 +132,43 @@ export const VideoCard: React.FC<VideoCardProps> = ({
         onViewTracked();
         setHasTrackedView(true);
       }, 3000); // Track after 3 seconds
+    } else if (!isPlaying && viewTimerRef.current) {
+      // Clear timer if video stops playing before 3 seconds
+      clearTimeout(viewTimerRef.current);
+      viewTimerRef.current = null;
     }
 
     return () => {
       if (viewTimerRef.current) {
         clearTimeout(viewTimerRef.current);
+        viewTimerRef.current = null;
       }
     };
   }, [isPlaying, hasTrackedView, onViewTracked]);
 
   /**
-   * Cleanup on unmount
+   * Cleanup on unmount and when becoming inactive
    */
   useEffect(() => {
     return () => {
+      isUnmountedRef.current = true;
+      // Cleanup when component unmounts or becomes inactive
       if (videoRef.current) {
+        videoRef.current.stopAsync().catch(() => {
+          // Ignore errors
+        });
+        videoRef.current.setPositionAsync(0).catch(() => {
+          // Ignore errors
+        });
+        videoRef.current.setIsMutedAsync(true).catch(() => {
+          // Mute to prevent any audio leakage
+        });
         videoRef.current.unloadAsync().catch(() => {
           // Ignore errors on cleanup
         });
+      }
+      if (viewTimerRef.current) {
+        clearTimeout(viewTimerRef.current);
       }
     };
   }, []);
@@ -141,12 +209,25 @@ export const VideoCard: React.FC<VideoCardProps> = ({
    * Toggle mute/unmute
    */
   const handleMuteToggle = async () => {
-    if (!videoRef.current) return;
-
+    // Update parent-controlled mute state first. Rely on the controlled
+    // `isMuted` prop on the <Video /> to apply the change. Avoid calling
+    // instance methods directly here because the native view may be
+    // recycled (especially on Android emulator) which can cause errors.
+    const newMutedState = !isMuted;
     try {
-      const newMutedState = !isMuted;
-      await videoRef.current.setIsMutedAsync(newMutedState);
-      onMuteToggle(newMutedState); // Update parent state to persist across videos
+      onMuteToggle(newMutedState);
+      // Best-effort: if the ref is valid, attempt to set mute asynchronously
+      // but don't fail if it errors (prevents redbox on emulator).
+      if (videoRef.current) {
+        videoRef.current.setIsMutedAsync(newMutedState).catch((e) => {
+          // Ignore failures; the Video component will receive the new prop
+          // and should apply it when possible.
+          const m = e?.message || String(e);
+          if (!m.includes('Invalid view returned from registry')) {
+            console.warn('setIsMutedAsync failed while toggling mute:', e);
+          }
+        });
+      }
     } catch (err) {
       console.error('Error toggling mute:', err);
     }
@@ -378,18 +459,13 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 18,
-    fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 8,
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    fontWeight: '600',
+    marginBottom: 4,
   },
   description: {
     fontSize: 14,
     color: '#fff',
-    marginBottom: 8,
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },

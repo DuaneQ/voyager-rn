@@ -147,7 +147,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
           onPress: async () => {
             const response = await deleteItinerary(itineraryId);
             if (response.success) {
-              Alert.alert('Success', 'Itinerary deleted');
+              // Parent will show a unified success notification. Refresh list and reset form if needed.
               onItineraryAdded(); // Refresh list
               if (editingItineraryId === itineraryId) {
                 resetForm();
@@ -198,7 +198,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
     const response = await createItinerary(formData, userProfile!, editingItineraryId || undefined);
 
     if (response.success) {
-      Alert.alert('Success', editingItineraryId ? 'Itinerary updated' : 'Itinerary created');
+      // Parent will show a unified success notification. Close modal and refresh list.
       resetForm();
       onItineraryAdded();
       onClose();
@@ -351,6 +351,13 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
           ref={scrollViewRef}
           style={styles.scrollView} 
           contentContainerStyle={styles.scrollContent}
+          // Ensure taps on nested lists (autocomplete) are handled and
+          // allow nested scrolling on Android. This prevents the
+          // VirtualizedList-inside-ScrollView touch swallowing and the
+          // "VirtualizedLists should never be nested" warning interfering
+          // with selection of autocomplete rows on Android emulators.
+          keyboardShouldPersistTaps="handled"
+          nestedScrollEnabled={true}
         >
           {/* Profile Warning */}
           {!profileComplete && (

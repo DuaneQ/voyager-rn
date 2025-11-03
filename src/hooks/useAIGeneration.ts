@@ -4,7 +4,8 @@
  */
 
 import { useState, useCallback, useRef } from 'react';
-import { getFunctions, httpsCallable, HttpsCallableResult } from 'firebase/functions';
+import { httpsCallable, HttpsCallableResult } from 'firebase/functions';
+import { functions } from '../config/firebaseConfig';
 import { 
   AIGenerationRequest, 
   AIGenerationProgress, 
@@ -33,9 +34,6 @@ const PROGRESS_STAGES = {
   SAVING: { stage: 'saving' as const, percent: 90, message: 'Saving your itinerary...' },
   DONE: { stage: 'done' as const, percent: 100, message: 'Your itinerary is ready!' }
 } as const;
-
-// Firebase Functions instance
-const functions = getFunctions();
 
 export interface UseAIGenerationReturn {
   generateItinerary: (request: AIGenerationRequest) => Promise<ItineraryResult>;

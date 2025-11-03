@@ -4,8 +4,8 @@
  */
 
 import { useState, useCallback } from 'react';
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import { auth } from '../config/firebaseConfig';
+import { httpsCallable } from 'firebase/functions';
+import { auth, functions } from '../config/firebaseConfig';
 import { DeleteItineraryResponse } from '../types/ManualItinerary';
 
 export const useDeleteItinerary = () => {
@@ -28,7 +28,6 @@ export const useDeleteItinerary = () => {
     setError(null);
 
     try {
-      const functions = getFunctions();
       const deleteItineraryFn = httpsCallable(functions, 'deleteItinerary');
 
       console.log('[useDeleteItinerary] Deleting itinerary:', itineraryId);

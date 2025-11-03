@@ -1,23 +1,24 @@
-/**
- * AIItineraryDisplay Edge Case Tests - React Native
- * Tests for share functionality and data handling edge cases
- */
-
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
-import { Alert } from 'react-native';
-import { AIItineraryDisplay } from '../../components/ai/AIItineraryDisplay';
-import { AIGeneratedItinerary } from '../../hooks/useAIGeneratedItineraries';
-import { setDoc } from 'firebase/firestore';
+import { Text, Alert } from 'react-native';
 
-// Mock Firebase
+// Mock firestore and config
+jest.mock('../../config/firebaseConfig', () => ({ db: {} }));
 jest.mock('firebase/firestore', () => ({
   doc: jest.fn(() => ({ path: 'itineraries/test-id' })),
   setDoc: jest.fn(),
   serverTimestamp: jest.fn(() => 'TIMESTAMP'),
 }));
 
-// Mock other dependencies
+// Mock ShareAIItineraryModal to avoid heavy implementation
+jest.mock('../../components/modals/ShareAIItineraryModal', () => ({
+  ShareAIItineraryModal: ({ visible }: any) => {
+    const React = require('react');
+    return visible ? React.createElement('Text', { testID: 'share-modal-visible' }, 'shared') : null;
+  },
+}));
+
+// Mock visual libs used by the component
 jest.mock('@expo/vector-icons', () => ({
   Ionicons: 'Ionicons',
 }));
@@ -26,13 +27,71 @@ jest.mock('expo-linear-gradient', () => ({
   LinearGradient: 'LinearGradient',
 }));
 
-jest.mock('../../config/firebaseConfig', () => ({
-  db: {},
-}));
+import { AIItineraryDisplay } from '../../components/ai/AIItineraryDisplay';
+import { AIGeneratedItinerary } from '../../hooks/useAIGeneratedItineraries';
+import { setDoc } from 'firebase/firestore';
 
-jest.mock('../../components/modals/ShareAIItineraryModal', () => ({
-  ShareAIItineraryModal: () => null,
-}));
+describe('AIItineraryDisplay', () => {
+  it('shows no-data placeholder when itinerary is null', () => {
+    const { getByText } = render(<AIItineraryDisplay itinerary={null as any} />);
+    expect(getByText('No itinerary data available')).toBeTruthy();
+  });
+
+  it('renders header and handles share flow', async () => {
+    const itinerary: any = {
+      id: 'ai-1',
+      destination: 'Tokyo',
+      description: 'Amazing Tokyo Adventure',
+      startDate: '2025-12-01',
+      endDate: '2025-12-07',
+      response: { data: {} },
+    };
+
+    const { getByTestId, getByText, queryByTestId } = render(<AIItineraryDisplay itinerary={itinerary} />);
+
+    // header content
+    expect(getByText('Tokyo')).toBeTruthy();
+    expect(getByText('Amazing Tokyo Adventure')).toBeTruthy();
+
+    // press share button
+    const shareButton = getByTestId('share-button');
+    fireEvent.press(shareButton);
+
+    await waitFor(() => expect(setDoc).toHaveBeenCalled());
+
+    // share modal should become visible (our mock renders testID)
+    await waitFor(() => expect(queryByTestId('share-modal-visible')).toBeTruthy());
+  });
+
+  it('renders flights accordion and expands to show flight details', async () => {
+    const itinerary: any = {
+      id: 'ai-2',
+      destination: 'Paris',
+      startDate: '2025-10-01',
+      endDate: '2025-10-07',
+      response: { data: {} },
+      flights: [
+        { departureTime: '08:00', duration: '7h', stops: 0, price: { amount: 500, currency: 'USD' }, airline: 'AirTest' }
+      ],
+    };
+
+    const { getByText, getByRole, getByTestId } = render(<AIItineraryDisplay itinerary={itinerary} />);
+
+    // Flight header exists
+    expect(getByText(/Flight Options/)).toBeTruthy();
+
+    // Expand flights by pressing header
+    const header = getByText(/Flight Options/);
+    fireEvent.press(header);
+
+    // After expansion, flight details should appear
+    await waitFor(() => expect(getByText('08:00')).toBeTruthy());
+    expect(getByText('7h')).toBeTruthy();
+  expect(getByText(/AirTest/)).toBeTruthy();
+  expect(getByText(/\$500/)).toBeTruthy();
+  });
+});
+/** Edge case tests continue below (imports/mocks consolidated at top) */
 
 describe('AIItineraryDisplay - Edge Cases', () => {
   const mockItinerary: AIGeneratedItinerary = {

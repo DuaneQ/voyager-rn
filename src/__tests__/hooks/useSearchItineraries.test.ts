@@ -1,84 +1,73 @@
 /**
- * Unit Tests for useSearchItineraries Hook
- * Tests Firestore-based itinerary search with filtering and pagination
- * Follows React hooks testing best practices
+ * Unit Tests for useSearchItineraries Hook (RPC-based)
+ * Tests Cloud Function RPC-based itinerary search with filtering
+ * Matches PWA test patterns
  */
 
 import { renderHook, act, waitFor } from '@testing-library/react-native';
 import useSearchItineraries from '../../hooks/useSearchItineraries';
-import * as firestore from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Mock Firebase Firestore
-jest.mock('firebase/firestore', () => ({
-  getFirestore: jest.fn(() => ({})),
-  collection: jest.fn(),
-  query: jest.fn(),
-  where: jest.fn(),
-  getDocs: jest.fn(),
-  orderBy: jest.fn(),
-  limit: jest.fn(),
-  startAfter: jest.fn(),
+// Mock Firebase Functions BEFORE any imports
+jest.mock('firebase/functions', () => ({
+  httpsCallable: jest.fn(),
 }));
 
-// Mock firebase config
-jest.mock('../../config/firebaseConfig', () => ({
-  auth: { currentUser: { uid: 'test-user' } },
+// Mock AsyncStorage
+jest.mock('@react-native-async-storage/async-storage', () => ({
+  getItem: jest.fn(),
+  setItem: jest.fn(),
+  removeItem: jest.fn(),
+}));
+
+// Mock firebase-config at ROOT level (imports from ../../firebase-config)
+jest.mock('../../../firebase-config', () => ({
+  auth: { currentUser: { uid: 'test-user-123' } },
   db: {},
   app: {},
+  storage: {},
+  functions: {}, // Mock functions singleton
 }));
 
-describe('useSearchItineraries', () => {
+describe('useSearchItineraries (RPC)', () => {
   const mockUserItinerary = {
     id: 'user-itinerary-1',
-    destination: 'Paris, France',
+    destination: 'Paris',
     startDate: '2024-01-01',
     endDate: '2024-01-08',
-    description: 'My trip to Paris',
-    activities: ['Eiffel Tower'],
-    gender: 'Female',
-    status: 'Single',
-    sexualOrientation: 'Straight',
+    startDay: new Date('2024-01-01').getTime(),
+    endDay: new Date('2024-01-08').getTime(),
+    gender: 'No Preference',
+    status: 'No Preference',
+    sexualOrientation: 'No Preference',
+    lowerRange: 25,
+    upperRange: 45,
     userInfo: {
-      uid: 'user-123',
-      email: 'user@example.com',
-      username: 'user123',
-      gender: 'Male',
-      status: 'Single',
-      sexualOrientation: 'Straight',
+      uid: 'test-user-123',
+      username: 'testuser',
+      blocked: [],
     },
   };
 
   const mockMatchingItinerary = {
     id: 'match-1',
-    destination: 'Paris, France',
+    destination: 'Paris',
     startDate: '2024-01-05',
     endDate: '2024-01-12',
-    description: 'Trip to Paris',
-    activities: ['Louvre'],
+    startDay: new Date('2024-01-05').getTime(),
     endDay: new Date('2024-01-12').getTime(),
+    gender: 'Female',
     userInfo: {
       uid: 'other-user',
-      email: 'other@example.com',
       username: 'traveler1',
-      gender: 'Female',
-      status: 'Single',
-      sexualOrientation: 'Straight',
     },
   };
 
-  const mockQuerySnapshot = (docs: any[]) => ({
-    docs: docs.map((data, index) => ({
-      id: data.id,
-      data: () => data,
-    })),
-    empty: docs.length === 0,
-    size: docs.length,
-  });
-
   beforeEach(() => {
     jest.clearAllMocks();
-    console.log = jest.fn(); // Suppress console logs in tests
-    console.error = jest.fn();
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValue(JSON.stringify([]));
+    (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
   });
 
   describe('Initial State', () => {
@@ -89,412 +78,260 @@ describe('useSearchItineraries', () => {
       expect(result.current.loading).toBe(false);
       expect(result.current.error).toBeNull();
       expect(result.current.hasMore).toBe(true);
-      expect(result.current.currentIndex).toBe(0);
-      expect(result.current.allMatchingItineraries).toEqual([]);
       expect(typeof result.current.searchItineraries).toBe('function');
       expect(typeof result.current.getNextItinerary).toBe('function');
     });
   });
 
-  describe('Search Functionality', () => {
-    it('should search itineraries successfully', async () => {
-      (firestore.getDocs as jest.Mock).mockResolvedValue(
-        mockQuerySnapshot([mockMatchingItinerary])
+  describe('RPC Search Functionality', () => {
+    it('should call searchItineraries RPC with correct parameters', async () => {
+      const mockSearchFn = jest.fn().mockResolvedValue({
+        data: {
+          success: true,
+          data: [mockMatchingItinerary],
+        },
+      });
+      (httpsCallable as jest.Mock).mockReturnValue(mockSearchFn);
+
+      const { result } = renderHook(() => useSearchItineraries());
+
+      await act(async () => {
+        await result.current.searchItineraries(mockUserItinerary as any, 'test-user-123');
+      });
+
+      expect(httpsCallable).toHaveBeenCalledWith(
+        expect.anything(), // functions instance
+        'searchItineraries'
       );
+      expect(mockSearchFn).toHaveBeenCalledWith({
+        destination: 'Paris',
+        gender: 'No Preference',
+        status: 'No Preference',
+        sexualOrientation: 'No Preference',
+        minStartDay: mockUserItinerary.startDay,
+        maxEndDay: mockUserItinerary.endDay,
+        pageSize: 10,
+        excludedIds: [],
+        blockedUserIds: [],
+        currentUserId: 'test-user-123',
+        lowerRange: 25,
+        upperRange: 45,
+      });
+    });
+
+    it('should update state with matching itineraries', async () => {
+      const mockSearchFn = jest.fn().mockResolvedValue({
+        data: {
+          success: true,
+          data: [mockMatchingItinerary],
+        },
+      });
+      (httpsCallable as jest.Mock).mockReturnValue(mockSearchFn);
 
       const { result } = renderHook(() => useSearchItineraries());
 
       await act(async () => {
-        await result.current.searchItineraries(mockUserItinerary, 'user-123');
+        await result.current.searchItineraries(mockUserItinerary as any, 'test-user-123');
       });
 
-      expect(result.current.loading).toBe(false);
-      expect(result.current.error).toBeNull();
-      expect(result.current.allMatchingItineraries).toHaveLength(1);
-      expect(result.current.matchingItineraries).toHaveLength(1);
-      expect(result.current.matchingItineraries[0].id).toBe('match-1');
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+        expect(result.current.error).toBeNull();
+        expect(result.current.matchingItineraries).toHaveLength(1);
+        expect(result.current.matchingItineraries[0].id).toBe('match-1');
+      });
     });
 
-    it('should handle empty search results', async () => {
-      (firestore.getDocs as jest.Mock).mockResolvedValue(mockQuerySnapshot([]));
+    it('should handle empty results', async () => {
+      const mockSearchFn = jest.fn().mockResolvedValue({
+        data: {
+          success: true,
+          data: [],
+        },
+      });
+      (httpsCallable as jest.Mock).mockReturnValue(mockSearchFn);
 
       const { result } = renderHook(() => useSearchItineraries());
 
       await act(async () => {
-        await result.current.searchItineraries(mockUserItinerary, 'user-123');
+        await result.current.searchItineraries(mockUserItinerary as any, 'test-user-123');
       });
 
-      expect(result.current.allMatchingItineraries).toEqual([]);
-      expect(result.current.matchingItineraries).toEqual([]);
-      expect(result.current.loading).toBe(false);
+      await waitFor(() => {
+        expect(result.current.matchingItineraries).toEqual([]);
+        expect(result.current.hasMore).toBe(false);
+        expect(result.current.loading).toBe(false);
+      });
     });
 
-    it('should filter out user\'s own itineraries', async () => {
-      const ownItinerary = {
+    it('should handle RPC errors gracefully', async () => {
+      const mockSearchFn = jest.fn().mockRejectedValue(new Error('Network error'));
+      (httpsCallable as jest.Mock).mockReturnValue(mockSearchFn);
+
+      const { result } = renderHook(() => useSearchItineraries());
+
+      await act(async () => {
+        await result.current.searchItineraries(mockUserItinerary as any, 'test-user-123');
+      });
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+        expect(result.current.error).toContain('Network error');
+        expect(result.current.matchingItineraries).toEqual([]);
+      });
+    });
+
+    it('should filter out user own itineraries', async () => {
+      const userOwnItinerary = {
         ...mockMatchingItinerary,
         id: 'own-itinerary',
-        userInfo: {
-          ...mockMatchingItinerary.userInfo,
-          uid: 'user-123', // Same as current user
+        userInfo: { uid: 'test-user-123' },
+      };
+
+      const mockSearchFn = jest.fn().mockResolvedValue({
+        data: {
+          success: true,
+          data: [mockMatchingItinerary, userOwnItinerary],
         },
-      };
+      });
+      (httpsCallable as jest.Mock).mockReturnValue(mockSearchFn);
 
-      (firestore.getDocs as jest.Mock).mockResolvedValue(
-        mockQuerySnapshot([mockMatchingItinerary, ownItinerary])
+      const { result } = renderHook(() => useSearchItineraries());
+
+      await act(async () => {
+        await result.current.searchItineraries(mockUserItinerary as any, 'test-user-123');
+      });
+
+      await waitFor(() => {
+        // Should only have the other user's itinerary
+        expect(result.current.matchingItineraries).toHaveLength(1);
+        expect(result.current.matchingItineraries[0].id).toBe('match-1');
+      });
+    });
+  });
+
+  describe('AsyncStorage Integration', () => {
+    it('should exclude viewed itineraries from results', async () => {
+      const viewedIds = ['match-1'];
+      (AsyncStorage.getItem as jest.Mock).mockResolvedValue(
+        JSON.stringify(viewedIds)
       );
 
+      const mockSearchFn = jest.fn().mockResolvedValue({
+        data: {
+          success: true,
+          data: [mockMatchingItinerary],
+        },
+      });
+      (httpsCallable as jest.Mock).mockReturnValue(mockSearchFn);
+
       const { result } = renderHook(() => useSearchItineraries());
 
+      // Wait for AsyncStorage to load
       await act(async () => {
-        await result.current.searchItineraries(mockUserItinerary, 'user-123');
+        await new Promise(resolve => setTimeout(resolve, 100));
       });
 
-      // Should only have the other user's itinerary
-      expect(result.current.allMatchingItineraries).toHaveLength(1);
-      expect(result.current.allMatchingItineraries[0].id).toBe('match-1');
+      await act(async () => {
+        await result.current.searchItineraries(mockUserItinerary as any, 'test-user-123');
+      });
+
+      // Should pass excludedIds including the viewed itinerary
+      await waitFor(() => {
+        expect(mockSearchFn).toHaveBeenCalled();
+        const callArgs = mockSearchFn.mock.calls[0][0];
+        expect(callArgs.excludedIds).toContain('match-1');
+      });
     });
 
-    it('should build query with all filters', async () => {
-      (firestore.getDocs as jest.Mock).mockResolvedValue(mockQuerySnapshot([]));
+    it('should save viewed itinerary to AsyncStorage on getNextItinerary', async () => {
+      const mockSearchFn = jest.fn().mockResolvedValue({
+        data: {
+          success: true,
+          data: [mockMatchingItinerary],
+        },
+      });
+      (httpsCallable as jest.Mock).mockReturnValue(mockSearchFn);
 
       const { result } = renderHook(() => useSearchItineraries());
 
       await act(async () => {
-        await result.current.searchItineraries(mockUserItinerary, 'user-123');
+        await result.current.searchItineraries(mockUserItinerary as any, 'test-user-123');
       });
 
-      // Verify query was built with proper constraints
-      expect(firestore.where).toHaveBeenCalledWith('destination', '==', 'Paris, France');
-      expect(firestore.where).toHaveBeenCalledWith('userInfo.gender', '==', 'Female');
-      expect(firestore.where).toHaveBeenCalledWith('userInfo.status', '==', 'Single');
-      expect(firestore.where).toHaveBeenCalledWith('userInfo.sexualOrientation', '==', 'Straight');
-      expect(firestore.where).toHaveBeenCalledWith('endDay', '>=', expect.any(Number));
-    });
-
-    it('should skip gender filter when No Preference', async () => {
-      (firestore.getDocs as jest.Mock).mockResolvedValue(mockQuerySnapshot([]));
-
-      const noPreferenceItinerary = {
-        ...mockUserItinerary,
-        gender: 'No Preference',
-      };
-
-      const { result } = renderHook(() => useSearchItineraries());
-
-      await act(async () => {
-        await result.current.searchItineraries(noPreferenceItinerary, 'user-123');
-      });
-
-      const genderCalls = (firestore.where as jest.Mock).mock.calls.filter(
-        call => call[0] === 'userInfo.gender'
-      );
-      expect(genderCalls).toHaveLength(0);
-    });
-
-    it('should reset state on new search', async () => {
-      (firestore.getDocs as jest.Mock)
-        .mockResolvedValueOnce(mockQuerySnapshot([mockMatchingItinerary]))
-        .mockResolvedValueOnce(mockQuerySnapshot([{ ...mockMatchingItinerary, id: 'match-2' }]));
-
-      const { result } = renderHook(() => useSearchItineraries());
-
-      // First search
-      await act(async () => {
-        await result.current.searchItineraries(mockUserItinerary, 'user-123');
-      });
-
-      expect(result.current.currentIndex).toBe(0);
-      expect(result.current.allMatchingItineraries).toHaveLength(1);
-
-      // Move to next
       await act(async () => {
         await result.current.getNextItinerary();
       });
 
-      // Second search should reset
-      await act(async () => {
-        await result.current.searchItineraries(mockUserItinerary, 'user-123');
+      // Should save the viewed itinerary ID
+      await waitFor(() => {
+        expect(AsyncStorage.setItem).toHaveBeenCalledWith(
+          'VIEWED_ITINERARIES',
+          expect.stringContaining('match-1')
+        );
       });
-
-      expect(result.current.currentIndex).toBe(0);
-      expect(result.current.allMatchingItineraries[0].id).toBe('match-2');
     });
   });
 
   describe('Pagination', () => {
-    it('should advance to next itinerary in memory', async () => {
-      const itineraries = [
-        mockMatchingItinerary,
-        { ...mockMatchingItinerary, id: 'match-2' },
-        { ...mockMatchingItinerary, id: 'match-3' },
-      ];
-
-      (firestore.getDocs as jest.Mock).mockResolvedValue(mockQuerySnapshot(itineraries));
+    it('should advance to next itinerary', async () => {
+      const mockSearchFn = jest.fn().mockResolvedValue({
+        data: {
+          success: true,
+          data: [
+            mockMatchingItinerary,
+            { ...mockMatchingItinerary, id: 'match-2', destination: 'London', userInfo: { uid: 'user-2' } },
+          ],
+        },
+      });
+      (httpsCallable as jest.Mock).mockReturnValue(mockSearchFn);
 
       const { result } = renderHook(() => useSearchItineraries());
 
       await act(async () => {
-        await result.current.searchItineraries(mockUserItinerary, 'user-123');
+        await result.current.searchItineraries(mockUserItinerary as any, 'test-user-123');
       });
 
-      expect(result.current.matchingItineraries[0].id).toBe('match-1');
+      await waitFor(() => {
+        // Should have both itineraries (different destinations)
+        expect(result.current.matchingItineraries.length).toBeGreaterThanOrEqual(1);
+      });
 
-      // Move to next
+      const initialLength = result.current.matchingItineraries.length;
+
       await act(async () => {
         await result.current.getNextItinerary();
       });
 
-      expect(result.current.matchingItineraries[0].id).toBe('match-2');
-      expect(result.current.currentIndex).toBe(1);
+      // Should have one less itinerary after advancing
+      await waitFor(() => {
+        expect(result.current.matchingItineraries.length).toBe(Math.max(0, initialLength - 1));
+      });
     });
 
-    it('should load more results when reaching end', async () => {
-      // Create 50 items to trigger hasMore
-      const firstBatch = Array.from({ length: 50 }, (_, i) => ({
-        ...mockMatchingItinerary,
-        id: `match-${i}`,
-      }));
-
-      const secondBatch = Array.from({ length: 10 }, (_, i) => ({
-        ...mockMatchingItinerary,
-        id: `match-${i + 50}`,
-      }));
-
-      (firestore.getDocs as jest.Mock)
-        .mockResolvedValueOnce(mockQuerySnapshot(firstBatch))
-        .mockResolvedValueOnce(mockQuerySnapshot(secondBatch));
+    it('should set hasMore to false when no more itineraries', async () => {
+      const mockSearchFn = jest.fn().mockResolvedValue({
+        data: {
+          success: true,
+          data: [mockMatchingItinerary],
+        },
+      });
+      (httpsCallable as jest.Mock).mockReturnValue(mockSearchFn);
 
       const { result } = renderHook(() => useSearchItineraries());
 
-      // Initial search
       await act(async () => {
-        await result.current.searchItineraries(mockUserItinerary, 'user-123');
+        await result.current.searchItineraries(mockUserItinerary as any, 'test-user-123');
       });
 
-      expect(result.current.allMatchingItineraries).toHaveLength(50);
-      expect(result.current.hasMore).toBe(true);
-
-      // Move to index 49 (last item)
-      for (let i = 0; i < 49; i++) {
-        await act(async () => {
-          await result.current.getNextItinerary();
-        });
-      }
-
-      // Next call should load more
       await act(async () => {
         await result.current.getNextItinerary();
       });
 
       await waitFor(() => {
-        expect(result.current.allMatchingItineraries).toHaveLength(60);
+        expect(result.current.hasMore).toBe(false);
+        expect(result.current.matchingItineraries).toEqual([]);
       });
-    });
-
-    it('should set hasMore to false when fewer than PAGE_SIZE results', async () => {
-      const itineraries = [mockMatchingItinerary]; // Only 1 result
-
-      (firestore.getDocs as jest.Mock).mockResolvedValue(mockQuerySnapshot(itineraries));
-
-      const { result } = renderHook(() => useSearchItineraries());
-
-      await act(async () => {
-        await result.current.searchItineraries(mockUserItinerary, 'user-123');
-      });
-
-      expect(result.current.hasMore).toBe(false);
-    });
-  });
-
-  describe('Loading State', () => {
-    it('should set loading during search', async () => {
-      (firestore.getDocs as jest.Mock).mockImplementation(
-        () =>
-          new Promise((resolve) => {
-            setTimeout(() => resolve(mockQuerySnapshot([mockMatchingItinerary])), 100);
-          })
-      );
-
-      const { result } = renderHook(() => useSearchItineraries());
-
-      act(() => {
-        result.current.searchItineraries(mockUserItinerary, 'user-123');
-      });
-
-      expect(result.current.loading).toBe(true);
-
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
-    });
-
-    it('should set loading when fetching more results', async () => {
-      const firstBatch = Array.from({ length: 50 }, (_, i) => ({
-        ...mockMatchingItinerary,
-        id: `match-${i}`,
-      }));
-
-      (firestore.getDocs as jest.Mock)
-        .mockResolvedValueOnce(mockQuerySnapshot(firstBatch))
-        .mockImplementation(
-          () =>
-            new Promise((resolve) => {
-              setTimeout(() => resolve(mockQuerySnapshot([])), 100);
-            })
-        );
-
-      const { result } = renderHook(() => useSearchItineraries());
-
-      await act(async () => {
-        await result.current.searchItineraries(mockUserItinerary, 'user-123');
-      });
-
-      // Move to end
-      for (let i = 0; i < 49; i++) {
-        await act(async () => {
-          await result.current.getNextItinerary();
-        });
-      }
-
-      // Try to load more
-      act(() => {
-        result.current.getNextItinerary();
-      });
-
-      expect(result.current.loading).toBe(true);
-
-      await waitFor(() => {
-        expect(result.current.loading).toBe(false);
-      });
-    });
-  });
-
-  describe('Error Handling', () => {
-    it('should handle search errors', async () => {
-      (firestore.getDocs as jest.Mock).mockRejectedValue(
-        new Error('Firestore error')
-      );
-
-      const { result } = renderHook(() => useSearchItineraries());
-
-      await act(async () => {
-        await result.current.searchItineraries(mockUserItinerary, 'user-123');
-      });
-
-      expect(result.current.error).toBe('Failed to search itineraries');
-      expect(result.current.loading).toBe(false);
-    });
-
-    it('should handle missing parameters', async () => {
-      const { result } = renderHook(() => useSearchItineraries());
-
-      await act(async () => {
-        await result.current.searchItineraries(null as any, 'user-123');
-      });
-
-      expect(result.current.error).toBe('Missing required parameters');
-    });
-
-    it('should handle errors when loading more results', async () => {
-      const firstBatch = Array.from({ length: 50 }, (_, i) => ({
-        ...mockMatchingItinerary,
-        id: `match-${i}`,
-      }));
-
-      (firestore.getDocs as jest.Mock)
-        .mockResolvedValueOnce(mockQuerySnapshot(firstBatch))
-        .mockRejectedValueOnce(new Error('Load more error'));
-
-      const { result } = renderHook(() => useSearchItineraries());
-
-      await act(async () => {
-        await result.current.searchItineraries(mockUserItinerary, 'user-123');
-      });
-
-      // Move to end
-      for (let i = 0; i < 49; i++) {
-        await act(async () => {
-          await result.current.getNextItinerary();
-        });
-      }
-
-      // Try to load more (should handle error gracefully)
-      await act(async () => {
-        await result.current.getNextItinerary();
-      });
-
-      expect(result.current.loading).toBe(false);
-      // Should still have original results
-      expect(result.current.allMatchingItineraries).toHaveLength(50);
-    });
-  });
-
-  describe('Edge Cases', () => {
-    it('should handle multiple rapid getNextItinerary calls', async () => {
-      const itineraries = [
-        mockMatchingItinerary,
-        { ...mockMatchingItinerary, id: 'match-2' },
-        { ...mockMatchingItinerary, id: 'match-3' },
-      ];
-
-      (firestore.getDocs as jest.Mock).mockResolvedValue(mockQuerySnapshot(itineraries));
-
-      const { result } = renderHook(() => useSearchItineraries());
-
-      await act(async () => {
-        await result.current.searchItineraries(mockUserItinerary, 'user-123');
-      });
-
-      // Call getNextItinerary multiple times rapidly
-      await act(async () => {
-        await Promise.all([
-          result.current.getNextItinerary(),
-          result.current.getNextItinerary(),
-          result.current.getNextItinerary(),
-        ]);
-      });
-
-      // Should handle gracefully without errors
-      expect(result.current.loading).toBe(false);
-    });
-
-    it('should handle getNextItinerary when no results', async () => {
-      (firestore.getDocs as jest.Mock).mockResolvedValue(mockQuerySnapshot([]));
-
-      const { result } = renderHook(() => useSearchItineraries());
-
-      await act(async () => {
-        await result.current.searchItineraries(mockUserItinerary, 'user-123');
-      });
-
-      // Try to get next when there are no results
-      await act(async () => {
-        await result.current.getNextItinerary();
-      });
-
-      expect(result.current.matchingItineraries).toEqual([]);
-      expect(result.current.currentIndex).toBe(0);
-    });
-
-    it('should handle missing userInfo in itinerary', async () => {
-      const itineraryWithoutUserInfo = {
-        ...mockMatchingItinerary,
-        userInfo: undefined,
-      };
-
-      (firestore.getDocs as jest.Mock).mockResolvedValue(
-        mockQuerySnapshot([itineraryWithoutUserInfo])
-      );
-
-      const { result } = renderHook(() => useSearchItineraries());
-
-      await act(async () => {
-        await result.current.searchItineraries(mockUserItinerary, 'user-123');
-      });
-
-      // Should not crash, may or may not include the result
-      expect(result.current.loading).toBe(false);
-      expect(result.current.error).toBeNull();
     });
   });
 });

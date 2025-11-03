@@ -4,7 +4,8 @@
  * Implements dependency inversion principle - depends on abstractions (Firebase SDK)
  */
 
-import { getFunctions, httpsCallable, HttpsCallableResult } from 'firebase/functions';
+import { httpsCallable, HttpsCallableResult } from 'firebase/functions';
+import { functions } from '../config/firebaseConfig';
 import {
   Itinerary,
   ItinerarySearchParams,
@@ -36,7 +37,6 @@ export class FirebaseItineraryRepository implements IItineraryRepository {
    */
   async searchItineraries(params: ItinerarySearchParams): Promise<Itinerary[]> {
     try {
-      const functions = getFunctions();
       const searchFn = httpsCallable<ItinerarySearchParams, SearchItinerariesResponse>(
         functions,
         'searchItineraries'
@@ -81,7 +81,6 @@ export class FirebaseItineraryRepository implements IItineraryRepository {
         throw new Error('Invalid itinerary ID');
       }
 
-      const functions = getFunctions();
       const updateFn = httpsCallable<
         { itineraryId: string; updates: Partial<Itinerary> },
         { success: boolean; data?: Itinerary; error?: string }
@@ -121,7 +120,6 @@ export class FirebaseItineraryRepository implements IItineraryRepository {
         throw new Error('Invalid user ID');
       }
 
-      const functions = getFunctions();
       const listFn = httpsCallable<
         { userId: string },
         { success: boolean; data?: Itinerary[]; error?: string }
@@ -157,7 +155,6 @@ export class FirebaseItineraryRepository implements IItineraryRepository {
    */
   async createItinerary(itinerary: Partial<Itinerary>): Promise<Itinerary> {
     try {
-      const functions = getFunctions();
       const createFn = httpsCallable<
         { itinerary: Partial<Itinerary> },
         { success: boolean; data?: Itinerary; error?: string }
@@ -196,7 +193,6 @@ export class FirebaseItineraryRepository implements IItineraryRepository {
         throw new Error('Invalid itinerary ID');
       }
 
-      const functions = getFunctions();
       const deleteFn = httpsCallable<
         { itineraryId: string },
         { success: boolean; error?: string }

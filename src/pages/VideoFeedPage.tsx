@@ -3,7 +3,7 @@
  * Mirrors PWA VideoFeedPage functionality with mobile optimizations
  */
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View,
   FlatList,
@@ -14,7 +14,9 @@ import {
   ActivityIndicator,
   RefreshControl,
   SafeAreaView,
+  Platform,
 } from 'react-native';
+import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { VideoCard } from '../components/video/VideoCard';
 import { VideoCommentsModal } from '../components/video/VideoCommentsModal';
@@ -48,6 +50,23 @@ const VideoFeedPage: React.FC = () => {
   const [commentsModalVisible, setCommentsModalVisible] = useState(false);
   const [selectedVideoForComments, setSelectedVideoForComments] = useState<typeof videos[0] | null>(null);
   const flatListRef = useRef<FlatList>(null);
+
+  // Request a sensible audio mode on Android so ExoPlayer has proper audio
+  // focus/route behavior on emulator and devices. This often fixes muted or
+  // silent playback cases on certain emulator system images.
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        staysActiveInBackground: false,
+        // Avoid referencing interruptionModeAndroid constants directly
+        // (SDK differences). Keep shouldDuckAndroid false to avoid
+        // silent ducking on emulator images.
+        shouldDuckAndroid: false,
+        playThroughEarpieceAndroid: false,
+      }).catch((e) => console.warn('Audio.setAudioModeAsync failed', e));
+    }
+  }, []);
 
   /**
    * Handle video view tracking
@@ -305,6 +324,10 @@ const VideoFeedPage: React.FC = () => {
         snapToInterval={height}
         snapToAlignment="start"
         decelerationRate="fast"
+        removeClippedSubviews={false}
+        windowSize={3}
+        maxToRenderPerBatch={1}
+        initialNumToRender={1}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
         refreshControl={

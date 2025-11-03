@@ -1,6 +1,6 @@
 /**
  * Unit Tests for useDeleteItinerary Hook
- * Tests itinerary deletion via Firebase Functions
+ * Tests itinerary deletion via Firebase Functions (RPC-based with singleton)
  * Follows React hooks testing best practices
  */
 
@@ -10,15 +10,15 @@ import * as firebaseFunctions from 'firebase/functions';
 
 // Mock Firebase Functions
 jest.mock('firebase/functions', () => ({
-  getFunctions: jest.fn(() => ({})),
   httpsCallable: jest.fn(),
 }));
 
-// Mock firebase config
+// Mock firebase config with functions singleton
 jest.mock('../../config/firebaseConfig', () => ({
   auth: { currentUser: { uid: 'test-user-123' } },
   db: {},
   app: {},
+  functions: {}, // Singleton functions instance
 }));
 
 describe('useDeleteItinerary', () => {
@@ -69,7 +69,7 @@ describe('useDeleteItinerary', () => {
       expect(result.current.error).toBeNull();
     });
 
-    it('should call Firebase Function with correct ID', async () => {
+    it('should call Firebase Function with correct parameters', async () => {
       mockHttpsCallable.mockResolvedValue({
         data: { success: true },
       });
@@ -80,7 +80,7 @@ describe('useDeleteItinerary', () => {
         await result.current.deleteItinerary('test-itinerary-456');
       });
 
-      expect(firebaseFunctions.getFunctions).toHaveBeenCalled();
+      // Should call httpsCallable with functions singleton and function name
       expect(firebaseFunctions.httpsCallable).toHaveBeenCalledWith({}, 'deleteItinerary');
       expect(mockHttpsCallable).toHaveBeenCalledWith({ id: 'test-itinerary-456' });
     });
