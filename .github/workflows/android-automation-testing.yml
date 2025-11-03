@@ -69,6 +69,27 @@ jobs:
         
         echo "✅ expo-modules-core with Android Gradle files verified"
         echo "   File: node_modules/expo-modules-core/android/ExpoModulesCorePlugin.gradle"
+
+    - name: Diagnostic: verify expo-modules-core files
+      run: |
+        echo "--- Diagnostic: environment ---"
+        echo "node: $(node --version)"
+        echo "npm: $(npm --version)"
+        echo "pwd: $(pwd)"
+        echo "--- Diagnostic: expo-modules-core root ---"
+        if [ -d node_modules/expo-modules-core ]; then
+          ls -la node_modules/expo-modules-core || true
+        else
+          echo "node_modules/expo-modules-core: MISSING"
+        fi
+        echo "--- Diagnostic: expo-modules-core package.json ---"
+        cat node_modules/expo-modules-core/package.json || echo "package.json: MISSING"
+        echo "--- Diagnostic: expo-modules-core/android dir ---"
+        if [ -d node_modules/expo-modules-core/android ]; then
+          ls -la node_modules/expo-modules-core/android || true
+        else
+          echo "node_modules/expo-modules-core/android: MISSING"
+        fi
       
     - name: Setup Java
       uses: actions/setup-java@v4
@@ -117,8 +138,16 @@ jobs:
         echo "🔍 Final verification before prebuild..."
         if [ ! -f "node_modules/expo-modules-core/android/ExpoModulesCorePlugin.gradle" ]; then
           echo "❌ ERROR: ExpoModulesCorePlugin.gradle missing before prebuild"
-          echo "This should have been verified in the previous step"
-          exit 1
+          echo "This should have been verified in the previous step. Attempting to restore from .github/gradle-helpers..."
+          mkdir -p node_modules/expo-modules-core/android || true
+          if [ -f .github/gradle-helpers/ExpoModulesCorePlugin.gradle ]; then
+            cp .github/gradle-helpers/ExpoModulesCorePlugin.gradle node_modules/expo-modules-core/android/ExpoModulesCorePlugin.gradle
+            echo "Restored ExpoModulesCorePlugin.gradle from repo fallback"
+            ls -la node_modules/expo-modules-core/android || true
+          else
+            echo "Fallback file .github/gradle-helpers/ExpoModulesCorePlugin.gradle not found in repo"
+            exit 1
+          fi
         fi
         echo "✅ expo-modules-core Android files confirmed"
         
