@@ -18,5 +18,6 @@ const mockAuth = {
 const mockDb = {};
 const mockStorage = {};
 const mockApp = {};
+const mockFunctions = {};
 
-export { mockApp as app, mockAuth as auth, mockDb as db, mockStorage as storage };
+export { mockApp as app, mockAuth as auth, mockDb as db, mockStorage as storage, mockFunctions as functions };

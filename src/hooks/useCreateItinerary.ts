@@ -4,8 +4,8 @@
  */
 
 import { useState, useCallback } from 'react';
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import { auth } from '../config/firebaseConfig';
+import { httpsCallable } from 'firebase/functions';
+import { auth, functions } from '../config/firebaseConfig';
 import {
   ManualItineraryFormData,
   ManualItineraryData,
@@ -113,7 +113,6 @@ export const useCreateItinerary = () => {
     setError(null);
 
     try {
-      const functions = getFunctions();
       const createItineraryFn = httpsCallable(functions, 'createItinerary');
 
       // Convert dates to timestamps (noon UTC to avoid timezone issues)

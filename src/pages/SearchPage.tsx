@@ -31,31 +31,43 @@ import { auth } from '../../firebase-config';
 import { Itinerary } from '../types/Itinerary';
 import ItineraryCard from '../components/forms/ItineraryCard';
 import { ItinerarySelector } from '../components/search/ItinerarySelector';
-// import { AddItineraryModal } from '../components/forms/AddItineraryModal'; // TODO: Create this component
 import useSearchItineraries from '../hooks/useSearchItineraries';
 import { useUsageTracking } from '../hooks/useUsageTracking';
 import { useUpdateItinerary } from '../hooks/useUpdateItinerary';
-import { useNewConnection } from '../context/NewConnectionContext';
 import { useAlert } from '../context/AlertContext';
 import { useUserProfile } from '../context/UserProfileContext';
 import { useAllItineraries } from '../hooks/useAllItineraries';
-import { itineraryRepository } from '../repositories/ItineraryRepository';
 import { connectionRepository } from '../repositories/ConnectionRepository';
 import { saveViewedItinerary, hasViewedItinerary } from '../utils/viewedStorage';
-import { filterValidItineraries } from '../utils/itineraryValidator';
+import AddItineraryModal from '../components/search/AddItineraryModal';
 
 const SearchPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
-  const [dailyViews, setDailyViews] = useState(0);
   const [currentMockIndex, setCurrentMockIndex] = useState(0);
   const [selectedItineraryId, setSelectedItineraryId] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const { showAlert } = useAlert();
   const { userProfile } = useUserProfile();
   
+  // Usage tracking hook
+  const { hasReachedLimit, trackView, dailyViewCount } = useUsageTracking();
+  
+  // Update itinerary hook (for persisting likes)
+  const { updateItinerary } = useUpdateItinerary();
+  
   // Fetch all itineraries (AI + manual) from PostgreSQL
   const { itineraries, loading: itinerariesLoading, error: itinerariesError, refreshItineraries } = useAllItineraries();
+  
+  // Search hook for finding matching itineraries
+  const { 
+    matchingItineraries, 
+    searchItineraries, 
+    getNextItinerary, 
+    loading: searchLoading, 
+    hasMore, 
+    error: searchError 
+  } = useSearchItineraries();
 
   // Mock itineraries shown only when user has no real itineraries
   const mockItineraries = [
@@ -92,17 +104,24 @@ const SearchPage: React.FC = () => {
     return unsubscribe;
   }, []);
 
-  // Auto-select first itinerary when loaded
-  useEffect(() => {
-    if (itineraries.length > 0 && !selectedItineraryId) {
-      setSelectedItineraryId(itineraries[0].id);
-    }
-  }, [itineraries, selectedItineraryId]);
-
-  const handleItinerarySelect = (id: string) => {
+  const handleItinerarySelect = async (id: string) => {
     setSelectedItineraryId(id);
-    // TODO: Fetch matching itineraries from search service
-    console.log('[SearchPage] Selected itinerary:', id);
+    
+    if (!userId) {
+      showAlert('warning', 'Please log in to search for matches');
+      return;
+    }
+    
+    // Find the selected itinerary
+    const selectedItinerary = itineraries.find(itin => itin.id === id);
+    if (!selectedItinerary) {
+      console.error('[SearchPage] Selected itinerary not found:', id);
+      return;
+    }
+    
+    console.log('[SearchPage] Searching for matches for itinerary:', id);
+    // Trigger search for matching itineraries
+    await searchItineraries(selectedItinerary as any, userId);
   };
 
   const handleAddItinerary = () => {
@@ -125,35 +144,115 @@ const SearchPage: React.FC = () => {
     showAlert('Itinerary saved successfully!', 'success');
   };
 
-  const handleLike = () => {
+  const handleLike = async (itinerary: Itinerary) => {
     if (!userId) {
-      showAlert('Please log in to like itineraries', 'warning');
+      showAlert('warning', 'Please log in to like itineraries');
       return;
     }
     
-    if (dailyViews >= 10) {
-      showAlert('Daily limit reached! Upgrade to premium for unlimited views.', 'info');
+    // Check limit before tracking
+    if (hasReachedLimit()) {
+      showAlert('info', 'Daily limit reached! Upgrade to premium for unlimited views.');
       return;
     }
 
-    setDailyViews(prev => prev + 1);
-    showAlert(`Liked "${mockItineraries[currentMockIndex].title}"!`, 'success');
+    // Track usage
+    const success = await trackView();
+    if (!success) {
+      showAlert('warning', 'Unable to track usage. Please try again.');
+      return;
+    }
+
+    try {
+      // Save as viewed
+      saveViewedItinerary(itinerary.id);
+      
+      // Update the liked itinerary with current user's ID
+      const existingLikes = Array.isArray(itinerary.likes) ? itinerary.likes : [];
+      const newLikes = Array.from(new Set([...existingLikes, userId]));
+      
+      // Persist likes via RPC
+      const updatedItinerary = await updateItinerary(itinerary.id, { likes: newLikes });
+      if (!updatedItinerary) {
+        throw new Error('Failed to update itinerary likes');
+      }
+      
+      // Check for mutual match
+      const selectedItinerary = itineraries.find(itin => itin.id === selectedItineraryId);
+      if (selectedItinerary) {
+        const myLikes = Array.isArray(selectedItinerary.likes) ? selectedItinerary.likes : [];
+        const otherUserUid = itinerary.userInfo?.uid;
+        
+        if (otherUserUid && myLikes.includes(otherUserUid)) {
+          // MUTUAL MATCH! Create connection
+          console.log('[SearchPage] 🎉 MUTUAL MATCH detected!');
+          
+          try {
+            await connectionRepository.createConnection({
+              user1Id: userId,
+              user2Id: otherUserUid,
+              itinerary1Id: selectedItineraryId,
+              itinerary2Id: itinerary.id,
+              itinerary1: selectedItinerary as any,
+              itinerary2: itinerary as any
+            });
+            
+            showAlert('success', '🎉 It\'s a match! You can now chat with this traveler.');
+          } catch (connError) {
+            console.error('[SearchPage] Error creating connection:', connError);
+            // Don't fail the like action if connection creation fails
+            showAlert('warning', 'Match detected but connection setup had issues. Please check Chats.');
+          }
+        }
+      }
+      
+      // Advance to next itinerary
+      await getNextItinerary();
+      
+    } catch (error) {
+      console.error('[SearchPage] Error handling like:', error);
+      showAlert('error', 'Failed to like itinerary. Please try again.');
+    }
+  };
+
+  const handleDislike = async (itinerary: Itinerary) => {
+    if (!userId) {
+      showAlert('warning', 'Please log in to browse itineraries');
+      return;
+    }
+
+    // Check limit before tracking
+    if (hasReachedLimit()) {
+      showAlert('info', 'Daily limit reached! Upgrade to premium for unlimited views.');
+      return;
+    }
+
+    // Track usage
+    const success = await trackView();
+    if (!success) {
+      showAlert('warning', 'Unable to track usage. Please try again.');
+      return;
+    }
+
+    try {
+      // Save as viewed
+      saveViewedItinerary(itinerary.id);
+      
+      // Advance to next itinerary
+      await getNextItinerary();
+      
+    } catch (error) {
+      console.error('[SearchPage] Error handling dislike:', error);
+      showAlert('error', 'Failed to process dislike. Please try again.');
+    }
+  };
+
+  // Handle mock itinerary navigation (only for onboarding)
+  const handleMockLike = () => {
     nextMockItinerary();
   };
 
-  const handleDislike = () => {
-    if (!userId) {
-      showAlert('Please log in to browse itineraries', 'warning');
-      return;
-    }
-
-    if (dailyViews >= 10) {
-      showAlert('Daily limit reached! Upgrade to premium for unlimited views.', 'info');
-      return;
-    }
-
-    setDailyViews(prev => prev + 1);
-    showAlert(`Passed on "${mockItineraries[currentMockIndex].title}"`, 'info');
+  const handleMockDislike = () => {
     nextMockItinerary();
   };
 
@@ -203,7 +302,7 @@ const SearchPage: React.FC = () => {
       {/* Usage Counter - only show when user has itineraries */}
       {itineraries.length > 0 && (
         <View style={styles.usageContainer}>
-          <Text style={styles.usageText}>Views today: {dailyViews}/10</Text>
+          <Text style={styles.usageText}>Views today: {dailyViewCount}/10</Text>
         </View>
       )}
 
@@ -226,23 +325,66 @@ const SearchPage: React.FC = () => {
                   </View>
                 </View>
 
-                {/* Action Buttons */}
+                {/* Action Buttons for Mock Itineraries */}
                 <View style={styles.actionButtons}>
-                  <TouchableOpacity style={styles.dislikeButton} onPress={handleDislike}>
+                  <TouchableOpacity 
+                    testID="dislike-button"
+                    style={styles.dislikeButton} 
+                    onPress={handleMockDislike}
+                  >
                     <Text style={styles.buttonText}>✕</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.likeButton} onPress={handleLike}>
+                  <TouchableOpacity 
+                    testID="like-button"
+                    style={styles.likeButton} 
+                    onPress={handleMockLike}
+                  >
                     <Text style={styles.buttonText}>✈️</Text>
                   </TouchableOpacity>
                 </View>
               </View>
+            ) : selectedItineraryId ? (
+              /* User has selected an itinerary - show matching results */
+              <>
+                {searchLoading ? (
+                  <View style={styles.centerContent}>
+                    <ActivityIndicator size="large" color="#1976d2" />
+                    <Text style={styles.loadingText}>Searching for matches...</Text>
+                  </View>
+                ) : matchingItineraries.length > 0 ? (
+                  /* Show ItineraryCard for current match */
+                  <ScrollView 
+                    style={styles.cardScrollContainer}
+                    contentContainerStyle={styles.cardScrollContent}
+                    showsVerticalScrollIndicator={false}
+                  >
+                    <ItineraryCard
+                      itinerary={matchingItineraries[0] as any}
+                      onLike={handleLike}
+                      onDislike={handleDislike}
+                      showEditDelete={false}
+                    />
+                  </ScrollView>
+                ) : (
+                  /* No matches found */
+                  <View style={styles.centerContent}>
+                    <Text style={styles.emptyText}>
+                      {searchError ? (
+                        <Text style={{ color: '#fff' }}>Error: {searchError}</Text>
+                      ) : (
+                        <Text style={{ color: '#fff' }}>
+                          No matches found for this itinerary. Try adjusting your preferences or dates.
+                        </Text>
+                      )}
+                    </Text>
+                  </View>
+                )}
+              </>
             ) : (
-              /* Show matching itineraries when user has selected an itinerary */
+              /* User has itineraries but hasn't selected one yet */
               <View style={styles.centerContent}>
                 <Text style={styles.emptyText}>
-                  {selectedItineraryId 
-                    ? 'Select an itinerary above to find matches'
-                    : 'No matches found yet'}
+                  Select an itinerary above to find travel companions
                 </Text>
               </View>
             )}
@@ -254,7 +396,6 @@ const SearchPage: React.FC = () => {
         )}
       </View>
 
-      {/* Add Itinerary Modal - TODO: Create AddItineraryModal component 
       <AddItineraryModal
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
@@ -262,7 +403,7 @@ const SearchPage: React.FC = () => {
         itineraries={itineraries}
         userProfile={userProfile}
       />
-      */}
+
     </SafeAreaView>
     </ImageBackground>
   );
@@ -416,6 +557,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: 'rgba(0, 0, 0, 0.6)',
     textAlign: 'center',
+  },
+  cardScrollContainer: {
+    flex: 1,
+  },
+  cardScrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 16,
   },
 });
 

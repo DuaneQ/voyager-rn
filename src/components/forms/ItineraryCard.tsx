@@ -198,6 +198,7 @@ const ItineraryCard: React.FC<ItineraryCardProps> = ({
           <>
             {/* Like/Dislike buttons for other itineraries */}
             <TouchableOpacity 
+              testID="dislike-button"
               style={styles.dislikeButton}
               onPress={async () => {
                 if (processingReaction) return;
@@ -220,6 +221,7 @@ const ItineraryCard: React.FC<ItineraryCardProps> = ({
             </TouchableOpacity>
             
             <TouchableOpacity 
+              testID="like-button"
               style={styles.likeButton}
               onPress={async () => {
                 if (processingReaction) return;

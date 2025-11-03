@@ -4,8 +4,8 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import { auth } from '../config/firebaseConfig';
+import { httpsCallable } from 'firebase/functions';
+import { auth, functions } from '../config/firebaseConfig';
 
 export interface AIGeneratedItinerary {
   id: string;
@@ -44,7 +44,6 @@ export const useAIGeneratedItineraries = () => {
     setError(null);
 
     try {
-      const functions = getFunctions();
       const listItinerariesFn = httpsCallable(functions, 'listItinerariesForUser');
       
       // Match PWA: Filter by ai_status: 'completed' only
