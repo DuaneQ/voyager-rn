@@ -272,14 +272,32 @@ jobs:
         
     - name: Verify app installation
       run: |
-        # Verify the app is installed
-        xcrun simctl listapps "$SIMULATOR_ID" | grep "com.voyager.rn" || {
-          echo "ERROR: App com.voyager.rn not found on simulator"
+        # Verify the app is installed using the bundle identifier found in the built app
+        echo "Checking APP_PATH: $APP_PATH"
+        if [ -f "$APP_PATH/Info.plist" ]; then
+          BUNDLE_ID=$(plutil -extract CFBundleIdentifier raw "$APP_PATH/Info.plist" 2>/dev/null || true)
+          echo "Detected bundle id from Info.plist: ${BUNDLE_ID:-'<none>'}"
+        else
+          echo "Info.plist not found at $APP_PATH/Info.plist"
+          BUNDLE_ID="com.voyager.rn"
+        fi
+
+        echo "Listing installed apps for simulator $SIMULATOR_ID (short):"
+        xcrun simctl listapps "$SIMULATOR_ID" | head -50 || true
+
+        if [ -z "$BUNDLE_ID" ]; then
+          echo "ERROR: Could not determine app bundle identifier. Falling back to com.voyager.rn"
+          BUNDLE_ID="com.voyager.rn"
+        fi
+
+        xcrun simctl listapps "$SIMULATOR_ID" | grep "$BUNDLE_ID" || {
+          echo "ERROR: App $BUNDLE_ID not found on simulator"
           echo "Installed apps:"
           xcrun simctl listapps "$SIMULATOR_ID"
           exit 1
         }
-        echo "✅ App com.voyager.rn is installed and ready for testing"
+
+        echo "✅ App $BUNDLE_ID is installed and ready for testing"
         
     - name: Start Appium Server
       run: |
