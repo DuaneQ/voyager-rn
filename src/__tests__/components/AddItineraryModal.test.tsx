@@ -481,7 +481,8 @@ describe('AddItineraryModal', () => {
         );
       });
 
-      expect(Alert.alert).toHaveBeenCalledWith('Success', 'Itinerary created');
+      // Success case: No alert shown, just callbacks and close
+      expect(Alert.alert).not.toHaveBeenCalledWith('Success', 'Itinerary created');
       expect(mockOnItineraryAdded).toHaveBeenCalled();
       expect(mockOnClose).toHaveBeenCalled();
     });
@@ -590,7 +591,9 @@ describe('AddItineraryModal', () => {
         );
       });
 
-      expect(Alert.alert).toHaveBeenCalledWith('Success', 'Itinerary updated');
+      // Success case: No alert shown (parent shows unified notification)
+      expect(mockOnItineraryAdded).toHaveBeenCalled();
+      expect(mockOnClose).toHaveBeenCalled();
     });
 
     it('should cancel edit mode when cancel button is clicked', () => {
@@ -671,7 +674,7 @@ describe('AddItineraryModal', () => {
 
       await waitFor(() => {
         expect(mockDeleteItinerary).toHaveBeenCalledWith('itinerary-1');
-        expect(Alert.alert).toHaveBeenCalledWith('Success', 'Itinerary deleted');
+        // No success alert shown (parent handles success notification)
         expect(mockOnItineraryAdded).toHaveBeenCalled();
       });
     });

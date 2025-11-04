@@ -19,7 +19,7 @@ import {
   Dimensions,
   ActivityIndicator,
 } from 'react-native';
-import { getStorage, ref, getDownloadURL } from 'firebase/storage';
+import { getFirestore, doc, getDoc } from 'firebase/firestore';
 import { Itinerary } from '../../types/Itinerary';
 import { ViewProfileModal } from '../modals/ViewProfileModal';
 import { auth } from '../../../firebase-config';
@@ -27,6 +27,7 @@ import { auth } from '../../../firebase-config';
 const { width: screenWidth } = Dimensions.get('window');
 
 const DEFAULT_AVATAR = 'https://firebasestorage.googleapis.com/v0/b/mundo1-dev.appspot.com/o/defaults%2FDEFAULT_AVATAR.png?alt=media';
+const LOCAL_DEFAULT_AVATAR = require('../../../assets/images/DEFAULT_AVATAR.png');
 
 export interface ItineraryCardProps {
   itinerary: Itinerary;
@@ -47,22 +48,44 @@ const ItineraryCard: React.FC<ItineraryCardProps> = ({
 }) => {
   const [viewProfileOpen, setViewProfileOpen] = useState(false);
   const [processingReaction, setProcessingReaction] = useState(false);
-  const [profilePhoto, setProfilePhoto] = useState<string>(DEFAULT_AVATAR);
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+  const [useLocalAvatar, setUseLocalAvatar] = useState(false);
   const currentUserId = auth.currentUser?.uid;
 
-  // Load profile photo from Firebase Storage
+  // Load profile photo from Firestore user document (matching PWA useGetUserProfilePhoto)
   useEffect(() => {
     const loadProfilePhoto = async () => {
-      if (!itinerary.userInfo?.uid) return;
+      if (!itinerary.userInfo?.uid) {
+        console.log('[ItineraryCard] No user ID, using local default avatar');
+        setUseLocalAvatar(true);
+        return;
+      }
       
       try {
-        const storage = getStorage();
-        const photoRef = ref(storage, `users/${itinerary.userInfo.uid}/profile/slot_0`);
-        const url = await getDownloadURL(photoRef);
-        setProfilePhoto(url);
+        const db = getFirestore();
+        const userRef = doc(db, 'users', itinerary.userInfo.uid);
+        console.log('[ItineraryCard] Fetching user document for:', itinerary.userInfo.uid);
+        const userSnap = await getDoc(userRef);
+        
+        if (userSnap.exists()) {
+          const userData = userSnap.data();
+          const photoUrl = userData?.photos?.profile;
+          
+          if (photoUrl) {
+            console.log('[ItineraryCard] Profile photo URL found:', photoUrl.substring(0, 50) + '...');
+            setProfilePhoto(photoUrl);
+            setUseLocalAvatar(false);
+          } else {
+            console.log('[ItineraryCard] No profile photo in user document, using local avatar');
+            setUseLocalAvatar(true);
+          }
+        } else {
+          console.log('[ItineraryCard] User document not found, using local avatar');
+          setUseLocalAvatar(true);
+        }
       } catch (error) {
-        // Use default avatar if photo doesn't exist
-        console.log('Profile photo not found, using default');
+        console.log('[ItineraryCard] Error loading profile photo:', error);
+        setUseLocalAvatar(true);
       }
     };
 
@@ -128,9 +151,12 @@ const ItineraryCard: React.FC<ItineraryCardProps> = ({
             disabled={!itinerary.userInfo?.uid}
           >
             <Image
-              source={{ uri: profilePhoto }}
+              source={useLocalAvatar || !profilePhoto ? LOCAL_DEFAULT_AVATAR : { uri: profilePhoto }}
               style={styles.avatar}
-              defaultSource={require('../../../assets/images/DEFAULT_AVATAR.png')}
+              onError={() => {
+                console.log('[ItineraryCard] Image load error, falling back to local default avatar');
+                setUseLocalAvatar(true);
+              }}
             />
           </TouchableOpacity>
           <Text style={styles.username}>
@@ -239,7 +265,7 @@ const ItineraryCard: React.FC<ItineraryCardProps> = ({
               {processingReaction ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Text style={styles.likeIcon}>♡</Text>
+                <Text style={styles.likeIcon}>✈️</Text>
               )}
             </TouchableOpacity>
           </>
@@ -259,30 +285,30 @@ const ItineraryCard: React.FC<ItineraryCardProps> = ({
 };
 
 const styles = StyleSheet.create({
-  // Card container - Matching PWA Card sx props
+  // Card container - Larger card to show all information
   card: {
-    marginHorizontal: 8,
-    marginVertical: 16,
-    maxWidth: screenWidth < 600 ? 300 : 400,
-    maxHeight: screenWidth < 600 ? '50%' : '60%',
-    backgroundColor: '#f5f5f5', // Matching PWA backgroundColor
-    borderRadius: 8, // Matching PWA borderRadius: 2 (8px in Material-UI)
+    marginHorizontal: 16,
+    marginVertical: 20,
+    width: screenWidth < 600 ? screenWidth * 0.85 : 450, // Larger card
+    minHeight: 400, // Remove maxHeight to allow content to show
+    backgroundColor: '#fff', // White background like screenshots
+    borderRadius: 16, // More rounded corners
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.16, // Matching PWA boxShadow: 3
-    shadowRadius: 6,
-    elevation: 6,
-    padding: screenWidth < 600 ? 4 : 12, // Matching PWA padding xs/sm
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+    padding: screenWidth < 600 ? 16 : 20,
     alignSelf: 'center',
     display: 'flex',
     flexDirection: 'column',
   },
   
-  // Card content - Matching PWA CardContent sx
+  // Card content - More padding for better layout
   cardContent: {
-    paddingBottom: screenWidth < 600 ? 4 : 8,
-    paddingTop: screenWidth < 600 ? 8 : 12,
-    paddingHorizontal: screenWidth < 600 ? 8 : 16,
+    paddingBottom: 12,
+    paddingTop: 16,
+    paddingHorizontal: 16,
     flex: 1,
   },
 
@@ -291,67 +317,68 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: screenWidth < 600 ? 8 : 16,
+    marginBottom: 16,
   },
 
   avatarButton: {
     padding: 0,
-    marginRight: screenWidth < 600 ? 8 : 16,
+    marginRight: 12,
   },
 
-  // Avatar - Matching PWA Avatar sx (now using Image component)
+  // Avatar - Larger for better visibility
   avatar: {
-    width: screenWidth < 600 ? 40 : 56,
-    height: screenWidth < 600 ? 40 : 56,
-    borderRadius: screenWidth < 600 ? 20 : 28,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     borderWidth: 2,
-    borderColor: '#fff',
+    borderColor: '#e0e0e0',
   },
 
   avatarText: {
     color: '#fff',
-    fontSize: screenWidth < 600 ? 18 : 24,
+    fontSize: 24,
     fontWeight: 'bold',
   },
 
-  // Username - Matching PWA Typography variant="h6"
+  // Username - Larger, bolder
   username: {
     fontWeight: 'bold',
     color: '#333',
-    fontSize: screenWidth < 600 ? 17.6 : 20, // h6 fontSize in Material-UI
+    fontSize: 20,
   },
 
-  // Destination - Matching PWA Typography variant="h5"
+  // Destination - Larger headline
   destination: {
     textAlign: 'center',
     fontWeight: 'bold',
-    color: '#333',
-    fontSize: screenWidth < 600 ? 19.2 : 24, // h5 fontSize in Material-UI
-    marginBottom: 8,
+    color: '#000',
+    fontSize: 26,
+    marginBottom: 12,
   },
 
-  // Date text - Matching PWA body1 typography
+  // Date text - More visible
   dateText: {
     textAlign: 'center',
-    color: 'rgba(0, 0, 0, 0.6)', // Material-UI textSecondary
-    marginBottom: screenWidth < 600 ? 6 : 10,
-    fontSize: screenWidth < 600 ? 15.2 : 16, // body1 fontSize
+    color: '#666',
+    marginBottom: 8,
+    fontSize: 16,
   },
 
-  // Scrollable content - Matching PWA maxHeight and overflow
+  // Scrollable content - Larger viewport
   scrollContent: {
-    maxHeight: screenWidth < 600 ? '15%' : '20%', // Matching PWA 15vh/20vh
-    marginTop: 8,
-    paddingRight: 8, // padding for scrollbar
+    maxHeight: 250, // More space to show content
+    marginTop: 12,
+    paddingRight: 8,
   },
 
-  // Description - Matching PWA description typography
+  // Description - More readable
   description: {
     fontStyle: 'italic',
-    fontSize: screenWidth < 600 ? 15.2 : 16,
+    fontSize: 16,
     marginBottom: 16,
     textAlign: 'left',
-    lineHeight: 22,
+    lineHeight: 24,
+    color: '#333',
   },
 
   // Activities section
@@ -361,9 +388,9 @@ const styles = StyleSheet.create({
 
   activitiesTitle: {
     fontWeight: 'bold',
-    marginBottom: screenWidth < 600 ? 6 : 10,
-    fontSize: screenWidth < 600 ? 15.2 : 16,
-    color: '#333',
+    marginBottom: 10,
+    fontSize: 16,
+    color: '#000',
   },
 
   activitiesList: {
@@ -373,7 +400,7 @@ const styles = StyleSheet.create({
   activityItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 4,
+    marginBottom: 6,
   },
 
   activityBullet: {
@@ -385,103 +412,105 @@ const styles = StyleSheet.create({
 
   activityText: {
     flex: 1,
-    fontSize: screenWidth < 600 ? 13.6 : 14.4, // body2 fontSize
+    fontSize: 15,
     color: '#333',
-    lineHeight: 20,
+    lineHeight: 22,
   },
 
   moreActivities: {
     fontStyle: 'italic',
     color: '#666',
-    fontSize: 13,
+    fontSize: 14,
     marginTop: 8,
   },
 
-  // Card actions - Matching PWA CardActions layout
+  // Card actions - Match screenshot buttons (large circular buttons)
   cardActions: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0, 0, 0, 0.12)', // Material-UI divider color
+    paddingVertical: 20,
+    paddingHorizontal: 40,
+    marginTop: 16,
   },
 
   editButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#1976d2', // Material-UI primary color
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#2196F3', // Material-UI blue
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 6,
   },
 
   deleteButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#d32f2f', // Material-UI error color
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#f44336', // Material-UI red
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 6,
   },
 
+  // Dislike button - Matching SearchPage example itinerary buttons
   dislikeButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#f44336', // Material-UI error color
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#f44336',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 5,
+    elevation: 4,
   },
 
+  // Like button - Matching SearchPage example itinerary buttons
   likeButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#4caf50', // Material-UI success color
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#4caf50',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 5,
+    elevation: 4,
   },
 
   editIcon: {
-    fontSize: 24,
+    fontSize: 28,
     color: '#fff',
   },
 
   deleteIcon: {
-    fontSize: 24,
+    fontSize: 28,
     color: '#fff',
   },
 
+  // Icons matching SearchPage button text
   dislikeIcon: {
     fontSize: 24,
-    color: '#fff',
+    color: 'white',
     fontWeight: 'bold',
   },
 
   likeIcon: {
     fontSize: 24,
-    color: '#fff',
+    color: 'white',
     fontWeight: 'bold',
   },
 });

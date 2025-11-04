@@ -496,7 +496,7 @@ describe('useVideoUpload', () => {
       });
 
       expect(videos!).toEqual([]);
-      expect(console.error).toHaveBeenCalledWith('Error loading videos:', expect.any(Error));
+      expect(console.error).toHaveBeenCalledWith('[useVideoUpload] Error loading videos:', expect.any(Error));
     });
   });
 

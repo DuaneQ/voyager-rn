@@ -119,21 +119,25 @@ export const validateVideoMetadata = (
 /**
  * Generates a thumbnail from a video file
  * Uses expo-video-thumbnails for React Native
+ * Note: May fail with HEVC/H.265 encoded videos on Android emulator
  */
 export const generateVideoThumbnail = async (
   uri: string,
   timeInSeconds: number = 1
 ): Promise<string> => {
   try {
+    console.log('[videoValidation] Attempting to generate thumbnail from:', uri);
     const { uri: thumbnailUri } = await VideoThumbnails.getThumbnailAsync(uri, {
       time: timeInSeconds * 1000, // Convert to milliseconds
       quality: 0.7,
     });
-
+    console.log('[videoValidation] Thumbnail generated successfully:', thumbnailUri);
     return thumbnailUri;
   } catch (error) {
+    console.error('[videoValidation] Thumbnail generation failed:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     throw new Error(
-      `Failed to generate thumbnail: ${error instanceof Error ? error.message : 'Unknown error'}`
+      `Failed to generate thumbnail: ${errorMessage}. Video may use unsupported codec (HEVC/H.265). Use H.264 instead.`
     );
   }
 };

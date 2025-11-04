@@ -1,4 +1,4 @@
-name: CI - Unit & E2E Tests
+name: CI - Unit Tests
 
 on:
   pull_request:
@@ -12,6 +12,7 @@ permissions:
 
 jobs:
   unit_tests:
+    name: Unit Tests
     runs-on: ubuntu-latest
     
     steps:
