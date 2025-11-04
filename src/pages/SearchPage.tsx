@@ -348,8 +348,8 @@ const SearchPage: React.FC = () => {
               <>
                 {searchLoading ? (
                   <View style={styles.centerContent}>
-                    <ActivityIndicator size="large" color="#1976d2" />
-                    <Text style={styles.loadingText}>Searching for matches...</Text>
+                    <ActivityIndicator size="large" color="#ebf2f3ff" />
+                    <Text style={[styles.loadingText, { color: '#fff' }]}>Searching for matches...</Text>
                   </View>
                 ) : matchingItineraries.length > 0 ? (
                   /* Show ItineraryCard for current match */

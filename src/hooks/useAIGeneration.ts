@@ -16,6 +16,7 @@ import {
   AIGenerationErrorType 
 } from '../types/AIGeneration';
 import { sanitizeAIGenerationRequest } from '../utils/sanitizeInput';
+import { calculateAge } from '../utils/calculateAge';
 
 // Default retry configuration for network resilience
 const DEFAULT_RETRY_CONFIG: RetryConfig = {
@@ -557,6 +558,9 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
         // DO NOT recreate them here - we already have them with proper fallback logic!
         
         // Build itinerary data object (matching PWA exactly)
+        // Calculate user age for matching/filtering
+        const userAge = sanitizedRequest.userInfo?.dob ? calculateAge(sanitizedRequest.userInfo.dob) : 0;
+        
         const itineraryData: any = {
           id: generationId,
           destination: sanitizedRequest.destination,
@@ -568,6 +572,7 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
           lowerRange: 18,
           upperRange: 100,
           likes: [],
+          age: userAge, // Include age for searchItineraries filtering
           userInfo: {
             username: sanitizedRequest.userInfo?.username || 'Anonymous',
             gender: sanitizedRequest.userInfo?.gender || 'Any',
@@ -606,6 +611,7 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
             sexualOrientation: sanitizedRequest.userInfo?.sexualOrientation || 'No Preference',
             status: sanitizedRequest.userInfo?.status || 'No Preference',
             likes: [],
+            age: userAge, // Include age for searchItineraries filtering
             activities: extractActivitiesFromDailyPlans(dailyPlans),
             ai_status: "completed",
             createdAt: new Date().toISOString(),
@@ -697,6 +703,9 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
         setProgress(PROGRESS_STAGES.SAVING);
         
         try {
+          // Calculate user age for matching/filtering (flight path)
+          const userAge = sanitizedRequest.userInfo?.dob ? calculateAge(sanitizedRequest.userInfo.dob) : 0;
+          
           // Build itinerary data object for flight-based trips (matching PWA)
           const itineraryData: any = {
             id: generationId,
@@ -709,6 +718,7 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
             lowerRange: 18,
             upperRange: 100,
             likes: [],
+            age: userAge, // Include age for searchItineraries filtering
             userInfo: {
               username: sanitizedRequest.userInfo?.username || 'Anonymous',
               gender: sanitizedRequest.userInfo?.gender || 'Any',
@@ -746,6 +756,7 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
             sexualOrientation: sanitizedRequest.userInfo?.sexualOrientation || 'No Preference',
             status: sanitizedRequest.userInfo?.status || 'No Preference',
             likes: [],
+            age: userAge, // Include age for searchItineraries filtering
             activities: extractActivitiesFromDailyPlans(dailyPlans),
             ai_status: "completed",
             createdAt: new Date().toISOString(),

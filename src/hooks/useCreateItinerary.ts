@@ -12,6 +12,7 @@ import {
   CreateItineraryResponse,
   ItineraryValidationError,
 } from '../types/ManualItinerary';
+import { calculateAge } from '../utils/calculateAge';
 
 export const useCreateItinerary = () => {
   const [loading, setLoading] = useState(false);
@@ -119,6 +120,9 @@ export const useCreateItinerary = () => {
       const startDate = new Date(formData.startDate + 'T12:00:00.000Z');
       const endDate = new Date(formData.endDate + 'T12:00:00.000Z');
 
+      // Calculate age from user's date of birth for filtering
+      const userAge = userProfile?.dob ? calculateAge(userProfile.dob) : 0;
+
       // Build payload matching PostgreSQL schema
       const payload: Partial<ManualItineraryData> = {
         ...(editingItineraryId && { id: editingItineraryId }),
@@ -136,6 +140,7 @@ export const useCreateItinerary = () => {
         lowerRange: formData.lowerRange,
         upperRange: formData.upperRange,
         likes: editingItineraryId ? undefined : [], // Don't override likes when editing
+        age: userAge, // Include calculated age for efficient search filtering
         userInfo: {
           username: userProfile.username || 'Anonymous',
           gender: userProfile.gender || 'Not specified',

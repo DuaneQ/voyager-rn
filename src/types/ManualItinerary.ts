@@ -25,6 +25,7 @@ export interface ManualItineraryData extends ManualItineraryFormData {
   startDay: number; // Unix timestamp in milliseconds
   endDay: number;   // Unix timestamp in milliseconds
   likes: string[];
+  age?: number; // User's age calculated from DOB for efficient filtering
   userInfo: {
     username: string;
     gender: string;

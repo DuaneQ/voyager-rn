@@ -378,8 +378,12 @@ describe('AirportSelector - Edge Cases', () => {
       fireEvent.press(selector);
 
       await waitFor(() => {
+        expect(mockAirportService.prototype.searchAirportsNearLocation).toHaveBeenCalled();
+      }, { timeout: 3000 });
+
+      await waitFor(() => {
         expect(alertSpy).toHaveBeenCalledWith('Error', 'Failed to search airports. Please try again.');
-      });
+      }, { timeout: 3000 });
 
       alertSpy.mockRestore();
     });
