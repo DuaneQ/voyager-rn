@@ -30,6 +30,9 @@ jest.mock('../../../firebase-config', () => ({
 
 const mockHttpsCallable = httpsCallable as jest.MockedFunction<typeof httpsCallable>;
 
+// Helper type for RPC response (using any to avoid TypeScript complexity in tests)
+type RPCResult = any;
+
 describe('searchItineraries RPC - Comprehensive Matching Tests', () => {
   let mockSearchFn: jest.Mock;
   

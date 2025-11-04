@@ -3,6 +3,7 @@
   "extends": "expo/tsconfig.base",
   "exclude": [
     "automation",
-    "node_modules"
+    "node_modules",
+    "src/__tests__/integrations"
   ]
 }
