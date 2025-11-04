@@ -18,6 +18,7 @@ import {
   Image,
   Dimensions,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { getFirestore, doc, getDoc } from 'firebase/firestore';
 import { Itinerary } from '../../types/Itinerary';
@@ -285,30 +286,36 @@ const ItineraryCard: React.FC<ItineraryCardProps> = ({
 };
 
 const styles = StyleSheet.create({
-  // Card container - Larger card to show all information
+  // Card container - Consistent size across platforms
   card: {
     marginHorizontal: 16,
     marginVertical: 20,
-    width: screenWidth < 600 ? screenWidth * 0.85 : 450, // Larger card
-    minHeight: 400, // Remove maxHeight to allow content to show
-    backgroundColor: '#fff', // White background like screenshots
-    borderRadius: 16, // More rounded corners
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 8,
-    padding: screenWidth < 600 ? 16 : 20,
+    width: screenWidth * 0.9, // Consistent width on both platforms
+    minHeight: 500,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    // Platform-specific shadows
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
+    paddingHorizontal: 20,
+    paddingVertical: 24,
     alignSelf: 'center',
-    display: 'flex',
-    flexDirection: 'column',
+    overflow: 'hidden',
   },
   
-  // Card content - More padding for better layout
+  // Card content - Consistent padding
   cardContent: {
-    paddingBottom: 12,
-    paddingTop: 16,
-    paddingHorizontal: 16,
+    paddingBottom: 16,
+    paddingTop: 8,
     flex: 1,
   },
 
@@ -317,7 +324,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
   },
 
   avatarButton: {
@@ -325,11 +332,11 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
 
-  // Avatar - Larger for better visibility
+  // Avatar - Consistent size
   avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     borderWidth: 2,
     borderColor: '#e0e0e0',
   },
@@ -340,42 +347,43 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 
-  // Username - Larger, bolder
+  // Username - Bold and readable
   username: {
     fontWeight: 'bold',
     color: '#333',
-    fontSize: 20,
+    fontSize: 22,
   },
 
-  // Destination - Larger headline
+  // Destination - Prominent headline
   destination: {
     textAlign: 'center',
     fontWeight: 'bold',
     color: '#000',
-    fontSize: 26,
-    marginBottom: 12,
+    fontSize: 28,
+    marginBottom: 16,
+    letterSpacing: 0.5,
   },
 
-  // Date text - More visible
+  // Date text - Clear and readable
   dateText: {
     textAlign: 'center',
     color: '#666',
-    marginBottom: 8,
+    marginBottom: 10,
     fontSize: 16,
   },
 
-  // Scrollable content - Larger viewport
+  // Scrollable content - Adequate space
   scrollContent: {
-    maxHeight: 250, // More space to show content
-    marginTop: 12,
+    maxHeight: 280,
+    marginTop: 16,
     paddingRight: 8,
   },
 
-  // Description - More readable
+  // Description - Readable and styled
   description: {
     fontStyle: 'italic',
     fontSize: 16,
-    marginBottom: 16,
+    marginBottom: 20,
     textAlign: 'left',
     lineHeight: 24,
     color: '#333',
@@ -388,8 +396,8 @@ const styles = StyleSheet.create({
 
   activitiesTitle: {
     fontWeight: 'bold',
-    marginBottom: 10,
-    fontSize: 16,
+    marginBottom: 12,
+    fontSize: 18,
     color: '#000',
   },
 
@@ -400,116 +408,140 @@ const styles = StyleSheet.create({
   activityItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 6,
+    marginBottom: 8,
   },
 
   activityBullet: {
-    marginRight: 8,
+    marginRight: 10,
     marginTop: 2,
     color: '#666',
-    fontSize: 16,
+    fontSize: 18,
   },
 
   activityText: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 16,
     color: '#333',
-    lineHeight: 22,
+    lineHeight: 24,
   },
 
   moreActivities: {
     fontStyle: 'italic',
     color: '#666',
     fontSize: 14,
-    marginTop: 8,
+    marginTop: 10,
   },
 
-  // Card actions - Match screenshot buttons (large circular buttons)
+  // Card actions - Large circular buttons like iOS screenshot
   cardActions: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    paddingVertical: 20,
-    paddingHorizontal: 40,
-    marginTop: 16,
+    paddingVertical: 24,
+    paddingHorizontal: 60,
+    marginTop: 20,
   },
 
   editButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#2196F3', // Material-UI blue
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: '#2196F3',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 6,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
   },
 
   deleteButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#f44336', // Material-UI red
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 6,
-  },
-
-  // Dislike button - Matching SearchPage example itinerary buttons
-  dislikeButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
     backgroundColor: '#f44336',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
   },
 
-  // Like button - Matching SearchPage example itinerary buttons
+  // Dislike button - Consistent across platforms
+  dislikeButton: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: '#f44336',
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.3,
+        shadowRadius: 5,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
+  },
+
+  // Like button - Consistent across platforms
   likeButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
     backgroundColor: '#4caf50',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.3,
+        shadowRadius: 5,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
   },
 
   editIcon: {
-    fontSize: 28,
+    fontSize: 32,
     color: '#fff',
   },
 
   deleteIcon: {
-    fontSize: 28,
+    fontSize: 32,
     color: '#fff',
   },
 
-  // Icons matching SearchPage button text
+  // Icons - Larger and more visible
   dislikeIcon: {
-    fontSize: 24,
+    fontSize: 32,
     color: 'white',
     fontWeight: 'bold',
   },
 
   likeIcon: {
-    fontSize: 24,
+    fontSize: 32,
     color: 'white',
     fontWeight: 'bold',
   },
