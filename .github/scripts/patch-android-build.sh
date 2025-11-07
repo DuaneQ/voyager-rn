@@ -25,13 +25,27 @@ fi
 # Create backup
 cp "$BUILD_GRADLE" "$BUILD_GRADLE.backup"
 
-# Use a simpler, more reliable path resolution for CI
-# The path from android/app directory is: ../../node_modules/expo-modules-core/android/ExpoModulesCorePlugin.gradle
+# Use a simpler, more reliable path resolution for CI. Prefer the installed
+# package path under node_modules, but if that file is missing (common in
+# transient CI failures), fall back to the repository-local helper in
+# .github/gradle-helpers so the generated build.gradle refers to an existing
+# file. This avoids Gradle errors that occur when the apply-from file doesn't
+# exist.
+INSTALLED_PATH='../../node_modules/expo-modules-core/android/ExpoModulesCorePlugin.gradle'
+FALLBACK_PATH='../../.github/gradle-helpers/ExpoModulesCorePlugin.gradle'
+
+APPLY_LINE_INSTALLED="apply from: new File(rootDir, '${INSTALLED_PATH}')"
+APPLY_LINE_FALLBACK="apply from: new File(rootDir, '${FALLBACK_PATH}') // (patched by CI fallback)"
+
 {
   head -n "$LINE_NUM" "$BUILD_GRADLE"
   echo ""
   echo "// Apply Expo modules plugin"
-  echo "apply from: new File(rootDir, '../../node_modules/expo-modules-core/android/ExpoModulesCorePlugin.gradle')"
+  if [ -f "$(dirname "$BUILD_GRADLE")/${INSTALLED_PATH}" ]; then
+    echo "$APPLY_LINE_INSTALLED"
+  else
+    echo "$APPLY_LINE_FALLBACK"
+  fi
   tail -n +"$((LINE_NUM + 1))" "$BUILD_GRADLE"
 } > "$BUILD_GRADLE.new"
 

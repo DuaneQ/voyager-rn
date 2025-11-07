@@ -1,3 +1,34 @@
+/*
+ * FALLBACK: ExpoModulesCore Gradle Plugin Helper
+ * ------------------------------------------------
+ * This file is a repository-local fallback copy of the Gradle helper code that
+ * is normally provided by the `expo-modules-core` NPM package under
+ * `node_modules/expo-modules-core/android/ExpoModulesCorePlugin.gradle`.
+ *
+ * Purpose:
+ * - Provide minimal Gradle/Kotlin helper functions and defaults so CI can
+ *   continue if the upstream package is missing Android platform files
+ *   (common in transient or caching-related CI failures).
+ * - Serve as a defensive safety net for `expo prebuild` and Gradle builds.
+ *
+ * Caveats & maintenance:
+ * - This is a fallback, not a substitute for a correct package install.
+ *   Prefer fixing the root cause (pin `expo-modules-core` in package.json,
+ *   use `npm ci`, and clear CI caches) rather than relying on this file.
+ * - Keep this file minimal and periodically validate it matches the
+ *   expectations of the project's native dependency versions (Kotlin, KSP,
+ *   SDK versions). If you observe mismatches, update the block below or
+ *   remove the fallback once the upstream package reliably includes the
+ *   necessary Android files.
+ *
+ * How CI uses this file:
+ * - The Android CI workflow will attempt to verify the presence of
+ *   `node_modules/expo-modules-core/android/ExpoModulesCorePlugin.gradle` and
+ *   will copy this fallback into that location when the file is missing.
+ * - The workflow includes diagnostic output when the fallback is required so
+ *   maintainers can triage upstream packaging problems.
+ */
+
 class KotlinExpoModulesCorePlugin implements Plugin<Project> {
   void apply(Project project) {
     // For compatibility reasons the plugin needs to declare that it provides common build.gradle

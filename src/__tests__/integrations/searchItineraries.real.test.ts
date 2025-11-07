@@ -27,7 +27,7 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
   let authToken: string;
 
   beforeAll(async () => {
-    console.log('\n🔐 Authenticating test user...');
+    
     
     // Authenticate to get ID token for createItinerary/deleteItinerary
     const authResponse = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=AIzaSyCbckV9cMuKUM4ZnvYDJZUvfukshsZfvM0`, {
@@ -45,11 +45,11 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
       throw new Error('Authentication failed: ' + JSON.stringify(authData));
     }
     authToken = authData.idToken;
-    console.log('✅ Authenticated successfully\n');
+    
 
     // Seed test itineraries (batched for speed)
     const testItineraries = generateTestItineraries();
-    console.log(`🌱 Seeding ${testItineraries.length} test itineraries in parallel...\n`);
+    
 
     const createPromises = testItineraries.map(async (itinerary) => {
       try {
@@ -74,7 +74,6 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
             status: itinerary.status,
           };
         } else {
-          console.log(`   ✗ Failed: ${itinerary.destination}`, JSON.stringify(result, null, 2));
           return { success: false };
         }
       } catch (err: any) {
@@ -89,16 +88,12 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
     results.forEach((result) => {
       if (result.success && result.id) {
         createdItineraryIds.push(result.id);
-        console.log(`   ✓ Created: ${result.destination} (${result.gender}, age ${result.age}, ${result.status})`);
       }
     });
-
-    console.log(`\n✅ Seeded ${createdItineraryIds.length} itineraries in parallel`);
-    console.log('🧪 Starting filter tests...\n');
   }, 60000); // 60 second timeout for seeding
 
   afterAll(async () => {
-    console.log(`\n🧹 Cleaning up ${createdItineraryIds.length} test itineraries in parallel...`);
+    
 
     const deletePromises = createdItineraryIds.map(async (id) => {
       try {
@@ -111,23 +106,14 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
           body: JSON.stringify({ data: { itineraryId: id } }),
         });
         return { success: true, id };
-      } catch (err: any) {
-        console.error(`   ✗ Failed to delete ${id}:`, err.message);
+        } catch (err: any) {
         return { success: false, id };
       }
     });
 
     const deleteResults = await Promise.all(deletePromises);
     
-    // Log successful deletions
-    deleteResults.forEach((result) => {
-      if (result.success) {
-        console.log(`   ✓ Deleted: ${result.id}`);
-      }
-    });
-
-    const deletedCount = deleteResults.filter(r => r.success).length;
-    console.log(`✅ Cleanup complete (${deletedCount}/${createdItineraryIds.length} deleted)\n`);
+    // Cleanup complete
   }, 60000);
 
   // Helper to call searchItineraries
@@ -169,7 +155,7 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
         expect(itinerary.destination).toBe('Paris, France');
       });
 
-      console.log(`✅ Destination filter: Found ${results.length} Paris itineraries (expected 2)`);
+      
     });
 
     it('should return only Tokyo itineraries when searching for Tokyo', async () => {
@@ -193,7 +179,7 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
         expect(itinerary.destination).toBe('Tokyo, Japan');
       });
 
-      console.log(`✅ Destination filter: Found ${results.length} Tokyo itineraries (expected 1)`);
+      
     });
   });
 
@@ -220,7 +206,7 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
         expect(itinerary.gender).toBe('Male');
       });
 
-      console.log(`✅ Gender filter (Male): Found ${results.length} itineraries (expected 1)`);
+      
     });
 
     it('should return only Female itineraries when filtering by Female', async () => {
@@ -245,7 +231,7 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
         expect(itinerary.gender).toBe('Female');
       });
 
-      console.log(`✅ Gender filter (Female): Found ${results.length} itineraries (expected 1)`);
+      
     });
   });
 
@@ -273,7 +259,7 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
         expect(age).toBeLessThanOrEqual(27);
       });
 
-      console.log(`✅ Age filter (18-27): Found ${results.length} itineraries (expected 1 - age 22)`);
+      
     });
 
     it('should return only itineraries with age 25-35 when filtering by that range', async () => {
@@ -299,7 +285,7 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
         expect(age).toBeLessThanOrEqual(35);
       });
 
-      console.log(`✅ Age filter (25-35): Found ${results.length} itineraries (expected 1 - age 30)`);
+      
     });
 
     it('should return only itineraries with age 40-55 when filtering by that range', async () => {
@@ -325,7 +311,7 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
         expect(age).toBeLessThanOrEqual(55);
       });
 
-      console.log(`✅ Age filter (40-55): Found ${results.length} itineraries (expected 1 - age 45)`);
+      
     });
   });
 
@@ -352,7 +338,7 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
         expect(itinerary.status).toBe('single');
       });
 
-      console.log(`✅ Status filter (single): Found ${results.length} itineraries (expected 1)`);
+      
     });
 
     it('should return only couple status itineraries when filtering by couple', async () => {
@@ -377,7 +363,7 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
         expect(itinerary.status).toBe('couple');
       });
 
-      console.log(`✅ Status filter (couple): Found ${results.length} itineraries (expected 1)`);
+      
     });
   });
 
@@ -404,7 +390,7 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
         expect(itinerary.sexualOrientation).toBe('heterosexual');
       });
 
-      console.log(`✅ Sexual orientation filter (heterosexual): Found ${results.length} itineraries (expected 1)`);
+      
     });
 
     it('should return only bisexual itineraries when filtering by bisexual', async () => {
@@ -429,7 +415,7 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
         expect(itinerary.sexualOrientation).toBe('bisexual');
       });
 
-      console.log(`✅ Sexual orientation filter (bisexual): Found ${results.length} itineraries (expected 1)`);
+      
     });
 
     it('should return only homosexual itineraries when filtering by homosexual', async () => {
@@ -454,7 +440,7 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
         expect(itinerary.sexualOrientation).toBe('homosexual');
       });
 
-      console.log(`✅ Sexual orientation filter (homosexual): Found ${results.length} itineraries (expected 1)`);
+      
     });
   });
 
@@ -489,7 +475,7 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
         expect(itineraryEnd).toBeGreaterThanOrEqual(now);
       });
 
-      console.log(`✅ Date overlap filter (week 1-2): Found ${results.length} London itineraries with correct date overlap`);
+      
     });
 
     it('should return only itineraries overlapping with week 3 dates', async () => {
@@ -521,7 +507,7 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
         expect(itineraryEnd).toBeGreaterThanOrEqual(threeWeeksFromNow);
       });
 
-      console.log(`✅ Date overlap filter (week 3): Found ${results.length} London itineraries with correct date overlap`);
+      
     });
   });
 
@@ -564,7 +550,7 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
       // Excluded ID should not appear
       expect(filteredResults.find((it: any) => it.id === firstId)).toBeUndefined();
 
-      console.log(`✅ Excluded IDs filter: Excluded ${firstId}, got ${filteredResults.length} results (expected ${allResults.length - 1})`);
+      
     });
   });
 
@@ -599,7 +585,7 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
         expect(age).toBeLessThanOrEqual(35);
       });
 
-      console.log(`✅ Combined filters: Found ${results.length} itineraries matching ALL criteria`);
+      
     });
   });
 });
