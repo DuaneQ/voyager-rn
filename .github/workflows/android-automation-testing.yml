@@ -73,7 +73,7 @@ jobs:
         echo "✅ expo-modules-core with Android Gradle files verified"
         echo "   File: node_modules/expo-modules-core/android/ExpoModulesCorePlugin.gradle"
 
-    - name: Diagnostic: verify expo-modules-core files
+    - name: "Diagnostic: verify expo-modules-core files"
       run: |
         echo "--- Diagnostic: environment ---"
         echo "node: $(node --version)"
