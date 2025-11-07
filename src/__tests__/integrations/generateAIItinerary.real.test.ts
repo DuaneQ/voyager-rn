@@ -33,7 +33,7 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
   let authToken: string;
 
   beforeAll(async () => {
-    console.log('\n🔐 Authenticating test user...');
+    
     
     // Authenticate to get ID token
     const authResponse = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=AIzaSyCbckV9cMuKUM4ZnvYDJZUvfukshsZfvM0`, {
@@ -51,18 +51,13 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
       throw new Error('Authentication failed: ' + JSON.stringify(authData));
     }
     authToken = authData.idToken;
-    console.log('✅ Authenticated successfully\n');
+    
 
     // Generate test preference profiles
     testProfiles = generateTestPreferenceProfiles();
-    console.log('📋 Test Preference Profiles Generated:\n');
     testProfiles.forEach((profile) => {
-      console.log(`Profile: ${profile.name}`);
-      console.log(`  - Transportation: ${profile.transportation.primaryMode}`);
-      console.log(`  - Flights: ${profile.transportation.includeFlights ? 'YES' : 'NO'}`);
-      console.log('');
+      // profile metadata available for debugging if needed
     });
-    console.log('🧪 Starting AI generation tests...\n');
   }, 30000);
 
   // Helper to call cloud functions via HTTP
@@ -112,7 +107,7 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
         preferenceProfile: airplaneProfile,
       };
 
-      console.log('\n📡 Testing AIRPLANE mode...');
+      
       
       // Call searchFlights (should return flights for airplane mode)
       const response = await callCloudFunction('searchFlights', payload);
@@ -129,7 +124,7 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
       expect(flight).toHaveProperty('arrival');
       expect(flight).toHaveProperty('price');
 
-      console.log(`✅ Got ${response.flights.length} flight recommendations\n`);
+      
     }, 30000);
 
     it('should return accommodations and activities for TRAIN mode', async () => {
@@ -144,7 +139,7 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
         preferenceProfile: trainProfile,
       };
 
-      console.log('\n📡 Testing TRAIN mode...');
+      
       
       // Call searchAccommodations
       const accommodationsResponse = await callCloudFunction('searchAccommodations', payload);
@@ -167,7 +162,7 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
       expect(Array.isArray(activities)).toBe(true);
       expect(activities.length).toBeGreaterThan(0);
 
-      console.log(`✅ Got ${accommodations.length} hotels, ${activities.length} activities\n`);
+      
     }, 30000);
 
     it('should return data for RENTAL CAR mode', async () => {
@@ -182,7 +177,7 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
         preferenceProfile: rentalProfile,
       };
 
-      console.log('\n📡 Testing RENTAL CAR mode...');
+      
       
       const accommodationsResponse = await callCloudFunction('searchAccommodations', payload);
       const activitiesResponse = await callCloudFunction('searchActivities', payload);
@@ -193,7 +188,7 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
       expect(accommodations.length).toBeGreaterThan(0);
       expect(activities.length).toBeGreaterThan(0);
 
-      console.log(`✅ Got ${accommodations.length} hotels, ${activities.length} activities\n`);
+      
     }, 30000);
 
     it('should return data for PUBLIC TRANSIT mode', async () => {
@@ -208,7 +203,7 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
         preferenceProfile: publicProfile,
       };
 
-      console.log('\n📡 Testing PUBLIC TRANSIT mode...');
+      
       
       const accommodationsResponse = await callCloudFunction('searchAccommodations', payload);
       const activitiesResponse = await callCloudFunction('searchActivities', payload);
@@ -219,7 +214,7 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
       expect(accommodations.length).toBeGreaterThan(0);
       expect(activities.length).toBeGreaterThan(0);
 
-      console.log(`✅ Got ${accommodations.length} hotels, ${activities.length} activities\n`);
+      
     }, 30000);
 
     it('should return data for WALKING mode', async () => {
@@ -234,7 +229,7 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
         preferenceProfile: walkingProfile,
       };
 
-      console.log('\n📡 Testing WALKING mode...');
+      
       
       const accommodationsResponse = await callCloudFunction('searchAccommodations', payload);
       const activitiesResponse = await callCloudFunction('searchActivities', payload);
@@ -245,7 +240,7 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
       expect(accommodations.length).toBeGreaterThan(0);
       expect(activities.length).toBeGreaterThan(0);
 
-      console.log(`✅ Got ${accommodations.length} hotels, ${activities.length} activities\n`);
+      
     }, 30000);
 
     it('should return data for BUS mode', async () => {
@@ -260,7 +255,7 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
         preferenceProfile: busProfile,
       };
 
-      console.log('\n📡 Testing BUS mode...');
+      
       
       const accommodationsResponse = await callCloudFunction('searchAccommodations', payload);
       const activitiesResponse = await callCloudFunction('searchActivities', payload);
@@ -271,7 +266,7 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
       expect(accommodations.length).toBeGreaterThan(0);
       expect(activities.length).toBeGreaterThan(0);
 
-      console.log(`✅ Got ${accommodations.length} hotels, ${activities.length} activities\n`);
+      
     }, 30000);
   });
 
@@ -288,7 +283,7 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
         preferenceProfile: profile,
       };
 
-      console.log('\n📡 Testing 3-DAY TRIP...');
+      
       
       const accommodationsResponse = await callCloudFunction('searchAccommodations', payload);
       const activitiesResponse = await callCloudFunction('searchActivities', payload);
@@ -299,10 +294,8 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
       expect(accommodations.length).toBeGreaterThan(0);
       expect(activities.length).toBeGreaterThan(0);
       
-      // For 3-day trip, expect at least 3 activities (1 per day minimum)
-      expect(activities.length).toBeGreaterThanOrEqual(3);
-
-      console.log(`✅ 3-day trip: ${accommodations.length} hotels, ${activities.length} activities\n`);
+  // For 3-day trip, expect at least 3 activities (1 per day minimum)
+  expect(activities.length).toBeGreaterThanOrEqual(3);
     }, 30000);
 
     it('should return appropriate data for 7-day trip', async () => {
@@ -317,7 +310,7 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
         preferenceProfile: profile,
       };
 
-      console.log('\n📡 Testing 7-DAY TRIP...');
+      
       
       const accommodationsResponse = await callCloudFunction('searchAccommodations', payload);
       const activitiesResponse = await callCloudFunction('searchActivities', payload);
@@ -328,10 +321,8 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
       expect(accommodations.length).toBeGreaterThan(0);
       expect(activities.length).toBeGreaterThan(0);
       
-      // For 7-day trip, expect at least 7 activities
-      expect(activities.length).toBeGreaterThanOrEqual(7);
-
-      console.log(`✅ 7-day trip: ${accommodations.length} hotels, ${activities.length} activities\n`);
+  // For 7-day trip, expect at least 7 activities
+  expect(activities.length).toBeGreaterThanOrEqual(7);
     }, 30000);
 
     it('should return appropriate data for 14-day trip', async () => {
@@ -346,7 +337,7 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
         preferenceProfile: profile,
       };
 
-      console.log('\n📡 Testing 14-DAY TRIP...');
+      
       
       const accommodationsResponse = await callCloudFunction('searchAccommodations', payload);
       const activitiesResponse = await callCloudFunction('searchActivities', payload);
@@ -357,10 +348,8 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
       expect(accommodations.length).toBeGreaterThan(0);
       expect(activities.length).toBeGreaterThan(0);
       
-      // For 14-day trip, expect at least 14 activities
-      expect(activities.length).toBeGreaterThanOrEqual(14);
-
-      console.log(`✅ 14-day trip: ${accommodations.length} hotels, ${activities.length} activities\n`);
+  // For 14-day trip, expect at least 14 activities
+  expect(activities.length).toBeGreaterThanOrEqual(14);
     }, 30000);
   });
 
@@ -377,7 +366,7 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
         preferenceProfile: profile,
       };
 
-      console.log('\n📡 Testing HOTEL DATA QUALITY...');
+      
       
       const accommodationsResponse = await callCloudFunction('searchAccommodations', payload);
       const accommodations = extractArray(accommodationsResponse, 'accommodations', 'hotels');
@@ -393,10 +382,8 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
       // Location can be in different formats
       expect(hotel.location || hotel.address || hotel.vicinity).toBeTruthy();
       
-      // Should have either rating or price
-      expect(hotel.rating || hotel.price).toBeTruthy();
-
-      console.log(`✅ Hotel data quality validated: ${hotel.name}\n`);
+  // Should have either rating or price
+  expect(hotel.rating || hotel.price).toBeTruthy();
     }, 30000);
 
     it('should include restaurants/meals data', async () => {
@@ -411,7 +398,7 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
         preferenceProfile: profile,
       };
 
-      console.log('\n📡 Testing RESTAURANT/MEAL DATA...');
+      
       
       const activitiesResponse = await callCloudFunction('searchActivities', payload);
       const activities = extractArray(activitiesResponse, 'activities');
@@ -429,7 +416,7 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
       
       expect(hasRestaurants || activities.length > 10).toBe(true); // Either explicit restaurants or many activities
 
-      console.log(`✅ Found ${activities.length} activities (including restaurants)\n`);
+      
     }, 30000);
 
     it('should include enriched activities with contact information', async () => {
@@ -444,7 +431,7 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
         preferenceProfile: profile,
       };
 
-      console.log('\n📡 Testing ACTIVITY ENRICHMENT...');
+      
       
       const activitiesResponse = await callCloudFunction('searchActivities', payload);
       const activities = extractArray(activitiesResponse, 'activities');
@@ -465,9 +452,7 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
         act.phone || act.website || act.price_level || act.rating
       );
       
-      expect(hasEnrichment).toBe(true);
-
-      console.log(`✅ Activity enrichment validated: ${activities.filter((a: any) => a.phone).length} have phone numbers\n`);
+  expect(hasEnrichment).toBe(true);
     }, 30000);
   });
 
@@ -484,7 +469,7 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
         preferenceProfile: profile,
       };
 
-      console.log('\n📡 Testing EUROPEAN DESTINATION (Amsterdam)...');
+      
       
       const accommodationsResponse = await callCloudFunction('searchAccommodations', payload);
       const activitiesResponse = await callCloudFunction('searchActivities', payload);
@@ -495,7 +480,7 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
       expect(accommodations.length).toBeGreaterThan(0);
       expect(activities.length).toBeGreaterThan(0);
 
-      console.log(`✅ Amsterdam: ${accommodations.length} hotels, ${activities.length} activities\n`);
+      
     }, 30000);
 
     it('should generate itinerary for Asian destination', async () => {
@@ -510,7 +495,7 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
         preferenceProfile: profile,
       };
 
-      console.log('\n📡 Testing ASIAN DESTINATION (Bangkok)...');
+      
       
       const accommodationsResponse = await callCloudFunction('searchAccommodations', payload);
       const activitiesResponse = await callCloudFunction('searchActivities', payload);
@@ -521,7 +506,7 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
       expect(accommodations.length).toBeGreaterThan(0);
       expect(activities.length).toBeGreaterThan(0);
 
-      console.log(`✅ Bangkok: ${accommodations.length} hotels, ${activities.length} activities\n`);
+      
     }, 30000);
 
     it('should generate itinerary for South American destination', async () => {
@@ -536,7 +521,7 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
         preferenceProfile: profile,
       };
 
-      console.log('\n📡 Testing SOUTH AMERICAN DESTINATION (Buenos Aires)...');
+      
       
       const accommodationsResponse = await callCloudFunction('searchAccommodations', payload);
       const activitiesResponse = await callCloudFunction('searchActivities', payload);
@@ -547,7 +532,7 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
       expect(accommodations.length).toBeGreaterThan(0);
       expect(activities.length).toBeGreaterThan(0);
 
-      console.log(`✅ Buenos Aires: ${accommodations.length} hotels, ${activities.length} activities\n`);
+      
     }, 30000);
   });
 });
