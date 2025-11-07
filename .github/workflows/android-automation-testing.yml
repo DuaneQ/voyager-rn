@@ -150,6 +150,13 @@ jobs:
             exit 1
           fi
         fi
+        # Ensure repository-level expo-gradle-helpers exists (Gradle looks for ../expo-gradle-helpers)
+        if [ -f .github/gradle-helpers/ExpoModulesCorePlugin.gradle ]; then
+          mkdir -p ./expo-gradle-helpers || true
+          cp .github/gradle-helpers/ExpoModulesCorePlugin.gradle ./expo-gradle-helpers/ExpoModulesCorePlugin.gradle
+          echo "Copied fallback to ./expo-gradle-helpers/ExpoModulesCorePlugin.gradle for Gradle fallback resolution"
+          ls -la ./expo-gradle-helpers || true
+        fi
         echo "✅ expo-modules-core Android files confirmed"
         
         # Verify android directory was cleaned (should not exist yet)

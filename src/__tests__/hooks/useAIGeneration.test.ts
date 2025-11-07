@@ -19,7 +19,6 @@ jest.mock('../../utils/sanitizeInput', () => ({
 
 // NOW import everything
 import { renderHook, act } from '@testing-library/react-native';
-import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useAIGeneration } from '../../hooks/useAIGeneration';
 import { AIGenerationRequest } from '../../types/AIGeneration';
 import { sanitizeAIGenerationRequest } from '../../utils/sanitizeInput';

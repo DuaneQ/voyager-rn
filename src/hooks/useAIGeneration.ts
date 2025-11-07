@@ -16,6 +16,7 @@ import {
   AIGenerationErrorType 
 } from '../types/AIGeneration';
 import { sanitizeAIGenerationRequest } from '../utils/sanitizeInput';
+import { applyProfileDefaults } from '../utils/profileDefaults';
 import { calculateAge } from '../utils/calculateAge';
 
 // Default retry configuration for network resilience
@@ -203,15 +204,20 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
         throw createAIError('validation_error', 'User ID is required to save itinerary');
       }
       
-      // Step 2: Determine transport type and flight needs (matching PWA logic)
-      const selectedProfile = sanitizedRequest.travelPreferences || sanitizedRequest.preferenceProfile;
-      const transportTypeRaw = selectedProfile?.transportation?.primaryMode || 'driving';
-      
-      console.log('📋 Preference Profile:', JSON.stringify(selectedProfile, null, 2));
+  // Step 2: Determine transport type and flight needs (matching PWA logic)
+  const selectedProfile = sanitizedRequest.travelPreferences || sanitizedRequest.preferenceProfile;
+
+  // Apply conservative defaults for first-time/empty profiles so the AI flow
+  // has sensible values but does not unexpectedly enable flights.
+  const profileWithDefaults = applyProfileDefaults(selectedProfile);
+
+  const transportTypeRaw = profileWithDefaults?.transportation?.primaryMode || 'driving';
+
+  console.log('📋 Preference Profile (with defaults applied):', JSON.stringify(profileWithDefaults, null, 2));
       
       // Map 'airplane' to 'flight' to match cloud function expectations
       const transportType = transportTypeRaw === 'airplane' ? 'flight' : transportTypeRaw;
-      const includeFlights = transportType === 'flight' || transportType === 'flights' || transportTypeRaw === 'airplane';
+  const includeFlights = transportType === 'flight' || transportTypeRaw === 'airplane';
       
       setProgress(PROGRESS_STAGES.SEARCHING);
       
@@ -229,7 +235,7 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
         startDate: sanitizedRequest.startDate,
         endDate: sanitizedRequest.endDate,
         days: tripDays, // CRITICAL: This tells searchActivities how many activities to enrich
-        preferenceProfile: selectedProfile,
+        preferenceProfile: profileWithDefaults,
         userInfo: sanitizedRequest.userInfo,
         tripType: sanitizedRequest.tripType || 'leisure',
         mustInclude: sanitizedRequest.mustInclude || [],
@@ -481,7 +487,7 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
           originAirportCode: sanitizedRequest.departureAirportCode || null,
           destinationAirportCode: sanitizedRequest.destinationAirportCode || null,
           transportType: transportTypeRaw, // Use the original transportType (NOT 'flight')
-          preferenceProfile: selectedProfile || null,
+          preferenceProfile: profileWithDefaults || null,
           generationId: generationId,
           mustInclude: sanitizedRequest.mustInclude || [],
           mustAvoid: sanitizedRequest.mustAvoid || [],
