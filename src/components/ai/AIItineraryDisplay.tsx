@@ -95,10 +95,12 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
   const itineraryData = itinerary?.response?.data?.itinerary;
   const dailyPlans = itineraryData?.days || itineraryData?.dailyPlans || parsedData?.daily_itinerary || parsedData?.dailyPlans || (itinerary as any)?.dailyPlans;
   
-  const flights = parsedData?.flights || (itinerary as any)?.flights;
-  
   // Read recommendations from response.data.recommendations (primary) or parsedData (fallback)
   const recommendations = (itinerary?.response?.data?.recommendations) || parsedData?.recommendations || (itinerary as any)?.recommendations;
+  
+  // CRITICAL: Flight data source - MATCHING PWA EXACTLY
+  // UI prefers itineraryData.flights first, then recommendations.flights, then top-level
+  const flights = (itineraryData as any)?.flights || recommendations?.flights || (itinerary as any)?.flights || [];
   
   // Check if this is a flight-based itinerary
   const hasFlights = flights && flights.length > 0;
@@ -186,6 +188,19 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
       // Save directly to Firestore so the share page (which reads from Firestore)
       // can serve the itinerary. This matches PWA implementation exactly.
       const id = itinerary.id;
+      
+      if (!id) {
+        console.error('❌ Cannot share itinerary: missing ID', itinerary);
+        Alert.alert(
+          'Share Error',
+          'This itinerary cannot be shared yet. Please try generating it again.',
+          [{ text: 'OK' }]
+        );
+        setIsSharing(false);
+        return;
+      }
+
+      console.log('📤 Sharing itinerary to Firestore:', id);
 
       // Ensure we save the full itinerary structure including all nested data
       // (response.data.recommendations, response.data.metadata, etc.)
@@ -201,10 +216,13 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
       const ref = doc(db, 'itineraries', id);
       // Use merge: false to ensure we write the complete document
       await setDoc(ref, payload, { merge: false });
+      
+      console.log('✅ Itinerary saved to Firestore for sharing:', id);
 
       // Open share modal
       setShareModalOpen(true);
     } catch (err: any) {
+      console.error('❌ Share error:', err);
       Alert.alert(
         'Share Error',
         'Unable to create a shareable link right now. Please try again.',
@@ -285,20 +303,63 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
             <View style={styles.accordionContent}>
               {flights.map((flight: any, index: number) => (
                 <View key={index} style={styles.card}>
-                  <View style={styles.flightRow}>
-                    <Text style={styles.flightTime}>{flight.departureTime || 'N/A'}</Text>
-                    <Text style={styles.flightDuration}>{flight.duration || 'N/A'}</Text>
-                    <Text style={styles.flightStops}>
-                      {flight.stops === 0 ? 'Direct' : `${flight.stops} stop${flight.stops > 1 ? 's' : ''}`}
-                    </Text>
-                  </View>
-                  {flight.price && (
-                    <Text style={styles.flightPrice}>
-                      ${flight.price?.amount || flight.price} {flight.price?.currency || 'USD'}
+                  {/* Flight Header with Airline and Route */}
+                  <Text style={styles.flightAirline}>
+                    {flight.airline || 'N/A'} {flight.flightNumber || ''}
+                  </Text>
+                  <Text style={styles.flightRoute}>{flight.route || 'N/A'}</Text>
+                  
+                  {/* Departure Time */}
+                  {(flight.departure?.date && flight.departure?.time) && (
+                    <Text style={styles.flightDepartureTime}>
+                      Departure: {flight.departure.date} at {flight.departure.time}
                     </Text>
                   )}
-                  {flight.airline && (
-                    <Text style={styles.flightAirline}>Airline: {flight.airline}</Text>
+                  
+                  {/* Flight Details Row */}
+                  <View style={styles.flightRow}>
+                    <Text style={styles.flightDuration}>{flight.duration || 'N/A'}</Text>
+                    <Text style={styles.flightStops}>
+                      {flight.stops === 0 ? 'Direct' : flight.stops === undefined ? 'N/A' : `${flight.stops} stop${flight.stops > 1 ? 's' : ''}`}
+                    </Text>
+                  </View>
+                  
+                  {/* Price */}
+                  {flight.price && (
+                    <Text style={styles.flightPrice}>
+                      ${flight.price?.amount || 'N/A'} {flight.price?.currency || 'USD'}
+                    </Text>
+                  )}
+                  
+                  {/* Cabin Class */}
+                  {(flight.cabin || flight.class) && (
+                    <Text style={styles.flightCabin}>
+                      {flight.cabin || flight.class}
+                    </Text>
+                  )}
+                  
+                  {/* Return Flight Info (if round-trip) */}
+                  {flight.return && (
+                    <View style={styles.returnFlightContainer}>
+                      <Text style={styles.returnFlightLabel}>Return Flight</Text>
+                      <Text style={styles.flightAirline}>
+                        {flight.return.airline || flight.airline} {flight.return.flightNumber || flight.flightNumber}
+                      </Text>
+                      <Text style={styles.flightRoute}>
+                        {flight.return.route || `${flight.return.departure?.iata || ''} → ${flight.return.arrival?.iata || ''}`}
+                      </Text>
+                      {(flight.return.departure?.date && flight.return.departure?.time) && (
+                        <Text style={styles.flightDepartureTime}>
+                          Departure: {flight.return.departure.date} at {flight.return.departure.time}
+                        </Text>
+                      )}
+                      <View style={styles.flightRow}>
+                        <Text style={styles.flightDuration}>{flight.return.duration || 'N/A'}</Text>
+                        <Text style={styles.flightStops}>
+                          {flight.return.stops === 0 ? 'Direct' : flight.return.stops === undefined ? 'N/A' : `${flight.return.stops} stop${flight.return.stops > 1 ? 's' : ''}`}
+                        </Text>
+                      </View>
+                    </View>
                   )}
                 </View>
               ))}
@@ -1178,5 +1239,33 @@ const styles = StyleSheet.create({
     color: '#007AFF',
     marginTop: 4,
     textDecorationLine: 'underline',
+  },
+  // Additional Flight Styles
+  flightRoute: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 8,
+  },
+  flightDepartureTime: {
+    fontSize: 13,
+    color: '#999',
+    marginBottom: 8,
+  },
+  flightCabin: {
+    fontSize: 13,
+    color: '#666',
+    marginTop: 4,
+  },
+  returnFlightContainer: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+  },
+  returnFlightLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
   },
 });

@@ -243,8 +243,31 @@ export const createTestUserProfile = async (userData: any) => {
 
 /**
  * Helper to clear all test data from Firestore
+ * 
+ * CRITICAL SAFETY CHECK: This will ONLY work if the emulator is properly configured
+ * It will throw an error if trying to clear production/dev data
  */
 export const clearFirestoreEmulator = async () => {
+  // SAFETY CHECK: Verify we're connected to emulator, not production!
+  if (!process.env.FIRESTORE_EMULATOR_HOST) {
+    throw new Error(
+      '🚨 SAFETY CHECK FAILED: FIRESTORE_EMULATOR_HOST not set! ' +
+      'Refusing to clear data - this might be production! ' +
+      'Call setupEmulatorTests() first to configure emulator connection.'
+    );
+  }
+  
+  const expectedHost = `${EMULATOR_CONFIG.firestore.host}:${EMULATOR_CONFIG.firestore.port}`;
+  if (process.env.FIRESTORE_EMULATOR_HOST !== expectedHost) {
+    throw new Error(
+      `🚨 SAFETY CHECK FAILED: FIRESTORE_EMULATOR_HOST mismatch! ` +
+      `Expected: ${expectedHost}, Got: ${process.env.FIRESTORE_EMULATOR_HOST}. ` +
+      `This might not be the emulator!`
+    );
+  }
+  
+  console.log(`✅ Safety check passed: Connected to emulator at ${process.env.FIRESTORE_EMULATOR_HOST}`);
+  
   const firestore = getTestFirestore();
   
   // Delete all itineraries

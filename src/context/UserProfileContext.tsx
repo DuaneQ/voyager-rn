@@ -5,7 +5,7 @@
 
 import React, { createContext, useContext, useCallback, useState, useEffect, ReactNode } from 'react';
 import { auth, db } from '../config/firebaseConfig';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import storage from '../utils/storage';
 
 interface UserProfile {
@@ -79,9 +79,10 @@ const UserProfileProvider: React.FC<UserProfileProviderProps> = ({ children }) =
     }
 
     try {
-      // Update Firestore
+      // Use setDoc with merge:true to create document if it doesn't exist
+      // This handles edge cases where sign-up document creation failed
       const userRef = doc(db, 'users', userId);
-      await updateDoc(userRef, data);
+      await setDoc(userRef, data, { merge: true });
 
       // Update local state
       setUserProfile((prev) => (prev ? { ...prev, ...data } : null));
@@ -98,29 +99,40 @@ const UserProfileProvider: React.FC<UserProfileProviderProps> = ({ children }) =
   // Load user profile data (same logic as PWA)
   useEffect(() => {
     const loadUserProfile = async () => {
+      console.log('[UserProfileContext] loadUserProfile called');
       setIsLoading(true);
       try {
         const userId = auth?.currentUser?.uid;
+        console.log('[UserProfileContext] Current user ID:', userId);
 
         if (userId) {
           // Get fresh data from Firebase first (same as PWA)
+          console.log('[UserProfileContext] Fetching user document from Firestore...');
           const userRef = await getDoc(doc(db, "users", userId));
+          console.log('[UserProfileContext] User document exists:', userRef.exists());
 
           if (userRef.exists()) {
             const profile = userRef.data() as UserProfile;
+            console.log('[UserProfileContext] Profile data fetched:', profile.username);
             // Update persistent storage with fresh data (web -> localStorage, native -> AsyncStorage,
             // or in-memory fallback when native module isn't available).
             await storage.setItem("PROFILE_INFO", JSON.stringify(profile));
             setUserProfile(profile);
+            console.log('[UserProfileContext] Profile set successfully');
           } else {
+            console.log('[UserProfileContext] No document found, checking cache...');
             // Fall back to AsyncStorage if Firebase has no data
             const cachedProfile = await storage.getItem("PROFILE_INFO");
             if (cachedProfile) {
+              console.log('[UserProfileContext] Using cached profile');
               setUserProfile(JSON.parse(cachedProfile));
+            } else {
+              console.log('[UserProfileContext] No cached profile found');
             }
           }
         }
       } catch (error) {
+        console.log('[UserProfileContext] Error in loadUserProfile:', error);
         // On error, try AsyncStorage as fallback (same logic as PWA)
         try {
           const cachedProfile = await storage.getItem("PROFILE_INFO");
@@ -132,12 +144,14 @@ const UserProfileProvider: React.FC<UserProfileProviderProps> = ({ children }) =
         }
         console.log("Error loading profile:", error);
       } finally {
+        console.log('[UserProfileContext] loadUserProfile finally block, setting isLoading = false');
         setIsLoading(false);
       }
     };
 
     // Listen for auth state changes (same logic as PWA)
     const unsubscribe = auth.onAuthStateChanged((user) => {
+      console.log('[UserProfileContext] Auth state changed, user:', user?.uid);
       if (user) {
         loadUserProfile();
       } else {

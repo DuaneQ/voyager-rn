@@ -40,3 +40,4 @@ export const functions = getFunctions(app, 'us-central1');
 
 console.log('🔥 Firebase initialized for voyager-RN');
 console.log('📱 Using project:', firebaseConfig.projectId);
+console.log('🌐 Functions region: us-central1');
