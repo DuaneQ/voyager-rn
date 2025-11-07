@@ -210,7 +210,15 @@ jobs:
           exit 1
         }
         echo "✅ iOS app built and installed successfully"
-        
+
+        # Start Metro bundler in the background so the simulator can load the JS bundle
+        echo "📦 Starting Metro bundler in background (for simulator JS bundle)..."
+        cd ..
+        nohup npx react-native start --port 8081 --reset-cache > automation/metro.log 2>&1 &
+        METRO_PID=$!
+        echo "METRO_PID=$METRO_PID" >> $GITHUB_ENV
+        cd ios
+
         # Launch the app explicitly and wait for it to initialize
         echo "🚀 Launching app explicitly on simulator..."
         xcrun simctl launch "$SIMULATOR_ID" com.voyager.rn || {
@@ -552,6 +560,14 @@ jobs:
           echo "Shutting down simulator: $SIMULATOR_ID"
           xcrun simctl shutdown "$SIMULATOR_ID" || true
         fi
+
+        # Kill Metro bundler if started
+        if [ ! -z "$METRO_PID" ]; then
+          echo "Killing Metro bundler (PID: $METRO_PID)"
+          kill $METRO_PID || true
+        fi
+        # Fallback: kill any lingering react-native start processes
+        pkill -f "react-native start" || true
         
         # Clean up build artifacts to save space
         rm -rf ios/build || true
