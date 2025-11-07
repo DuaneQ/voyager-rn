@@ -260,9 +260,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       };
 
       await setDoc(doc(db, 'users', userCredential.user.uid), userData, { merge: true });
+      console.log('✅ User profile document created in Firestore:', userCredential.user.uid);
 
       // Store profile in local storage (matches PWA)
       await storage.setItem('PROFILE_INFO', JSON.stringify(userData));
+      console.log('✅ User profile stored in local storage');
 
       // Don't sign out the user after account creation!
       // Keep them signed in to Firebase Auth so resendVerification can work
@@ -273,6 +275,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Status will be set to 'idle' by onAuthStateChanged due to unverified email
       // but auth.currentUser will remain available for resendVerification
     } catch (error) {
+      console.error('❌ Error during sign-up:', error);
   setStatus('idle');
       throw error;
     }

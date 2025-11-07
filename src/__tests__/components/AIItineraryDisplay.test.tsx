@@ -71,11 +71,21 @@ describe('AIItineraryDisplay', () => {
       endDate: '2025-10-07',
       response: { data: {} },
       flights: [
-        { departureTime: '08:00', duration: '7h', stops: 0, price: { amount: 500, currency: 'USD' }, airline: 'AirTest' }
+        { 
+          airline: 'AirTest',
+          flightNumber: 'AT123',
+          route: 'JFK → CDG',
+          departure: { date: '2025-10-01', time: '08:00', iata: 'JFK' },
+          arrival: { date: '2025-10-01', time: '15:00', iata: 'CDG' },
+          duration: '7h', 
+          stops: 0, 
+          cabin: 'economy',
+          price: { amount: 500, currency: 'USD' }
+        }
       ],
     };
 
-    const { getByText, getByRole, getByTestId } = render(<AIItineraryDisplay itinerary={itinerary} />);
+    const { getByText } = render(<AIItineraryDisplay itinerary={itinerary} />);
 
     // Flight header exists
     expect(getByText(/Flight Options/)).toBeTruthy();
@@ -85,10 +95,11 @@ describe('AIItineraryDisplay', () => {
     fireEvent.press(header);
 
     // After expansion, flight details should appear
-    await waitFor(() => expect(getByText('08:00')).toBeTruthy());
+    await waitFor(() => expect(getByText(/08:00/)).toBeTruthy());
     expect(getByText('7h')).toBeTruthy();
-  expect(getByText(/AirTest/)).toBeTruthy();
-  expect(getByText(/\$500/)).toBeTruthy();
+    expect(getByText(/AirTest/)).toBeTruthy();
+    expect(getByText(/\$500/)).toBeTruthy();
+    expect(getByText(/JFK → CDG/)).toBeTruthy();
   });
 });
 /** Edge case tests continue below (imports/mocks consolidated at top) */

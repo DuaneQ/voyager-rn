@@ -8,9 +8,11 @@
 // Set Firebase Emulator environment variables FIRST (before any imports)
 process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8080';
 process.env.FIREBASE_AUTH_EMULATOR_HOST = '127.0.0.1:9099';
+process.env.FIREBASE_FUNCTIONS_EMULATOR = 'http://127.0.0.1:5001';
 console.log('✅ [Setup] Emulator environment configured:');
 console.log(`   - FIRESTORE_EMULATOR_HOST: ${process.env.FIRESTORE_EMULATOR_HOST}`);
 console.log(`   - FIREBASE_AUTH_EMULATOR_HOST: ${process.env.FIREBASE_AUTH_EMULATOR_HOST}`);
+console.log(`   - FIREBASE_FUNCTIONS_EMULATOR: ${process.env.FIREBASE_FUNCTIONS_EMULATOR}`);
 
 // Polyfill fetch for Firebase Admin SDK and callFunction
 if (!global.fetch) {

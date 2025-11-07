@@ -191,7 +191,6 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
     
     try {
       // Step 1: Input sanitization and validation
-      console.log('Starting AI itinerary generation with sanitization...');
       const sanitizedRequest = sanitizeAIGenerationRequest(request);
       
       if (!sanitizedRequest.destination || !sanitizedRequest.startDate || !sanitizedRequest.endDate) {
@@ -208,34 +207,19 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
       const selectedProfile = sanitizedRequest.travelPreferences || sanitizedRequest.preferenceProfile;
       const transportTypeRaw = selectedProfile?.transportation?.primaryMode || 'driving';
       
-      console.log('AI Generation Debug:', {
-        selectedProfile: selectedProfile,
-        transportationObject: selectedProfile?.transportation,
-        transportTypeRaw: transportTypeRaw,
-        sanitizedRequest: sanitizedRequest
-      });
+      console.log('📋 Preference Profile:', JSON.stringify(selectedProfile, null, 2));
       
       // Map 'airplane' to 'flight' to match cloud function expectations
       const transportType = transportTypeRaw === 'airplane' ? 'flight' : transportTypeRaw;
       const includeFlights = transportType === 'flight' || transportType === 'flights' || transportTypeRaw === 'airplane';
       
-      console.log('Transport Type Mapping:', {
-        transportTypeRaw,
-        transportType,
-        includeFlights
-      });
-      
       setProgress(PROGRESS_STAGES.SEARCHING);
       
       // Step 3: Build function calls (matching PWA pattern exactly)
-      console.log('Building AI payload and calling functions...');
-      
       // CRITICAL: Calculate trip duration FIRST so we can pass it to cloud functions for enrichment
       const startDate = new Date(sanitizedRequest.startDate);
       const endDate = new Date(sanitizedRequest.endDate);
       const tripDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-      
-      console.log(`🗓️  Trip duration: ${tripDays} days`);
       
       // Build base payload for all functions
       // IMPORTANT: Include 'days' parameter so searchActivities enriches the right number of activities!
@@ -276,9 +260,6 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
         };
         promises.push(callCloudFunction('searchFlights', flightPayload));
         didSearchFlights = true;
-        console.log('Including flights in search due to transportation preference');
-      } else {
-        console.log('Skipping flights - not required for this transportation mode or missing airport codes');
       }
       
       setProgress(PROGRESS_STAGES.ACTIVITIES);
@@ -286,32 +267,13 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
       // Execute all searches in parallel
       const results = await Promise.all(promises);
       
-      // ===== COMPREHENSIVE DEBUGGING FOR ACTIVITIES ISSUE =====
-      console.log('🔍 Raw Promise Results:', JSON.stringify(results, null, 2));
-      
       // Extract results - MATCHING PWA EXACTLY
-      // Cloud functions return { data: { hotels: [], activities: [], restaurants: [] } }
       const accommodationsResult = results[0]?.data || {};
-      console.log('🏨 Accommodations Result Structure:', {
-        hasData: !!accommodationsResult,
-        hotels: Array.isArray(accommodationsResult.hotels) ? accommodationsResult.hotels.length : 'not array',
-        dataHotels: accommodationsResult.data ? (Array.isArray(accommodationsResult.data.hotels) ? accommodationsResult.data.hotels.length : 'not array') : 'no data property'
-      });
-      
       const accommodationsData = Array.isArray(accommodationsResult.hotels) 
         ? accommodationsResult.hotels 
         : (Array.isArray(accommodationsResult.data?.hotels) ? accommodationsResult.data.hotels : []);
       
       const activitiesResult = results[1]?.data || {};
-      console.log('🎯 Activities Result Structure:', {
-        hasData: !!activitiesResult,
-        activities: Array.isArray(activitiesResult.activities) ? activitiesResult.activities.length : 'not array',
-        dataActivities: activitiesResult.data ? (Array.isArray(activitiesResult.data.activities) ? activitiesResult.data.activities.length : 'not array') : 'no data property',
-        restaurants: Array.isArray(activitiesResult.restaurants) ? activitiesResult.restaurants.length : 'not array',
-        dataRestaurants: activitiesResult.data ? (Array.isArray(activitiesResult.data.restaurants) ? activitiesResult.data.restaurants.length : 'not array') : 'no data property',
-        fullResult: JSON.stringify(activitiesResult).substring(0, 500)
-      });
-      
       const activitiesData = Array.isArray(activitiesResult.activities) 
         ? activitiesResult.activities 
         : (Array.isArray(activitiesResult.data?.activities) ? activitiesResult.data.activities : []);
@@ -339,24 +301,9 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
       setProgress(PROGRESS_STAGES.AI_GENERATION);
       
       // Create daily plans by distributing activities and restaurants across trip days (matching PWA)
-      // NOTE: tripDays already calculated above when building basePayload
       const dailyPlans: any[] = [];
       const enrichedActivities = activitiesData.filter((act: any) => act.phone || act.website || act.price_level);
       const enrichedRestaurants = restaurantsData.filter((rest: any) => rest.phone || rest.website || rest.price_level);
-      
-      console.log(`🎯 Enriched activities for daily plans: ${enrichedActivities.length} out of ${activitiesData.length} total`);
-      console.log(`🍽️  Enriched restaurants for daily plans: ${enrichedRestaurants.length} out of ${restaurantsData.length} total`);
-      
-      // CRITICAL: Cloud function should enrich Math.min(tripDays, 6) activities
-      // If enriched arrays are empty, it means enrichment failed or 'days' parameter wasn't passed
-      if (enrichedActivities.length === 0 && activitiesData.length > 0) {
-        console.error('❌ CRITICAL: No enriched activities found! Cloud function enrichment may have failed.');
-        console.error('Expected at least', Math.min(tripDays, 6), 'enriched activities for', tripDays, 'day trip');
-      }
-      if (enrichedRestaurants.length === 0 && restaurantsData.length > 0) {
-        console.error('❌ CRITICAL: No enriched restaurants found! Cloud function enrichment may have failed.');
-        console.error('Expected at least', Math.min(tripDays, 6), 'enriched restaurants for', tripDays, 'day trip');
-      }
       
       // Helper function to calculate price from Google Places price_level
       const calculatePrice = (item: any, defaultCategory: string) => {

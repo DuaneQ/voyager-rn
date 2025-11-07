@@ -25,7 +25,7 @@ permissions:
 
 jobs:
   integration_tests:
-    name: Integration Tests (Firebase Admin SDK)
+    name: Integration Tests (Real Cloud Functions)
     runs-on: ubuntu-latest
     
     strategy:
@@ -52,57 +52,12 @@ jobs:
             npm install --legacy-peer-deps
           }
 
-      - name: Install Java (required for Firebase Emulators)
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Install Firebase CLI
-        run: |
-          npm install -g firebase-tools@latest
-          firebase --version
-
-      - name: Start Firebase Emulators
-        run: |
-          # Start emulators in background (no functions - Admin SDK doesn't need them)
-          firebase emulators:start --only firestore,auth --project mundo1-dev &
-          EMULATOR_PID=$!
-          echo "EMULATOR_PID=$EMULATOR_PID" >> $GITHUB_ENV
-          
-          # Wait for emulators to be ready (max 60 seconds)
-          echo "⏳ Waiting for Firebase Emulators to start..."
-          for i in {1..60}; do
-            if curl -s http://localhost:8080 > /dev/null 2>&1; then
-              echo "✅ Firebase Emulators are ready (Firestore on port 8080)!"
-              break
-            fi
-            if [ $i -eq 60 ]; then
-              echo "❌ Emulators failed to start in time"
-              kill $EMULATOR_PID || true
-              exit 1
-            fi
-            echo "Waiting... ($i/60)"
-            sleep 1
-          done
-        timeout-minutes: 3
-
-      - name: Run Integration Tests (Firebase Admin SDK)
+      - name: Run Integration Tests (Real Cloud Functions)
         run: |
           npm run test:integration
         env:
           CI: true
-          FIRESTORE_EMULATOR_HOST: localhost:8080
-          FIREBASE_AUTH_EMULATOR_HOST: localhost:9099
         timeout-minutes: 10
-
-      - name: Stop Firebase Emulators
-        if: always()
-        run: |
-          if [ -n "$EMULATOR_PID" ]; then
-            kill $EMULATOR_PID || true
-            echo "✅ Firebase Emulators stopped"
-          fi
 
       - name: Upload Integration Test Results
         if: always()
@@ -128,41 +83,61 @@ jobs:
         run: |
           echo "🔍 Validating that integration tests cover all critical matching fields..."
           
-          # Check that tests validate date ranges (minStartDay/maxEndDay for RPC)
-          if ! grep -rE "minStartDay|maxEndDay|startDay|endDay" src/__tests__/integrations/*.test.ts; then
-            echo "❌ Integration tests must validate date fields (date overlap)"
+          TEST_FILE="src/__tests__/integrations/searchItineraries.real.test.ts"
+          
+          # Check that tests validate date filtering
+          if ! grep -E "Date|startDay|endDay" "$TEST_FILE"; then
+            echo "❌ Integration tests must validate date overlap filtering"
             exit 1
           fi
           
-          # Check that tests validate age ranges (lowerRange/upperRange)
-          if ! grep -rE "age|lowerRange|upperRange" src/__tests__/integrations/*.test.ts; then
-            echo "❌ Integration tests must validate age fields (age range matching)"
-            exit 1
-          fi
-          
-          # Check that tests validate blocking
-          if ! grep -rE "blocked|blocking|blockedUserIds" src/__tests__/integrations/*.test.ts; then
-            echo "❌ Integration tests must validate blocking logic"
+          # Check that tests validate age range filtering
+          if ! grep -E "Age|lowerRange|upperRange" "$TEST_FILE"; then
+            echo "❌ Integration tests must validate age range filtering"
             exit 1
           fi
           
           # Check that tests validate destination matching
-          if ! grep -r "destination" src/__tests__/integrations/*.test.ts; then
-            echo "❌ Integration tests must validate destination field"
+          if ! grep "Destination" "$TEST_FILE"; then
+            echo "❌ Integration tests must validate destination filtering"
             exit 1
           fi
           
-          # Check that tests validate preference filtering (gender, status, orientation)
-          if ! grep -rE "gender|status|sexualOrientation|orientation" src/__tests__/integrations/*.test.ts; then
-            echo "❌ Integration tests must validate preference filters"
+          # Check that tests validate gender filtering
+          if ! grep -E "Gender|Male|Female" "$TEST_FILE"; then
+            echo "❌ Integration tests must validate gender filtering"
             exit 1
           fi
           
-          # Check that RPC-based tests exist (testing PostgreSQL via searchItineraries)
-          if ! grep -r "searchItineraries" src/__tests__/integrations/*.test.ts; then
-            echo "❌ Integration tests must test searchItineraries RPC (PostgreSQL)"
+          # Check that tests validate status filtering
+          if ! grep -E "Status|single|couple" "$TEST_FILE"; then
+            echo "❌ Integration tests must validate status filtering"
+            exit 1
+          fi
+          
+          # Check that tests validate sexual orientation filtering
+          if ! grep -E "Sexual|Orientation|heterosexual|bisexual|homosexual" "$TEST_FILE"; then
+            echo "❌ Integration tests must validate sexual orientation filtering"
+            exit 1
+          fi
+          
+          # Check that tests validate excluded IDs
+          if ! grep -E "Excluded|excludedIds" "$TEST_FILE"; then
+            echo "❌ Integration tests must validate excludedIds filtering"
+            exit 1
+          fi
+          
+          # Check that tests validate combined filters
+          if ! grep -E "Combined|multiple filters" "$TEST_FILE"; then
+            echo "❌ Integration tests must validate combined filter scenarios"
+            exit 1
+          fi
+          
+          # Check that RPC-based tests exist (testing CloudSQL via searchItineraries)
+          if ! grep "searchItineraries" "$TEST_FILE"; then
+            echo "❌ Integration tests must test searchItineraries Cloud Function"
             exit 1
           fi
           
           echo "✅ All critical matching fields are validated in integration tests"
-          echo "✅ Tests properly validate RPC calls to PostgreSQL backend"
+          echo "✅ Tests properly validate searchItineraries Cloud Function filters"

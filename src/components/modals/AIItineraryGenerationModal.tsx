@@ -18,7 +18,6 @@ import {
   KeyboardAvoidingView,
   Platform
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { format, addDays } from 'date-fns';
 import { auth } from '../../config/firebaseConfig';
@@ -116,10 +115,18 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
   const [mustIncludeInput, setMustIncludeInput] = useState('');
   const [mustAvoidInput, setMustAvoidInput] = useState('');
   const [showSuccessState, setShowSuccessState] = useState(false);
+  const [showPreferenceDropdown, setShowPreferenceDropdown] = useState(false);
+  const [showFlightClassDropdown, setShowFlightClassDropdown] = useState(false);
+  const [showStopPrefDropdown, setShowStopPrefDropdown] = useState(false);
 
   // Initialize form when modal opens (matching PWA logic)
   useEffect(() => {
     if (visible) {
+      console.log('🔄 AI Modal opened - Available profiles:', preferences?.profiles?.length || 0);
+      preferences?.profiles?.forEach((p: any) => {
+        console.log('  - Profile:', p.name, '(ID:', p.id, ')');
+      });
+      
       const defaultProfileId = preferences?.profiles?.find((p: any) => p.isDefault)?.id || '';
       const initProfileId = initialPreferenceProfileId || defaultProfileId || '';
 
@@ -169,6 +176,13 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
       setFormErrors(prev => ({ ...prev, [field]: '' }));
     }
   }, [formErrors]);
+
+  // Close all dropdowns
+  const closeAllDropdowns = useCallback(() => {
+    setShowPreferenceDropdown(false);
+    setShowFlightClassDropdown(false);
+    setShowStopPrefDropdown(false);
+  }, []);
 
   // Validation (matching PWA logic)
   const validateForm = useCallback(() => {
@@ -389,6 +403,7 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={{ flexGrow: 1 }}
+            onScrollBeginDrag={closeAllDropdowns}
           >
           {/* Error Display */}
           {formErrors.general && (
@@ -727,39 +742,75 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
                   </View>
                 </View>
 
-                {/* Preference Profile */}
-                <View style={styles.field}>
+                {/* Preference Profile - Custom Dropdown */}
+                <View style={[styles.field, showPreferenceDropdown && { zIndex: 1000 }]}>
                   <Text style={styles.fieldLabel}>Travel Preferences *</Text>
-                  <View style={styles.pickerContainer}>
-                    <Picker
-                      selectedValue={formData.preferenceProfileId}
-                      onValueChange={(value) => handleFieldChange('preferenceProfileId', value)}
-                      style={styles.picker}
-                      itemStyle={styles.pickerItem}
-                      dropdownIconColor="#3B82F6"
-                      mode="dropdown" // Ensure dropdown mode for cleaner rendering
-                    >
-                      <Picker.Item 
-                        label="Select a profile..." 
-                        value="" 
-                        color="#9CA3AF"
-                        fontFamily="System" // Use system font to prevent rendering issues
-                      />
-                      {preferences?.profiles?.map((profile: any) => (
-                        <Picker.Item 
-                          key={profile.id} 
-                          label={profile.name} 
-                          value={profile.id}
-                          color="#111827"
-                          fontFamily="System" // Use system font to prevent rendering issues
-                        />
-                      ))}
-                    </Picker>
-                  </View>
+                  <TouchableOpacity
+                    style={[styles.dropdownButton, formErrors.preferenceProfileId && styles.inputError]}
+                    onPress={() => setShowPreferenceDropdown(!showPreferenceDropdown)}
+                  >
+                    <Text style={[
+                      styles.dropdownButtonText,
+                      !formData.preferenceProfileId && styles.dropdownPlaceholder
+                    ]}>
+                      {formData.preferenceProfileId 
+                        ? preferences?.profiles?.find((p: any) => p.id === formData.preferenceProfileId)?.name 
+                        : 'Select a profile...'}
+                    </Text>
+                    <Text style={styles.dropdownIcon}>{showPreferenceDropdown ? '▲' : '▼'}</Text>
+                  </TouchableOpacity>
+                  
                   {formErrors.preferenceProfileId && (
                     <Text style={styles.fieldError}>{formErrors.preferenceProfileId}</Text>
                   )}
                 </View>
+
+                {/* Preference Dropdown Modal Overlay */}
+                <Modal
+                  visible={showPreferenceDropdown}
+                  transparent={true}
+                  animationType="fade"
+                  onRequestClose={() => setShowPreferenceDropdown(false)}
+                >
+                  <TouchableOpacity 
+                    style={styles.dropdownOverlay}
+                    activeOpacity={1}
+                    onPress={() => setShowPreferenceDropdown(false)}
+                  >
+                    <View style={styles.dropdownModalContent}>
+                      <Text style={styles.dropdownModalTitle}>Select Travel Preference</Text>
+                      <ScrollView style={styles.dropdownModalScrollView}>
+                        {preferences?.profiles?.map((profile: any) => (
+                          <TouchableOpacity
+                            key={profile.id}
+                            style={[
+                              styles.dropdownModalItem,
+                              formData.preferenceProfileId === profile.id && styles.dropdownModalItemSelected
+                            ]}
+                            onPress={() => {
+                              handleFieldChange('preferenceProfileId', profile.id);
+                              setShowPreferenceDropdown(false);
+                            }}
+                          >
+                            <Text style={[
+                              styles.dropdownModalItemText,
+                              formData.preferenceProfileId === profile.id && styles.dropdownModalItemTextSelected
+                            ]}>
+                              {profile.name}
+                              {profile.isDefault && ' ⭐'}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                      <TouchableOpacity 
+                        style={styles.dropdownModalCloseButton}
+                        onPress={() => setShowPreferenceDropdown(false)}
+                      >
+                        <Text style={styles.dropdownModalCloseText}>Close</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </TouchableOpacity>
+                </Modal>
               </View>
 
               {/* Flight Preferences (conditional) */}
@@ -770,58 +821,90 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
                     <Text style={styles.sectionTitle}>Flight Preferences</Text>
                   </View>
                   
-                  <View style={styles.field}>
+                  <View style={[styles.field, showFlightClassDropdown && { zIndex: 1000 }]}>
                     <Text style={styles.fieldLabel}>Class</Text>
-                    <View style={styles.pickerContainer}>
-                      <Picker
-                        selectedValue={formData.flightPreferences?.class}
-                        onValueChange={(value) => handleFieldChange('flightPreferences', {
-                          ...formData.flightPreferences,
-                          class: value
-                        })}
-                        style={styles.picker}
-                        itemStyle={styles.pickerItem}
-                        dropdownIconColor="#3B82F6"
-                        mode="dropdown"
-                      >
-                        {FLIGHT_CLASSES.map((cls) => (
-                          <Picker.Item 
-                            key={cls.value} 
-                            label={cls.label} 
-                            value={cls.value}
-                            color="#111827"
-                            fontFamily="System"
-                          />
-                        ))}
-                      </Picker>
-                    </View>
+                    <TouchableOpacity
+                      style={styles.dropdownButton}
+                      onPress={() => setShowFlightClassDropdown(!showFlightClassDropdown)}
+                    >
+                      <Text style={styles.dropdownButtonText}>
+                        {FLIGHT_CLASSES.find(c => c.value === formData.flightPreferences?.class)?.label || 'Economy'}
+                      </Text>
+                      <Text style={styles.dropdownIcon}>{showFlightClassDropdown ? '▲' : '▼'}</Text>
+                    </TouchableOpacity>
+                    
+                    {showFlightClassDropdown && (
+                      <View style={styles.dropdownMenu}>
+                        <ScrollView style={styles.dropdownScrollView} nestedScrollEnabled>
+                          {FLIGHT_CLASSES.map((cls) => (
+                            <TouchableOpacity
+                              key={cls.value}
+                              style={[
+                                styles.dropdownMenuItem,
+                                formData.flightPreferences?.class === cls.value && styles.dropdownMenuItemSelected
+                              ]}
+                              onPress={() => {
+                                handleFieldChange('flightPreferences', {
+                                  ...formData.flightPreferences,
+                                  class: cls.value
+                                });
+                                setShowFlightClassDropdown(false);
+                              }}
+                            >
+                              <Text style={[
+                                styles.dropdownMenuItemText,
+                                formData.flightPreferences?.class === cls.value && styles.dropdownMenuItemTextSelected
+                              ]}>
+                                {cls.label}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                        </ScrollView>
+                      </View>
+                    )}
                   </View>
 
-                  <View style={styles.field}>
+                  <View style={[styles.field, showStopPrefDropdown && { zIndex: 1000 }]}>
                     <Text style={styles.fieldLabel}>Stop Preference</Text>
-                    <View style={styles.pickerContainer}>
-                      <Picker
-                        selectedValue={formData.flightPreferences?.stopPreference}
-                        onValueChange={(value) => handleFieldChange('flightPreferences', {
-                          ...formData.flightPreferences,
-                          stopPreference: value
-                        })}
-                        style={styles.picker}
-                        itemStyle={styles.pickerItem}
-                        dropdownIconColor="#3B82F6"
-                        mode="dropdown"
-                      >
-                        {STOP_PREFERENCES.map((pref) => (
-                          <Picker.Item 
-                            key={pref.value} 
-                            label={pref.label} 
-                            value={pref.value}
-                            color="#111827"
-                            fontFamily="System"
-                          />
-                        ))}
-                      </Picker>
-                    </View>
+                    <TouchableOpacity
+                      style={styles.dropdownButton}
+                      onPress={() => setShowStopPrefDropdown(!showStopPrefDropdown)}
+                    >
+                      <Text style={styles.dropdownButtonText}>
+                        {STOP_PREFERENCES.find(p => p.value === formData.flightPreferences?.stopPreference)?.label || 'Any number of stops'}
+                      </Text>
+                      <Text style={styles.dropdownIcon}>{showStopPrefDropdown ? '▲' : '▼'}</Text>
+                    </TouchableOpacity>
+                    
+                    {showStopPrefDropdown && (
+                      <View style={styles.dropdownMenu}>
+                        <ScrollView style={styles.dropdownScrollView} nestedScrollEnabled>
+                          {STOP_PREFERENCES.map((pref) => (
+                            <TouchableOpacity
+                              key={pref.value}
+                              style={[
+                                styles.dropdownMenuItem,
+                                formData.flightPreferences?.stopPreference === pref.value && styles.dropdownMenuItemSelected
+                              ]}
+                              onPress={() => {
+                                handleFieldChange('flightPreferences', {
+                                  ...formData.flightPreferences,
+                                  stopPreference: pref.value
+                                });
+                                setShowStopPrefDropdown(false);
+                              }}
+                            >
+                              <Text style={[
+                                styles.dropdownMenuItemText,
+                                formData.flightPreferences?.stopPreference === pref.value && styles.dropdownMenuItemTextSelected
+                              ]}>
+                                {pref.label}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                        </ScrollView>
+                      </View>
+                    )}
                   </View>
 
                   <View style={styles.field}>
@@ -1163,7 +1246,9 @@ const styles = StyleSheet.create({
     color: '#111827'
   },
   field: {
-    marginBottom: 14
+    marginBottom: 14,
+    position: 'relative',
+    zIndex: 1
   },
   fieldLabel: {
     fontSize: 13,
@@ -1401,6 +1486,133 @@ const styles = StyleSheet.create({
   },
   chipTextSelected: {
     color: '#ffffff'
+  },
+  // Custom Dropdown Styles (legacy - kept for flight class/stop pref dropdowns)
+  dropdownButton: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    backgroundColor: '#ffffff',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    minHeight: 48
+  },
+  dropdownButtonText: {
+    fontSize: 15,
+    color: '#111827',
+    flex: 1
+  },
+  dropdownPlaceholder: {
+    color: '#9CA3AF'
+  },
+  dropdownIcon: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginLeft: 8
+  },
+  // Modal-based Dropdown Overlay (for preference selection)
+  dropdownOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20
+  },
+  dropdownModalContent: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    width: '100%',
+    maxWidth: 400,
+    maxHeight: '70%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 10
+  },
+  dropdownModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+    padding: 20,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB'
+  },
+  dropdownModalScrollView: {
+    maxHeight: 400
+  },
+  dropdownModalItem: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6'
+  },
+  dropdownModalItemSelected: {
+    backgroundColor: '#EFF6FF'
+  },
+  dropdownModalItemText: {
+    fontSize: 16,
+    color: '#111827'
+  },
+  dropdownModalItemTextSelected: {
+    color: '#3B82F6',
+    fontWeight: '600'
+  },
+  dropdownModalCloseButton: {
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    alignItems: 'center'
+  },
+  dropdownModalCloseText: {
+    fontSize: 16,
+    color: '#6B7280',
+    fontWeight: '500'
+  },
+  // Legacy dropdown menu styles (still used for flight class/stop pref)
+  dropdownMenu: {
+    position: 'absolute',
+    top: 76, // Position below label + button
+    left: 0,
+    right: 0,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 10,
+    maxHeight: 250,
+    zIndex: 9999,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    overflow: 'hidden' // Ensure rounded corners are respected
+  },
+  dropdownScrollView: {
+    maxHeight: 250,
+    backgroundColor: '#ffffff'
+  },
+  dropdownMenuItem: {
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+    backgroundColor: '#ffffff'
+  },
+  dropdownMenuItemSelected: {
+    backgroundColor: '#EFF6FF'
+  },
+  dropdownMenuItemText: {
+    fontSize: 15,
+    color: '#111827'
+  },
+  dropdownMenuItemTextSelected: {
+    color: '#3B82F6',
+    fontWeight: '600'
   }
 });
 
