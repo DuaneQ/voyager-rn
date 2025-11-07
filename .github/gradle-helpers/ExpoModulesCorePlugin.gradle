@@ -97,6 +97,14 @@ ext.useDefaultAndroidSdkVersions = {
 }
 
 ext.useExpoPublishing = {
+  // Only configure publishing for Android library modules. The 'components.release'
+  // reference is only available for library projects; referencing it in an
+  // application project causes a MissingPropertyException (seen in CI).
+  if (!project.plugins.hasPlugin('com.android.library')) {
+    // No-op when this is not a library project (prevents failures in app builds)
+    return
+  }
+
   if (!project.plugins.hasPlugin('maven-publish')) {
     apply plugin: 'maven-publish'
   }
@@ -110,15 +118,18 @@ ext.useExpoPublishing = {
   }
 
   project.afterEvaluate {
-    publishing {
-      publications {
-        release(MavenPublication) {
-          from components.release
+    // Guard against missing components.release by checking the components container
+    if (project.hasProperty('components') && project.components.findByName('release') != null) {
+      publishing {
+        publications {
+          release(MavenPublication) {
+            from components.release
+          }
         }
-      }
-      repositories {
-        maven {
-          url = mavenLocal().url
+        repositories {
+          maven {
+            url = mavenLocal().url
+          }
         }
       }
     }
