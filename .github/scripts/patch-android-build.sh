@@ -30,19 +30,35 @@ cp "$BUILD_GRADLE" "$BUILD_GRADLE.backup"
 # phase. This is more robust than pointing only at node_modules which can be
 # missing or reinstalled between steps in CI.
 
-# Destination inside generated android tree (relative to repo root)
+# Destination paths for the fallback helper
+# Gradle will look for ../expo-gradle-helpers/ExpoModulesCorePlugin.gradle relative to android/
+# so place a copy at the repository root: ./expo-gradle-helpers/
+REPO_HELPER_DIR="expo-gradle-helpers"
+REPO_HELPER_FILE="$REPO_HELPER_DIR/ExpoModulesCorePlugin.gradle"
+
+# Also keep a copy under android/ so we cover both resolution strategies
 ANDROID_HELPER_DIR="android/expo-gradle-helpers"
 ANDROID_HELPER_FILE="$ANDROID_HELPER_DIR/ExpoModulesCorePlugin.gradle"
 
 # Source fallback in the repo
 REPO_FALLBACK_SOURCE=".github/gradle-helpers/ExpoModulesCorePlugin.gradle"
 
+# Ensure repository-level helper exists
+mkdir -p "$REPO_HELPER_DIR" || true
+if [ -f "$REPO_FALLBACK_SOURCE" ]; then
+  cp "$REPO_FALLBACK_SOURCE" "$REPO_HELPER_FILE"
+  echo "Copied repo fallback to: $REPO_HELPER_FILE"
+else
+  echo "Warning: repo fallback $REPO_FALLBACK_SOURCE not found; proceeding without repo-level copy"
+fi
+
+# Also attempt to place a copy inside android/ for legacy lookup
 mkdir -p "$ANDROID_HELPER_DIR" || true
 if [ -f "$REPO_FALLBACK_SOURCE" ]; then
   cp "$REPO_FALLBACK_SOURCE" "$ANDROID_HELPER_FILE"
-  echo "Copied repo fallback to: $ANDROID_HELPER_FILE"
+  echo "Also copied repo fallback to: $ANDROID_HELPER_FILE"
 else
-  echo "Warning: repo fallback $REPO_FALLBACK_SOURCE not found; proceeding without local copy"
+  echo "Warning: repo fallback $REPO_FALLBACK_SOURCE not found; proceeding without android-level copy"
 fi
 
 # Groovy-level apply logic: prefer node_modules path if available, otherwise
