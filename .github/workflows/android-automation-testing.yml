@@ -2,9 +2,12 @@ name: Android Automation Testing
 
 on:
   push:
-    branches: [ main, develop ]
+    # Include the 'ai' branch (and any future feature branches if desired).
+    branches: [ main, develop, ai ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main, develop, ai ]
+  # Allow manual runs from the GitHub Actions UI
+  workflow_dispatch: {}
 
 jobs:
   android-automation-tests:
