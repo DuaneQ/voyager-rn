@@ -1,12 +1,10 @@
 name: Android Automation Testing
 
 on:
-  push:
-    # Include the 'ai' branch (and any future feature branches if desired).
-    branches: [ main, develop, ai ]
+  # Only run this workflow for pull requests to avoid duplicate push+PR runs.
   pull_request:
     branches: [ main, develop, ai ]
-  # Allow manual runs from the GitHub Actions UI
+  # Allow manual runs from the GitHub Actions UI for debugging
   workflow_dispatch: {}
 
 jobs:
