@@ -14,15 +14,23 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
+    - name: Clean committed iOS directory
+      run: |
+        echo "🧹 Removing committed ios directory (will be regenerated)..."
+        rm -rf ios
+        echo "✅ Clean complete - expo prebuild will regenerate fresh iOS project"
+      
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '18'
+        # Use Node 20 to satisfy newer automation dependencies (cheerio, undici, etc.)
+        node-version: '20'
         cache: 'npm'
         
     - name: Install dependencies
       run: |
-        # Install dependencies with legacy peer deps to handle compatibility issues
+        # Use legacy peer deps to handle known upstream peer conflicts in CI
+        export npm_config_legacy_peer_deps=true
         npm install --legacy-peer-deps
       
     - name: Setup iOS Simulator
@@ -94,9 +102,9 @@ jobs:
       run: |
         cd ios
         
-        # Verify workspace exists
-        if [ ! -d "Traval.xcworkspace" ]; then
-          echo "ERROR: Traval.xcworkspace not found"
+        # Verify workspace exists (name changed to TravalPass after regeneration)
+        if [ ! -d "TravalPass.xcworkspace" ]; then
+          echo "ERROR: TravalPass.xcworkspace not found"
           echo "Available files in ios directory:"
           ls -la
           echo ""
@@ -115,8 +123,8 @@ jobs:
         # Use absolute derivedDataPath to ensure consistent build location
         BUILD_DIR="$(pwd)/build"
         
-        xcodebuild -workspace Traval.xcworkspace \
-          -scheme Traval \
+        xcodebuild -workspace TravalPass.xcworkspace \
+          -scheme TravalPass \
           -configuration Debug \
           -sdk iphonesimulator \
           -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
@@ -124,13 +132,13 @@ jobs:
           build || {
           echo "ERROR: Xcode build failed"
           echo "Available schemes:"
-          xcodebuild -workspace Traval.xcworkspace -list
+          xcodebuild -workspace TravalPass.xcworkspace -list
           exit 1
         }
         
         # Research-based solution: Use standard Xcode build products path structure
         # Debug-iphonesimulator apps are located at: Build/Products/Debug-iphonesimulator/
-        EXPECTED_APP_PATH="$BUILD_DIR/Build/Products/Debug-iphonesimulator/Traval.app"
+        EXPECTED_APP_PATH="$BUILD_DIR/Build/Products/Debug-iphonesimulator/TravalPass.app"
         
         # Verify the expected path exists first
         if [ -d "$EXPECTED_APP_PATH" ]; then
@@ -141,10 +149,10 @@ jobs:
           echo "🔍 Searching entire build directory..."
           
           # Fallback: search the entire build directory
-          APP_PATH=$(find "$BUILD_DIR" -name "Traval.app" -type d | head -1)
+          APP_PATH=$(find "$BUILD_DIR" -name "TravalPass.app" -type d | head -1)
           
           if [ -z "$APP_PATH" ]; then
-            echo "❌ ERROR: No Traval.app bundle found after build"
+            echo "❌ ERROR: No TravalPass.app bundle found after build"
             echo "Build directory structure:"
             echo "==========================="
             find "$BUILD_DIR" -type d -name "*.app" 2>/dev/null || echo "No .app directories found"
@@ -202,77 +210,178 @@ jobs:
           exit 1
         }
         echo "✅ iOS app built and installed successfully"
+
+        # Start Metro bundler in the background so the simulator can load the JS bundle
+        echo "📦 Starting Metro bundler in background (for simulator JS bundle)..."
+        cd ..
+        nohup npx react-native start --port 8081 --reset-cache > automation/metro.log 2>&1 &
+        METRO_PID=$!
+        echo "METRO_PID=$METRO_PID" >> $GITHUB_ENV
+        cd ios
+
+        # Launch the app explicitly and wait for it to initialize
+        echo "🚀 Launching app explicitly on simulator..."
+        xcrun simctl launch "$SIMULATOR_ID" com.voyager.rn || {
+          echo "⚠️ WARNING: App launch command failed, but continuing..."
+        }
+        
+        # Wait longer for React Native bundle to load and app to fully initialize
+        # CI environments are slower, so we need more time
+        echo "⏳ Waiting for React Native bundle to load (45 seconds for CI)..."
+        sleep 45
+        echo "✅ Initial wait complete"
+        
+        # Verify app is still running after initial wait
+        echo "🔍 Verifying app is running..."
+        APP_PID=$(xcrun simctl spawn "$SIMULATOR_ID" ps aux | grep -i "TravalPass" | grep -v grep | awk '{print $2}' | head -1)
+        if [ -z "$APP_PID" ]; then
+          echo "⚠️ WARNING: App process not found after launch, attempting relaunch..."
+          xcrun simctl launch "$SIMULATOR_ID" com.voyager.rn || true
+          sleep 20
+        else
+          echo "✅ App is running with PID: $APP_PID"
+        fi
+        
+        # Capture initial app state for debugging
+        echo "📸 Capturing initial app state..."
+        mkdir -p automation/logs/launch-diagnostics
+        
+        # Take screenshot of initial state
+        xcrun simctl io "$SIMULATOR_ID" screenshot "automation/logs/launch-diagnostics/initial-state.png" || true
+        
+        # Get app process status
+        echo "App process status:" > automation/logs/launch-diagnostics/app-status.txt
+        xcrun simctl spawn "$SIMULATOR_ID" ps aux | grep -i TravalPass >> automation/logs/launch-diagnostics/app-status.txt || true
+        
+        # Check for any crash logs immediately after launch
+        echo "🔍 Checking for early crash logs..."
+        CRASH_LOGS=$(find ~/Library/Logs/DiagnosticReports -name "*TravalPass*" -mmin -2 2>/dev/null || true)
+        if [ -n "$CRASH_LOGS" ]; then
+          echo "⚠️ WARNING: Found recent crash logs:"
+          echo "$CRASH_LOGS"
+          mkdir -p automation/logs/crash-logs
+          cp ~/Library/Logs/DiagnosticReports/*TravalPass* automation/logs/crash-logs/ 2>/dev/null || true
+        fi
+        
+        echo "✅ Launch diagnostics captured"
         
     - name: Install Automation Dependencies
       run: |
         cd automation
-        npm install --legacy-peer-deps
-        echo "✅ Automation dependencies installed"
+        # Prevent chromedriver auto-download (often fails on CI) and allow legacy peer deps
+        export npm_config_legacy_peer_deps=true
+        export APPIUM_SKIP_CHROMEDRIVER_INSTALL=true
+        if [ -f package-lock.json ]; then
+          npm ci --legacy-peer-deps || npm install --legacy-peer-deps
+        else
+          npm install --legacy-peer-deps
+        fi
+        echo "✅ Automation dependencies installed (chromedriver download skipped)"
         
     - name: Verify app installation
       run: |
-        # Verify the app is installed
-        xcrun simctl listapps "$SIMULATOR_ID" | grep "com.voyager.rn" || {
-          echo "ERROR: App com.voyager.rn not found on simulator"
+        # Verify the app is installed using the bundle identifier found in the built app
+        echo "Checking APP_PATH: $APP_PATH"
+        if [ -f "$APP_PATH/Info.plist" ]; then
+          BUNDLE_ID=$(plutil -extract CFBundleIdentifier raw "$APP_PATH/Info.plist" 2>/dev/null || true)
+          echo "Detected bundle id from Info.plist: ${BUNDLE_ID:-'<none>'}"
+        else
+          echo "Info.plist not found at $APP_PATH/Info.plist"
+          BUNDLE_ID="com.voyager.rn"
+        fi
+
+        echo "Listing installed apps for simulator $SIMULATOR_ID (short):"
+        xcrun simctl listapps "$SIMULATOR_ID" | head -50 || true
+
+        if [ -z "$BUNDLE_ID" ]; then
+          echo "ERROR: Could not determine app bundle identifier. Falling back to com.voyager.rn"
+          BUNDLE_ID="com.voyager.rn"
+        fi
+
+        xcrun simctl listapps "$SIMULATOR_ID" | grep "$BUNDLE_ID" || {
+          echo "ERROR: App $BUNDLE_ID not found on simulator"
           echo "Installed apps:"
           xcrun simctl listapps "$SIMULATOR_ID"
           exit 1
         }
-        echo "✅ App com.voyager.rn is installed and ready for testing"
+
+        echo "✅ App $BUNDLE_ID is installed and ready for testing"
         
     - name: Start Appium Server
       run: |
+        # Create automation log directory
+        mkdir -p automation/simulator.log
+        # Use the project's automation devDependencies to run Appium via npx
+        # This avoids global install/version mismatches and ESM/CommonJS issues
+        echo "📦 Installing automation devDependencies (including Appium)..."
         cd automation
-        
-        # Use local Appium installation from package.json (v2.11.5 - stable)
-        echo "📦 Using stable Appium installation (v2.11.5)..."
-        
-        # Check if drivers are already installed and clean up
-        echo "🔍 Checking existing drivers..."
-        npx appium driver list --installed 2>/dev/null || echo "No drivers currently installed"
-        
-        # Remove any existing drivers to avoid conflicts
-        echo "🧹 Cleaning up existing drivers..."
-        npx appium driver uninstall xcuitest 2>/dev/null || echo "xcuitest not installed"
-        npx appium driver uninstall uiautomator2 2>/dev/null || echo "uiautomator2 not installed"
-        
-        # Install compatible drivers for Appium 2.x - with fallback versions
-        echo "🔧 Installing iOS driver for Appium 2.x..."
-        echo "Installing xcuitest driver (trying latest stable)..."
-        
-        # Try to install the latest xcuitest driver, with fallback to known working version
-        if ! npx appium driver install xcuitest; then
-          echo "⚠️ Latest xcuitest failed, trying known stable version..."
-          npx appium driver install xcuitest@5.16.1 || {
-            echo "❌ Failed to install xcuitest driver"
-            exit 1
-          }
+        if [ -f package-lock.json ]; then
+          npm ci --legacy-peer-deps || { echo "❌ npm ci failed"; exit 1; }
+        else
+          npm install --legacy-peer-deps || { echo "❌ npm install failed"; exit 1; }
         fi
-        
-        # Verify driver installation
-        echo "✅ Installed drivers:"
-        npx appium driver list --installed
-        
-        # Start Appium server in background using local installation (Appium 2.x syntax)
-        echo "🚀 Starting Appium server..."
-        npx appium --log-level warn &
+
+        # Verify local appium is available and ensure Appium 3.x is installed when required
+        echo "🔍 Verifying local Appium installation via npx"
+        APPIUM_VERSION=$(npx --no-install appium --version 2>/dev/null || npx appium --version 2>/dev/null || true)
+        echo "Appium version reported: $APPIUM_VERSION"
+
+        # If Appium is not present or is < 3, install Appium 3.x RC locally in automation
+        MAJOR_VERSION=$(echo "$APPIUM_VERSION" | cut -d. -f1 2>/dev/null || echo "0")
+        if [ -z "$APPIUM_VERSION" ] || [ "$MAJOR_VERSION" -lt 3 ]; then
+          echo "🔧 Installing Appium 3.x (appium@3.0.0-rc.2) locally in automation..."
+          npm install appium@3.0.0-rc.2 --no-save --legacy-peer-deps || {
+            echo "❌ Failed to install appium@3.0.0-rc.2 locally"; tail -50 automation/simulator.log/appium.log 2>/dev/null || true; exit 1;
+          }
+          APPIUM_VERSION=$(npx appium --version 2>/dev/null || true)
+          echo "New Appium version reported: $APPIUM_VERSION"
+        fi
+
+        # Recompute major version and validate compatibility
+        MAJOR_VERSION=$(echo "$APPIUM_VERSION" | cut -d. -f1 2>/dev/null || echo "0")
+        if [ "$MAJOR_VERSION" -lt 3 ]; then
+          echo "❌ Appium major version is < 3; xcuitest driver requires Appium 3.x"
+          echo "Appium version: $APPIUM_VERSION"
+          exit 1
+        fi
+
+        # Clean up any existing drivers and install xcuitest via npx appium
+        echo "🧹 Ensuring drivers are installed via npx appium"
+        npx appium driver list --installed 2>/dev/null || true
+        npx appium driver uninstall xcuitest 2>/dev/null || true
+        npx appium driver uninstall uiautomator2 2>/dev/null || true
+
+        echo "🔧 Installing xcuitest driver via npx appium"
+        npx appium driver install xcuitest || { echo "❌ Failed to install xcuitest driver via npx"; tail -50 automation/simulator.log/appium.log 2>/dev/null || true; exit 1; }
+
+        echo "✅ Installed drivers (if applicable):"
+        npx appium driver list --installed || true
+
+        # Start Appium server in background using npx to ensure correct dependency tree
+        echo "🚀 Starting Appium server via npx appium..."
+        nohup npx appium --log-level warn --port 4723 &> ../automation/simulator.log/appium.log &
         APPIUM_PID=$!
         echo "APPIUM_PID=$APPIUM_PID" >> $GITHUB_ENV
-        
+        echo "Appium PID: $APPIUM_PID"
+
         # Wait for Appium to start
         echo "⏳ Waiting for Appium to start..."
         sleep 15
-        
+
         # Verify Appium is running
-        curl -f http://localhost:4723/status || {
+        echo "🔍 Checking Appium server status..."
+        if ! curl -f http://localhost:4723/status; then
           echo "❌ ERROR: Appium server not responding"
+          echo "📋 Debug information:"
           echo "Checking Appium process..."
           ps aux | grep appium || echo "No Appium process found"
           echo "Checking if port 4723 is in use:"
           lsof -i :4723 || echo "Port 4723 not in use"
+          echo "Last 50 lines of Appium log:" 
+          tail -50 ../automation/simulator.log/appium.log 2>/dev/null || echo "No log file found"
           exit 1
-        }
-        echo "✅ Appium server is running"
+        fi
+        echo "✅ Appium server is running and responding"
         
     - name: Run iOS Automation Tests
       env:
@@ -300,30 +409,123 @@ jobs:
         echo "App bundle exists: ✅"
         echo "App bundle contents:"
         ls -la "$APP_PATH/" | head -5
-        
+
         # Check app info
         if [ -f "$APP_PATH/Info.plist" ]; then
-          echo "Bundle identifier: $(plutil -extract CFBundleIdentifier raw "$APP_PATH/Info.plist" 2>/dev/null || echo 'Could not read')"
+          echo "Bundle identifier: $(plutil -extract CFBundleIdentifier raw \"$APP_PATH/Info.plist\" 2>/dev/null || echo 'Could not read')"
         fi
         
+        # Check app is running before tests start
+          echo "🔍 Checking if app is running..."
+          APP_RUNNING=$(xcrun simctl spawn "$SIMULATOR_ID" ps aux | grep -i TravalPass | grep -v grep || echo "")
+        if [ -z "$APP_RUNNING" ]; then
+          echo "⚠️ WARNING: App doesn't appear to be running, attempting to launch..."
+          xcrun simctl launch "$SIMULATOR_ID" com.voyager.rn || true
+          sleep 10
+        else
+          echo "✅ App is running"
+        fi
+
         echo "🚀 Starting iOS automation tests..."
         export PLATFORM=ios
         export CI=true
-        npx wdio run wdio.mobile.conf.ts --spec tests/mobile/travel-preferences.test.ts
+        # Run ALL mobile e2e tests instead of just one test file
+        # Tests will run in sequence: login, profile-edit, travel-preferences, create-manual-itinerary
+        echo "📋 Running all iOS e2e tests..."
+        npx wdio run wdio.mobile.conf.ts || {
+          echo "❌ Tests failed, capturing post-failure diagnostics..."
+          
+          # Capture screenshot after test failure
+          mkdir -p logs/test-failure
+          xcrun simctl io "$SIMULATOR_ID" screenshot "logs/test-failure/failure-state.png" || true
+          
+          # Capture app process state
+          echo "App process after failure:" > logs/test-failure/app-status-after.txt
+          xcrun simctl spawn "$SIMULATOR_ID" ps aux | grep -i traval >> logs/test-failure/app-status-after.txt || true
+          
+          exit 1
+        }
         
     - name: Capture test artifacts on failure
       if: failure()
       run: |
-        echo "Capturing debug information..."
+        echo "📸 Capturing debug information..."
+        
+        # Ensure directories exist
+        mkdir -p automation/logs
+        mkdir -p automation/screenshots
+        mkdir -p automation/simulator.log
+        mkdir -p automation/logs/crash-logs
         
         # Capture simulator screenshot
-        xcrun simctl io "$SIMULATOR_ID" screenshot "automation/simulator-screenshot.png" || true
+        if [ ! -z "$SIMULATOR_ID" ]; then
+          echo "Taking simulator screenshot..."
+          xcrun simctl io "$SIMULATOR_ID" screenshot "automation/screenshots/simulator-screenshot.png" 2>/dev/null || echo "Failed to capture screenshot"
+        fi
         
-        # Capture simulator logs
-        xcrun simctl spawn "$SIMULATOR_ID" log collect --output "automation/simulator.log" || true
+        # Capture simulator logs focused on Traval app
+        if [ ! -z "$SIMULATOR_ID" ]; then
+          echo "Collecting Traval app logs (last 5 minutes)..."
+          xcrun simctl spawn "$SIMULATOR_ID" log show --predicate 'processImagePath contains "Traval"' --last 5m \
+            > automation/logs/traval-app.log 2>&1 || echo "⚠️ Could not capture app-specific logs"
+          
+          echo "Collecting system log..."
+          xcrun simctl spawn "$SIMULATOR_ID" log collect --output "automation/simulator.log/system.log" 2>/dev/null || echo "Failed to collect full system log"
+        fi
+        
+        # Check for crash logs
+        if [ ! -z "$SIMULATOR_ID" ]; then
+          echo "Checking for crash logs..."
+          CRASH_LOGS=$(find ~/Library/Logs/DiagnosticReports -name "*Traval*" -mtime -1 2>/dev/null || true)
+          if [ -n "$CRASH_LOGS" ]; then
+            echo "Found crash logs:"
+            echo "$CRASH_LOGS"
+            cp ~/Library/Logs/DiagnosticReports/*Traval* automation/logs/crash-logs/ 2>/dev/null || true
+          else
+            echo "No recent crash logs found for Traval app"
+          fi
+        fi
         
         # List running apps for debugging
-        xcrun simctl listapps "$SIMULATOR_ID" > "automation/installed-apps.txt" || true
+        if [ ! -z "$SIMULATOR_ID" ]; then
+          echo "Listing installed apps..."
+          xcrun simctl listapps "$SIMULATOR_ID" > "automation/logs/installed-apps.txt" 2>/dev/null || echo "Failed to list apps"
+          
+          echo "Checking app process status..."
+          xcrun simctl spawn "$SIMULATOR_ID" ps aux | grep -i TravalPass > automation/logs/app-processes.txt 2>&1 || echo "No TravalPass processes found"
+        fi
+        
+        # Copy Appium logs if they exist
+        if [ -f "automation/simulator.log/appium.log" ]; then
+          echo "Appium log found, size: $(wc -l < automation/simulator.log/appium.log) lines"
+          tail -200 automation/simulator.log/appium.log > automation/logs/appium-tail.log || true
+        else
+          echo "⚠️ No Appium log file found at automation/simulator.log/appium.log"
+        fi
+        
+        # List what we captured
+        echo "📋 Captured artifacts summary:"
+        echo "Screenshots:"
+        ls -lah automation/screenshots/ 2>/dev/null || echo "  None"
+        echo "Logs:"
+        ls -lah automation/logs/ 2>/dev/null || echo "  None"
+        echo "Crash logs:"
+        ls -lah automation/logs/crash-logs/ 2>/dev/null || echo "  None"
+        
+        echo "✅ Artifact capture complete"
+        
+    - name: Dump Appium logs on failure
+      if: failure()
+      run: |
+        echo "📋 Displaying last 200 lines of Appium log for quick debugging:"
+        echo "================================================================"
+        if [ -f "automation/simulator.log/appium.log" ]; then
+          tail -200 automation/simulator.log/appium.log
+        else
+          echo "⚠️ Appium log file not found"
+          echo "Searching for any Appium-related logs..."
+          find automation -name "*appium*" -type f 2>/dev/null || echo "No Appium logs found"
+        fi
         
     - name: Upload Test Results
       if: always()
@@ -358,6 +560,14 @@ jobs:
           echo "Shutting down simulator: $SIMULATOR_ID"
           xcrun simctl shutdown "$SIMULATOR_ID" || true
         fi
+
+        # Kill Metro bundler if started
+        if [ ! -z "$METRO_PID" ]; then
+          echo "Killing Metro bundler (PID: $METRO_PID)"
+          kill $METRO_PID || true
+        fi
+        # Fallback: kill any lingering react-native start processes
+        pkill -f "react-native start" || true
         
         # Clean up build artifacts to save space
         rm -rf ios/build || true

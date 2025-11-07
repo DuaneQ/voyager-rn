@@ -27,6 +27,9 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
+        # Disable automatic npm auditing during install; we run explicit audits below.
+        env:
+          NPM_CONFIG_AUDIT: 'false'
         run: |
           # Try npm ci first, fallback to npm install if lock file is out of sync
           npm ci --legacy-peer-deps || {

@@ -22,7 +22,10 @@ const http = require('http');
 const repoRoot = path.resolve(__dirname, '..', '..');
 const automationDir = path.resolve(__dirname, '..');
 let METRO_PORT = process.env.METRO_PORT || '8081';
-const WAIT_TIMEOUT_MS = process.env.WAIT_TIMEOUT_MS ? Number(process.env.WAIT_TIMEOUT_MS) : 120000;
+// Give Metro more time to initialize on CI/machines that are slower
+const WAIT_TIMEOUT_MS = process.env.WAIT_TIMEOUT_MS ? Number(process.env.WAIT_TIMEOUT_MS) : 300000;
+// How many incremental ports to try before failing (8081..8081+MAX_PORT_TRIES-1)
+const MAX_PORT_TRIES = 10;
 
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
@@ -60,18 +63,39 @@ async function waitForMetroReady(port, timeoutMs) {
 function startMetro(port) {
   // Prefer Expo CLI since this project uses Expo modules; ensure dev-client mode for native apps
   console.log(`Starting Metro via Expo: npx expo start --dev-client --port ${port}`);
+
+  // Create logs directory for easier debugging in CI
+  const logsDir = path.resolve(repoRoot, 'automation', 'logs');
+  try { require('fs').mkdirSync(logsDir, { recursive: true }); } catch (_) {}
+  const outLog = path.resolve(logsDir, `metro-${port}.out.log`);
+  const errLog = path.resolve(logsDir, `metro-${port}.err.log`);
+
+  // Only set CI=1 if the environment already requires it (preserve interactive behavior locally)
+  const metroEnv = Object.assign({}, process.env, { RCT_METRO_PORT: String(port) });
+  if (process.env.CI) metroEnv.CI = '1';
+
   const child = spawn('npx', ['expo', 'start', '--dev-client', '--port', String(port)], {
     cwd: repoRoot,
-    // CI=1 makes expo non-interactive; also pass RCT_METRO_PORT for RN
-    env: Object.assign({}, process.env, { CI: '1', RCT_METRO_PORT: String(port) }),
+    env: metroEnv,
     stdio: ['ignore', 'pipe', 'pipe']
   });
 
-  child.stdout.on('data', (d) => process.stdout.write(`[metro] ${d}`));
-  child.stderr.on('data', (d) => process.stderr.write(`[metro] ${d}`));
+  const fs = require('fs');
+  const outStream = fs.createWriteStream(outLog, { flags: 'a' });
+  const errStream = fs.createWriteStream(errLog, { flags: 'a' });
+
+  child.stdout.on('data', (d) => {
+    process.stdout.write(`[metro:${port}] ${d}`);
+    outStream.write(d);
+  });
+  child.stderr.on('data', (d) => {
+    process.stderr.write(`[metro:${port}][ERR] ${d}`);
+    errStream.write(d);
+  });
 
   child.on('exit', (code, signal) => {
-    console.log(`Metro process exited code=${code} signal=${signal}`);
+    console.log(`Metro process (port ${port}) exited code=${code} signal=${signal}. See ${outLog} ${errLog}`);
+    try { outStream.end(); errStream.end(); } catch (_) {}
   });
 
   return child;
@@ -80,32 +104,47 @@ function startMetro(port) {
 async function run() {
   // If an instance is already running on 8081, prefer to reuse it.
   let metro;
+  // Try existing metro first (fast probe), otherwise attempt to start metro on a sequence of ports
+  let foundExisting = false;
   try {
     await waitForMetroReady(METRO_PORT, 3000);
     console.log(`Detected existing Metro on ${METRO_PORT}; reusing.`);
+    foundExisting = true;
   } catch (_) {
-    metro = startMetro(METRO_PORT);
+    // try to start metro on a range of ports
   }
-  try {
-    console.log(`Waiting for Metro to be ready on port ${METRO_PORT} (timeout=${WAIT_TIMEOUT_MS}ms)`);
-    try {
-      await waitForMetroReady(METRO_PORT, WAIT_TIMEOUT_MS);
-    } catch (e) {
-      // If expo refused to start due to port conflict, try next port.
-      const fallback = String(Number(METRO_PORT) + 1);
-      console.log(`Primary port ${METRO_PORT} failed; retrying on ${fallback}`);
-      METRO_PORT = fallback;
-      if (metro) { try { metro.kill('SIGINT'); } catch (_) {} }
-      metro = startMetro(METRO_PORT);
-      await waitForMetroReady(METRO_PORT, WAIT_TIMEOUT_MS);
-    }
-    console.log('Metro is ready; starting WDIO iOS run');
 
+  if (!foundExisting) {
+    let started = false;
+    const basePort = Number(METRO_PORT);
+    for (let i = 0; i < MAX_PORT_TRIES; i++) {
+      const tryPort = String(basePort + i);
+      console.log(`Attempting to start Metro on port ${tryPort} (attempt ${i + 1}/${MAX_PORT_TRIES})`);
+      metro = startMetro(tryPort);
+      try {
+        await waitForMetroReady(tryPort, WAIT_TIMEOUT_MS);
+        METRO_PORT = tryPort;
+        started = true;
+        break;
+      } catch (e) {
+        console.log(`Port ${tryPort} failed: ${e && e.message ? e.message : e}`);
+        try { if (metro) metro.kill('SIGINT'); } catch (_) {}
+        // continue to next port
+      }
+    }
+    if (!started) throw new Error(`Timed out waiting for Metro on ports ${METRO_PORT}..${String(Number(METRO_PORT) + MAX_PORT_TRIES - 1)}`);
+  }
+  
+  console.log(`Metro is ready; starting WDIO iOS run (METRO_PORT=${METRO_PORT})`);
+  try {
     await new Promise((resolve, reject) => {
+      const wdioEnv = Object.assign({}, process.env, { PLATFORM: 'ios', METRO_PORT: String(METRO_PORT), RCT_METRO_PORT: String(METRO_PORT) });
+      if (process.env.CI) wdioEnv.CI = '1';
+
       const wdio = spawn('npx', ['wdio', 'run', 'wdio.mobile.conf.ts'], {
         cwd: automationDir,
         // Pass chosen METRO_PORT so WDIO can inject it via capabilities
-        env: Object.assign({}, process.env, { PLATFORM: 'ios', METRO_PORT: String(METRO_PORT), RCT_METRO_PORT: String(METRO_PORT), CI: '1' }),
+        env: wdioEnv,
         stdio: 'inherit'
       });
       wdio.on('exit', (code) => {

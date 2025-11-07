@@ -148,9 +148,16 @@ export class LoginPage extends BasePage {
    * This polls for the email input (best indicator) and returns the element when found.
    */
   async waitForLoginScreen(timeout = 15000): Promise<WebdriverIO.Element | null> {
+    // Increase timeout for iOS in CI - RN bundle loading can take longer
+    const effectiveTimeout = (driver.isIOS && process.env.CI) ? 45000 : timeout;
     const start = Date.now();
     const pollInterval = 500;
-    while (Date.now() - start < timeout) {
+    let attemptCount = 0;
+    
+    console.log(`[LoginPage] waitForLoginScreen: starting (timeout: ${effectiveTimeout}ms, platform: ${driver.isIOS ? 'iOS' : 'Android'})`);
+    
+    while (Date.now() - start < effectiveTimeout) {
+      attemptCount++;
       try {
         const el = await this.findByTestID('login-email-input');
         if (el) {
@@ -162,7 +169,7 @@ export class LoginPage extends BasePage {
               } catch (e) {
                 // ignore - we'll still treat existing as acceptable
               }
-              console.log('[LoginPage] waitForLoginScreen: login email input is present');
+              console.log(`[LoginPage] waitForLoginScreen: login email input found after ${attemptCount} attempts (${Date.now() - start}ms)`);
               return el;
             }
           } catch (e) {
@@ -172,6 +179,12 @@ export class LoginPage extends BasePage {
       } catch (e) {
         // ignore intermittent find errors and retry
       }
+      
+      // Log progress every 5 seconds
+      if (attemptCount % 10 === 0) {
+        console.log(`[LoginPage] waitForLoginScreen: still waiting after ${attemptCount} attempts (${Math.floor((Date.now() - start) / 1000)}s elapsed)`);
+      }
+      
       // If we repeatedly land on the Android launcher or another package, try to start the app
       try {
         if (driver.isAndroid && typeof driver.getCurrentPackage === 'function') {
@@ -203,7 +216,21 @@ export class LoginPage extends BasePage {
       }
       await browser.pause(pollInterval);
     }
-    console.log('[LoginPage] waitForLoginScreen: timed out waiting for login screen');
+    console.log(`[LoginPage] waitForLoginScreen: timed out after ${attemptCount} attempts (${effectiveTimeout}ms)`);
+    
+    // On iOS, try to capture page source for debugging
+    if (driver.isIOS) {
+      try {
+        console.log('[LoginPage] Capturing page source for debugging...');
+        const source = await driver.getPageSource();
+        console.log('[LoginPage] Page source length:', source.length);
+        // Log first 1000 chars to see what's visible
+        console.log('[LoginPage] Page source preview:', source.substring(0, 1000));
+      } catch (e) {
+        console.log('[LoginPage] Could not capture page source:', (e as Error).message);
+      }
+    }
+    
     return null;
   }
 
@@ -291,8 +318,55 @@ export class LoginPage extends BasePage {
         }
       }
 
-      // Find email input
-      const emailInput = await this.findByTestID('login-email-input');
+      // iOS CI: Add extra wait for app to fully initialize
+      // Native iOS apps need more time to load in CI environment
+      if (driver.isIOS && process.env.CI) {
+        console.log('[LoginPage] iOS CI detected - waiting 10s for app initialization...');
+        await browser.pause(10000);
+        console.log('[LoginPage] iOS CI wait complete, proceeding with login...');
+      }
+
+      // Find email input with retry logic
+      let emailInput = await this.findByTestID('login-email-input');
+      
+      // iOS CI: Retry if element not found (app may still be loading)
+      if (driver.isIOS && process.env.CI && (!emailInput || !await emailInput.isExisting())) {
+        console.log('[LoginPage] iOS CI: Email input not found, retrying after 5s...');
+        await browser.pause(5000);
+        emailInput = await this.findByTestID('login-email-input');
+        
+        // Still not found - dump diagnostics
+        if (!emailInput || !await emailInput.isExisting()) {
+          console.log('[LoginPage] iOS CI: Email input still not found after retry');
+          console.log('[LoginPage] Dumping page source for debugging...');
+          
+          try {
+            const pageSource = await driver.getPageSource();
+            const fs = require('fs');
+            const path = require('path');
+            const logsDir = path.join(process.cwd(), 'logs');
+            if (!fs.existsSync(logsDir)) {
+              fs.mkdirSync(logsDir, { recursive: true });
+            }
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const filename = path.join(logsDir, `page-source-login-fail-${timestamp}.xml`);
+            fs.writeFileSync(filename, pageSource);
+            console.log(`[LoginPage] Page source saved to: ${filename}`);
+            
+            // Also take a screenshot
+            const screenshotDir = path.join(process.cwd(), 'screenshots');
+            if (!fs.existsSync(screenshotDir)) {
+              fs.mkdirSync(screenshotDir, { recursive: true });
+            }
+            const screenshotPath = path.join(screenshotDir, `login-fail-${timestamp}.png`);
+            await driver.saveScreenshot(screenshotPath);
+            console.log(`[LoginPage] Screenshot saved to: ${screenshotPath}`);
+          } catch (diagError) {
+            console.error('[LoginPage] Failed to capture diagnostics:', diagError);
+          }
+        }
+      }
+      
       if (!emailInput) {
         throw new Error('Could not find email input with testID="login-email-input" (null)');
       }

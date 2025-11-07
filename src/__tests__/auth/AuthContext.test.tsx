@@ -253,6 +253,120 @@ describe('AuthContext - signUp flow', () => {
     // Verify signOut was NOT called (preserves Firebase auth for verification)
     expect(firebaseSignOut).not.toHaveBeenCalled();
   });
+
+  it('creates Firestore user document with all required fields during signUp', async () => {
+    const mockUser = { 
+      uid: 'test-uid-123', 
+      email: 'complete@example.com',
+      emailVerified: false 
+    };
+    
+    (createUserWithEmailAndPassword as jest.Mock).mockResolvedValueOnce({ user: mockUser });
+    (sendEmailVerification as jest.Mock).mockResolvedValueOnce(undefined);
+    (setDoc as jest.Mock).mockResolvedValueOnce(undefined);
+
+    const wrapper = ({ children }: any) => <AuthProvider>{children}</AuthProvider>;
+    const { result, waitForNextUpdate } = renderHook(() => useAuth(), { wrapper });
+    await waitForNextUpdate();
+
+    await act(async () => {
+      await result.current.signUp('testuser', 'complete@example.com', 'password123');
+    });
+
+    // Verify setDoc was called with complete user profile
+    expect(setDoc).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        username: 'testuser',
+        email: 'complete@example.com',
+        bio: '',
+        gender: '',
+        sexualOrientation: '',
+        edu: '',
+        drinking: '',
+        smoking: '',
+        dob: '',
+        photos: ['', '', '', '', ''],
+        subscriptionType: 'free',
+        subscriptionStartDate: null,
+        subscriptionEndDate: null,
+        subscriptionCancelled: false,
+        stripeCustomerId: null,
+        dailyUsage: expect.objectContaining({
+          date: expect.any(String),
+          viewCount: 0,
+        }),
+      }),
+      { merge: true }
+    );
+  });
+
+  it('throws and logs error when Firestore document creation fails', async () => {
+    const mockUser = { 
+      uid: 'fail-uid', 
+      email: 'fail@example.com',
+      emailVerified: false 
+    };
+    
+    const firestoreError = new Error('Firestore permission denied');
+    
+    (createUserWithEmailAndPassword as jest.Mock).mockResolvedValueOnce({ user: mockUser });
+    (sendEmailVerification as jest.Mock).mockResolvedValueOnce(undefined);
+    (setDoc as jest.Mock).mockRejectedValueOnce(firestoreError);
+
+    const wrapper = ({ children }: any) => <AuthProvider>{children}</AuthProvider>;
+    const { result, waitForNextUpdate } = renderHook(() => useAuth(), { wrapper });
+    await waitForNextUpdate();
+
+    // Should throw the Firestore error
+    let thrownError: Error | null = null;
+    await act(async () => {
+      try {
+        await result.current.signUp('failuser', 'fail@example.com', 'password123');
+      } catch (error) {
+        thrownError = error as Error;
+      }
+    });
+
+    // Verify error was thrown
+    expect(thrownError).toBeTruthy();
+    expect(thrownError?.message).toContain('Firestore permission denied');
+    
+    // Status should be reset to idle after error
+    expect(result.current.status).toBe('idle');
+  });
+
+  it('stores profile in local storage after successful signUp', async () => {
+    const mockUser = { 
+      uid: 'storage-test-uid', 
+      email: 'storage@example.com',
+      emailVerified: false 
+    };
+    
+    // Mock storage
+    const storage = require('../../utils/storage').default;
+    const setItemSpy = jest.spyOn(storage, 'setItem').mockResolvedValue(undefined);
+    
+    (createUserWithEmailAndPassword as jest.Mock).mockResolvedValueOnce({ user: mockUser });
+    (sendEmailVerification as jest.Mock).mockResolvedValueOnce(undefined);
+    (setDoc as jest.Mock).mockResolvedValueOnce(undefined);
+
+    const wrapper = ({ children }: any) => <AuthProvider>{children}</AuthProvider>;
+    const { result, waitForNextUpdate } = renderHook(() => useAuth(), { wrapper });
+    await waitForNextUpdate();
+
+    await act(async () => {
+      await result.current.signUp('storageuser', 'storage@example.com', 'password123');
+    });
+
+    // Verify profile stored in local storage
+    expect(setItemSpy).toHaveBeenCalledWith(
+      'PROFILE_INFO',
+      expect.stringContaining('storageuser')
+    );
+
+    setItemSpy.mockRestore();
+  });
 });
 
 describe('AuthContext - Google Sign-In', () => {

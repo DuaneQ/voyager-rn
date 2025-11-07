@@ -45,12 +45,6 @@ const AuthPage: React.FC = () => {
    * Login Handler - Matches PWA's SignInForm.tsx handleSubmit exactly
    */
   const handleLogin = async (email: string, password: string) => {
-    // Debug: log incoming credentials for automation troubleshooting
-    try {
-      console.log('[AuthPage] handleLogin called with email:', email, 'password length:', password ? password.length : 0);
-    } catch (e) {
-      // ignore logging errors
-    }
     setIsSubmitting(true);
     try {
       await signIn(email, password);
@@ -58,8 +52,6 @@ const AuthPage: React.FC = () => {
       // On web we keep the friendly success alert, but on iOS/Android we log instead
       if (Platform.OS === 'web') {
         showAlert('success', 'Login successful! Welcome back.');
-      } else {
-        console.log('[AuthPage] Login successful (mobile) - suppressing success alert for automation');
       }
       // Navigation will be handled by auth state change in AppNavigator
     } catch (error: any) {
@@ -178,15 +170,12 @@ const AuthPage: React.FC = () => {
             onSubmit={handleLogin}
             onGoogleSignIn={handleGoogleSignIn}
             onForgotPassword={() => {
-              console.log('[AuthPage] Navigation: Login → Forgot Password');
               setMode('forgot');
             }}
             onResendVerification={() => {
-              console.log('[AuthPage] Navigation: Login → Resend Verification');
               setMode('resend');
             }}
             onSignUpPress={() => {
-              console.log('[AuthPage] Navigation: Login → Register');
               setMode('register');
             }}
             isLoading={isLoading}
@@ -199,7 +188,6 @@ const AuthPage: React.FC = () => {
             onSubmit={handleRegister}
             onGoogleSignUp={handleGoogleSignUp}
             onSignInPress={() => {
-              console.log('[AuthPage] Navigation: Register → Login');
               setMode('login');
             }}
             isLoading={isLoading}
@@ -211,7 +199,6 @@ const AuthPage: React.FC = () => {
           <ForgotPasswordForm
             onSubmit={handleForgotPassword}
             onBackPress={() => {
-              console.log('[AuthPage] Navigation: Forgot Password → Login');
               setMode('login');
             }}
             isLoading={isLoading}
@@ -223,7 +210,6 @@ const AuthPage: React.FC = () => {
           <ResendVerificationForm
             onSubmit={handleResendVerification}
             onBackPress={() => {
-              console.log('[AuthPage] Navigation: Resend Verification → Login');
               setMode('login');
             }}
             isLoading={isLoading}

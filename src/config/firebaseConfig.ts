@@ -5,6 +5,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
+import { getFunctions } from 'firebase/functions';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
@@ -51,6 +52,7 @@ if (Platform.OS !== 'web') {
 
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+export const functions = getFunctions(app, 'us-central1');
 
 console.log('🔥 Firebase initialized for voyager-RN');
 console.log('📱 Using project:', firebaseConfig.projectId);

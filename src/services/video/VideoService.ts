@@ -44,22 +44,32 @@ export class VideoService {
 
       onProgress?.(10, 'Preparing video...');
 
-      // Read video file
-      const videoFile = await FileSystem.readAsStringAsync(videoData.uri, {
-        encoding: 'base64',
-      });
+      console.log('[VideoService] Starting upload:', { videoId, uri: videoData.uri });
 
-      // Convert base64 to blob
-      const response = await fetch(`data:video/mp4;base64,${videoFile}`);
-      const blob = await response.blob();
+      // Fetch video file as blob directly from URI (works on iOS, Android, Web)
+      const videoResponse = await fetch(videoData.uri);
+      if (!videoResponse.ok) {
+        throw new Error(`Failed to fetch video: ${videoResponse.status} ${videoResponse.statusText}`);
+      }
+      const videoBlob = await videoResponse.blob();
+      console.log('[VideoService] Video blob created:', { size: videoBlob.size, type: videoBlob.type });
 
       onProgress?.(20, 'Uploading video...');
 
       // Upload video to Storage (same path as PWA)
       const videoRef = ref(storage, `users/${userId}/videos/${videoId}.mp4`);
-      const uploadTask: UploadTask = uploadBytesResumable(videoRef, blob, {
+      
+      // Add metadata for better compatibility
+      const metadata = {
         contentType: 'video/mp4',
-      });
+        customMetadata: {
+          uploadedAt: new Date().toISOString(),
+          fileSize: videoBlob.size.toString(),
+        },
+      };
+
+      console.log('[VideoService] Starting Firebase upload to:', videoRef.fullPath);
+      const uploadTask: UploadTask = uploadBytesResumable(videoRef, videoBlob, metadata);
 
       // Track upload progress
       const videoUrl = await new Promise<string>((resolve, reject) => {
@@ -68,11 +78,25 @@ export class VideoService {
           (snapshot) => {
             const progress = 20 + (snapshot.bytesTransferred / snapshot.totalBytes) * 40;
             onProgress?.(Math.round(progress), 'Uploading video...');
+            console.log('[VideoService] Upload progress:', {
+              transferred: snapshot.bytesTransferred,
+              total: snapshot.totalBytes,
+              percent: Math.round(progress),
+            });
           },
-          reject,
+          (error) => {
+            console.error('[VideoService] Upload error:', error);
+            reject(new Error(`Upload failed: ${error.message}`));
+          },
           async () => {
-            const url = await getDownloadURL(uploadTask.snapshot.ref);
-            resolve(url);
+            try {
+              const url = await getDownloadURL(uploadTask.snapshot.ref);
+              console.log('[VideoService] Video uploaded successfully:', url);
+              resolve(url);
+            } catch (error) {
+              console.error('[VideoService] Failed to get download URL:', error);
+              reject(new Error('Failed to get download URL'));
+            }
           }
         );
       });
@@ -82,32 +106,35 @@ export class VideoService {
       // Generate and upload thumbnail
       let thumbnailUrl = '';
       try {
+        console.log('[VideoService] Generating thumbnail from:', videoData.uri);
         const thumbnailUri = await generateVideoThumbnail(videoData.uri);
-        const thumbnailFile = await FileSystem.readAsStringAsync(thumbnailUri, {
-          encoding: 'base64',
-        });
-        const thumbnailResponse = await fetch(
-          `data:image/jpeg;base64,${thumbnailFile}`
-        );
+        console.log('[VideoService] Thumbnail generated:', thumbnailUri);
+        
+        const thumbnailResponse = await fetch(thumbnailUri);
+        if (!thumbnailResponse.ok) {
+          throw new Error(`Failed to fetch thumbnail: ${thumbnailResponse.status}`);
+        }
         const thumbnailBlob = await thumbnailResponse.blob();
+        console.log('[VideoService] Thumbnail blob created:', { size: thumbnailBlob.size, type: thumbnailBlob.type });
 
         const thumbnailRef = ref(
           storage,
           `users/${userId}/thumbnails/${videoId}.jpg`
         );
+        console.log('[VideoService] Uploading thumbnail to:', thumbnailRef.fullPath);
         await uploadBytesResumable(thumbnailRef, thumbnailBlob);
         thumbnailUrl = await getDownloadURL(thumbnailRef);
+        console.log('[VideoService] Thumbnail uploaded successfully:', thumbnailUrl);
       } catch (error) {
-        console.warn('Failed to generate thumbnail:', error);
-        // Use placeholder if thumbnail generation fails
+        console.warn('[VideoService] Failed to generate/upload thumbnail:', error);
+        // Use empty string if thumbnail generation fails (PWA uses fallback)
         thumbnailUrl = '';
       }
 
       onProgress?.(80, 'Saving video details...');
 
-      // Get file size
-      const fileInfo = await FileSystem.getInfoAsync(videoData.uri);
-      const fileSize = fileInfo.exists && 'size' in fileInfo ? fileInfo.size : 0;
+      // Get file size from blob
+      const fileSize = videoBlob.size;
 
       // Create Firestore document (same schema as PWA)
       const video: Omit<Video, 'id'> = {
@@ -126,7 +153,14 @@ export class VideoService {
         updatedAt: Timestamp.now(),
       };
 
+      console.log('[VideoService] Creating Firestore document:', {
+        videoUrl: video.videoUrl.substring(0, 50) + '...',
+        thumbnailUrl: video.thumbnailUrl ? video.thumbnailUrl.substring(0, 50) + '...' : '(empty)',
+        fileSize: video.fileSize,
+      });
+
       const videoDoc = await addDoc(collection(db, 'videos'), video);
+      console.log('[VideoService] Video document created:', videoDoc.id);
 
       onProgress?.(100, 'Upload complete!');
 
@@ -135,6 +169,7 @@ export class VideoService {
         ...video,
       };
     } catch (error) {
+      console.error('[VideoService] Video upload error:', error);
       const errorMessage =
         error instanceof Error ? error.message : 'Video upload failed';
       throw new Error(errorMessage);
@@ -170,6 +205,8 @@ export class VideoService {
    */
   async getUserVideos(userId: string): Promise<Video[]> {
     try {
+      console.log('[VideoService] Loading videos for user:', userId);
+      
       const videosQuery = query(
         collection(db, 'videos'),
         where('userId', '==', userId),
@@ -178,17 +215,29 @@ export class VideoService {
       );
 
       const videosSnapshot = await getDocs(videosQuery);
+      console.log('[VideoService] Found', videosSnapshot.size, 'videos in Firestore');
+      
       const videos: Video[] = [];
 
       videosSnapshot.forEach((doc) => {
+        const data = doc.data();
+        console.log('[VideoService] Video document:', {
+          id: doc.id,
+          hasThumbnailUrl: !!data.thumbnailUrl,
+          hasVideoUrl: !!data.videoUrl,
+          thumbnailUrl: data.thumbnailUrl ? data.thumbnailUrl.substring(0, 50) + '...' : '(empty)',
+        });
+        
         videos.push({
           id: doc.id,
-          ...doc.data(),
+          ...data,
         } as Video);
       });
 
+      console.log('[VideoService] Returning', videos.length, 'videos');
       return videos;
     } catch (error) {
+      console.error('[VideoService] Error loading videos:', error);
       const errorMessage =
         error instanceof Error ? error.message : 'Failed to load videos';
       throw new Error(errorMessage);

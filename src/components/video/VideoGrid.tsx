@@ -95,29 +95,54 @@ export const VideoGrid: React.FC = () => {
     );
   };
 
-  const renderVideoItem = (video: VideoType) => (
-    <View key={video.id} style={styles.videoItem}>
-      <TouchableOpacity
-        onPress={() => setSelectedVideo(video)}
-        onLongPress={() => handleDeleteVideo(video)}
-        style={styles.videoTouchable}
-      >
-        {video.thumbnailUrl ? (
-          <Image 
-            source={{ uri: video.thumbnailUrl }} 
-            style={{ width: '100%', height: '100%' }}
-          />
-        ) : (
-          <View style={[styles.thumbnail, styles.thumbnailPlaceholder]}>
-            <Ionicons name="videocam" size={32} color="#999" />
+  const renderVideoItem = (video: VideoType) => {
+    console.log('[VideoGrid] Rendering video item:', {
+      id: video.id,
+      hasThumbnail: !!video.thumbnailUrl,
+      thumbnailUrl: video.thumbnailUrl ? video.thumbnailUrl.substring(0, 50) + '...' : '(empty)',
+      videoUrl: video.videoUrl ? video.videoUrl.substring(0, 50) + '...' : '(empty)',
+    });
+
+    return (
+      <View key={video.id} style={styles.videoItem}>
+        <TouchableOpacity
+          onPress={() => {
+            console.log('[VideoGrid] Video clicked:', video.id);
+            setSelectedVideo(video);
+          }}
+          onLongPress={() => handleDeleteVideo(video)}
+          style={styles.videoTouchable}
+        >
+          {video.thumbnailUrl ? (
+            <Image 
+              source={{ uri: video.thumbnailUrl }} 
+              style={{ width: '100%', height: '100%' }}
+              onError={(error) => {
+                console.error('[VideoGrid] Thumbnail load error:', video.id, error.nativeEvent);
+              }}
+              onLoad={() => {
+                console.log('[VideoGrid] Thumbnail loaded successfully:', video.id);
+              }}
+            />
+          ) : (
+            <View style={[styles.thumbnail, styles.thumbnailPlaceholder]}>
+              <Ionicons name="videocam" size={32} color="#999" />
+            </View>
+          )}
+          <View style={styles.playIconContainer}>
+            <Ionicons name="play-circle" size={40} color="#fff" />
           </View>
-        )}
-        <View style={styles.playIconContainer}>
-          <Ionicons name="play-circle" size={40} color="#fff" />
-        </View>
-      </TouchableOpacity>
-    </View>
-  );
+        </TouchableOpacity>
+        {/* Delete button - visible on all user's own videos */}
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={() => handleDeleteVideo(video)}
+        >
+          <Ionicons name="trash-outline" size={20} color="#fff" />
+        </TouchableOpacity>
+      </View>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -186,7 +211,10 @@ export const VideoGrid: React.FC = () => {
         <View style={styles.playerContainer}>
           <TouchableOpacity
             style={styles.closeButton}
-            onPress={() => setSelectedVideo(null)}
+            onPress={() => {
+              console.log('[VideoGrid] Closing video player');
+              setSelectedVideo(null);
+            }}
           >
             <Ionicons name="close" size={32} color="#fff" />
           </TouchableOpacity>
@@ -199,6 +227,25 @@ export const VideoGrid: React.FC = () => {
                 useNativeControls
                 resizeMode={ResizeMode.CONTAIN}
                 shouldPlay
+                onError={(error) => {
+                  console.error('[VideoGrid] Video playback error:', selectedVideo.id, error);
+                  setSelectedVideo(null);
+                  
+                  // Check for codec-related errors
+                  const errorStr = typeof error === 'string' ? error : JSON.stringify(error);
+                  if (errorStr.includes('Decoder failed') || errorStr.includes('hevc') || errorStr.includes('codec')) {
+                    Alert.alert(
+                      'Playback Error',
+                      'This video format is not supported on your device. Please use H.264 (AVC) encoded videos.',
+                      [{ text: 'OK' }]
+                    );
+                  } else {
+                    Alert.alert('Error', 'Failed to play video. Please try again.');
+                  }
+                }}
+                onLoad={() => {
+                  console.log('[VideoGrid] Video loaded successfully:', selectedVideo.id);
+                }}
               />
               {selectedVideo.title && (
                 <View style={styles.videoInfo}>
@@ -235,6 +282,7 @@ const styles = StyleSheet.create({
     width: ITEM_SIZE,
     height: ITEM_SIZE,
     padding: 5,
+    position: 'relative',
   },
   videoTouchable: {
     width: '100%',
@@ -257,6 +305,22 @@ const styles = StyleSheet.create({
     top: '50%',
     left: '50%',
     transform: [{ translateX: -20 }, { translateY: -20 }],
+  },
+  deleteButton: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    backgroundColor: 'rgba(220, 53, 69, 0.9)',
+    borderRadius: 20,
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   addButton: {
     justifyContent: 'center',

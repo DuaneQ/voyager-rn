@@ -17,8 +17,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-// Note: Temporarily commenting out Slider for build compatibility
-// import Slider from '@react-native-community/slider';
+import Slider from '@react-native-community/slider';
 import { useTravelPreferences } from '../../hooks/useTravelPreferences';
 import {
   TravelPreferenceProfile,
@@ -454,20 +453,22 @@ export const TravelPreferencesTab: React.FC<TravelPreferencesTabProps> = ({
 
           <Text style={styles.label}>Minimum Star Rating: {formData.accommodation?.starRating || 3}</Text>
           <View style={styles.sliderContainer}>
-            <TextInput
-              style={[styles.input, { width: '100%' }]}
-              value={String(formData.accommodation?.starRating || 3)}
-              onChangeText={(text) => {
-                const value = parseInt(text) || 3;
-                if (value >= 1 && value <= 5) {
-                  updateFormField('accommodation', {
-                    ...(formData.accommodation || { type: 'any' }),
-                    starRating: value,
-                  });
-                }
+            <Slider
+              minimumValue={1}
+              maximumValue={5}
+              step={1}
+              value={formData.accommodation?.starRating || 3}
+              onValueChange={(val) => {
+                updateFormField('accommodation', {
+                  ...(formData.accommodation || { type: 'any' }),
+                  starRating: Math.round(val),
+                });
               }}
-              keyboardType="numeric"
-              placeholder="Star Rating (1-5)"
+              minimumTrackTintColor="#1976d2"
+              maximumTrackTintColor="#ddd"
+              thumbTintColor="#1976d2"
+              style={styles.slider}
+              accessibilityLabel="minimum-star-rating-slider"
             />
             <View style={styles.sliderLabels}>
               <Text style={styles.sliderLabel}>1</Text>
@@ -480,20 +481,22 @@ export const TravelPreferencesTab: React.FC<TravelPreferencesTabProps> = ({
 
           <Text style={styles.label}>Minimum User Rating: {(formData.accommodation?.minUserRating || 3.0).toFixed(1)}</Text>
           <View style={styles.sliderContainer}>
-            <TextInput
-              style={[styles.input, { width: '100%' }]}
-              value={String(formData.accommodation?.minUserRating || 3.0)}
-              onChangeText={(text) => {
-                const value = parseFloat(text) || 3.0;
-                if (value >= 1.0 && value <= 5.0) {
-                  updateFormField('accommodation', {
-                    ...(formData.accommodation || { type: 'any', starRating: 3 }),
-                    minUserRating: value,
-                  });
-                }
+            <Slider
+              minimumValue={1.0}
+              maximumValue={5.0}
+              step={0.1}
+              value={formData.accommodation?.minUserRating || 3.0}
+              onValueChange={(val) => {
+                updateFormField('accommodation', {
+                  ...(formData.accommodation || { type: 'any', starRating: 3 }),
+                  minUserRating: parseFloat(val.toFixed(1)),
+                });
               }}
-              keyboardType="numeric"
-              placeholder="User Rating (1.0-5.0)"
+              minimumTrackTintColor="#1976d2"
+              maximumTrackTintColor="#ddd"
+              thumbTintColor="#1976d2"
+              style={styles.slider}
+              accessibilityLabel="minimum-user-rating-slider"
             />
             <View style={styles.sliderLabels}>
               <Text style={styles.sliderLabel}>1.0</Text>
@@ -637,7 +640,7 @@ export const TravelPreferencesTab: React.FC<TravelPreferencesTabProps> = ({
           }
         }}
       >
-        <Text style={styles.buttonAIText}>✨ Generate AI Itinerary</Text>
+        <Text style={styles.buttonAIText}>✨ GENERATE AI ITINERARY</Text>
       </TouchableOpacity>
 
       <View style={styles.bottomPadding} />
@@ -891,15 +894,24 @@ const styles = StyleSheet.create({
   },
   buttonAI: {
     margin: 16,
-    paddingVertical: 16,
-    borderRadius: 8,
-    backgroundColor: '#4CAF50',
+    paddingVertical: 18,
+    borderRadius: 12,
+    backgroundColor: '#10B981',
     alignItems: 'center',
+    shadowColor: '#10B981',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   buttonAIText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
   buttonDisabled: {
     backgroundColor: '#9E9E9E',

@@ -26,6 +26,9 @@ const iosCapabilities = {
   'appium:newCommandTimeout': 300, // Increased for CI stability
   'appium:wdaLaunchTimeout': 180000, // Increased for CI stability
   'appium:useNewWDA': false,
+  // Critical: Allow app more time to launch in CI before first command
+  // iOS RN apps can take significantly longer to initialize the JS bundle
+  'appium:appLaunchTimeout': process.env.CI ? 90000 : 30000, // 90s in CI (was 60s), 30s locally
   // Don't provide Metro port in CI - app should be pre-built
   ...(process.env.CI ? {} : {
     'appium:processArguments': {
@@ -39,12 +42,30 @@ const iosCapabilities = {
   // Additional iOS stability settings for CI
   'appium:shouldUseSingletonTestManager': false,
   'appium:shouldUseTestManagerForVisibilityDetection': false,
-  // Fix for XCUIApplicationProcess waitForQuiescence errors - disable quiescence checking
+  // Fix for XCUIApplicationProcess waitForQuiescence errors - comprehensive quiescence disabling
   'appium:shouldWaitForQuiescence': false,
+  'appium:waitForQuiescence': false, // Alternative capability name
   'appium:waitForIdleTimeout': 0,
+  'appium:animationCoolOffTimeout': 0,
+  // Additional quiescence-related capabilities to ensure it's completely disabled
+  'appium:waitForAnimations': false,
+  'appium:commandTimeouts': {
+    'default': 30000
+  },
   // Conservative settings for better compatibility
   'appium:includeNonModalElements': false,
   'appium:snapshotMaxDepth': 50,
+  // XCUITest 7.x specific settings for better compatibility
+  'appium:simpleIsVisibleCheck': true, // Use simpler visibility check to avoid quiescence
+  'appium:maxTypingFrequency': 60, // Reduce typing speed to avoid quiescence checks
+  // Additional WebDriverAgent settings to prevent quiescence issues
+  'appium:wdaStartupRetries': 2,
+  'appium:wdaStartupRetryInterval': 10000,
+  'appium:iosInstallPause': 5000, // Pause after app install before testing
+  'appium:waitForAppScript': '', // Disable custom wait scripts that might trigger quiescence
+  // Additional iOS-specific capabilities to avoid XCUITest compatibility issues
+  'appium:skipLogCapture': true, // Skip log capture to avoid overhead
+  'appium:wdaConnectionTimeout': 120000, // 2 minutes to connect to WDA
 };
 
 /**
@@ -113,13 +134,32 @@ export const config = {
   beforeSession: function (config, capabilities, specs) {
     console.log(`\n🚀 Starting ${platform.toUpperCase()} test session...`);
     console.log(`📱 Device: ${capabilities['appium:deviceName']}`);
-    console.log(`� UDID: ${capabilities['appium:udid']}`);
+    console.log(`📍 UDID: ${capabilities['appium:udid']}`);
     console.log(`📦 Bundle ID: ${capabilities['appium:bundleId']}`);
     console.log(`🏗️  CI Mode: ${process.env.CI ? 'Yes' : 'No'}`);
     
     if (process.env.CI) {
       console.log(`🔧 Simulator ID: ${process.env.SIMULATOR_ID}`);
       console.log(`⚙️  Platform Version: ${capabilities['appium:platformVersion']}`);
+    }
+  },
+  
+  before: async function (capabilities, specs) {
+    // Wait for app to be fully initialized before any tests run
+    if (process.env.CI && platform === 'ios') {
+      console.log('⏳ CI Mode: Waiting additional 15 seconds for app to fully initialize...');
+      await browser.pause(15000);
+      
+      // Verify app is accessible by checking if we can get page source
+      try {
+        console.log('🔍 Verifying app is responsive...');
+        await driver.getPageSource();
+        console.log('✅ App is responsive and ready for testing');
+      } catch (error) {
+        console.error('⚠️ WARNING: App may not be fully ready:', error);
+        console.log('⏳ Waiting additional 10 seconds...');
+        await browser.pause(10000);
+      }
     }
   },
   

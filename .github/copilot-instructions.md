@@ -2,6 +2,31 @@
 
 # TravalPass React Native (Expo) Development Guide
 
+## ⚠️ CRITICAL TESTING RULES - READ FIRST ⚠️
+
+### 🚨 NEVER MODIFY PRODUCTION CODE FOR TESTS 🚨
+
+**ABSOLUTE RULE**: You are **STRICTLY FORBIDDEN** from modifying any production code to make tests work.
+
+**Production code includes (but not limited to)**:
+- `firebase-config.js` / `firebaseConfig.ts` - **NEVER TOUCH FOR TESTS**
+- Any files in `src/` that are used by the actual app
+- `App.tsx`, navigation files, context providers
+- Component files, hooks, services, utilities
+- Configuration files used by the running app
+
+**If tests need special configuration**:
+- ✅ Modify test setup files: `jest.setup.js`, `jest.integration.setup.js`
+- ✅ Create test-specific config files in `__tests__/` or `testUtils/`
+- ✅ Use mocks in `__mocks__/` directory
+- ✅ Add test utilities in `src/testUtils/` or `src/__tests__/helpers/`
+- ❌ **NEVER** add try/catch, conditional logic, or environment checks to production code
+- ❌ **NEVER** modify exports in production files to accommodate tests
+
+**If you violate this rule, you will break the production app. NO EXCEPTIONS.**
+
+---
+
 ## Project Overview
 This is a **React Native Expo** replica of the **voyager-pwa** project, maintaining **exact same functionality** for mobile platforms while implementing **improved architecture** following S.O.L.I.D principles. The app shares the same Firebase database and business logic as the PWA but with better code organization and reusability.
 
