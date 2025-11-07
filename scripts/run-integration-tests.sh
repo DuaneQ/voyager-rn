@@ -23,7 +23,8 @@ echo "🧪 Running Integration Tests..."
 echo "================================"
 
 # Run integration tests with integration config
-npm test -- --config=jest.integration.config.js src/__tests__/integrations/searchItineraries.real.test.ts --watchAll=false --runInBand --testTimeout=120000
+# Run the entire integrations folder so CI runs all integration suites
+npm test -- --config=jest.integration.config.js src/__tests__/integrations --watchAll=false --runInBand --testTimeout=120000
 
 echo ""
 echo "✅ Integration tests completed!"

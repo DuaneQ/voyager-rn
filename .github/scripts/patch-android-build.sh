@@ -25,27 +25,43 @@ fi
 # Create backup
 cp "$BUILD_GRADLE" "$BUILD_GRADLE.backup"
 
-# Use a simpler, more reliable path resolution for CI. Prefer the installed
-# package path under node_modules, but if that file is missing (common in
-# transient CI failures), fall back to the repository-local helper in
-# .github/gradle-helpers so the generated build.gradle refers to an existing
-# file. This avoids Gradle errors that occur when the apply-from file doesn't
-# exist.
-INSTALLED_PATH='../../node_modules/expo-modules-core/android/ExpoModulesCorePlugin.gradle'
-FALLBACK_PATH='../../.github/gradle-helpers/ExpoModulesCorePlugin.gradle'
+# Create a repo-local copy inside the generated android/ directory so Gradle
+# can always reference a local file that exists during the Gradle evaluation
+# phase. This is more robust than pointing only at node_modules which can be
+# missing or reinstalled between steps in CI.
 
-APPLY_LINE_INSTALLED="apply from: new File(rootDir, '${INSTALLED_PATH}')"
-APPLY_LINE_FALLBACK="apply from: new File(rootDir, '${FALLBACK_PATH}') // (patched by CI fallback)"
+# Destination inside generated android tree (relative to repo root)
+ANDROID_HELPER_DIR="android/expo-gradle-helpers"
+ANDROID_HELPER_FILE="$ANDROID_HELPER_DIR/ExpoModulesCorePlugin.gradle"
+
+# Source fallback in the repo
+REPO_FALLBACK_SOURCE=".github/gradle-helpers/ExpoModulesCorePlugin.gradle"
+
+mkdir -p "$ANDROID_HELPER_DIR" || true
+if [ -f "$REPO_FALLBACK_SOURCE" ]; then
+  cp "$REPO_FALLBACK_SOURCE" "$ANDROID_HELPER_FILE"
+  echo "Copied repo fallback to: $ANDROID_HELPER_FILE"
+else
+  echo "Warning: repo fallback $REPO_FALLBACK_SOURCE not found; proceeding without local copy"
+fi
+
+# Groovy-level apply logic: prefer node_modules path if available, otherwise
+# use the local copy placed under android/expo-gradle-helpers.
+APPLY_GROOVY='// Apply Expo modules plugin (patched by CI)
+def installedPlugin = new File(rootDir, "../../node_modules/expo-modules-core/android/ExpoModulesCorePlugin.gradle")
+def repoFallback = new File(rootDir, "../expo-gradle-helpers/ExpoModulesCorePlugin.gradle")
+if (installedPlugin.exists()) {
+  apply from: installedPlugin
+} else if (repoFallback.exists()) {
+  apply from: repoFallback
+} else {
+  throw new GradleException("ExpoModulesCorePlugin.gradle not found in node_modules or repo fallback: ${installedPlugin}, ${repoFallback}")
+}'
 
 {
   head -n "$LINE_NUM" "$BUILD_GRADLE"
   echo ""
-  echo "// Apply Expo modules plugin"
-  if [ -f "$(dirname "$BUILD_GRADLE")/${INSTALLED_PATH}" ]; then
-    echo "$APPLY_LINE_INSTALLED"
-  else
-    echo "$APPLY_LINE_FALLBACK"
-  fi
+  echo "$APPLY_GROOVY"
   tail -n +"$((LINE_NUM + 1))" "$BUILD_GRADLE"
 } > "$BUILD_GRADLE.new"
 
