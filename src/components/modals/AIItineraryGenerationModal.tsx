@@ -12,7 +12,6 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Alert,
   ActivityIndicator,
   Dimensions,
   KeyboardAvoidingView,
@@ -122,11 +121,6 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
   // Initialize form when modal opens (matching PWA logic)
   useEffect(() => {
     if (visible) {
-      console.log('🔄 AI Modal opened - Available profiles:', preferences?.profiles?.length || 0);
-      preferences?.profiles?.forEach((p: any) => {
-        console.log('  - Profile:', p.name, '(ID:', p.id, ')');
-      });
-      
       const defaultProfileId = preferences?.profiles?.find((p: any) => p.isDefault)?.id || '';
       const initProfileId = initialPreferenceProfileId || defaultProfileId || '';
 
@@ -561,7 +555,7 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
                 {/* Destination Airport - Only shown when flights are enabled */}
                 {shouldShowFlights && (
                   <View style={styles.field}>
-                    <Text style={styles.fieldLabel}>Destination Airport</Text>
+                    <Text style={styles.fieldLabel}>Destination</Text>
                     <AirportSelector
                       placeholder="Select destination airport"
                       selectedAirportCode={formData.destinationAirportCode}
@@ -580,9 +574,9 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
 
                 {/* Departure */}
                 <View style={styles.field}>
-                  <Text style={styles.fieldLabel}>Flying From</Text>
+                  <Text style={styles.fieldLabel}>Departing From</Text>
                   <GooglePlacesAutocomplete
-                    placeholder="Where are you flying from? (for flight pricing)"
+                    placeholder="Where are you traveling from?"
                     onPress={(data, details = null) => {
                       handleFieldChange('departure', data.description);
                     }}

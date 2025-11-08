@@ -1,0 +1,26 @@
+plugins {
+  id 'groovy'
+  id 'java-gradle-plugin'
+}
+
+group = 'host.exp.exponent.plugins'
+version = '1.0.0'
+
+repositories {
+  mavenCentral()
+}
+
+dependencies {
+  implementation localGroovy()
+}
+
+gradlePlugin {
+  plugins {
+    expoPlugin {
+      id = 'expo-module-gradle-plugin'
+      implementationClass = 'expo.modules.gradle.ExpoModuleGradlePlugin'
+    }
+  }
+}
+
+sourceSets.main.groovy.srcDirs = ['src/main/groovy']

@@ -46,6 +46,15 @@ const ProfilePage: React.FC = () => {
     }
   }, [route.params]);
 
+  // If loading finished but there is no profile, auto-open edit modal so user can create one.
+  // This hook must be unconditional to avoid changing the hooks order.
+  useEffect(() => {
+    if (!isLoading && !userProfile && !editModalVisible) {
+      setEditModalVisible(true);
+      showAlert('warning', 'Please create your profile to continue');
+    }
+  }, [isLoading, userProfile, editModalVisible, showAlert]);
+
   // Calculate profile completeness based on PWA fields
   const calculateCompleteness = (): number => {
     if (!userProfile) return 0;
@@ -153,14 +162,50 @@ const ProfilePage: React.FC = () => {
     );
   }
 
-  // If no profile exists, this shouldn't happen as sign-up creates profile
-  // But if it does, just show loading (profile creation will trigger reload)
+  // If no profile exists after loading completes, auto-open edit modal to create profile
+  // This handles cases where Firestore data was deleted or sign-up failed to create profile
   if (!userProfile) {
+
+    // Show minimal UI with edit modal
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading profile...</Text>
+          <Text style={styles.emptyStateTitle}>Profile Not Found</Text>
+          <Text style={styles.emptyStateText}>
+            Let's create your profile to get started
+          </Text>
+          <TouchableOpacity 
+            style={styles.createProfileButton}
+            onPress={() => setEditModalVisible(true)}
+          >
+            <Text style={styles.createProfileButtonText}>Create Profile</Text>
+          </TouchableOpacity>
         </View>
+        
+        {/* Edit modal for creating new profile */}
+        <EditProfileModal
+          visible={editModalVisible}
+          onClose={() => {
+            // Don't allow closing without creating profile
+            Alert.alert(
+              'Profile Required',
+              'You need to create a profile to use the app',
+              [{ text: 'OK' }]
+            );
+          }}
+          onSave={handleSaveProfile}
+          initialData={{
+            username: '',
+            bio: '',
+            dob: '',
+            gender: '',
+            sexualOrientation: '',
+            status: '',
+            edu: '',
+            drinking: '',
+            smoking: '',
+          }}
+        />
       </SafeAreaView>
     );
   }
@@ -301,6 +346,36 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 18,
     color: '#666',
+  },
+  emptyStateTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  emptyStateText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    paddingHorizontal: 32,
+    marginBottom: 32,
+  },
+  createProfileButton: {
+    backgroundColor: '#1976d2',
+    paddingHorizontal: 48,
+    paddingVertical: 16,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  createProfileButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
   welcomeTitle: {
     fontSize: 24,

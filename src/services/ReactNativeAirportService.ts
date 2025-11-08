@@ -60,6 +60,62 @@ export class ReactNativeAirportService implements IAirportService {
   }
 
   /**
+   * Attempt to find an airport in the curated fallback by name or city.
+   * This helps when the Places result contains no valid IATA and a guessed code is incorrect.
+   */
+  /**
+   * Find an airport by name or city from the bundled major airports.
+   * If coords are provided, prefer a candidate within a reasonable distance
+   * (default 200 km) to avoid matching to similarly named airports far away.
+   */
+  public findAirportByName(nameOrCity: string, coords?: LocationCoordinates): Airport | null {
+    if (!nameOrCity) return null;
+    const normalize = (s = '') => s.toLowerCase().replace(/[^a-z0-9]+/g, '');
+    const major = this.getMajorAirports();
+
+    // Exact IATA match first
+    for (const a of major) {
+      if (a.iataCode && a.iataCode.toLowerCase() === nameOrCity.toLowerCase()) return a;
+    }
+
+    // Tokenize and look for token overlap
+    const tokenize = (s: string) => s.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean).map(t => t.replace(/[^a-z0-9]/g, ''));
+    const qTokens = tokenize(nameOrCity).filter(t => t.length >= 3);
+    if (qTokens.length === 0) return null;
+
+    // Candidate scoring with optional distance check
+    let best: { airport: Airport; score: number; distance?: number } | null = null;
+    for (const a of major) {
+      const nName = tokenize(a.name || '');
+      const nCity = tokenize(a.city || '');
+      let overlap = 0;
+      for (const t of qTokens) {
+        if (nName.includes(t) || nCity.includes(t)) overlap++;
+      }
+      if (overlap === 0) continue;
+
+      let distKm: number | undefined = undefined;
+      if (coords && a.coordinates && typeof a.coordinates.lat === 'number') {
+        try {
+          distKm = this.distanceCalculator.calculateDistance(coords, a.coordinates);
+        } catch (e) {
+          // ignore distance errors
+        }
+      }
+
+      // If distance is available and very large, skip this candidate
+      if (typeof distKm === 'number' && distKm > 200) continue;
+
+      const score = overlap + (typeof distKm === 'number' ? Math.max(0, 100 - distKm / 10) : 0);
+      if (!best || score > best.score) {
+        best = { airport: a, score, distance: distKm };
+      }
+    }
+
+    return best ? best.airport : null;
+  }
+
+  /**
    * Search airports by query string
    */
   async searchAirportsByQuery(query: string): Promise<Airport[]> {
@@ -148,37 +204,81 @@ export class ReactNativeAirportService implements IAirportService {
 
     const distance = this.distanceCalculator.calculateDistance(searchCoordinates, placeCoordinates);
     
-    // Try to extract IATA code from name (e.g., "Los Angeles International Airport (LAX)")
-    const iataMatch = place.name.match(/\(([A-Z]{3})\)/);
-    const iataCode = iataMatch ? iataMatch[1] : this.guessIataFromName(place.name);
+  // Try to extract IATA code from name (e.g., "Los Angeles International Airport (LAX)")
+  const iataMatch = place.name.match(/\(([A-Z]{3})\)/);
+  // If the place contains an explicit IATA, use it. Otherwise attempt a safe
+  // authoritative name match against our bundled data to populate iataCode.
+  let iataCode = iataMatch ? iataMatch[1] : '';
 
-    return {
-      iataCode,
-      name: place.name,
-      city: this.extractCityFromVicinity(place.vicinity || place.name),
-      country: 'Unknown', // Google Places doesn't always provide country in nearby search
-      coordinates: placeCoordinates,
-      distance: Math.round(distance),
-      isInternational: this.isLikelyInternationalAirport(place.name)
-    };
+  const airport: Airport = {
+    iataCode,
+    name: place.name,
+    city: this.extractCityFromVicinity(place.vicinity || place.name),
+    country: 'Unknown', // Google Places doesn't always provide country in nearby search
+    coordinates: placeCoordinates,
+    distance: Math.round(distance),
+    isInternational: this.isLikelyInternationalAirport(place.name)
+  };
+
+  // If we don't have an explicit IATA, try to resolve it from our bundled dataset
+  // using the safer name matching helper. This restores left-side IATA codes
+  // and ensures curated overrides (e.g., DCA, LGA) can be applied.
+  if (!airport.iataCode) {
+    try {
+      const byName = this.findAirportByName(place.name);
+      if (byName) {
+        airport.iataCode = byName.iataCode;
+        airport.country = byName.country || airport.country;
+        airport.isInternational = typeof byName.isInternational === 'boolean' ? byName.isInternational : airport.isInternational;
+      }
+    } catch (e) {
+      // ignore errors in name-based resolution — prefer missing IATA to a wrong one
+      console.warn('ReactNativeAirportService: name-based IATA resolution failed', e);
+    }
+  }
+
+  return airport;
   }
 
   /**
    * Major airports fallback data
    */
   private getMajorAirports(): Airport[] {
-    return [
-      { iataCode: 'JFK', name: 'John F Kennedy International Airport', city: 'New York', country: 'United States', coordinates: { lat: 40.6413, lng: -73.7781 }, isInternational: true },
-      { iataCode: 'LAX', name: 'Los Angeles International Airport', city: 'Los Angeles', country: 'United States', coordinates: { lat: 33.9425, lng: -118.4081 }, isInternational: true },
-      { iataCode: 'ORD', name: 'O\'Hare International Airport', city: 'Chicago', country: 'United States', coordinates: { lat: 41.9786, lng: -87.9048 }, isInternational: true },
-      { iataCode: 'ATL', name: 'Hartsfield Jackson Atlanta International Airport', city: 'Atlanta', country: 'United States', coordinates: { lat: 33.6367, lng: -84.4281 }, isInternational: true },
-      { iataCode: 'MIA', name: 'Miami International Airport', city: 'Miami', country: 'United States', coordinates: { lat: 25.7932, lng: -80.2906 }, isInternational: true },
-      { iataCode: 'SEA', name: 'Seattle Tacoma International Airport', city: 'Seattle', country: 'United States', coordinates: { lat: 47.4502, lng: -122.3088 }, isInternational: true },
-      { iataCode: 'DEN', name: 'Denver International Airport', city: 'Denver', country: 'United States', coordinates: { lat: 39.8561, lng: -104.6737 }, isInternational: true },
-      { iataCode: 'PHX', name: 'Phoenix Sky Harbor International Airport', city: 'Phoenix', country: 'United States', coordinates: { lat: 33.4343, lng: -112.0116 }, isInternational: true },
-      { iataCode: 'LHR', name: 'Heathrow Airport', city: 'London', country: 'United Kingdom', coordinates: { lat: 51.4706, lng: -0.4619 }, isInternational: true },
-      { iataCode: 'CDG', name: 'Charles de Gaulle Airport', city: 'Paris', country: 'France', coordinates: { lat: 49.0097, lng: 2.5479 }, isInternational: true }
-    ];
+    // Prefer a bundled trimmed OpenFlights JSON if present (created by scripts/import-openflights.js).
+    // Fall back to the curated small list if the full JSON isn't available.
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const openFlightsData: any[] = require('../data/openflights.json');
+      if (Array.isArray(openFlightsData) && openFlightsData.length > 0) {
+        // Load curated fallback to preserve any manual isInternational flags for major hubs
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const curated: Airport[] = require('../data/openflightsFallback').default;
+        const curatedIntl = new Set(curated.filter(a => a.isInternational).map(a => a.iataCode));
+
+        return openFlightsData
+          .filter(a => a.iata && typeof a.iata === 'string' && a.iata.length === 3)
+          .map(a => {
+            const name = a.name || a.city || a.iata;
+            const country = a.country || '';
+            const inferredIntl = curatedIntl.has(a.iata) || (country && country !== 'United States') || /international|intl/i.test(name);
+
+            return ({
+              iataCode: a.iata,
+              name,
+              city: a.city || '',
+              country,
+              coordinates: { lat: a.latitude || 0, lng: a.longitude || 0 },
+              isInternational: inferredIntl
+            } as Airport);
+          });
+      }
+    } catch (err) {
+      // If the full JSON isn't present or fails to load, fall back to curated list below
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const fallback: Airport[] = require('../data/openflightsFallback').default;
+    return fallback;
   }
 
   /**
@@ -200,14 +300,10 @@ export class ReactNativeAirportService implements IAirportService {
    * Guess IATA code from airport name
    */
   private guessIataFromName(name: string): string {
-    // Simple heuristic - take first 3 uppercase letters or generate from name
-    const upperName = name.toUpperCase();
-    const match = upperName.match(/[A-Z]{3}/);
-    if (match) return match[0];
-    
-    // Generate from initials
-    const words = name.split(' ').filter(w => w.length > 2);
-    return words.slice(0, 3).map(w => w[0]).join('').toUpperCase().padEnd(3, 'X');
+    // Conservative fallback: do NOT invent a code. Return empty string so the
+    // enrichment path can attempt authoritative lookups by name or IATA.
+    // Generating guessed IATA codes produced many false positives in the wild.
+    return '';
   }
 
   /**

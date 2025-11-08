@@ -5,12 +5,38 @@ pluginManagement {
   def (_, reactNativeMinor, reactNativePatch) = version.split("-")[0].tokenize('.').collect { it.toInteger() }
 
   includeBuild(new File(["node", "--print", "require.resolve('@react-native/gradle-plugin/package.json')"].execute(null, rootDir).text.trim()).getParentFile().toString())
+  // Also include the in-repo expo-module-gradle-plugin so the plugin id
+  // 'expo-module-gradle-plugin' is available during plugin resolution.
+  try {
+    includeBuild(file('expo-module-gradle-plugin'))
+  } catch (e) {
+    // best-effort: if the included-build isn't present (e.g., in some CI phases), ignore.
+  }
   if(reactNativeMinor == 74 && reactNativePatch <= 3){
     includeBuild("react-settings-plugin")
   }
 }
 
 plugins { id("com.facebook.react.settings") }
+
+// Apply ExpoModulesCorePlugin early so the plugin id 'expo-module-gradle-plugin'
+// is registered before any subprojects that use the plugins DSL attempt to
+// resolve it. Prefer the installed file under node_modules, otherwise fall
+// back to a repository-level helper (populated by CI patch script if needed).
+try {
+  def expoCorePlugin = new File(["node", "--print", "require.resolve('expo-modules-core/package.json')"].execute(null, rootDir).text.trim(), "../android/ExpoModulesCorePlugin.gradle")
+  if (expoCorePlugin.exists()) {
+    apply from: expoCorePlugin
+  } else {
+    def repoFallback = new File(rootDir, "../expo-gradle-helpers/ExpoModulesCorePlugin.gradle")
+    if (repoFallback.exists()) {
+      apply from: repoFallback
+    }
+  }
+} catch (e) {
+  // Ignore: if node isn't available during some install phases, let the patch
+  // script and later build steps attempt to restore the helper file.
+}
 
 def getRNMinorVersion() {
   def version = providers.exec {
@@ -44,7 +70,7 @@ if (getRNMinorVersion() >= 75) {
   }
 }
 
-rootProject.name = 'Traval'
+rootProject.name = 'TravalPass'
 
 dependencyResolutionManagement {
   versionCatalogs {

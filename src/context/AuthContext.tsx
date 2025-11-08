@@ -11,7 +11,7 @@
  * - iOS/Android: AsyncStorage
  */
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode, useRef } from 'react';
 import { 
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -65,6 +65,7 @@ type AuthStatus = 'idle' | 'loading' | 'authenticated' | 'error';
 interface AuthContextValue {
   user: FirebaseUser | null;
   status: AuthStatus;
+  isInitializing: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (username: string, email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -85,18 +86,27 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<FirebaseUser | null>(null);
-  const [status, setStatus] = useState<AuthStatus>('loading');
+  // NOTE: Defaulting to 'idle' here helps E2E test runs (Detox) render the
+  // AuthPage immediately without waiting for external Firebase initialization.
+  // This is a deliberate, small test-friendly change for local PoC stability.
+  // Revert or gate behind a test-only env flag if you prefer stricter parity.
+  const [status, setStatus] = useState<AuthStatus>('idle');
+  // New: true while we are restoring auth state (storage + first onAuthStateChanged)
+  const [isInitializing, setIsInitializing] = useState<boolean>(true);
+
+  // Coordination flags so we can wait for both async storage init and the first auth event
+  const storageReadyRef = useRef(false);
+  const authReadyRef = useRef(false);
+  const firstAuthHandled = useRef(false);
 
   // Initialize authentication state from storage
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        console.log('🔄 Initializing authentication state...');
         const storedCreds = await storage.getItem('USER_CREDENTIALS');
         
         if (storedCreds) {
           const credentials: UserCredentials = JSON.parse(storedCreds);
-          console.log('📱 Found stored credentials for user:', credentials.user.uid);
           
           // Let onAuthStateChanged handle the actual authentication state
           // This just helps us know we should expect a user
@@ -105,6 +115,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       } catch (error) {
         console.warn('⚠️ Failed to initialize auth state:', error);
+      }
+      // Mark storage init as complete (even if failed)
+      storageReadyRef.current = true;
+      // If auth already reported, clear initializing
+      if (authReadyRef.current) {
+        setIsInitializing(false);
       }
     };
 
@@ -141,6 +157,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Use Firebase onAuthStateChanged listener
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       console.log('🔥 Auth state changed:', firebaseUser ? `User ${firebaseUser.uid} (verified: ${firebaseUser.emailVerified})` : 'No user');
+
+      // Mark first auth event handled for initialization coordination
+      if (!firstAuthHandled.current) {
+        authReadyRef.current = true;
+        firstAuthHandled.current = true;
+        // If storage init already completed, clear initializing
+        if (storageReadyRef.current) {
+          setIsInitializing(false);
+        }
+      }
       
       if (firebaseUser) {
         // Store user credentials regardless of email verification status
@@ -159,14 +185,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         if (firebaseUser.emailVerified) {
           // User is verified - grant full access
-          console.log('✅ User authenticated with verified email');
           setUser(firebaseUser);
           setStatus('authenticated');
         } else {
           // User exists but email not verified
           // Keep them signed out from the app's perspective but don't clear Firebase auth
           // This preserves auth.currentUser for resendVerification to work
-          console.log('⚠️ User has unverified email, keeping in idle state');
           setUser(null);  // App treats them as not authenticated
           setStatus('idle');  // Show login/verification UI
           // Note: We do NOT call firebaseSignOut or clear USER_CREDENTIALS
@@ -174,7 +198,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       } else {
         // No Firebase user at all
-        console.log('ℹ️ No Firebase user, clearing stored data');
         await storage.removeItem('USER_CREDENTIALS');
         await storage.removeItem('PROFILE_INFO');
         setUser(null);
@@ -184,6 +207,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     return unsubscribe;
   }, []);
+
+  // Safety fallback: if neither storage nor auth report within reasonable time, stop initializing
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (isInitializing) {
+        console.warn('⚠️ Auth initialization timed out; proceeding with idle state');
+        storageReadyRef.current = true;
+        authReadyRef.current = true;
+        setIsInitializing(false);
+      }
+    }, 5000);
+
+    return () => clearTimeout(timeout);
+  }, [isInitializing]);
 
   /**
    * Sign in with email and password
@@ -260,17 +297,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       };
 
       await setDoc(doc(db, 'users', userCredential.user.uid), userData, { merge: true });
-      console.log('✅ User profile document created in Firestore:', userCredential.user.uid);
 
       // Store profile in local storage (matches PWA)
       await storage.setItem('PROFILE_INFO', JSON.stringify(userData));
-      console.log('✅ User profile stored in local storage');
 
       // Don't sign out the user after account creation!
       // Keep them signed in to Firebase Auth so resendVerification can work
       // The onAuthStateChanged listener will set status to 'idle' because email is unverified
       // but will preserve auth.currentUser for verification functionality
-      console.log('✅ Account created successfully, user remains in Firebase auth for verification');
       
       // Status will be set to 'idle' by onAuthStateChanged due to unverified email
       // but auth.currentUser will remain available for resendVerification

@@ -16,6 +16,7 @@
     "# === INTEGRATION TESTS ===": "",
     "test:integration": "./scripts/run-integration-tests.sh",
     "test:all": "npm test && npm run test:integration",
+    "import-openflights": "node scripts/import-openflights.js",
     "# === E2E TESTS - iOS ===": "",
     "e2e:ios": "node automation/scripts/run-ios-e2e.js",
     "e2e:ios:local": "node automation/scripts/run-ios-e2e.js",
@@ -49,7 +50,7 @@
     "date-fns": "^4.1.0",
     "expo": "~51.0.28",
     "expo-av": "~14.0.7",
-    "expo-clipboard": "^8.0.7",
+    "expo-clipboard": "~6.0.3",
     "expo-constants": "~16.0.2",
     "expo-file-system": "~17.0.1",
     "expo-image-manipulator": "~12.0.5",
@@ -57,7 +58,7 @@
     "expo-linear-gradient": "~13.0.2",
     "expo-modules-core": "~1.12.26",
     "expo-secure-store": "~13.0.2",
-    "expo-sharing": "^14.0.7",
+    "expo-sharing": "~12.0.1",
     "expo-status-bar": "~1.12.1",
     "expo-updates": "~0.25.28",
     "expo-video-thumbnails": "~8.0.0",
@@ -67,7 +68,7 @@
     "react-hook-form": "^7.50.0",
     "react-native": "0.74.5",
     "react-native-gesture-handler": "~2.16.1",
-    "react-native-get-random-values": "^1.9.0",
+    "react-native-get-random-values": "~1.11.0",
     "react-native-google-places-autocomplete": "^2.4.1",
     "react-native-safe-area-context": "4.10.5",
     "react-native-screens": "3.31.1",
@@ -84,11 +85,40 @@
     "@types/react": "~18.2.79",
     "firebase-admin": "^12.7.0",
     "jest": "^29.0.0",
+    "jest-circus": "^29.0.0",
     "jest-environment-jsdom": "^29.0.0",
     "msw": "^1.2.1",
     "node-fetch": "^3.3.2",
     "react-test-renderer": "18.2.0",
     "typescript": "~5.3.3"
+  },
+  "detox": {
+    "testRunner": {
+      "args": {
+        "config": "e2e/jest.e2e.config.fixed.js"
+      }
+    },
+    "apps": {
+      "TravalPass.app": {
+        "type": "ios.app",
+        "binaryPath": "ios/build/Build/Products/Debug-iphonesimulator/TravalPass.app",
+        "build": "xcodebuild -workspace ios/TravalPass.xcworkspace -scheme TravalPass -configuration Debug -sdk iphonesimulator -derivedDataPath ios/build -quiet"
+      }
+    },
+    "devices": {
+      "simulator": {
+        "type": "ios.simulator",
+        "device": {
+          "type": "iPhone 17 Pro"
+        }
+      }
+    },
+    "configurations": {
+      "ios.sim.debug": {
+        "device": "simulator",
+        "app": "TravalPass.app"
+      }
+    }
   },
   "private": true
 }

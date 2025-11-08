@@ -84,12 +84,13 @@ const UserProfileProvider: React.FC<UserProfileProviderProps> = ({ children }) =
       const userRef = doc(db, 'users', userId);
       await setDoc(userRef, data, { merge: true });
 
-      // Update local state
-      setUserProfile((prev) => (prev ? { ...prev, ...data } : null));
-
-  // Update persistent cache using the cross-platform storage wrapper
-  const updatedProfile = { ...userProfile, ...data };
-  await storage.setItem('PROFILE_INFO', JSON.stringify(updatedProfile));
+      // Update local state - if no existing profile, create new one with data
+      setUserProfile((prev) => {
+        const updatedProfile = prev ? { ...prev, ...data } : (data as UserProfile);
+        // Update persistent cache using the cross-platform storage wrapper
+        storage.setItem('PROFILE_INFO', JSON.stringify(updatedProfile));
+        return updatedProfile;
+      });
     } catch (error) {
       console.error('Error updating profile:', error);
       throw error;

@@ -12,6 +12,10 @@ echo ""
 # Navigate to android directory
 cd android || { echo "❌ ERROR: android directory not found"; exit 1; }
 
+# Ensure Gradle picks up repo-provided init scripts
+export GRADLE_USER_HOME="$(pwd)/gradle-user-home"
+mkdir -p "$GRADLE_USER_HOME/init.d"
+
 # Make gradlew executable
 chmod +x gradlew
 

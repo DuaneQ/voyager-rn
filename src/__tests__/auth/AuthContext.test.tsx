@@ -21,9 +21,8 @@ describe('AuthContext (firebase-backed)', () => {
   });
 
   it('initializes with idle status and no user', async () => {
-    const wrapper = ({ children }: any) => <AuthProvider>{children}</AuthProvider>;
-    const { result, waitForNextUpdate } = renderHook(() => useAuth(), { wrapper });
-    await waitForNextUpdate();
+  const wrapper = ({ children }: any) => <AuthProvider>{children}</AuthProvider>;
+  const { result } = renderHook(() => useAuth(), { wrapper });
     expect(result.current.status).toBe('idle');
     expect(result.current.user).toBeNull();
   });
@@ -31,9 +30,8 @@ describe('AuthContext (firebase-backed)', () => {
   it('signs in successfully via firebase auth', async () => {
     (signInWithEmailAndPassword as jest.Mock).mockResolvedValueOnce({ user: { uid: 'uid-1', email: 'test@example.com', emailVerified: true, isAnonymous: false, providerData: [], reload: jest.fn() } });
 
-    const wrapper = ({ children }: any) => <AuthProvider>{children}</AuthProvider>;
-    const { result, waitForNextUpdate } = renderHook(() => useAuth(), { wrapper });
-    await waitForNextUpdate();
+  const wrapper = ({ children }: any) => <AuthProvider>{children}</AuthProvider>;
+  const { result } = renderHook(() => useAuth(), { wrapper });
 
     await act(async () => {
       await result.current.signIn('test@example.com', 'password');
@@ -48,9 +46,8 @@ describe('AuthContext (firebase-backed)', () => {
   it('throws when firebase returns unverified email', async () => {
     (signInWithEmailAndPassword as jest.Mock).mockResolvedValueOnce({ user: { uid: 'uid-2', email: 'new@example.com', emailVerified: false, isAnonymous: false, providerData: [], reload: jest.fn() } });
 
-    const wrapper = ({ children }: any) => <AuthProvider>{children}</AuthProvider>;
-    const { result, waitForNextUpdate } = renderHook(() => useAuth(), { wrapper });
-    await waitForNextUpdate();
+  const wrapper = ({ children }: any) => <AuthProvider>{children}</AuthProvider>;
+  const { result } = renderHook(() => useAuth(), { wrapper });
 
     // Test that signIn throws an error for unverified email
     let thrownError: Error | null = null;
@@ -74,9 +71,8 @@ describe('AuthContext (firebase-backed)', () => {
     (signInWithEmailAndPassword as jest.Mock).mockResolvedValueOnce({ user: { uid: 'uid-3', email: 'signout@example.com', emailVerified: true, isAnonymous: false, providerData: [] } });
     (firebaseSignOut as jest.Mock).mockResolvedValueOnce(undefined);
 
-    const wrapper = ({ children }: any) => <AuthProvider>{children}</AuthProvider>;
-    const { result, waitForNextUpdate } = renderHook(() => useAuth(), { wrapper });
-    await waitForNextUpdate();
+  const wrapper = ({ children }: any) => <AuthProvider>{children}</AuthProvider>;
+  const { result } = renderHook(() => useAuth(), { wrapper });
 
     await act(async () => { await result.current.signIn('signout@example.com', 'password'); });
     expect(result.current.user).toBeTruthy();
@@ -90,9 +86,8 @@ describe('AuthContext (firebase-backed)', () => {
   it('sends password reset via firebase', async () => {
     (sendPasswordResetEmail as jest.Mock).mockResolvedValueOnce(undefined);
 
-    const wrapper = ({ children }: any) => <AuthProvider>{children}</AuthProvider>;
-    const { result, waitForNextUpdate } = renderHook(() => useAuth(), { wrapper });
-    await waitForNextUpdate();
+  const wrapper = ({ children }: any) => <AuthProvider>{children}</AuthProvider>;
+  const { result } = renderHook(() => useAuth(), { wrapper });
 
     await act(async () => { await result.current.sendPasswordReset('reset@example.com'); });
     expect(sendPasswordResetEmail).toHaveBeenCalledWith(auth, 'reset@example.com');
@@ -108,9 +103,8 @@ describe('AuthContext (firebase-backed)', () => {
     };
     (sendEmailVerification as jest.Mock).mockResolvedValueOnce(undefined);
 
-    const wrapper = ({ children }: any) => <AuthProvider>{children}</AuthProvider>;
-    const { result, waitForNextUpdate } = renderHook(() => useAuth(), { wrapper });
-    await waitForNextUpdate();
+  const wrapper = ({ children }: any) => <AuthProvider>{children}</AuthProvider>;
+  const { result } = renderHook(() => useAuth(), { wrapper });
 
     await act(async () => { await result.current.resendVerification(); });
     expect(sendEmailVerification).toHaveBeenCalled();
@@ -121,9 +115,8 @@ describe('AuthContext (firebase-backed)', () => {
     const cfg = require('../../config/firebaseConfig');
     cfg.auth.currentUser = null;
 
-    const wrapper = ({ children }: any) => <AuthProvider>{children}</AuthProvider>;
-    const { result, waitForNextUpdate } = renderHook(() => useAuth(), { wrapper });
-    await waitForNextUpdate();
+  const wrapper = ({ children }: any) => <AuthProvider>{children}</AuthProvider>;
+  const { result } = renderHook(() => useAuth(), { wrapper });
 
     await expect(act(async () => { 
       await result.current.resendVerification(); 
@@ -135,8 +128,7 @@ describe('AuthContext (firebase-backed)', () => {
     (signInWithEmailAndPassword as jest.Mock).mockRejectedValueOnce(error);
 
     const wrapper = ({ children }: any) => <AuthProvider>{children}</AuthProvider>;
-    const { result, waitForNextUpdate } = renderHook(() => useAuth(), { wrapper });
-    await waitForNextUpdate();
+  const { result } = renderHook(() => useAuth(), { wrapper });
 
     await expect(act(async () => { 
       await result.current.signIn('bad@example.com', 'wrongpass'); 
@@ -181,8 +173,7 @@ describe('AuthContext - signUp flow', () => {
     (firebaseSignOut as jest.Mock).mockResolvedValueOnce(undefined);
 
     const wrapper = ({ children }: any) => <AuthProvider>{children}</AuthProvider>;
-    const { result, waitForNextUpdate } = renderHook(() => useAuth(), { wrapper });
-    await waitForNextUpdate();
+  const { result } = renderHook(() => useAuth(), { wrapper });
 
     await act(async () => {
       await result.current.signUp('newuser', 'newuser@example.com', 'password123');
@@ -220,8 +211,7 @@ describe('AuthContext - signUp flow', () => {
     (createUserWithEmailAndPassword as jest.Mock).mockRejectedValueOnce(error);
 
     const wrapper = ({ children }: any) => <AuthProvider>{children}</AuthProvider>;
-    const { result, waitForNextUpdate } = renderHook(() => useAuth(), { wrapper });
-    await waitForNextUpdate();
+  const { result } = renderHook(() => useAuth(), { wrapper });
 
     await expect(act(async () => {
       await result.current.signUp('testuser', 'existing@example.com', 'password123');
@@ -242,8 +232,7 @@ describe('AuthContext - signUp flow', () => {
     (setDoc as jest.Mock).mockResolvedValueOnce(undefined);
 
     const wrapper = ({ children }: any) => <AuthProvider>{children}</AuthProvider>;
-    const { result, waitForNextUpdate } = renderHook(() => useAuth(), { wrapper });
-    await waitForNextUpdate();
+  const { result } = renderHook(() => useAuth(), { wrapper });
 
     // Should complete successfully without calling signOut
     await act(async () => {
@@ -266,8 +255,7 @@ describe('AuthContext - signUp flow', () => {
     (setDoc as jest.Mock).mockResolvedValueOnce(undefined);
 
     const wrapper = ({ children }: any) => <AuthProvider>{children}</AuthProvider>;
-    const { result, waitForNextUpdate } = renderHook(() => useAuth(), { wrapper });
-    await waitForNextUpdate();
+  const { result } = renderHook(() => useAuth(), { wrapper });
 
     await act(async () => {
       await result.current.signUp('testuser', 'complete@example.com', 'password123');
@@ -315,8 +303,7 @@ describe('AuthContext - signUp flow', () => {
     (setDoc as jest.Mock).mockRejectedValueOnce(firestoreError);
 
     const wrapper = ({ children }: any) => <AuthProvider>{children}</AuthProvider>;
-    const { result, waitForNextUpdate } = renderHook(() => useAuth(), { wrapper });
-    await waitForNextUpdate();
+  const { result } = renderHook(() => useAuth(), { wrapper });
 
     // Should throw the Firestore error
     let thrownError: Error | null = null;
@@ -352,8 +339,7 @@ describe('AuthContext - signUp flow', () => {
     (setDoc as jest.Mock).mockResolvedValueOnce(undefined);
 
     const wrapper = ({ children }: any) => <AuthProvider>{children}</AuthProvider>;
-    const { result, waitForNextUpdate } = renderHook(() => useAuth(), { wrapper });
-    await waitForNextUpdate();
+  const { result } = renderHook(() => useAuth(), { wrapper });
 
     await act(async () => {
       await result.current.signUp('storageuser', 'storage@example.com', 'password123');
@@ -380,8 +366,7 @@ describe('AuthContext - Google Sign-In', () => {
     (signInWithPopup as jest.Mock).mockResolvedValueOnce(mockResult);
 
     const wrapper = ({ children }: any) => <AuthProvider>{children}</AuthProvider>;
-    const { result, waitForNextUpdate } = renderHook(() => useAuth(), { wrapper });
-    await waitForNextUpdate();
+  const { result } = renderHook(() => useAuth(), { wrapper });
 
     const googleResult = await act(async () => {
       return await result.current.signInWithGoogle();
@@ -395,9 +380,8 @@ describe('AuthContext - Google Sign-In', () => {
     const mockResult = { user: { uid: 'google-uid-2', email: 'google2@example.com' } };
     (signInWithPopup as jest.Mock).mockResolvedValueOnce(mockResult);
 
-    const wrapper = ({ children }: any) => <AuthProvider>{children}</AuthProvider>;
-    const { result, waitForNextUpdate } = renderHook(() => useAuth(), { wrapper });
-    await waitForNextUpdate();
+  const wrapper = ({ children }: any) => <AuthProvider>{children}</AuthProvider>;
+  const { result } = renderHook(() => useAuth(), { wrapper });
 
     const googleResult = await act(async () => {
       return await result.current.signUpWithGoogle();

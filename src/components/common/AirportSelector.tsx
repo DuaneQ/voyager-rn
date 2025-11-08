@@ -42,6 +42,43 @@ const AirportSelector: React.FC<AirportSelectorProps> = ({
   // Use useMemo to create service instance only once
   const airportService = useMemo(() => new ReactNativeAirportService(), []);
 
+  // Small helper: try to extract country from a location string like "City, Country"
+  const extractCountryFromLocation = (loc?: string): string | undefined => {
+    if (!loc) return undefined;
+    const parts = loc.split(',').map(p => p.trim()).filter(Boolean);
+    if (parts.length === 0) return undefined;
+    // If there is more than one part, assume last part is country
+    if (parts.length > 1) return parts[parts.length - 1];
+    // Single part - could be city only, give up
+    return undefined;
+  };
+
+  // Curated overrides for airports we know operate international flights even when heuristics fail
+  const curatedMajorInternational = useMemo(() => new Set(['LHR','CDG','JFK','LAX','SFO','ORD','LGA','EWR','DUB','HND','NRT','AMS','IAD','DCA','BWI']), []);
+
+  // Determine whether an airport should be considered international.
+  // Returns true/false when decisive, otherwise undefined.
+  const determineInternational = (airport: Airport, loc?: string): boolean | undefined => {
+    // If service already provided an explicit flag, trust it
+    if (typeof airport.isInternational === 'boolean') return airport.isInternational;
+
+    // If this IATA is in our curated override list, treat as international
+    if (airport.iataCode && curatedMajorInternational.has(airport.iataCode.toUpperCase())) return true;
+
+    // If both airport.country and the destination country are known, compare them
+    const destCountry = extractCountryFromLocation(loc);
+    if (destCountry && airport.country && airport.country.toLowerCase() !== 'unknown') {
+      return airport.country.toLowerCase() !== destCountry.toLowerCase();
+    }
+
+    // Fallback heuristic: look for international keywords in the airport name
+    const nameHeuristic = /international|intl/i.test(airport.name || '');
+    if (nameHeuristic) return true;
+
+    // Not decisive
+    return undefined;
+  };
+
   // Load selected airport details with race condition guard
   useEffect(() => {
     if (selectedAirportCode) {
@@ -95,6 +132,90 @@ const AirportSelector: React.FC<AirportSelectorProps> = ({
       }
 
       setAirports(results);
+
+      // Enrich airports with fallback data (major airports) when country/isInternational missing.
+      // This helps classify well-known international airports (e.g., CDG) returned by Google Places.
+          (async () => {
+            // Curated overrides for airports we know operate international flights even when heuristics fail
+            const curatedMajorInternational = new Set(['LHR','CDG','JFK','LAX','SFO','ORD','LGA','EWR','DUB','HND','NRT','AMS']);
+        try {
+          const enriched = await Promise.all(results.map(async (a) => {
+                // If the service already provided an explicit flag, prefer it
+                if (typeof a.isInternational === 'boolean') return a;
+
+                // Always attempt authoritative lookup by IATA when available
+                if (a.iataCode) {
+                  try {
+                    const known = await airportService.getAirportByIataCode(a.iataCode);
+                    if (known) {
+                      const merged = {
+                        ...a,
+                        country: known.country || a.country,
+                        isInternational: typeof known.isInternational === 'boolean' ? known.isInternational : a.isInternational
+                      } as Airport;
+                      console.debug('AirportSelector: enriched by IATA', { original: a, known: known, merged });
+                      return merged;
+                    } else {
+                      // If direct IATA lookup fails, try a name/city match against the curated fallback
+                      const byName = (airportService as any).findAirportByName ? (airportService as any).findAirportByName(a.name || a.city || a.iataCode) : null;
+                      if (byName) {
+                        const merged = { ...a, country: byName.country || a.country, isInternational: typeof byName.isInternational === 'boolean' ? byName.isInternational : a.isInternational, iataCode: byName.iataCode || a.iataCode } as Airport;
+                        console.debug('AirportSelector: enriched by name match', { original: a, byName, merged });
+                        return merged;
+                      }
+                      // Log missing IATA mapping so dataset gaps can be filled
+                      console.warn(`AirportSelector: no fallback record for IATA ${a.iataCode}`, a.name, a.city);
+                    }
+                  } catch (e) {
+                    // For robustness, don't block on lookup errors
+                    console.warn(`AirportSelector: lookup failed for ${a.iataCode}`, e);
+                  }
+                }
+
+                // If authoritative data not available, apply curated overrides
+                const up = (a.iataCode || '').toUpperCase();
+                if (curatedMajorInternational.has(up)) {
+                  console.debug('AirportSelector: applying curated override for', up, a.name);
+                  return { ...a, isInternational: true } as Airport;
+                }
+
+                // If country info present and decisive, leave it for determineInternational
+                if (a.country && a.country.toLowerCase() !== 'unknown') return a;
+
+                // Fallback: heuristics (name-based) will be used at render-time
+                return a;
+              }));
+
+              // Emit debug summary of decisions for the first few airports
+              enriched.slice(0, 8).forEach(a => {
+                try {
+                  const decis = determineInternational(a, location);
+                  console.debug('AirportSelector: post-enrich decision', { iata: a.iataCode, name: a.name, country: a.country, isInternationalField: a.isInternational, decision: decis });
+                } catch (e) {}
+              });
+
+              // De-duplicate enriched results by IATA code (keep closest when duplicates)
+              const uniqueMap = new Map<string, Airport>();
+              enriched.forEach(item => {
+                const key = (item.iataCode || '').toUpperCase() || `${item.name}::${item.city}`;
+                if (!uniqueMap.has(key)) {
+                  uniqueMap.set(key, item);
+                } else {
+                  const existing = uniqueMap.get(key)!;
+                  const existingDist = existing.distance || Number.MAX_SAFE_INTEGER;
+                  const thisDist = item.distance || Number.MAX_SAFE_INTEGER;
+                  if (thisDist < existingDist) {
+                    uniqueMap.set(key, item);
+                  }
+                }
+              });
+
+              const unique = Array.from(uniqueMap.values());
+              setAirports(unique);
+            } catch (e) {
+              console.warn('AirportSelector: enrichment failed', e);
+            }
+          })();
     } catch (error) {
       Alert.alert('Error', 'Failed to search airports. Please try again.');
     } finally {
@@ -140,7 +261,19 @@ const AirportSelector: React.FC<AirportSelectorProps> = ({
       <View style={styles.airportInfo}>
         <Text style={styles.airportCode}>{item.iataCode}</Text>
         <View style={styles.airportDetails}>
-          <Text style={styles.airportName} numberOfLines={1}>{item.name}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Text style={styles.airportName} numberOfLines={1}>{item.name}</Text>
+            {(() => {
+              const isIntl = determineInternational(item, location);
+              if (isIntl === true) {
+                return <Text style={styles.badgeIntl}>INTL</Text>;
+              }
+              if (isIntl === false) {
+                return <Text style={styles.badgeDomestic}>DOM</Text>;
+              }
+              return null;
+            })()}
+          </View>
           <Text style={styles.airportLocation}>{item.city}, {item.country}</Text>
           {item.distance && (
             <Text style={styles.airportDistance}>{Math.round(item.distance)}km away</Text>
@@ -337,6 +470,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1F2937',
     marginBottom: 2,
+    flex: 1,
+    marginRight: 8,
   },
   airportLocation: {
     fontSize: 14,
@@ -360,6 +495,32 @@ const styles = StyleSheet.create({
   emptySubtext: {
     fontSize: 14,
     color: '#9CA3AF',
+  },
+  badgeIntl: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#34D399',
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    color: '#065F46',
+    fontSize: 11,
+    fontWeight: '700',
+    marginLeft: 8,
+    flexShrink: 0,
+  },
+  badgeDomestic: {
+    backgroundColor: '#F3F4F6',
+    borderColor: '#D1D5DB',
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    color: '#374151',
+    fontSize: 11,
+    fontWeight: '700',
+    marginLeft: 8,
+    flexShrink: 0,
   },
 });
 
