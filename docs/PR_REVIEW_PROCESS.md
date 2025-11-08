@@ -119,7 +119,16 @@ codeql_checker()
 ## Common Issues
 
 ### "No changed files found to review"
-**Solution:** The code_review tool requires actual file changes. Make sure you've committed or staged changes before calling it.
+**Causes:**
+1. No file changes have been committed yet
+2. The base branch doesn't exist (shallow clone or new repository)
+3. All changes have already been pushed and reviewed
+
+**Solutions:**
+- Make sure you've committed changes before calling code_review
+- Verify your branch has commits that differ from the base branch
+- If working in a new repository without a base branch, the tool may not work until a base branch (like main/master) exists
+- For repositories with only a single branch, manual review may be needed
 
 ### "Review found many issues"
 **Solution:** This is normal! Address the relevant ones, skip false positives, and use your engineering judgment.
@@ -141,6 +150,28 @@ codeql_checker()
 - See `.github/workflows/` for CI/CD integration
 - Check `docs/SCRIPTS_GUIDE.md` for testing commands
 - Review `copilot-instructions.md` for development guidelines
+
+## Alternative: Manual Review Process
+
+If the automated code_review tool is unavailable (e.g., in repositories without a base branch), you can request manual review:
+
+### Manual Review Steps:
+1. **Push your changes** to the remote branch
+2. **Create a pull request** on GitHub
+3. **Add reviewers** from your team
+4. **Provide context** in the PR description:
+   - What changed and why
+   - How to test the changes
+   - Any breaking changes or concerns
+5. **Respond to feedback** from human reviewers
+6. **Update your PR** based on review comments
+7. **Merge** when approved
+
+### When to Use Manual Review:
+- New repositories without an established base branch
+- Complex architectural changes requiring human judgment
+- Changes requiring domain expertise
+- When automated tools are unavailable
 
 ## Questions?
 
