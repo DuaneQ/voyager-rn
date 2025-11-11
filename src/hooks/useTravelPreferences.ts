@@ -7,7 +7,8 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { db, auth } from '../config/firebaseConfig';
+import { db } from '../config/firebaseConfig';
+import * as firebaseCfg from '../config/firebaseConfig';
 import {
   TravelPreferenceProfile,
   UserTravelPreferences,
@@ -61,7 +62,10 @@ export function useTravelPreferences(): UseTravelPreferencesReturn {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<TravelPreferencesError | null>(null);
 
-  const userId = auth?.currentUser?.uid;
+  const _authResolved: any = (firebaseCfg && typeof (firebaseCfg as any).getAuthInstance === 'function')
+    ? (firebaseCfg as any).getAuthInstance()
+    : (firebaseCfg as any).auth || null;
+  const userId = _authResolved?.currentUser?.uid;
 
   /**
    * Load preferences from Firestore

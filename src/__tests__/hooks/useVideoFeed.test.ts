@@ -6,13 +6,8 @@
 import { renderHook } from '@testing-library/react-native';
 import { useVideoFeed } from '../../hooks/video/useVideoFeed';
 
-// Mock Firebase with minimal setup
-jest.mock('../../config/firebaseConfig', () => ({
-  db: { type: 'mock-firestore' },
-  auth: {
-    currentUser: { uid: 'test-user-123' },
-  },
-}));
+// Use centralized manual mock for firebaseConfig
+jest.mock('../../config/firebaseConfig');
 
 // Mock Firestore with simple returns
 jest.mock('firebase/firestore', () => ({

@@ -7,9 +7,12 @@ describe('RangeSlider', () => {
   it('handles layout and pan gestures and calls onValueChange', () => {
     const onValueChange = jest.fn();
 
-    const tree = renderer.create(
-      <RangeSlider min={0} max={100} step={1} lowValue={10} highValue={90} onValueChange={onValueChange} />
-    );
+    let tree: any;
+    act(() => {
+      tree = renderer.create(
+        <RangeSlider min={0} max={100} step={1} lowValue={10} highValue={90} onValueChange={onValueChange} />
+      );
+    });
 
     const root = tree.root;
 

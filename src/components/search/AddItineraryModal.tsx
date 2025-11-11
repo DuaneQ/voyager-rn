@@ -55,6 +55,20 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
   itineraries,
   userProfile,
 }) => {
+  // Defensive: ensure itineraries is an array in case parent passes undefined during async loads
+  const safeItineraries = Array.isArray(itineraries) ? itineraries : [];
+
+  // Helpful debug logging when modal opens to surface any unexpected shapes that could cause runtime errors
+  React.useEffect(() => {
+    if (visible) {
+      // eslint-disable-next-line no-console
+      console.log('[AddItineraryModal] opened - itineraries:', {
+        typeOfItineraries: typeof itineraries,
+        isArray: Array.isArray(itineraries),
+        length: Array.isArray(itineraries) ? itineraries.length : undefined,
+      });
+    }
+  }, [visible, itineraries]);
   // Form state
   const [destination, setDestination] = useState('');
   const [startDate, setStartDate] = useState(new Date());
@@ -385,6 +399,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
             <Text style={styles.label}>Destination *</Text>
             <GooglePlacesAutocomplete
               placeholder="Where do you want to go?"
+              predefinedPlaces={[]}
               onPress={(data, details = null) => {
                 setDestination(data.description);
               }}
@@ -633,11 +648,11 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
 
           {/* Existing Itineraries */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Your Itineraries ({itineraries.length})</Text>
-            {itineraries.length === 0 ? (
+            <Text style={styles.sectionTitle}>Your Itineraries ({safeItineraries.length})</Text>
+            {safeItineraries.length === 0 ? (
               <Text style={styles.emptyText}>No itineraries yet</Text>
             ) : (
-              itineraries.map((itinerary) => (
+              safeItineraries.map((itinerary) => (
                 <ItineraryListItem
                   key={itinerary.id}
                   itinerary={itinerary}

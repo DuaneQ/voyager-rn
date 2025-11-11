@@ -9,7 +9,7 @@ import { VideoCommentsModal } from '../../../components/video/VideoCommentsModal
 import { Video } from '../../../types/Video';
 import { Timestamp } from 'firebase/firestore';
 import * as firestore from 'firebase/firestore';
-import { auth } from '../../../config/firebaseConfig';
+import { getAuthInstance } from '../../../config/firebaseConfig';
 import { Alert } from 'react-native';
 
 // Helper to create mock Timestamp with toMillis()
@@ -32,6 +32,12 @@ jest.mock('../../../config/firebaseConfig', () => ({
       email: 'test@example.com',
     },
   },
+  getAuthInstance: jest.fn(() => ({
+    currentUser: {
+      uid: 'test-user-123',
+      email: 'test@example.com',
+    },
+  })),
 }));
 
 // Mock Firestore functions
@@ -324,8 +330,9 @@ describe('VideoCommentsModal', () => {
 
   describe('User Authentication', () => {
     it('should show login prompt for unauthenticated users', () => {
-      // Temporarily remove auth
-      (auth as any).currentUser = null;
+      // Temporarily mock getAuthInstance to return no user for this test
+      const authModule = require('../../../config/firebaseConfig');
+      const spy = jest.spyOn(authModule, 'getAuthInstance').mockImplementation(() => ({ currentUser: null }));
 
       const { getByText } = render(
         <VideoCommentsModal
@@ -338,12 +345,12 @@ describe('VideoCommentsModal', () => {
 
       expect(getByText('Log in to leave a comment')).toBeTruthy();
 
-      // Restore auth
-      (auth as any).currentUser = { uid: 'test-user-123', email: 'test@example.com' };
+      spy.mockRestore();
     });
 
     it('should hide input for unauthenticated users', () => {
-      (auth as any).currentUser = null;
+      const authModule = require('../../../config/firebaseConfig');
+      const spy = jest.spyOn(authModule, 'getAuthInstance').mockImplementation(() => ({ currentUser: null }));
 
       const { queryByPlaceholderText } = render(
         <VideoCommentsModal
@@ -353,17 +360,22 @@ describe('VideoCommentsModal', () => {
           onCommentAdded={mockOnCommentAdded}
         />
       );
-
       // Input is hidden when not authenticated (rendered conditionally)
       const input = queryByPlaceholderText('Add a comment...');
       expect(input).toBeNull();
 
-      (auth as any).currentUser = { uid: 'test-user-123', email: 'test@example.com' };
+      spy.mockRestore();
     });
   });
 
   describe('User Profile Loading', () => {
     it('should show Unknown User when profile not loaded', async () => {
+      // Ensure this test simulates missing user profile for the comment's author
+      mockGetDoc.mockResolvedValueOnce({
+        exists: () => false,
+        data: () => null,
+      } as any);
+
       const { getAllByText } = render(
         <VideoCommentsModal
           visible={true}
@@ -610,6 +622,12 @@ describe('VideoCommentsModal', () => {
     it('should handle comment submissions', async () => {
       mockUpdateDoc.mockResolvedValue(undefined);
 
+      // Ensure a logged-in user is present for this test
+      const authModule = require('../../../config/firebaseConfig');
+      const authSpy = jest.spyOn(authModule, 'getAuthInstance').mockImplementation(() => ({
+        currentUser: { uid: 'test-user-123', displayName: 'Test User', photoURL: 'https://example.com/avatar.jpg' },
+      }));
+
       const { getByPlaceholderText, getByTestId } = render(
         <VideoCommentsModal
           visible={true}
@@ -630,6 +648,8 @@ describe('VideoCommentsModal', () => {
         // Should call Firebase update
         expect(mockUpdateDoc).toHaveBeenCalled();
       });
+
+      authSpy.mockRestore();
     });
   });
 });

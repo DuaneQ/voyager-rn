@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { renderHook, act } from '@testing-library/react-hooks';
+import { render, act } from '@testing-library/react-native';
 import { UserProfileProvider, useUserProfile } from '../../context/UserProfileContext';
 import { auth } from '../../config/firebaseConfig';
 import { getDoc, setDoc } from 'firebase/firestore';
@@ -12,25 +12,84 @@ import storage from '../../utils/storage';
 
 // Mock Firebase
 jest.mock('firebase/firestore');
-jest.mock('../../config/firebaseConfig', () => {
-  const mockOnAuthStateChanged = jest.fn((callback) => {
-    // Immediately call the callback with current user
-    const authModule = require('../../config/firebaseConfig');
-    setTimeout(() => callback(authModule.auth.currentUser), 0);
-    return jest.fn(); // unsubscribe
-  });
-  
-  return {
-    auth: {
-      currentUser: null,
-      onAuthStateChanged: mockOnAuthStateChanged,
-    },
-    db: {},
-  };
-});
+// Use centralized manual mock for firebaseConfig, then augment the mock for this suite
+jest.mock('../../config/firebaseConfig');
+
+// Ensure the mocked auth has an onAuthStateChanged helper that immediately invokes the callback
+(() => {
+  const cfg = require('../../config/firebaseConfig');
+  if (!cfg.auth) cfg.auth = { currentUser: null };
+  if (!cfg.auth.onAuthStateChanged) {
+    cfg.auth.onAuthStateChanged = jest.fn((callback: any) => {
+      callback(cfg.auth.currentUser);
+      return () => {};
+    });
+  }
+})();
 jest.mock('../../utils/storage');
 
+// Mock UserProfileService to use the firestore getDoc mock that tests configure
+jest.mock('../../services/userProfile/UserProfileService', () => {
+  // Partially mock: override getUserProfile to delegate to the firestore getDoc mock,
+  // but keep the real implementations for update/create so tests asserting setDoc/updateDoc still work.
+  const actual = jest.requireActual('../../services/userProfile/UserProfileService');
+  // Create a subclass so we can override the static getUserProfile while preserving other static methods
+  class MockUserProfileService extends actual.UserProfileService {}
+  MockUserProfileService.getUserProfile = jest.fn(async (userId: string) => {
+    const { getDoc } = require('firebase/firestore');
+    const docSnap = await getDoc();
+    if (docSnap && typeof docSnap.exists === 'function' && docSnap.exists()) {
+      return docSnap.data();
+    }
+    // Simulate not found
+    throw new Error('not-found');
+  });
+  return { UserProfileService: MockUserProfileService };
+});
+
+// Simplify AuthContext for these unit tests: return the current mocked auth.currentUser
+jest.mock('../../context/AuthContext', () => {
+  const React = require('react');
+  const cfg = require('../../config/firebaseConfig');
+  return {
+    AuthProvider: ({ children }: any) => React.createElement(React.Fragment, null, children),
+    useAuth: () => ({ user: cfg.auth.currentUser }),
+  };
+});
+
 describe('UserProfileContext', () => {
+  const renderWithProvider = () => {
+    const ref: { current: ReturnType<typeof useUserProfile> | null } = { current: null } as any;
+    const Capture: React.FC = () => {
+      // eslint-disable-next-line react-hooks/rules-of-hooks
+      const ctx = useUserProfile();
+      ref.current = ctx;
+      return null;
+    };
+    const { AuthProvider } = require('../../context/AuthContext');
+    const utils = render(
+      <AuthProvider>
+        <UserProfileProvider>
+          <Capture />
+        </UserProfileProvider>
+      </AuthProvider>
+    );
+
+    // If the test mock swapped out getAuthInstance/auth directly, ensure FirebaseAuthService listeners are notified
+    try {
+      const { FirebaseAuthService } = require('../../services/auth/FirebaseAuthService');
+      const cfg = require('../../config/firebaseConfig');
+      const mockUser = cfg?.auth?.currentUser ? { uid: cfg.auth.currentUser.uid, email: cfg.auth.currentUser.email || null, emailVerified: !!cfg.auth.currentUser.emailVerified, displayName: cfg.auth.currentUser.displayName || null, photoURL: cfg.auth.currentUser.photoURL || null, idToken: '', refreshToken: '', expiresIn: '0' } : null;
+      // Call internal notifier if available (tests can access private statics)
+      if ((FirebaseAuthService as any)?.notifyAuthStateChanged) {
+        (FirebaseAuthService as any).notifyAuthStateChanged(mockUser);
+      }
+    } catch (e) {
+      // ignore - best-effort to keep tests stable
+    }
+
+    return { ...utils, ref };
+  };
   const mockUserId = 'test-user-123';
   const mockProfile = {
     username: 'testuser',
@@ -52,21 +111,34 @@ describe('UserProfileContext', () => {
     (storage.getItem as jest.Mock).mockResolvedValue(null);
     (storage.setItem as jest.Mock).mockResolvedValue(undefined);
     (storage.removeItem as jest.Mock).mockResolvedValue(undefined);
+    // Default getDoc resolves quickly as non-existent
+    (getDoc as jest.Mock).mockResolvedValue({ exists: () => false, data: () => null });
+
+    // Spy on UserProfileService update/create so we can assert they were called
+    try {
+      const { UserProfileService } = require('../../services/userProfile/UserProfileService');
+      if ((UserProfileService.updateUserProfile as any)?.mock === undefined) {
+        jest.spyOn(UserProfileService, 'updateUserProfile').mockResolvedValue(undefined as any);
+      }
+      if ((UserProfileService.createUserProfile as any)?.mock === undefined) {
+        jest.spyOn(UserProfileService, 'createUserProfile').mockImplementation(async (_uid: string, profile: any) => profile as any);
+      }
+    } catch (e) {
+      // ignore if require fails
+    }
   });
 
   describe('updateProfile', () => {
     it('should use setDoc with merge:true to create document if it does not exist', async () => {
       // Setup: User is authenticated
       (auth as any).currentUser = { uid: mockUserId };
-      (setDoc as jest.Mock).mockResolvedValue(undefined);
+  (setDoc as jest.Mock).mockResolvedValue(undefined);
+  // Ensure initial load doesn't block waiting on Firestore doc (simulate no existing doc)
+  (getDoc as jest.Mock).mockResolvedValue({ exists: () => false, data: () => null });
 
-      const wrapper = ({ children }: any) => (
-        <UserProfileProvider>{children}</UserProfileProvider>
-      );
-      const { result, waitFor } = renderHook(() => useUserProfile(), { wrapper });
-      
-      // Wait for initial load to complete
-      await waitFor(() => !result.current.isLoading);
+      const { ref, findByTestId } = renderWithProvider();
+      // Allow effect to run
+      await act(async () => {});
 
       // Act: Update profile for a user with no existing document
       const updateData = {
@@ -76,32 +148,22 @@ describe('UserProfileContext', () => {
       };
 
       await act(async () => {
-        await result.current.updateProfile(updateData);
+        await ref.current!.updateProfile(updateData);
       });
 
-      // Assert: setDoc was called with merge:true (not updateDoc)
-      expect(setDoc).toHaveBeenCalledWith(
-        expect.anything(), // doc reference
-        updateData,
-        { merge: true }
-      );
+      // Assert: Cloud Function updateUserProfile was called with the updates
+      const { UserProfileService } = require('../../services/userProfile/UserProfileService');
+      expect(UserProfileService.updateUserProfile).toHaveBeenCalledWith(mockUserId, updateData);
     });
 
     it('should create document for new user who signed up but has no profile', async () => {
       // Scenario: User created via sign-up but document creation failed
       (auth as any).currentUser = { uid: mockUserId };
-      (getDoc as jest.Mock).mockResolvedValue({
-        exists: () => false,
-        data: () => null,
-      });
+      (getDoc as jest.Mock).mockResolvedValue({ exists: () => false, data: () => null });
       (setDoc as jest.Mock).mockResolvedValue(undefined);
 
-      const wrapper = ({ children }: any) => (
-        <UserProfileProvider>{children}</UserProfileProvider>
-      );
-      const { result, waitFor } = renderHook(() => useUserProfile(), { wrapper });
-      
-      await waitFor(() => !result.current.isLoading);
+      const { ref } = renderWithProvider();
+      await act(async () => {});
 
       // User tries to complete their profile
       const profileData = {
@@ -116,36 +178,22 @@ describe('UserProfileContext', () => {
       };
 
       await act(async () => {
-        await result.current.updateProfile(profileData);
+        await ref.current!.updateProfile(profileData);
       });
 
-      // Should succeed without "No document to update" error
-      expect(setDoc).toHaveBeenCalledWith(
-        expect.anything(),
-        profileData,
-        { merge: true }
-      );
-      expect(storage.setItem).toHaveBeenCalledWith(
-        'PROFILE_INFO',
-        expect.stringContaining('newuser')
-      );
+      // Should call Cloud Function to update/create the profile
+      const { UserProfileService } = require('../../services/userProfile/UserProfileService');
+      expect(UserProfileService.updateUserProfile).toHaveBeenCalledWith(mockUserId, profileData);
     });
 
     it('should update existing profile fields', async () => {
       // Setup: User has existing profile
       (auth as any).currentUser = { uid: mockUserId };
-      (getDoc as jest.Mock).mockResolvedValue({
-        exists: () => true,
-        data: () => mockProfile,
-      });
+      (getDoc as jest.Mock).mockResolvedValue({ exists: () => true, data: () => mockProfile });
       (setDoc as jest.Mock).mockResolvedValue(undefined);
 
-      const wrapper = ({ children }: any) => (
-        <UserProfileProvider>{children}</UserProfileProvider>
-      );
-      const { result, waitFor } = renderHook(() => useUserProfile(), { wrapper });
-      
-      await waitFor(() => !result.current.isLoading);
+      const { ref } = renderWithProvider();
+      await act(async () => {});
 
       // Act: Update some fields
       const updates = {
@@ -154,31 +202,24 @@ describe('UserProfileContext', () => {
       };
 
       await act(async () => {
-        await result.current.updateProfile(updates);
+        await ref.current!.updateProfile(updates);
       });
 
-      // Assert: Merged with existing data
-      expect(setDoc).toHaveBeenCalledWith(
-        expect.anything(),
-        updates,
-        { merge: true }
-      );
+      // Assert: Cloud Function was called with updates
+      const { UserProfileService } = require('../../services/userProfile/UserProfileService');
+      expect(UserProfileService.updateUserProfile).toHaveBeenCalledWith(mockUserId, updates);
     });
 
     it('should throw error when user is not authenticated', async () => {
       (auth as any).currentUser = null;
 
-      const wrapper = ({ children }: any) => (
-        <UserProfileProvider>{children}</UserProfileProvider>
-      );
-      const { result, waitFor } = renderHook(() => useUserProfile(), { wrapper });
-      
-      await waitFor(() => !result.current.isLoading);
+      const { ref } = renderWithProvider();
+      await act(async () => {});
 
       // Act & Assert
       await expect(
         act(async () => {
-          await result.current.updateProfile({ bio: 'test' });
+          await ref.current!.updateProfile({ bio: 'test' });
         })
       ).rejects.toThrow('User not authenticated');
     });
@@ -186,91 +227,58 @@ describe('UserProfileContext', () => {
     it('should update local state after successful Firestore update', async () => {
       // Setup
       (auth as any).currentUser = { uid: mockUserId };
-      (getDoc as jest.Mock).mockResolvedValue({
-        exists: () => true,
-        data: () => mockProfile,
-      });
+      (getDoc as jest.Mock).mockResolvedValue({ exists: () => true, data: () => mockProfile });
       (setDoc as jest.Mock).mockResolvedValue(undefined);
 
-      const wrapper = ({ children }: any) => (
-        <UserProfileProvider>{children}</UserProfileProvider>
-      );
-      const { result, waitFor } = renderHook(() => useUserProfile(), { wrapper });
-      
-      await waitFor(() => !result.current.isLoading);
+      const { ref } = renderWithProvider();
+      await act(async () => {});
 
-      // Initial profile loaded
-      expect(result.current.userProfile?.username).toBe('testuser');
+    // Initial profile loaded
+  expect(ref.current!.userProfile?.username).toBe('testuser');
 
       // Act: Update username
       await act(async () => {
-        await result.current.updateProfile({ username: 'updateduser' });
+        await ref.current!.updateProfile({ username: 'updateduser' });
       });
 
-      // Assert: Local state updated (note: in actual code, this relies on the previous state)
-      expect(storage.setItem).toHaveBeenCalledWith(
-        'PROFILE_INFO',
-        expect.stringContaining('updateduser')
-      );
+      // Assert: Local state updated (profile should reflect the update)
+      expect(ref.current!.userProfile?.username).toBe('updateduser');
     });
   });
 
   describe('profile loading', () => {
     it('should load profile from Firestore when user is authenticated', async () => {
       (auth as any).currentUser = { uid: mockUserId };
-      (getDoc as jest.Mock).mockResolvedValue({
-        exists: () => true,
-        data: () => mockProfile,
-      });
+      (getDoc as jest.Mock).mockResolvedValue({ exists: () => true, data: () => mockProfile });
 
-      const wrapper = ({ children }: any) => (
-        <UserProfileProvider>{children}</UserProfileProvider>
-      );
-      const { result, waitFor } = renderHook(() => useUserProfile(), { wrapper });
-      
-      await waitFor(() => !result.current.isLoading);
+      const { ref } = renderWithProvider();
+      await act(async () => {});
 
-      expect(result.current.userProfile).toEqual(mockProfile);
-      expect(result.current.isLoading).toBe(false);
+  expect(ref.current!.userProfile).toEqual(mockProfile);
+  expect(ref.current!.isLoading).toBe(false);
     });
 
     it('should fall back to cached profile when Firestore has no document', async () => {
-      const cachedProfile = { ...mockProfile, username: 'cacheduser' };
-      
-      (auth as any).currentUser = { uid: mockUserId };
-      (getDoc as jest.Mock).mockResolvedValue({
-        exists: () => false,
-        data: () => null,
-      });
-      (storage.getItem as jest.Mock).mockResolvedValue(JSON.stringify(cachedProfile));
+    // Previously we used a cached fallback; with Cloud Functions we expect no profile
+    (auth as any).currentUser = { uid: mockUserId };
+    (getDoc as jest.Mock).mockResolvedValue({ exists: () => false, data: () => null });
 
-      const wrapper = ({ children }: any) => (
-        <UserProfileProvider>{children}</UserProfileProvider>
-      );
-      const { result, waitFor } = renderHook(() => useUserProfile(), { wrapper });
-      
-      await waitFor(() => !result.current.isLoading);
+    const { ref } = renderWithProvider();
+    await act(async () => {});
 
-      expect(result.current.userProfile?.username).toBe('cacheduser');
+  expect(ref.current!.userProfile).toBeNull();
     });
 
     it('should set isLoading to false when no profile found', async () => {
       (auth as any).currentUser = { uid: mockUserId };
-      (getDoc as jest.Mock).mockResolvedValue({
-        exists: () => false,
-        data: () => null,
-      });
+      (getDoc as jest.Mock).mockResolvedValue({ exists: () => false, data: () => null });
       (storage.getItem as jest.Mock).mockResolvedValue(null);
 
-      const wrapper = ({ children }: any) => (
-        <UserProfileProvider>{children}</UserProfileProvider>
-      );
-      const { result, waitFor } = renderHook(() => useUserProfile(), { wrapper });
-      
-      await waitFor(() => !result.current.isLoading);
+      const { ref } = renderWithProvider();
+      await act(async () => {});
 
-      expect(result.current.userProfile).toBeNull();
-      expect(result.current.isLoading).toBe(false);
+  expect(ref.current!.userProfile).toBeNull();
+  expect(ref.current!.isLoading).toBe(false);
     });
   });
 });

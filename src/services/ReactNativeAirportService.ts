@@ -252,7 +252,8 @@ export class ReactNativeAirportService implements IAirportService {
       if (Array.isArray(openFlightsData) && openFlightsData.length > 0) {
         // Load curated fallback to preserve any manual isInternational flags for major hubs
         // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const curated: Airport[] = require('../data/openflightsFallback').default;
+        const curatedModule = require('../data/openflightsFallback');
+        const curated: Airport[] = curatedModule.default || curatedModule;
         const curatedIntl = new Set(curated.filter(a => a.isInternational).map(a => a.iataCode));
 
         return openFlightsData
@@ -277,7 +278,8 @@ export class ReactNativeAirportService implements IAirportService {
     }
 
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const fallback: Airport[] = require('../data/openflightsFallback').default;
+    const fallbackModule = require('../data/openflightsFallback');
+    const fallback: Airport[] = fallbackModule.default || fallbackModule;
     return fallback;
   }
 

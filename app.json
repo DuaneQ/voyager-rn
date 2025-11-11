@@ -5,30 +5,27 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
-
     "icon": "./assets/icon.png",
-
     "splash": {
       "backgroundColor": "#ffffff"
     },
-
     "assetBundlePatterns": [
       "**/*"
     ],
-
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.travalpass.app",
       "buildNumber": "1.0.0",
+      "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to upload profile and gallery photos.",
         "NSCameraUsageDescription": "This app needs access to your camera to take profile and gallery photos.",
         "NSPhotoLibraryAddUsageDescription": "This app needs permission to save photos to your photo library."
       }
     },
-
     "android": {
       "package": "com.travalpass.app",
+      "googleServicesFile": "./google-services.json",
       "icon": "./AppIcons/playstore.png",
       "permissions": [
         "READ_EXTERNAL_STORAGE",
@@ -36,17 +33,13 @@
         "CAMERA"
       ]
     },
-
     "web": {},
-
     "scheme": "travalpass",
-
     "platforms": [
       "ios",
       "android",
       "web"
     ],
-
     "extra": {
       "eas": {
         "projectId": "6fc90234-4d23-427c-918f-75d141efe8ed"

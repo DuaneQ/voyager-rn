@@ -5,6 +5,8 @@
 
 import React from 'react';
 import { render, fireEvent, waitFor, screen } from '@testing-library/react-native';
+// Use centralized manual mock for firebaseConfig
+jest.mock('../../../config/firebaseConfig');
 import { VideoCard } from '../../../components/video/VideoCard';
 import { Video } from '../../../types/Video';
 import * as VideoThumbnails from 'expo-video-thumbnails';
@@ -22,6 +24,7 @@ jest.mock('expo-av', () => ({
 jest.mock('expo-video-thumbnails');
 
 // Share is mocked in jest.setup.js
+
 
 describe('VideoCard', () => {
   const mockVideo: Video = {

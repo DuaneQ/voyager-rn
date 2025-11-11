@@ -3,9 +3,10 @@ import { waitFor } from '@testing-library/react-native';
 
 // We'll require the hook inside each test after configuring module mocks to avoid duplicate React instances
 
-// Mocks: firebase config and functions (mutable mock objects used across tests)
-const mockFirebaseConfig = { auth: { currentUser: undefined }, functions: {} };
-jest.mock('../../config/firebaseConfig', () => mockFirebaseConfig);
+// Use the centralized manual mock for firebaseConfig to ensure consistent shape
+jest.mock('../../config/firebaseConfig');
+// We'll mutate the actual mocked module below via require + jest.spyOn
+import { setMockUser, clearMockUser } from '../../testUtils/mockAuth';
 
 jest.mock('firebase/functions', () => ({
   httpsCallable: jest.fn(),
@@ -14,7 +15,8 @@ jest.mock('firebase/functions', () => ({
 describe('useAIGeneratedItineraries', () => {
   beforeEach(() => {
     // reset mock state between tests
-    mockFirebaseConfig.auth.currentUser = undefined;
+    // Ensure mocked module reports no authenticated user by default
+    clearMockUser();
     const { httpsCallable } = require('firebase/functions');
     (httpsCallable as jest.Mock).mockReset();
     jest.clearAllMocks();
@@ -33,7 +35,8 @@ describe('useAIGeneratedItineraries', () => {
   });
 
   it('fetches itineraries when user is authenticated and httpsCallable returns success', async () => {
-    mockFirebaseConfig.auth.currentUser = { uid: 'user-1' };
+    // Override the mocked getAuthInstance to return an authenticated user for this case
+    setMockUser({ uid: 'user-1' } as any);
 
     const fakeResponse = { data: { success: true, data: [ { id: 'ai-1', startDay: 2 }, { id: 'ai-2', startDay: 1 } ] } };
   const { httpsCallable } = require('firebase/functions');
@@ -52,7 +55,8 @@ describe('useAIGeneratedItineraries', () => {
   });
 
   it('sets error when RPC returns success: false', async () => {
-    mockFirebaseConfig.auth.currentUser = { uid: 'user-2' };
+    // Return a different authenticated user for the failure case
+    setMockUser({ uid: 'user-2' } as any);
   const failResponse = { data: { success: false, error: 'backend failure' } };
   const { httpsCallable } = require('firebase/functions');
   (httpsCallable as jest.Mock).mockImplementation(() => jest.fn(() => Promise.resolve(failResponse)));

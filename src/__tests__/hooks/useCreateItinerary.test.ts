@@ -4,23 +4,20 @@
  * Follows React hooks testing best practices
  */
 
-import { renderHook, act } from '@testing-library/react-native';
+// use @testing-library/react-hooks for renderHook in hook unit tests
 import { useCreateItinerary } from '../../hooks/useCreateItinerary';
 import * as firebaseFunctions from 'firebase/functions';
 import type { ManualItineraryFormData } from '../../types/ManualItinerary';
 
-// Mock Firebase Functions
+import { renderHook, act } from '@testing-library/react-hooks';
+import { setMockUser, clearMockUser } from '../../testUtils/mockAuth';
 jest.mock('firebase/functions', () => ({
   getFunctions: jest.fn(() => ({})),
   httpsCallable: jest.fn(),
 }));
 
-// Mock firebase config
-jest.mock('../../config/firebaseConfig', () => ({
-  auth: { currentUser: { uid: 'test-user-123' } },
-  db: {},
-  app: {},
-}));
+// Use centralized manual mock for firebaseConfig
+jest.mock('../../config/firebaseConfig');
 
 describe('useCreateItinerary', () => {
   // Helper function to create future dates in YYYY-MM-DD format
@@ -56,13 +53,30 @@ describe('useCreateItinerary', () => {
   const mockHttpsCallable = jest.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    // Reset mocks and their implementations to avoid cross-test leakage
+    jest.resetAllMocks();
     console.log = jest.fn();
     console.error = jest.fn();
     (firebaseFunctions.httpsCallable as jest.Mock).mockReturnValue(mockHttpsCallable);
+    // Ensure mocked auth returns a default authenticated user
+    const cfg = require('../../config/firebaseConfig');
+    // Always ensure a mocked authenticated user exists for tests.
+    setMockUser();
+    try {
+      if (cfg && cfg.getAuthInstance && typeof (cfg.getAuthInstance as any).mockImplementation === 'function') {
+        // Ensure the mock returns the current auth object
+        (cfg.getAuthInstance as jest.Mock).mockImplementation(() => (cfg as any).auth || { currentUser: { uid: 'test-user-123' } });
+      } else if (cfg) {
+        // Fallback: ensure getAuthInstance exists and returns auth
+        (cfg as any).getAuthInstance = () => (cfg as any).auth || { currentUser: { uid: 'test-user-123' } };
+      }
+    } catch (e) {
+      // defensive - continue
+    }
   });
 
   describe('Initial State', () => {
+    clearMockUser();
     it('should initialize with correct default values', () => {
       const { result } = renderHook(() => useCreateItinerary());
 
@@ -268,9 +282,9 @@ describe('useCreateItinerary', () => {
     });
 
     it('should handle unauthenticated user', async () => {
-      // Temporarily mock no authenticated user
-      const authModule = require('../../config/firebaseConfig');
-      authModule.auth.currentUser = null;
+      // Use the test helper to clear the mock user so the module remains
+      // consistent (clears auth.currentUser and makes getAuthInstance return it)
+      clearMockUser();
 
       const { result } = renderHook(() => useCreateItinerary());
 
@@ -282,8 +296,8 @@ describe('useCreateItinerary', () => {
       expect(response.success).toBe(false);
       expect(response.error).toBe('User not authenticated');
 
-      // Restore
-      authModule.auth.currentUser = { uid: 'test-user-123' };
+      // Restore authenticated state for subsequent tests
+      setMockUser();
     });
 
     it('should call Firebase Function with correct payload', async () => {

@@ -41,7 +41,7 @@ import {
 } from 'firebase/firestore';
 import { getStorage, ref, getDownloadURL } from 'firebase/storage';
 import { UserProfileContext } from '../../context/UserProfileContext';
-import { auth } from '../../../firebase-config';
+import * as firebaseCfg from '../../config/firebaseConfig';
 import { calculateAge } from '../../utils/calculateAge';
 import { VideoService } from '../../services/video/VideoService';
 import { Ionicons } from '@expo/vector-icons';
@@ -84,8 +84,14 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
   const [loadingVideos, setLoadingVideos] = useState(false);
   const [enlargedVideo, setEnlargedVideo] = useState<any | null>(null);
   const [enlargedPhoto, setEnlargedPhoto] = useState<string | null>(null);
+  const [isVideoMuted, setIsVideoMuted] = useState(false); // Mute state for enlarged video
 
-  const currentUserId = auth.currentUser?.uid;
+  // Resolve auth lazily - prefer getAuthInstance() but fall back to legacy auth
+  const _tentativeAuth: any = typeof (firebaseCfg as any).getAuthInstance === 'function'
+    ? (firebaseCfg as any).getAuthInstance()
+    : (firebaseCfg as any).auth;
+  const _effectiveAuth: any = _tentativeAuth && _tentativeAuth.currentUser ? _tentativeAuth : (firebaseCfg as any).auth;
+  const currentUserId = _effectiveAuth?.currentUser?.uid;
   const db = getFirestore();
   const storage = getStorage();
 
@@ -737,8 +743,21 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                   useNativeControls
                   resizeMode={ResizeMode.CONTAIN}
                   shouldPlay
+                  isMuted={isVideoMuted}
                 />
               )}
+              {/* Mute toggle button for profile videos */}
+              <TouchableOpacity
+                style={styles.profileVideoMuteButton}
+                onPress={() => setIsVideoMuted(!isVideoMuted)}
+                testID="profile-video-mute-button"
+              >
+                <Ionicons
+                  name={isVideoMuted ? 'volume-mute' : 'volume-high'}
+                  size={24}
+                  color="#fff"
+                />
+              </TouchableOpacity>
             </View>
           </TouchableOpacity>
         </View>
@@ -1239,6 +1258,19 @@ const styles = StyleSheet.create({
   enlargedVideoPlayer: {
     width: '100%',
     height: '100%',
+  },
+  profileVideoMuteButton: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 20,
+    elevation: 5, // Android elevation for proper touch handling
   },
 });
 

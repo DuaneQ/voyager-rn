@@ -5,8 +5,9 @@
 
 import { Audio } from 'expo-av';
 import * as VideoThumbnails from 'expo-video-thumbnails';
-import { VideoValidationResult, VIDEO_CONSTRAINTS } from '../types/Video';
 import * as FileSystem from 'expo-file-system';
+import { VideoValidationResult, VIDEO_CONSTRAINTS } from '../types/Video';
+// import * as FileSystem from 'expo-file-system'; // Temporarily disabled - Expo SDK 54 build issue
 
 /**
  * Validates a video file before upload
@@ -144,11 +145,14 @@ export const generateVideoThumbnail = async (
 
 /**
  * Gets file size from URI
+ * TEMPORARY: Disabled FileSystem due to Expo SDK 54 build issues
+ * TODO: Re-enable once expo-file-system is fixed
  */
 export const getFileSize = async (uri: string): Promise<number> => {
   try {
+    // Use expo-file-system when available (tests mock this module).
     const fileInfo = await FileSystem.getInfoAsync(uri);
-    if (fileInfo.exists && 'size' in fileInfo) {
+    if (fileInfo && fileInfo.exists && typeof fileInfo.size === 'number') {
       return fileInfo.size;
     }
     throw new Error('Could not get file size');

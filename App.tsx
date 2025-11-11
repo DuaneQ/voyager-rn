@@ -2,10 +2,15 @@
 import 'react-native-get-random-values';
 
 import React from 'react';
+import { enableScreens } from 'react-native-screens';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AppNavigator from './src/navigation/AppNavigator';
 import { AuthProvider } from './src/context/AuthContext';
 import { AlertProvider } from './src/context/AlertContext';
 import { UserProfileProvider } from './src/context/UserProfileContext';
+
+// Enable react-native-screens for better performance and compatibility with React 19
+enableScreens(true);
 
 /**
  * Main App Component
@@ -15,12 +20,14 @@ import { UserProfileProvider } from './src/context/UserProfileContext';
  */
 export default function App() {
   return (
-    <AuthProvider>
-      <AlertProvider>
-        <UserProfileProvider>
-          <AppNavigator />
-        </UserProfileProvider>
-      </AlertProvider>
-    </AuthProvider>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <AlertProvider>
+          <UserProfileProvider>
+            <AppNavigator />
+          </UserProfileProvider>
+        </AlertProvider>
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }

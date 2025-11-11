@@ -1,52 +1,19 @@
 /**
- * User Profile Context - Exact replica of voyager-pwa UserProfileContext
- * Provides user profile data and authentication state management for React Native
+ * User Profile Context - Using Cloud Functions
+ * Provides user profile data and authentication state management
+ * 
+ * IMPORTANT: Uses Cloud Functions instead of direct Firestore access
+ * This is because REST API auth doesn't provide request.auth context to Firestore,
+ * causing "Missing or insufficient permissions" errors.
  */
 
-import React, { createContext, useContext, useCallback, useState, useEffect, ReactNode } from 'react';
-import { auth, db } from '../config/firebaseConfig';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import storage from '../utils/storage';
+import React, { createContext, useState, useContext, useEffect, useCallback, ReactNode } from 'react';
+import { useAuth } from './AuthContext';
+import { UserProfileService } from '../services/userProfile/UserProfileService';
+import type { UserProfile as ServiceUserProfile } from '../services/userProfile/UserProfileService';
 
-interface UserProfile {
-  username?: string;
-  email?: string;
-  bio?: string;
-  dob?: string;
-  gender?: string;
-  sexualOrientation?: string;
-  status?: string;
-  edu?: string;
-  drinking?: string;
-  smoking?: string;
-  /**
-   * User photos, organized by slot. 'profile' is the main photo, 'slot1'-'slot4' are additional slots.
-   * Each value is a URL string or undefined if not set.
-   */
-  photos?: {
-    profile?: string;
-    slot1?: string;
-    slot2?: string;
-    slot3?: string;
-    slot4?: string;
-    [key: string]: string | undefined;
-  };
-  subscriptionType?: string;
-  subscriptionEndDate?: any;
-  dailyUsage?: {
-    date: string;
-    viewCount: number;
-    aiItineraries?: {
-      date: string;
-      count: number;
-    };
-  };
-  // Phase 1 additions
-  displayName?: string;
-  photoURL?: string;
-  location?: string;
-  phoneNumber?: string;
-}
+// Type alias for consistency with existing code
+type UserProfile = ServiceUserProfile;
 
 interface UserProfileContextValue {
   userProfile: UserProfile | null;
@@ -66,103 +33,75 @@ interface UserProfileProviderProps {
 const UserProfileProvider: React.FC<UserProfileProviderProps> = ({ children }) => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Use AuthContext to get user state (prevents duplicate auth initialization)
+  const { user } = useAuth();
 
   const updateUserProfile = useCallback((newProfile: UserProfile) => {
     setUserProfile(newProfile);
   }, []);
 
-  // Update specific profile fields and persist to Firestore
+  // Update specific profile fields and persist to Firestore via Cloud Function
   const updateProfile = useCallback(async (data: Partial<UserProfile>) => {
-    const userId = auth?.currentUser?.uid;
+    const userId = user?.uid;
     if (!userId) {
       throw new Error('User not authenticated');
     }
 
     try {
-      // Use setDoc with merge:true to create document if it doesn't exist
-      // This handles edge cases where sign-up document creation failed
-      const userRef = doc(db, 'users', userId);
-      await setDoc(userRef, data, { merge: true });
+      // Use Cloud Function to update profile
+      await UserProfileService.updateUserProfile(userId, data);
 
-      // Update local state - if no existing profile, create new one with data
+      // Update local state
       setUserProfile((prev) => {
         const updatedProfile = prev ? { ...prev, ...data } : (data as UserProfile);
-        // Update persistent cache using the cross-platform storage wrapper
-        storage.setItem('PROFILE_INFO', JSON.stringify(updatedProfile));
         return updatedProfile;
       });
     } catch (error) {
       console.error('Error updating profile:', error);
       throw error;
     }
-  }, [userProfile]);
+  }, [user]);
 
-  // Load user profile data (same logic as PWA)
+  // Load user profile data via Cloud Function
   useEffect(() => {
     const loadUserProfile = async () => {
       console.log('[UserProfileContext] loadUserProfile called');
       setIsLoading(true);
       try {
-        const userId = auth?.currentUser?.uid;
+        const userId = user?.uid;
         console.log('[UserProfileContext] Current user ID:', userId);
 
         if (userId) {
-          // Get fresh data from Firebase first (same as PWA)
-          console.log('[UserProfileContext] Fetching user document from Firestore...');
-          const userRef = await getDoc(doc(db, "users", userId));
-          console.log('[UserProfileContext] User document exists:', userRef.exists());
-
-          if (userRef.exists()) {
-            const profile = userRef.data() as UserProfile;
-            console.log('[UserProfileContext] Profile data fetched:', profile.username);
-            // Update persistent storage with fresh data (web -> localStorage, native -> AsyncStorage,
-            // or in-memory fallback when native module isn't available).
-            await storage.setItem("PROFILE_INFO", JSON.stringify(profile));
-            setUserProfile(profile);
-            console.log('[UserProfileContext] Profile set successfully');
-          } else {
-            console.log('[UserProfileContext] No document found, checking cache...');
-            // Fall back to AsyncStorage if Firebase has no data
-            const cachedProfile = await storage.getItem("PROFILE_INFO");
-            if (cachedProfile) {
-              console.log('[UserProfileContext] Using cached profile');
-              setUserProfile(JSON.parse(cachedProfile));
-            } else {
-              console.log('[UserProfileContext] No cached profile found');
-            }
-          }
+          // Get profile data via Cloud Function
+          console.log('[UserProfileContext] Fetching user profile via Cloud Function...');
+          const profile = await UserProfileService.getUserProfile(userId);
+          
+          console.log('[UserProfileContext] Profile data fetched:', profile.email);
+          setUserProfile(profile);
+          console.log('[UserProfileContext] Profile set successfully');
         }
       } catch (error) {
         console.log('[UserProfileContext] Error in loadUserProfile:', error);
-        // On error, try AsyncStorage as fallback (same logic as PWA)
-        try {
-          const cachedProfile = await storage.getItem("PROFILE_INFO");
-          if (cachedProfile) {
-            setUserProfile(JSON.parse(cachedProfile));
-          }
-        } catch (storageError) {
-          console.error("Error loading cached profile:", storageError);
+        // If profile doesn't exist, that's okay - will be created during onboarding
+        if (error && (error as any).message?.includes('not-found')) {
+          console.log('[UserProfileContext] Profile not found - will be created during onboarding');
         }
-        console.log("Error loading profile:", error);
       } finally {
         console.log('[UserProfileContext] loadUserProfile finally block, setting isLoading = false');
         setIsLoading(false);
       }
     };
 
-    // Listen for auth state changes (same logic as PWA)
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      console.log('[UserProfileContext] Auth state changed, user:', user?.uid);
-      if (user) {
-        loadUserProfile();
-      } else {
-        setIsLoading(false);
-        setUserProfile(null);
-      }
-    });
-
-    return unsubscribe;
-  }, []);
+    // React to user changes from AuthContext
+    console.log('[UserProfileContext] User changed:', user?.uid);
+    if (user) {
+      loadUserProfile();
+    } else {
+      setIsLoading(false);
+      setUserProfile(null);
+    }
+  }, [user]);
 
   return (
     <UserProfileContext.Provider 

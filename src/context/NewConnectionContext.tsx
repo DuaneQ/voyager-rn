@@ -46,7 +46,7 @@ interface NewConnectionProviderProps {
  * </NewConnectionProvider>
  * ```
  */
-export function NewConnectionProvider({ children }: NewConnectionProviderProps): JSX.Element {
+export function NewConnectionProvider({ children }: NewConnectionProviderProps): React.ReactElement {
   const [hasNewConnection, setHasNewConnectionState] = useState<boolean>(false);
   const [connectionId, setConnectionIdState] = useState<string | null>(null);
   const [matchedUserId, setMatchedUserIdState] = useState<string | null>(null);

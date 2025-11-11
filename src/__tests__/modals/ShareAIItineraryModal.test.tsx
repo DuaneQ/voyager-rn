@@ -3,24 +3,27 @@
  * Comprehensive test coverage matching PWA test patterns
  */
 
-import React from 'react';
-import { render, fireEvent, waitFor } from '@testing-library/react-native';
-import { Share, Clipboard, Alert } from 'react-native';
-import { ShareAIItineraryModal } from '../../components/modals/ShareAIItineraryModal';
-import { AIGeneratedItinerary } from '../../hooks/useAIGeneratedItineraries';
-
-// Mock dependencies
+// Mock dependencies (hoisted so mocks are applied before modules are imported)
+// We use the root project manual mock for 'react-native' (configured in
+// jest.config.js) so the component and tests share the same mocked surface.
 jest.mock('react-native/Libraries/Share/Share', () => ({
-  share: jest.fn(),
+  share: jest.fn(() => Promise.resolve({ action: 'sharedAction' })),
+  dismissedAction: 'dismissedAction',
+  sharedAction: 'sharedAction',
 }));
 
 jest.mock('react-native/Libraries/Components/Clipboard/Clipboard', () => ({
   setString: jest.fn(),
+  getString: jest.fn(() => Promise.resolve('')),
 }));
+// Note: @expo/vector-icons is mocked in jest.setup.js to a functional stub
 
-jest.mock('@expo/vector-icons', () => ({
-  Ionicons: 'Ionicons',
-}));
+import React from 'react';
+import { render, fireEvent, waitFor } from '@testing-library/react-native';
+import { Alert } from 'react-native';
+import { AIGeneratedItinerary } from '../../hooks/useAIGeneratedItineraries';
+// Static import (ensure jest.mock hoists above this import)
+import ShareAIItineraryModal from '../../components/modals/ShareAIItineraryModal';
 
 describe('ShareAIItineraryModal', () => {
   const mockItinerary: AIGeneratedItinerary = {
@@ -73,12 +76,21 @@ describe('ShareAIItineraryModal', () => {
     itinerary: mockItinerary
   };
 
+  // Helper to render the modal after resetting modules so hoisted
+  // mocks for internal react-native paths are applied. This prevents
+  // import-time races where the component imports RN internals before
+  // the test's jest.mock calls are registered.
+  const renderShareModal = (props: any = {}) => {
+    const merged = { ...defaultProps, ...props };
+    return render(<ShareAIItineraryModal {...merged} />);
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   it('renders share modal with itinerary information', () => {
-    const { getByText } = render(<ShareAIItineraryModal {...defaultProps} />);
+    const { getByText } = renderShareModal();
 
     expect(getByText('Share Itinerary')).toBeTruthy();
     expect(getByText('Paris, France')).toBeTruthy();
@@ -87,7 +99,7 @@ describe('ShareAIItineraryModal', () => {
   });
 
   it('displays the correct share URL', () => {
-    const { getByDisplayValue } = render(<ShareAIItineraryModal {...defaultProps} />);
+    const { getByDisplayValue } = renderShareModal();
 
     const shareUrlInput = getByDisplayValue('https://us-central1-mundo1-dev.cloudfunctions.net/itineraryShare/share-itinerary/test-itinerary-123');
     expect(shareUrlInput).toBeTruthy();
@@ -95,20 +107,21 @@ describe('ShareAIItineraryModal', () => {
   });
 
   it('copies link to clipboard when copy button is pressed', async () => {
-    const { getByTestId } = render(<ShareAIItineraryModal {...defaultProps} />);
+    const { getByTestId } = renderShareModal();
 
     const copyButton = getByTestId('copy-button');
     
     fireEvent.press(copyButton);
 
     await waitFor(() => {
-      expect(Clipboard.setString).toHaveBeenCalledWith('https://us-central1-mundo1-dev.cloudfunctions.net/itineraryShare/share-itinerary/test-itinerary-123');
+      const RN = require('react-native');
+      expect(RN.Clipboard.setString).toHaveBeenCalledWith('https://us-central1-mundo1-dev.cloudfunctions.net/itineraryShare/share-itinerary/test-itinerary-123');
     });
   });
 
   it('calls onClose when close button is pressed', () => {
     const mockOnClose = jest.fn();
-    const { getByTestId } = render(<ShareAIItineraryModal {...defaultProps} onClose={mockOnClose} />);
+    const { getByTestId } = renderShareModal({ onClose: mockOnClose });
 
     const closeButton = getByTestId('close-button');
     fireEvent.press(closeButton);
@@ -117,7 +130,7 @@ describe('ShareAIItineraryModal', () => {
   });
 
   it('shows info alert about public sharing', () => {
-    const { getByText } = render(<ShareAIItineraryModal {...defaultProps} />);
+    const { getByText } = renderShareModal();
 
     expect(getByText('Anyone with this link can view your itinerary. No login required!')).toBeTruthy();
   });
@@ -128,13 +141,13 @@ describe('ShareAIItineraryModal', () => {
       response: undefined
     };
 
-    const { getByText } = render(<ShareAIItineraryModal {...defaultProps} itinerary={itineraryWithoutData as any} />);
+    const { getByText } = renderShareModal({ itinerary: itineraryWithoutData as any });
 
     expect(getByText('Paris, France')).toBeTruthy(); // Falls back to top-level destination
   });
 
   it('formats dates correctly', () => {
-    const { getByText } = render(<ShareAIItineraryModal {...defaultProps} />);
+    const { getByText } = renderShareModal();
 
     expect(getByText('Aug 15, 2025 - Aug 22, 2025')).toBeTruthy();
   });
@@ -154,33 +167,35 @@ describe('ShareAIItineraryModal', () => {
       }
     };
 
-    const { getByText } = render(<ShareAIItineraryModal {...defaultProps} itinerary={longDescriptionItinerary} />);
+    const { getByText } = renderShareModal({ itinerary: longDescriptionItinerary });
 
     // Check for truncated text (React Native renders "..." as three dots)
     expect(getByText(/"This is a very long description that should be truncated when displayed in the share modal previe\.\.\."/)).toBeTruthy();
   });
 
   it('calls Share API when share button is pressed', async () => {
-    const { getByTestId } = render(<ShareAIItineraryModal {...defaultProps} />);
+    const { getByTestId } = renderShareModal();
 
     const shareButton = getByTestId('share-button');
     fireEvent.press(shareButton);
 
     await waitFor(() => {
-      expect(Share.share).toHaveBeenCalled();
+      const RN = require('react-native');
+      expect(RN.Share.share).toHaveBeenCalled();
     });
   });
 
   it('handles share cancellation gracefully', async () => {
-    (Share.share as jest.Mock).mockResolvedValueOnce({ action: Share.dismissedAction });
+    const InternalShare = require('react-native').Share;
+    (InternalShare.share as jest.Mock).mockResolvedValueOnce({ action: InternalShare.dismissedAction });
 
-    const { getByTestId } = render(<ShareAIItineraryModal {...defaultProps} />);
+    const { getByTestId } = renderShareModal();
 
     const shareButton = getByTestId('share-button');
     fireEvent.press(shareButton);
 
     await waitFor(() => {
-      expect(Share.share).toHaveBeenCalled();
+      expect(InternalShare.share).toHaveBeenCalled();
     });
     
     // Should not crash or show any errors - just silently handles dismissal
@@ -188,7 +203,7 @@ describe('ShareAIItineraryModal', () => {
 
   it('calls onClose when Close button in actions is pressed', () => {
     const mockOnClose = jest.fn();
-    const { getByTestId } = render(<ShareAIItineraryModal {...defaultProps} onClose={mockOnClose} />);
+    const { getByTestId } = renderShareModal({ onClose: mockOnClose });
 
     const closeButton = getByTestId('close-action-button');
     fireEvent.press(closeButton);
@@ -214,7 +229,7 @@ describe('ShareAIItineraryModal', () => {
       }
     };
 
-    const { getByDisplayValue } = render(<ShareAIItineraryModal {...defaultProps} itinerary={itineraryWithFiltering} />);
+    const { getByDisplayValue } = renderShareModal({ itinerary: itineraryWithFiltering });
     
     // The share URL should still be present
     expect(getByDisplayValue(/share-itinerary/)).toBeTruthy();
@@ -230,9 +245,7 @@ describe('ShareAIItineraryModal', () => {
         response: undefined
       };
 
-      const { getByTestId } = render(
-        <ShareAIItineraryModal {...defaultProps} itinerary={incompleteItinerary as any} />
-      );
+      const { getByTestId } = renderShareModal({ itinerary: incompleteItinerary as any });
 
       // Should still render without crashing
       expect(getByTestId('share-url-input')).toBeTruthy();
@@ -247,9 +260,7 @@ describe('ShareAIItineraryModal', () => {
         }
       };
 
-      const { getByTestId } = render(
-        <ShareAIItineraryModal {...defaultProps} itinerary={corruptedItinerary} />
-      );
+      const { getByTestId } = renderShareModal({ itinerary: corruptedItinerary });
 
       // Should fallback to top-level destination and dates
       expect(getByTestId('share-url-input')).toBeTruthy();
@@ -257,29 +268,32 @@ describe('ShareAIItineraryModal', () => {
 
     it('handles Share API failure by falling back to clipboard', async () => {
       const shareError = new Error('Share API not available');
-      (Share.share as jest.Mock).mockRejectedValueOnce(shareError);
+      const InternalShare = require('react-native').Share;
+      (InternalShare.share as jest.Mock).mockRejectedValueOnce(shareError);
 
-      const { getByTestId } = render(<ShareAIItineraryModal {...defaultProps} />);
+  const { getByTestId } = renderShareModal();
 
       const shareButton = getByTestId('share-button');
       fireEvent.press(shareButton);
 
       await waitFor(() => {
         // Should fallback to clipboard
-        expect(Clipboard.setString).toHaveBeenCalled();
+        const RN = require('react-native');
+        expect(RN.Clipboard.setString).toHaveBeenCalled();
       });
     });
 
     it('handles clipboard failure gracefully', async () => {
       const clipboardError = new Error('Clipboard not available');
-      (Clipboard.setString as jest.Mock).mockImplementationOnce(() => {
+      const InternalClipboard = require('react-native').Clipboard;
+      (InternalClipboard.setString as jest.Mock).mockImplementationOnce(() => {
         throw clipboardError;
       });
 
       // Spy on Alert
       const alertSpy = jest.spyOn(Alert, 'alert');
 
-      const { getByTestId } = render(<ShareAIItineraryModal {...defaultProps} />);
+  const { getByTestId } = renderShareModal();
 
       const copyButton = getByTestId('copy-button');
       fireEvent.press(copyButton);
@@ -298,9 +312,7 @@ describe('ShareAIItineraryModal', () => {
         endDate: '2025-13-45' // Invalid month/day
       };
 
-      const { getByTestId } = render(
-        <ShareAIItineraryModal {...defaultProps} itinerary={invalidDatesItinerary} />
-      );
+      const { getByTestId } = renderShareModal({ itinerary: invalidDatesItinerary });
 
       // Should still render
       expect(getByTestId('share-url-input')).toBeTruthy();
@@ -323,9 +335,7 @@ describe('ShareAIItineraryModal', () => {
         }
       };
 
-      const { getByTestId } = render(
-        <ShareAIItineraryModal {...defaultProps} itinerary={longDestItinerary} />
-      );
+      const { getByTestId } = renderShareModal({ itinerary: longDestItinerary });
 
       // Should render without layout issues
       expect(getByTestId('share-url-input')).toBeTruthy();
@@ -349,16 +359,14 @@ describe('ShareAIItineraryModal', () => {
         }
       };
 
-      const { getByTestId } = render(
-        <ShareAIItineraryModal {...defaultProps} itinerary={mixedTypeFiltering} />
-      );
+      const { getByTestId } = renderShareModal({ itinerary: mixedTypeFiltering });
 
       // Should extract labels without crashing
       expect(getByTestId('share-url-input')).toBeTruthy();
     });
 
     it('handles rapid copy button clicks', async () => {
-      const { getByTestId } = render(<ShareAIItineraryModal {...defaultProps} />);
+  const { getByTestId } = renderShareModal();
 
       const copyButton = getByTestId('copy-button');
       
@@ -369,12 +377,13 @@ describe('ShareAIItineraryModal', () => {
 
       await waitFor(() => {
         // Should handle gracefully without errors
-        expect(Clipboard.setString).toHaveBeenCalled();
+        const RN = require('react-native');
+        expect(RN.Clipboard.setString).toHaveBeenCalled();
       });
     });
 
     it('shows copy success indicator and auto-hides', async () => {
-      const { getByTestId, queryByText } = render(<ShareAIItineraryModal {...defaultProps} />);
+  const { getByTestId, queryByText } = renderShareModal();
 
       const copyButton = getByTestId('copy-button');
       fireEvent.press(copyButton);

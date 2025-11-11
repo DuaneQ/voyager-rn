@@ -18,7 +18,7 @@ import {
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { Video as VideoType } from '../../types/Video';
-import { auth } from '../../config/firebaseConfig';
+import * as firebaseConfig from '../../config/firebaseConfig';
 
 const { width, height } = Dimensions.get('window');
 
@@ -51,7 +51,10 @@ export const VideoCard: React.FC<VideoCardProps> = ({
   const viewTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isUnmountedRef = useRef(false);
 
-  const userId = auth.currentUser?.uid;
+  const resolvedAuth = typeof (firebaseConfig as any).getAuthInstance === 'function'
+    ? (firebaseConfig as any).getAuthInstance()
+    : (firebaseConfig as any).auth;
+  const userId = resolvedAuth?.currentUser?.uid;
   const isLiked = video.likes?.includes(userId || '');
   const likeCount = video.likes?.length || 0;
   const commentCount = video.comments?.length || 0;
@@ -344,52 +347,55 @@ export const VideoCard: React.FC<VideoCardProps> = ({
   return (
     <View style={styles.container} testID="video-card-container">
       {/* Video Player */}
-      <TouchableOpacity
-        style={styles.videoContainer}
-        activeOpacity={1}
-        onPress={handlePlayPause}
-      >
-        <Video
-          ref={videoRef}
-          source={{ uri: video.videoUrl }}
-          style={styles.video}
-          resizeMode={ResizeMode.CONTAIN}
-          shouldPlay={isActive}
-          isLooping
-          isMuted={isMuted}
-          onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
-          onError={handleError}
-          usePoster
-          posterSource={{ uri: video.thumbnailUrl || '' }}
-        />
-
-        {/* Loading indicator */}
-        {isLoading && (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#fff" />
-          </View>
-        )}
-
-        {/* Play/Pause overlay */}
-        {!isPlaying && !isLoading && (
-          <View style={styles.playOverlay}>
-            <Ionicons name="play-circle" size={80} color="rgba(255,255,255,0.9)" />
-          </View>
-        )}
-
-        {/* Mute button */}
-        <TouchableOpacity 
-          style={styles.muteButton} 
-          onPress={handleMuteToggle}
-          testID="mute-button"
-          accessibilityLabel={isMuted ? 'Unmute video' : 'Mute video'}
+      {/* Video container - wrap in View with pointerEvents to allow mute button touches on Android */}
+      <View style={styles.videoContainer} pointerEvents="box-none">
+        <TouchableOpacity
+          style={StyleSheet.absoluteFill}
+          activeOpacity={1}
+          onPress={handlePlayPause}
         >
-          <Ionicons
-            name={isMuted ? 'volume-mute' : 'volume-high'}
-            size={24}
-            color="#fff"
+          <Video
+            ref={videoRef}
+            source={{ uri: video.videoUrl }}
+            style={styles.video}
+            resizeMode={ResizeMode.CONTAIN}
+            shouldPlay={isActive}
+            isLooping
+            isMuted={isMuted}
+            onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
+            onError={handleError}
+            usePoster
+            posterSource={{ uri: video.thumbnailUrl || '' }}
           />
+
+          {/* Loading indicator */}
+          {isLoading && (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#fff" />
+            </View>
+          )}
+
+          {/* Play/Pause overlay */}
+          {!isPlaying && !isLoading && (
+            <View style={styles.playOverlay}>
+              <Ionicons name="play-circle" size={80} color="rgba(255,255,255,0.9)" />
+            </View>
+          )}
         </TouchableOpacity>
+      </View>
+
+      {/* Mute button - moved outside videoContainer to prevent touch blocking on Android */}
+      <TouchableOpacity 
+        style={styles.muteButton} 
+        onPress={handleMuteToggle}
+        testID="mute-button"
+        accessibilityLabel={isMuted ? 'Unmute video' : 'Mute video'}
+      >
+        <Ionicons
+          name={isMuted ? 'volume-mute' : 'volume-high'}
+          size={24}
+          color="#fff"
+        />
       </TouchableOpacity>
 
       {/* Video info overlay */}
@@ -433,12 +439,13 @@ const styles = StyleSheet.create({
   },
   muteButton: {
     position: 'absolute',
-    top: 60,
+    top: Platform.select({ ios: 60, android: 200 }), // Lower on Android to avoid tab bar overlap
     right: 16,
     backgroundColor: 'rgba(0,0,0,0.5)',
     borderRadius: 20,
     padding: 8,
-    zIndex: 10, // Ensure mute button appears above video
+    zIndex: 20, // Higher zIndex to ensure it appears above video and is touchable
+    elevation: 10, // Increased Android elevation for proper touch handling (was 5, now 10)
   },
   infoOverlayWrapper: {
     position: 'absolute',

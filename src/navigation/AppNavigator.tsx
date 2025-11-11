@@ -32,56 +32,73 @@ const Tab = createBottomTabNavigator();
 const MainTabNavigator: React.FC = () => {
   return (
     <Tab.Navigator
-      id={undefined}
-      screenOptions={({ route }: { route: any }) => ({
-        tabBarIcon: ({ focused, color, size }: any) => {
-          let iconName: string;
-
-          if (route.name === 'Search') {
-            iconName = focused ? 'search' : 'search-outline';
-          } else if (route.name === 'Chat') {
-            iconName = focused ? 'chatbubble' : 'chatbubble-outline';
-          } else if (route.name === 'Profile') {
-            iconName = focused ? 'person' : 'person-outline';
-          } else if (route.name === 'Videos') {
-            iconName = focused ? 'play-circle' : 'play-circle-outline';
-          } else {
-            iconName = 'help-outline';
-          }
-
-          return <Ionicons name={iconName as any} size={size} color={color} />;
-        },
+      screenOptions={{
         tabBarActiveTintColor: '#1976d2',
         tabBarInactiveTintColor: 'gray',
         headerShown: false,
-        // Make tab bar transparent on video feed page
-        tabBarStyle: route.name === 'Videos' ? {
-          position: 'absolute',
-          backgroundColor: 'transparent',
-          borderTopWidth: 0,
-          elevation: 0,
-        } : undefined,
-      })}
+      }}
     >
       <Tab.Screen 
         name="Search" 
         component={SearchPage}
-        options={{ title: 'TravalMatch' }} 
+        options={{ 
+          title: 'TravalMatch',
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons 
+              name={focused ? 'search' : 'search-outline'} 
+              size={size} 
+              color={color} 
+            />
+          ),
+        }} 
       />
       <Tab.Screen 
         name="Videos" 
         component={VideoFeedPage}
-        options={{ title: 'Travals' }} 
+        options={{ 
+          title: 'Travals',
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons 
+              name={focused ? 'play-circle' : 'play-circle-outline'} 
+              size={size} 
+              color={color} 
+            />
+          ),
+          tabBarStyle: {
+            position: 'absolute',
+            backgroundColor: 'transparent',
+            borderTopWidth: 0,
+            elevation: 0,
+          }
+        }} 
       />
       <Tab.Screen 
         name="Chat" 
         component={ChatPage}
-        options={{ title: 'Chat' }} 
+        options={{ 
+          title: 'Chat',
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons 
+              name={focused ? 'chatbubble' : 'chatbubble-outline'} 
+              size={size} 
+              color={color} 
+            />
+          ),
+        }} 
       />
       <Tab.Screen 
         name="Profile" 
         component={ProfilePage}
-        options={{ title: 'Profile' }} 
+        options={{ 
+          title: 'Profile',
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons 
+              name={focused ? 'person' : 'person-outline'} 
+              size={size} 
+              color={color} 
+            />
+          ),
+        }} 
       />
     </Tab.Navigator>
   );
@@ -95,14 +112,17 @@ const RootNavigator: React.FC = () => {
   const { user, status } = useAuth();
 
   // Show loading state while checking authentication
-  if (status === 'loading') {
+  // CRITICAL: Expo SDK 54 JSI bridge requires explicit boolean conversion
+  // Direct string comparison causes: "TypeError: expected dynamic type 'boolean', but had type 'string'"
+  const isLoading = Boolean(status === 'loading');
+  
+  if (isLoading) {
     return null; // Or a loading spinner component
   }
 
   // Conditionally render auth or main app based on user authentication
   return (
-    <Stack.Navigator 
-      id={undefined}
+    <Stack.Navigator
       screenOptions={{ headerShown: false }}
     >
       {user ? (

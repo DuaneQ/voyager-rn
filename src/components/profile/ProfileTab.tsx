@@ -11,7 +11,8 @@ import { PersonalInfoAccordion } from './PersonalInfoAccordion';
 import { LifestyleAccordion } from './LifestyleAccordion';
 import { TravelPreferencesAccordion } from './TravelPreferencesAccordion';
 import { useUserProfile } from '../../context/UserProfileContext';
-import { getAuth, signOut } from 'firebase/auth';
+import { signOut } from 'firebase/auth';
+import { auth } from '../../config/firebaseConfig'; // Use already-initialized auth instance
 
 export const ProfileTab: React.FC = () => {
   const { userProfile } = useUserProfile();
@@ -68,8 +69,7 @@ export const ProfileTab: React.FC = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              const auth = getAuth();
-              await signOut(auth);
+              await signOut(auth); // Use already-initialized auth instance
             } catch (error) {
               console.error('Sign out error:', error);
               Alert.alert('Error', 'Failed to sign out. Please try again.');

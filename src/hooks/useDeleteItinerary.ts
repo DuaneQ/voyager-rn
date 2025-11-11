@@ -5,7 +5,7 @@
 
 import { useState, useCallback } from 'react';
 import { httpsCallable } from 'firebase/functions';
-import { auth, functions } from '../config/firebaseConfig';
+import * as firebaseCfg from '../config/firebaseConfig';
 import { DeleteItineraryResponse } from '../types/ManualItinerary';
 
 export const useDeleteItinerary = () => {
@@ -15,7 +15,11 @@ export const useDeleteItinerary = () => {
   const deleteItinerary = useCallback(async (
     itineraryId: string
   ): Promise<DeleteItineraryResponse> => {
-    const userId = auth.currentUser?.uid;
+  const tentativeAuth = typeof (firebaseCfg as any).getAuthInstance === 'function'
+    ? (firebaseCfg as any).getAuthInstance()
+    : (firebaseCfg as any).auth;
+  const effectiveAuth = tentativeAuth && tentativeAuth.currentUser ? tentativeAuth : (firebaseCfg as any).auth;
+  const userId = effectiveAuth?.currentUser?.uid;
     if (!userId) {
       return { success: false, error: 'User not authenticated' };
     }
@@ -28,7 +32,7 @@ export const useDeleteItinerary = () => {
     setError(null);
 
     try {
-      const deleteItineraryFn = httpsCallable(functions, 'deleteItinerary');
+  const deleteItineraryFn = httpsCallable((firebaseCfg as any).functions, 'deleteItinerary');
 
       console.log('[useDeleteItinerary] Deleting itinerary:', itineraryId);
 

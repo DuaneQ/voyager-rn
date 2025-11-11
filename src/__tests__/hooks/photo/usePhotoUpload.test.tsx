@@ -5,6 +5,8 @@
 
 import { renderHook, act, waitFor } from '@testing-library/react-native';
 import { Alert, Platform } from 'react-native';
+// Ensure the centralized firebaseConfig mock is applied before importing modules
+jest.mock('../../../config/firebaseConfig');
 import { usePhotoUpload } from '../../../hooks/photo/usePhotoUpload';
 import { photoService } from '../../../services/photo/PhotoService';
 import { UserProfileContext } from '../../../context/UserProfileContext';
@@ -40,11 +42,10 @@ jest.mock('../../../services/photo/PhotoService', () => ({
     validateImage: (...args: any[]) => mockValidateImage(...args),
   },
 }));
-jest.mock('../../../config/firebaseConfig', () => ({
-  auth: {
-    currentUser: { uid: 'test-user-123' },
-  },
-}));
+// Use centralized manual mock for firebaseConfig and allow tests to mutate auth as needed
+jest.mock('../../../config/firebaseConfig');
+
+import { setMockUser, clearMockUser } from '../../../testUtils/mockAuth';
 
 jest.spyOn(Alert, 'alert');
 
@@ -80,6 +81,8 @@ describe('usePhotoUpload', () => {
     jest.clearAllMocks();
     (Alert.alert as jest.Mock).mockClear();
     Platform.OS = 'ios';
+    // Ensure mocked auth reports an authenticated test user by default
+    setMockUser();
     
     // Set up default mock implementations
     mockDeletePhoto.mockResolvedValue(undefined);
@@ -95,6 +98,10 @@ describe('usePhotoUpload', () => {
       canceled: false,
       assets: [{ uri: 'file://test.jpg', width: 800, height: 600 }],
     });
+  });
+
+  afterEach(() => {
+    clearMockUser();
   });
 
   describe('Initial State', () => {

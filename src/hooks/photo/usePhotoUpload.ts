@@ -19,7 +19,7 @@ import {
 import { photoService } from '../../services/photo/PhotoService';
 import { IMAGE_PICKER_SETTINGS, UPLOAD_RETRY_SETTINGS } from '../../config/storage';
 import { UserProfileContext } from '../../context/UserProfileContext';
-import { auth } from '../../config/firebaseConfig';
+import * as firebaseCfg from '../../config/firebaseConfig';
 
 /**
  * Upload state
@@ -63,7 +63,12 @@ interface UsePhotoUploadReturn {
  */
 export const usePhotoUpload = (userId?: string): UsePhotoUploadReturn => {
   const { userProfile, updateUserProfile } = useContext(UserProfileContext);
-  const effectiveUserId = userId || auth.currentUser?.uid;
+  // Defensive resolution of auth instance: some test mocks or environments may export
+  // either a `getAuthInstance()` function or an `auth` object. Prefer callable
+  // getAuthInstance when available, otherwise fall back to `auth` shape.
+  // Do not resolve the auth/uid at hook init time. Resolve at call-time so
+  // tests can mutate the mocked auth module (setMockUser / clearMockUser)
+  // and the hook will pick up the latest auth state.
 
   // Cache permission status to avoid repeated checks
   const [permissionGranted, setPermissionGranted] = useState<boolean | null>(null);
@@ -158,7 +163,13 @@ export const usePhotoUpload = (userId?: string): UsePhotoUploadReturn => {
       slot: PhotoSlot,
       options?: PhotoSelectionOptions
     ): Promise<UploadResult | null> => {
-      if (!effectiveUserId) {
+      // Resolve effective user id at call-time to reflect any test-time mocks
+      const resolvedAuth: any = (firebaseCfg && typeof (firebaseCfg as any).getAuthInstance === 'function')
+        ? (firebaseCfg as any).getAuthInstance()
+        : (firebaseCfg as any).auth || null;
+      const currentUserId = userId || resolvedAuth?.currentUser?.uid;
+
+      if (!currentUserId) {
         setUploadState((prev) => ({
           ...prev,
           error: 'User not authenticated',
@@ -208,7 +219,7 @@ export const usePhotoUpload = (userId?: string): UsePhotoUploadReturn => {
         const uploadResult = await uploadWithRetry(
           selectedAsset.uri,
           slot,
-          effectiveUserId,
+          currentUserId,
           handleProgress
         );
 
@@ -249,7 +260,7 @@ export const usePhotoUpload = (userId?: string): UsePhotoUploadReturn => {
         return null;
       }
     },
-    [effectiveUserId, userProfile, updateUserProfile, clearState, requestMediaLibraryPermission, handleProgress]
+    [userProfile, updateUserProfile, clearState, requestMediaLibraryPermission, handleProgress]
   );
 
   /**
@@ -257,7 +268,13 @@ export const usePhotoUpload = (userId?: string): UsePhotoUploadReturn => {
    */
   const deletePhoto = useCallback(
     async (slot: PhotoSlot): Promise<void> => {
-      if (!effectiveUserId) {
+      // Resolve current user id at call-time
+      const resolvedAuthForDelete: any = (firebaseCfg && typeof (firebaseCfg as any).getAuthInstance === 'function')
+        ? (firebaseCfg as any).getAuthInstance()
+        : (firebaseCfg as any).auth || null;
+      const currentUserIdForDelete = userId || resolvedAuthForDelete?.currentUser?.uid;
+
+      if (!currentUserIdForDelete) {
         setUploadState((prev) => ({
           ...prev,
           error: 'User not authenticated',
@@ -273,7 +290,7 @@ export const usePhotoUpload = (userId?: string): UsePhotoUploadReturn => {
         }));
 
         // Delete photo
-        await photoService.deletePhoto(slot, effectiveUserId);
+  await photoService.deletePhoto(slot, currentUserIdForDelete);
 
         // Update user profile context
         if (userProfile) {
@@ -308,7 +325,7 @@ export const usePhotoUpload = (userId?: string): UsePhotoUploadReturn => {
         Alert.alert('Delete Failed', errorMessage, [{ text: 'OK' }]);
       }
     },
-    [effectiveUserId, userProfile, updateUserProfile]
+    [userProfile, updateUserProfile]
   );
 
   return {

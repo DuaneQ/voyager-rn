@@ -27,7 +27,7 @@ import {
   ImageBackground,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import { auth } from '../../firebase-config';
+import { getAuthInstance } from '../config/firebaseConfig';
 import { Itinerary } from '../types/Itinerary';
 import ItineraryCard from '../components/forms/ItineraryCard';
 import { ItinerarySelector } from '../components/search/ItinerarySelector';
@@ -96,7 +96,15 @@ const SearchPage: React.FC = () => {
 
   useEffect(() => {
     // Simple auth check
-    const unsubscribe = auth.onAuthStateChanged((user) => {
+    const authInstance = typeof getAuthInstance === 'function' ? getAuthInstance() : null;
+    
+    if (!authInstance?.onAuthStateChanged) {
+      // No auth available - set loading to false immediately
+      setIsLoading(false);
+      return () => {};
+    }
+    
+    const unsubscribe = authInstance.onAuthStateChanged((user) => {
       setUserId(user?.uid || null);
       setIsLoading(false);
     });

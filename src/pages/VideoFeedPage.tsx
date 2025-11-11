@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { VideoCard } from '../components/video/VideoCard';
 import { VideoCommentsModal } from '../components/video/VideoCommentsModal';
 import { useVideoFeed, VideoFilter } from '../hooks/video/useVideoFeed';
@@ -49,7 +50,21 @@ const VideoFeedPage: React.FC = () => {
   const [isMuted, setIsMuted] = useState(true); // Persistent mute state across videos
   const [commentsModalVisible, setCommentsModalVisible] = useState(false);
   const [selectedVideoForComments, setSelectedVideoForComments] = useState<typeof videos[0] | null>(null);
+  const [isScreenFocused, setIsScreenFocused] = useState(true); // Track if screen is focused
   const flatListRef = useRef<FlatList>(null);
+
+  // Stop video playback when navigating away (fixes Android audio continuing)
+  useFocusEffect(
+    useCallback(() => {
+      // Screen is focused - allow playback
+      setIsScreenFocused(true);
+      
+      return () => {
+        // Screen is unfocused - stop playback
+        setIsScreenFocused(false);
+      };
+    }, [])
+  );
 
   // Request a sensible audio mode on Android so ExoPlayer has proper audio
   // focus/route behavior on emulator and devices. This often fixes muted or
@@ -176,7 +191,7 @@ const VideoFeedPage: React.FC = () => {
       return (
         <VideoCard
           video={item}
-          isActive={index === currentVideoIndex}
+          isActive={index === currentVideoIndex && isScreenFocused}
           isMuted={isMuted}
           onMuteToggle={setIsMuted}
           onLike={() => handleLike(item)}
@@ -186,7 +201,7 @@ const VideoFeedPage: React.FC = () => {
         />
       );
     },
-    [currentVideoIndex, isMuted, handleLike, handleCommentPress, handleShare, handleViewTracked]
+    [currentVideoIndex, isScreenFocused, isMuted, handleLike, handleCommentPress, handleShare, handleViewTracked]
   );
 
   /**
@@ -510,7 +525,7 @@ const styles = StyleSheet.create({
   },
   floatingUploadButton: {
     position: 'absolute',
-    bottom: 330,
+    bottom: Platform.OS === 'ios' ? 330 : 480, // Android needs higher position (less bottom space)
     right: 4, 
     width: 56,
     height: 56,

@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { httpsCallable } from 'firebase/functions';
-import { auth, functions } from '../config/firebaseConfig';
+import * as firebaseCfg from '../config/firebaseConfig';
 
 export interface AIGeneratedItinerary {
   id: string;
@@ -34,7 +34,11 @@ export const useAIGeneratedItineraries = () => {
   const [error, setError] = useState<string | null>(null);
 
   const fetchItineraries = useCallback(async () => {
-    const userId = auth.currentUser?.uid;
+  const tentative = typeof (firebaseCfg as any).getAuthInstance === 'function'
+    ? (firebaseCfg as any).getAuthInstance()
+    : (firebaseCfg as any).auth;
+  const effectiveAuth = tentative && tentative.currentUser ? tentative : (firebaseCfg as any).auth;
+  const userId = effectiveAuth?.currentUser?.uid;
     if (!userId) {
       setError('User not authenticated');
       return;
@@ -44,7 +48,7 @@ export const useAIGeneratedItineraries = () => {
     setError(null);
 
     try {
-      const listItinerariesFn = httpsCallable(functions, 'listItinerariesForUser');
+  const listItinerariesFn = httpsCallable((firebaseCfg as any).functions, 'listItinerariesForUser');
       
       // Match PWA: Filter by ai_status: 'completed' only
       const result: any = await listItinerariesFn({ userId, ai_status: 'completed' });

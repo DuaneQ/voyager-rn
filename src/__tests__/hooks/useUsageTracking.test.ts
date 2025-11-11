@@ -5,10 +5,9 @@
  */
 
 import { renderHook, act, waitFor } from '@testing-library/react-native';
-import { useUsageTracking } from '../../hooks/useUsageTracking';
-import * as firestore from 'firebase/firestore';
 
-// Mock Firebase Firestore
+// Mock Firebase Firestore BEFORE importing the hook so the hook picks up the
+// mocked functions at module-import time.
 jest.mock('firebase/firestore', () => ({
   getFirestore: jest.fn(() => ({})),
   doc: jest.fn((db, collection, id) => ({ collection, id })),
@@ -16,12 +15,12 @@ jest.mock('firebase/firestore', () => ({
   updateDoc: jest.fn(),
 }));
 
-// Mock firebase config
-jest.mock('../../config/firebaseConfig', () => ({
-  auth: { currentUser: { uid: 'test-user-123' } },
-  db: {},
-  app: {},
-}));
+// Ensure centralized firebaseConfig mock is applied before importing the hook
+jest.mock('../../config/firebaseConfig');
+
+import * as firestore from 'firebase/firestore';
+import { useUsageTracking } from '../../hooks/useUsageTracking';
+import { setMockUser, clearMockUser } from '../../testUtils/mockAuth';
 
 describe('useUsageTracking', () => {
   const getTodayString = () => new Date().toISOString().split('T')[0];
@@ -69,6 +68,12 @@ describe('useUsageTracking', () => {
     jest.clearAllMocks();
     console.log = jest.fn();
     console.error = jest.fn();
+    // Ensure mocked auth reports an authenticated test user by default
+    setMockUser();
+  });
+
+  afterEach(() => {
+    clearMockUser();
   });
 
   describe('Initial State', () => {

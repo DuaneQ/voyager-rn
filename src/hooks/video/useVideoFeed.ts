@@ -22,7 +22,8 @@ import {
   Query,
   DocumentData,
 } from 'firebase/firestore';
-import { db, auth } from '../../config/firebaseConfig';
+import { db } from '../../config/firebaseConfig';
+import * as firebaseCfg from '../../config/firebaseConfig';
 import { Video } from '../../types/Video';
 
 export type VideoFilter = 'all' | 'liked' | 'mine';
@@ -63,7 +64,10 @@ export const useVideoFeed = (): UseVideoFeedReturn => {
   // Track viewed videos to prevent double-counting
   const viewedVideoIds = useRef<Set<string>>(new Set());
 
-  const userId = auth.currentUser?.uid;
+  const _authResolved: any = (firebaseCfg && typeof (firebaseCfg as any).getAuthInstance === 'function')
+    ? (firebaseCfg as any).getAuthInstance()
+    : (firebaseCfg as any).auth || null;
+  const userId = _authResolved?.currentUser?.uid;
 
   /**
    * Load connected user IDs for private video filtering

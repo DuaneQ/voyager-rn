@@ -9,9 +9,8 @@ import { httpsCallable } from 'firebase/functions';
 
 // Mock Firebase
 jest.mock('firebase/functions');
-jest.mock('../../config/firebaseConfig', () => ({
-  functions: {},
-}));
+// Use centralized manual mock for firebaseConfig to ensure consistent test shape
+jest.mock('../../config/firebaseConfig');
 
 const mockHttpsCallable = httpsCallable as jest.MockedFunction<typeof httpsCallable>;
 

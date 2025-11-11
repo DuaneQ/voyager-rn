@@ -27,7 +27,7 @@ import {
   arrayUnion,
   Timestamp,
 } from 'firebase/firestore';
-import { db, auth } from '../../config/firebaseConfig';
+import { db, getAuthInstance } from '../../config/firebaseConfig';
 import { Video, VideoComment } from '../../types/Video';
 
 interface VideoCommentsModalProps {
@@ -54,7 +54,7 @@ export const VideoCommentsModal: React.FC<VideoCommentsModalProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const currentUser = auth.currentUser;
+  const currentUser = getAuthInstance()?.currentUser;
   const maxCommentLength = 300;
 
   // Load comments when modal opens

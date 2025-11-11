@@ -9,22 +9,25 @@
 import { renderHook, waitFor, act } from '@testing-library/react-native';
 import { httpsCallable } from 'firebase/functions';
 import { useCreateItinerary } from '../../hooks/useCreateItinerary';
+import { setMockUser, clearMockUser } from '../../testUtils/mockAuth';
 import { calculateAge } from '../../utils/calculateAge';
 
 // Mock Firebase
 jest.mock('firebase/functions');
-jest.mock('../../config/firebaseConfig', () => ({
-  functions: {},
-  auth: {
-    currentUser: { uid: 'test-user' }
-  }
-}));
+// Rely on the centralized manual mock for firebaseConfig
+jest.mock('../../config/firebaseConfig');
 
 const mockHttpsCallable = httpsCallable as jest.MockedFunction<typeof httpsCallable>;
 
 describe('useCreateItinerary - Age Field Payload Validation (RN)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Ensure tests have an authenticated user by default
+    setMockUser();
+  });
+
+  afterEach(() => {
+    clearMockUser();
   });
 
   it('should include age field calculated from userProfile.dob in createItinerary payload', async () => {
@@ -82,7 +85,7 @@ describe('useCreateItinerary - Age Field Payload Validation (RN)', () => {
           destination: 'Paris, France',
           age: userAge, // CRITICAL: Age must be included
           userInfo: expect.objectContaining({
-            uid: 'test-user',
+            uid: 'test-user-123',
             dob: '1990-05-15',
           }),
         }),

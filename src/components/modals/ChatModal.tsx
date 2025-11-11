@@ -25,7 +25,7 @@ import {
   doc,
   increment,
 } from "firebase/firestore";
-import { auth, db } from '../../config/firebaseConfig';
+import { getAuthInstance, db } from '../../config/firebaseConfig';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -67,7 +67,7 @@ const ChatModal: React.FC<ChatModalProps> = ({
 }) => {
   const [messageInput, setMessageInput] = useState('');
   const [sending, setSending] = useState(false);
-  const userId = auth.currentUser?.uid;
+  const userId = getAuthInstance()?.currentUser?.uid;
   const flatListRef = useRef<FlatList>(null);
 
   // All messages combined (older + latest)

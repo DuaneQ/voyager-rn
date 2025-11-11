@@ -4,17 +4,20 @@
  * Follows React hooks testing best practices
  */
 
-import { renderHook, act, waitFor } from '@testing-library/react-native';
-import { useUpdateItinerary } from '../../hooks/useUpdateItinerary';
-import { itineraryRepository } from '../../repositories/ItineraryRepository';
+import { renderHook, act } from '@testing-library/react-hooks';
+import { waitFor } from '@testing-library/react-native';
 import type { Itinerary } from '../../types/Itinerary';
 
-// Mock the repository
+// Mock the repository before requiring the hook so the hook loads the mocked instance
 jest.mock('../../repositories/ItineraryRepository', () => ({
   itineraryRepository: {
     updateItinerary: jest.fn(),
   },
 }));
+
+// Require the hook and the mocked repository after setting up the mock
+const { useUpdateItinerary } = require('../../hooks/useUpdateItinerary');
+const { itineraryRepository } = require('../../repositories/ItineraryRepository');
 
 describe('useUpdateItinerary', () => {
   const mockItinerary: Itinerary = {
@@ -349,19 +352,19 @@ describe('useUpdateItinerary', () => {
 
       const { result } = renderHook(() => useUpdateItinerary());
 
-      const promise1 = act(async () => {
-        return result.current.updateItinerary('itinerary-123', {
-          description: 'First',
-        });
+      // Start both updates concurrently (do not wrap each call in act — wrap the awaited Promise.all)
+      const promise1 = result.current.updateItinerary('itinerary-123', {
+        description: 'First',
       });
 
-      const promise2 = act(async () => {
-        return result.current.updateItinerary('itinerary-123', {
-          description: 'Second',
-        });
+      const promise2 = result.current.updateItinerary('itinerary-123', {
+        description: 'Second',
       });
 
       const [result1, result2] = await Promise.all([promise1, promise2]);
+
+      // flush any pending state updates
+      await act(async () => {});
 
       expect(result1.description).toBe('First');
       expect(result2.description).toBe('Second');
@@ -375,7 +378,7 @@ describe('useUpdateItinerary', () => {
         mockItinerary
       );
 
-      const { result } = renderHook(() => useUpdateItinerary());
+  const { result } = renderHook(() => useUpdateItinerary());
 
       // TypeScript should prevent this, but testing runtime behavior
       await act(async () => {

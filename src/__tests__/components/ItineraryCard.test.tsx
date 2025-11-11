@@ -19,12 +19,8 @@ jest.mock('firebase/firestore', () => ({
   getDocs: jest.fn().mockResolvedValue({ docs: [] }),
 }));
 
-// Mock firebase-config auth currentUser
-jest.mock('../../../firebase-config', () => ({
-  auth: {
-    currentUser: { uid: 'current-user-1', email: 'me@example.com' },
-  },
-}));
+// Use centralized manual mock for firebaseConfig
+jest.mock('../../config/firebaseConfig');
 
 import ItineraryCard from '../../components/forms/ItineraryCard';
 
@@ -36,10 +32,23 @@ const baseItinerary: any = {
   description: 'A lovely trip',
   activities: ['Sightseeing', 'Museums'],
   userInfo: {
-    uid: 'user-123',
+    uid: 'test-user-123',
     username: 'johndoe',
   },
 };
+
+// Ensure tests have an authenticated user by default
+jest.mock('../../config/firebaseConfig');
+import { setMockUser, clearMockUser } from '../../testUtils/mockAuth';
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  setMockUser();
+});
+
+afterEach(() => {
+  clearMockUser();
+});
 
 describe('ItineraryCard', () => {
   it('renders itinerary details and activities and profile photo', async () => {
@@ -89,8 +98,8 @@ describe('ItineraryCard', () => {
   });
 
   it('renders edit/delete buttons when showEditDelete and current user is owner', async () => {
-    // Adjust itinerary owner to match mocked current user from top-level mock
-    const ownerItinerary = { ...baseItinerary, userInfo: { ...baseItinerary.userInfo, uid: 'current-user-1' } };
+  // Adjust itinerary owner to match mocked current user from top-level mock
+  const ownerItinerary = { ...baseItinerary, userInfo: { ...baseItinerary.userInfo, uid: 'test-user-123' } };
 
     const onEdit = jest.fn();
     const onDelete = jest.fn();

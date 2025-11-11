@@ -13,9 +13,8 @@ import { calculateAge } from '../../utils/calculateAge';
 
 // Mock Firebase
 jest.mock('firebase/functions');
-jest.mock('../../config/firebaseConfig', () => ({
-  functions: {},
-}));
+// Use centralized manual mock for firebaseConfig
+jest.mock('../../config/firebaseConfig');
 
 const mockHttpsCallable = httpsCallable as jest.MockedFunction<typeof httpsCallable>;
 

@@ -21,9 +21,10 @@ import {
   Platform,
 } from 'react-native';
 import { getFirestore, doc, getDoc } from 'firebase/firestore';
+import * as firebaseCfg from '../../config/firebaseConfig';
 import { Itinerary } from '../../types/Itinerary';
 import { ViewProfileModal } from '../modals/ViewProfileModal';
-import { auth } from '../../../firebase-config';
+import { getAuthInstance } from '../../config/firebaseConfig';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -51,7 +52,12 @@ const ItineraryCard: React.FC<ItineraryCardProps> = ({
   const [processingReaction, setProcessingReaction] = useState(false);
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [useLocalAvatar, setUseLocalAvatar] = useState(false);
-  const currentUserId = auth.currentUser?.uid;
+  // Resolve auth lazily - prefer getAuthInstance() but fall back to legacy auth
+  const _tentativeAuth: any = typeof (firebaseCfg as any).getAuthInstance === 'function'
+    ? (firebaseCfg as any).getAuthInstance()
+    : (firebaseCfg as any).auth;
+  const _effectiveAuth: any = _tentativeAuth && _tentativeAuth.currentUser ? _tentativeAuth : (firebaseCfg as any).auth;
+  const currentUserId = _effectiveAuth?.currentUser?.uid;
 
   // Load profile photo from Firestore user document (matching PWA useGetUserProfilePhoto)
   useEffect(() => {

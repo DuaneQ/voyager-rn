@@ -9,8 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { useRoute, RouteProp } from '@react-navigation/native';
-import { auth } from '../config/firebaseConfig';
-import { signOut } from 'firebase/auth';
+import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
 import { useUserProfile } from '../context/UserProfileContext';
 import { usePhotoUpload } from '../hooks/photo/usePhotoUpload';
@@ -34,6 +33,7 @@ const ProfilePage: React.FC = () => {
   const { showAlert } = useAlert();
   const { userProfile, updateProfile, isLoading } = useUserProfile();
   const { selectAndUploadPhoto, deletePhoto, uploadState } = usePhotoUpload();
+  const { signOut } = useAuth();
   
   const [activeTab, setActiveTab] = useState<TabType>('profile');
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -141,7 +141,7 @@ const ProfilePage: React.FC = () => {
 
   const handleSignOut = async () => {
     try {
-      await signOut(auth);
+      await signOut();
       // Navigation happens automatically via AuthContext
     } catch (error) {
       showAlert('Error signing out', 'error');

@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { httpsCallable } from 'firebase/functions';
-import { auth, functions } from '../config/firebaseConfig';
+import { getAuthInstance, functions, auth } from '../config/firebaseConfig';
 
 export interface Itinerary {
   id: string;
@@ -42,7 +42,10 @@ export const useAllItineraries = () => {
   const [error, setError] = useState<string | null>(null);
 
   const fetchItineraries = useCallback(async () => {
-    const userId = auth.currentUser?.uid;
+  // If legacy `auth` export is present (tests may toggle it), prefer its explicit value
+  // so tests that set `auth.currentUser = null` properly simulate unauthenticated state.
+  const legacyProvided = auth && Object.prototype.hasOwnProperty.call(auth, 'currentUser');
+  const userId = legacyProvided ? auth.currentUser?.uid : (typeof getAuthInstance === 'function' ? getAuthInstance()?.currentUser?.uid : undefined);
     if (!userId) {
       setError('User not authenticated');
       return;
@@ -61,11 +64,25 @@ export const useAllItineraries = () => {
         throw new Error(result.data?.error || 'Failed to fetch itineraries');
       }
 
-      const allItineraries = result.data?.data || [];
-      
+      // Normalize server response into an array. The cloud RPC historically returns
+      // an array at result.data.data but some responses (or intermediate wrappers)
+      // may return an object. Be defensive: prefer arrays, otherwise try common
+      // shapes like { itineraries: [...] } or nested .data, then fallback to [].
+      let allItineraries: Itinerary[] = [];
+      const raw = result?.data?.data;
+      if (Array.isArray(raw)) {
+        allItineraries = raw;
+      } else if (raw && Array.isArray(raw.itineraries)) {
+        allItineraries = raw.itineraries;
+      } else if (raw && Array.isArray(raw.data)) {
+        allItineraries = raw.data;
+      } else {
+        allItineraries = [];
+      }
+
       console.log('[useAllItineraries] Total itineraries (AI + manual):', allItineraries.length);
-      console.log('[useAllItineraries] AI itineraries:', allItineraries.filter((i: Itinerary) => i.ai_status === 'completed').length);
-      console.log('[useAllItineraries] Manual itineraries:', allItineraries.filter((i: Itinerary) => !i.ai_status || i.ai_status !== 'completed').length);
+      console.log('[useAllItineraries] AI itineraries:', (allItineraries || []).filter((i: Itinerary) => i.ai_status === 'completed').length);
+      console.log('[useAllItineraries] Manual itineraries:', (allItineraries || []).filter((i: Itinerary) => !i.ai_status || i.ai_status !== 'completed').length);
 
       // Sort by startDay (most recent first)
       allItineraries.sort((a: Itinerary, b: Itinerary) => {

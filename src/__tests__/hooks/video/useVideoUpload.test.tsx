@@ -45,11 +45,8 @@ jest.mock('../../../services/video/VideoService', () => ({
   },
 }));
 
-jest.mock('../../../config/firebaseConfig', () => ({
-  auth: {
-    currentUser: { uid: 'test-user-123' },
-  },
-}));
+// Use centralized manual mock for firebaseConfig
+jest.mock('../../../config/firebaseConfig');
 
 jest.mock('../../../utils/videoValidation', () => ({
   validateVideoFile: (...args: any[]) => mockValidateVideoFile(...args),
@@ -116,6 +113,9 @@ describe('useVideoUpload', () => {
     mockValidateVideoFile.mockResolvedValue({ isValid: true, errors: [] });
     mockValidateVideoMetadata.mockReturnValue({ isValid: true, errors: [] });
     mockGetFileSize.mockResolvedValue(1024000);
+  // ensure auth is present for video tests (no debug log)
+    // Ensure auth is set for tests to avoid leakage from other suites
+    (auth as any).currentUser = (auth as any).currentUser || { uid: 'test-user-123' };
   });
 
   describe('Initial State', () => {

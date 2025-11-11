@@ -5,7 +5,7 @@
 
 import { useState, useRef } from 'react';
 import { httpsCallable } from 'firebase/functions';
-import { functions } from '../../firebase-config';
+import * as firebaseCfg from '../config/firebaseConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Itinerary } from '../types/Itinerary';
 
@@ -57,8 +57,9 @@ const useSearchItineraries = () => {
     const PAGE_SIZE = 10;
     const rpcName = 'searchItineraries';
 
-    // Resolve the callable via firebase/functions (same as PWA)
-    const searchFn = httpsCallable(functions, rpcName);
+  // Resolve the callable via firebase/functions (same as PWA)
+  const functionsInst = (firebaseCfg && (firebaseCfg as any).functions) || undefined;
+  const searchFn = httpsCallable(functionsInst, rpcName);
     const callRpc = async (payload: any) => {
       if (typeof searchFn !== 'function') {
         throw new Error('RPC unavailable: httpsCallable not available');
@@ -81,19 +82,33 @@ const useSearchItineraries = () => {
       upperRange: currentUserItinerary.upperRange,
     });
 
-    if (res?.data?.success && Array.isArray(res.data.data)) {
-      const results = res.data.data as Itinerary[];
-      setHasMore(results.length >= PAGE_SIZE);
-      const filtered = results.filter(it => validate(it) && it.userInfo?.uid && it.userInfo.uid !== currentUserId);
-      const seen = new Set<string>();
-      return filtered.reduce<Itinerary[]>((acc, it) => {
-        const dest = it.destination || '';
-        if (!seen.has(dest)) { seen.add(dest); acc.push(it); }
-        return acc;
-      }, []);
+    // Normalize response into an array to be defensive against unexpected shapes
+    const raw = res?.data?.data;
+    let results: Itinerary[] = [];
+    if (Array.isArray(raw)) {
+      results = raw;
+    } else if (raw && Array.isArray(raw.itineraries)) {
+      results = raw.itineraries;
+    } else if (raw && Array.isArray(raw.data)) {
+      results = raw.data;
+    } else {
+      // If RPC reported success but payload shape differs, log and return empty
+      if (res?.data?.success) {
+        console.warn('[useSearchItineraries] Unexpected RPC payload shape, returning empty results', raw);
+        setHasMore(false);
+        return [];
+      }
+      throw new Error(res?.data?.error || 'Unexpected RPC response');
     }
 
-    throw new Error(res?.data?.error || 'Unexpected RPC response');
+    setHasMore(results.length >= PAGE_SIZE);
+    const filtered = results.filter(it => validate(it) && it.userInfo?.uid && it.userInfo.uid !== currentUserId);
+    const seen = new Set<string>();
+    return filtered.reduce<Itinerary[]>((acc, it) => {
+      const dest = it.destination || '';
+      if (!seen.has(dest)) { seen.add(dest); acc.push(it); }
+      return acc;
+    }, []);
   };
 
   const searchItineraries = async (currentUserItinerary: Itinerary, currentUserId: string) => {

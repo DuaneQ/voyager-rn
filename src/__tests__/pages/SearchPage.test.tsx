@@ -10,7 +10,7 @@ jest.mock('../../config/firebaseConfig');
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import SearchPage from '../../pages/SearchPage';
-import { auth } from '../../../firebase-config';
+import { auth } from '../../config/firebaseConfig';
 import * as useAllItinerariesModule from '../../hooks/useAllItineraries';
 import { UserProfileProvider } from '../../context/UserProfileContext';
 

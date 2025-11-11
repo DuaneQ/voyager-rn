@@ -25,11 +25,8 @@ jest.mock('firebase/auth', () => ({
   })),
 }));
 
-jest.mock('../../../config/firebaseConfig', () => ({
-  auth: { currentUser: { uid: 'test-user-123' } },
-  db: {},
-  storage: {},
-}));
+// Use centralized manual mock for firebaseConfig
+jest.mock('../../../config/firebaseConfig');
 
 // Mock UserProfileContext
 // Mock UserProfileContext

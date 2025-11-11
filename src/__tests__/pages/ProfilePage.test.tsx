@@ -36,6 +36,15 @@ jest.mock('@react-navigation/native', () => ({
   })),
 }));
 
+// Simplified AuthContext mock so components using useAuth() won't throw
+jest.mock('../../context/AuthContext', () => {
+  const React = require('react');
+  return {
+    AuthProvider: ({ children }: any) => React.createElement(React.Fragment, null, children),
+    useAuth: () => ({ user: { uid: 'test-user-123' } }),
+  };
+});
+
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
@@ -80,11 +89,8 @@ jest.mock('../../context/UserProfileContext', () => {
 
 jest.mock('../../context/AlertContext');
 jest.mock('expo-image-picker');
-jest.mock('../../config/firebaseConfig', () => ({
-  auth: { currentUser: { uid: 'test-user-123' } },
-  db: {},
-  storage: {},
-}));
+// Use centralized manual mock for firebaseConfig to provide consistent auth/getAuthInstance
+jest.mock('../../config/firebaseConfig');
 
 // Get reference to the mocked context for testing
 const getUserProfileMock = () => (useUserProfile as jest.MockedFunction<typeof useUserProfile>)();

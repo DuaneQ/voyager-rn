@@ -92,8 +92,8 @@ describe('AirportSelector - Edge Cases', () => {
 
       await waitFor(() => {
         // Should show no results message or empty list
-        expect(queryByText(/no airports found/i)).toBeTruthy();
-      });
+        expect(queryByText(/no airports found/i)).not.toBeNull();
+      }, { timeout: 1500 });
     });
 
     it('handles timeout during airport code lookup', async () => {

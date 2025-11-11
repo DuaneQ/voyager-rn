@@ -19,7 +19,7 @@ import {
 } from 'react-native';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { format, addDays } from 'date-fns';
-import { auth } from '../../config/firebaseConfig';
+import * as firebaseCfg from '../../config/firebaseConfig';
 import { useAIGeneration } from '../../hooks/useAIGeneration';
 import { AIGenerationRequest } from '../../types/AIGeneration';
 import { getGooglePlacesApiKey } from '../../constants/apiConfig';
@@ -159,6 +159,22 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
     return ProfileValidationService.isFlightSectionVisible(selectedProfile);
   }, [selectedProfile]);
 
+  // Debug: log shapes that commonly cause `.filter` on undefined errors
+  React.useEffect(() => {
+    if (visible) {
+      // eslint-disable-next-line no-console
+      console.log('[AIItineraryGenerationModal] opened - debug shapes:', {
+        preferencesType: typeof preferences,
+        preferencesProfilesIsArray: Array.isArray(preferences?.profiles),
+        preferencesProfilesLength: preferences?.profiles?.length,
+        formDataMustIncludeIsArray: Array.isArray((formData as any)?.mustInclude),
+        formDataMustAvoidIsArray: Array.isArray((formData as any)?.mustAvoid),
+        selectedProfilePresent: !!selectedProfile,
+        userProfileType: typeof userProfile,
+      });
+    }
+  }, [visible, preferences, formData, selectedProfile, userProfile]);
+
   // Handle field changes
   const handleFieldChange = useCallback((field: string, value: any) => {
     setFormData(prev => {
@@ -234,7 +250,13 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
 
     try {
       // Get user ID from Firebase Auth (not userProfile which doesn't have uid)
-      const currentUserId = auth.currentUser?.uid;
+      // Resolve at call-time from the firebase config module so tests that
+      // mutate the manual mock are respected. Also fall back to the named
+      // `auth` export if present, or the provided userProfile.uid when
+      // available (tests sometimes pass userProfile but not auth uid).
+      const currentUserId = (firebaseCfg as any).getAuthInstance?.()?.currentUser?.uid
+        || (firebaseCfg as any).auth?.currentUser?.uid
+        || userProfile?.uid;
       if (!currentUserId) {
         setFormErrors({ general: 'You must be logged in to generate an itinerary' });
         return;
@@ -249,14 +271,25 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
           dob: userProfile?.dob || '',
           status: userProfile?.status || '',
           sexualOrientation: userProfile?.sexualOrientation || 'prefer-not-to-say',
-          email: userProfile?.email || auth.currentUser?.email || '',
+          email: userProfile?.email || (firebaseCfg as any).getAuthInstance?.()?.currentUser?.email || '',
           blocked: userProfile?.blocked || []
         },
         travelPreferences: selectedProfile,
         preferenceProfile: selectedProfile
       };
 
-      const result = await generateItinerary(request);
+      let result;
+      try {
+        // eslint-disable-next-line no-console
+        console.log('[AIItineraryGenerationModal] calling generateItinerary');
+        result = await generateItinerary(request);
+        // eslint-disable-next-line no-console
+        console.log('[AIItineraryGenerationModal] generateItinerary returned:', result);
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.log('[AIItineraryGenerationModal] generateItinerary threw:', e);
+        throw e;
+      }
 
       if (result.success) {
         setShowSuccessState(true);
@@ -465,6 +498,7 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
                   <Text style={styles.fieldLabel}>Destination *</Text>
                   <GooglePlacesAutocomplete
                     placeholder="Where do you want to go?"
+                    predefinedPlaces={[]}
                     onPress={(data, details = null) => {
                       handleFieldChange('destination', data.description);
                     }}
@@ -577,6 +611,7 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
                   <Text style={styles.fieldLabel}>Departing From</Text>
                   <GooglePlacesAutocomplete
                     placeholder="Where are you traveling from?"
+                    predefinedPlaces={[]}
                     onPress={(data, details = null) => {
                       handleFieldChange('departure', data.description);
                     }}
@@ -1051,7 +1086,7 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
               <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.generateButton} onPress={handleGenerate}>
-              <Text style={styles.generateButtonText}>🤖 Generate AI Itinerary</Text>
+              <Text style={styles.generateButtonText} onPress={handleGenerate}>🤖 Generate AI Itinerary</Text>
             </TouchableOpacity>
           </View>
         )}

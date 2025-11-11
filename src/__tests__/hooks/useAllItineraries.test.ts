@@ -7,12 +7,8 @@ import { renderHook, waitFor } from '@testing-library/react-native';
 import { useAllItineraries } from '../../hooks/useAllItineraries';
 import { auth } from '../../config/firebaseConfig';
 
-// Mock Firebase
-jest.mock('../../config/firebaseConfig', () => ({
-  auth: {
-    currentUser: { uid: 'test-user-123' },
-  },
-}));
+// Use centralized manual mock for firebaseConfig
+jest.mock('../../config/firebaseConfig');
 
 // Mock Firebase Functions
 const mockListItinerariesFn = jest.fn();

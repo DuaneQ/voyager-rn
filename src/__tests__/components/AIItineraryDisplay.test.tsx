@@ -2,8 +2,8 @@ import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { Text, Alert } from 'react-native';
 
-// Mock firestore and config
-jest.mock('../../config/firebaseConfig', () => ({ db: {} }));
+// Mock firestore and use centralized firebaseConfig mock
+jest.mock('../../config/firebaseConfig');
 jest.mock('firebase/firestore', () => ({
   doc: jest.fn(() => ({ path: 'itineraries/test-id' })),
   setDoc: jest.fn(),

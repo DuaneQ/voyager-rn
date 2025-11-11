@@ -5,7 +5,7 @@
 
 import { useState, useCallback } from 'react';
 import { httpsCallable } from 'firebase/functions';
-import { auth, functions } from '../config/firebaseConfig';
+import * as firebaseCfg from '../config/firebaseConfig';
 import {
   ManualItineraryFormData,
   ManualItineraryData,
@@ -95,7 +95,10 @@ export const useCreateItinerary = () => {
     userProfile: any,
     editingItineraryId?: string
   ): Promise<CreateItineraryResponse> => {
-    const userId = auth.currentUser?.uid;
+  const _resolvedAuth: any = (firebaseCfg && typeof (firebaseCfg as any).getAuthInstance === 'function')
+    ? (firebaseCfg as any).getAuthInstance()
+    : (firebaseCfg as any).auth || null;
+  const userId = _resolvedAuth?.currentUser?.uid;
     if (!userId) {
       return { success: false, error: 'User not authenticated' };
     }
@@ -114,7 +117,8 @@ export const useCreateItinerary = () => {
     setError(null);
 
     try {
-      const createItineraryFn = httpsCallable(functions, 'createItinerary');
+  const resolvedFunctions = (firebaseCfg as any).functions;
+  const createItineraryFn = httpsCallable(resolvedFunctions, 'createItinerary');
 
       // Convert dates to timestamps (noon UTC to avoid timezone issues)
       const startDate = new Date(formData.startDate + 'T12:00:00.000Z');
@@ -133,7 +137,7 @@ export const useCreateItinerary = () => {
         startDay: startDate.getTime(),
         endDay: endDate.getTime(),
         description: formData.description?.trim() || '',
-        activities: formData.activities.filter(a => a.trim()),
+  activities: Array.isArray(formData.activities) ? formData.activities.filter(a => a && String(a).trim()) : [],
         gender: formData.gender,
         status: formData.status,
         sexualOrientation: formData.sexualOrientation,
