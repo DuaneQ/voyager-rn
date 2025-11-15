@@ -469,7 +469,13 @@ The integration tests validate the **most important feature** - comprehensive tr
 
 ## 📚 Additional Resources
 
-### Documentation
+### Project Documentation
+- [Quick PR Review Guide](docs/QUICK_PR_REVIEW_GUIDE.md) - How to initiate pull request reviews
+- [PR Review Process](docs/PR_REVIEW_PROCESS.md) - Complete review workflow and best practices
+- [Scripts Guide](docs/SCRIPTS_GUIDE.md) - All available npm scripts and commands
+- [Comprehensive Integration Tests](docs/COMPREHENSIVE_INTEGRATION_TESTS.md) - Test coverage details
+
+### External Documentation
 - [Expo Documentation](https://docs.expo.dev/)
 - [React Navigation](https://reactnavigation.org/docs/getting-started)
 - [Firebase React Native](https://rnfirebase.io/)
@@ -482,12 +488,17 @@ The integration tests validate the **most important feature** - comprehensive tr
 
 ## 🤝 Contributing
 
+### Code Review Process
+**Before submitting a PR, review:** [docs/QUICK_PR_REVIEW_GUIDE.md](docs/QUICK_PR_REVIEW_GUIDE.md)
+
+### Development Guidelines
 1. Follow the S.O.L.I.D principles outlined in the architecture
 2. Maintain exact functional parity with voyager-pwa
 3. Use TypeScript with strict typing (no `any` types)
 4. Implement proper error handling and logging
 5. Write unit tests for services and repositories
 6. Follow the established file naming conventions
+7. Request code review before finalizing your PR (see PR review guide above)
 
 ## 📄 License
 
