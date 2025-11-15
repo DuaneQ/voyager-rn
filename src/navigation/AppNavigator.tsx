@@ -19,7 +19,7 @@ import VideoFeedPage from '../pages/VideoFeedPage';
 
 // Context Providers
 import { AlertProvider } from '../context/AlertContext';
-import { UserProfileProvider, useUserProfile } from '../context/UserProfileContext';
+import { useUserProfile } from '../context/UserProfileContext';
 import { useAuth } from '../context/AuthContext';
 
 // Validation utility

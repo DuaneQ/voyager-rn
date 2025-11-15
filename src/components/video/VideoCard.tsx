@@ -19,6 +19,7 @@ import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { Video as VideoType } from '../../types/Video';
 import * as firebaseConfig from '../../config/firebaseConfig';
+import { videoPlaybackManager } from '../../services/video/VideoPlaybackManager';
 
 const { width, height } = Dimensions.get('window');
 
@@ -33,7 +34,7 @@ interface VideoCardProps {
   onViewTracked?: () => void;
 }
 
-export const VideoCard: React.FC<VideoCardProps> = ({
+const VideoCardComponent: React.FC<VideoCardProps> = ({
   video,
   isActive,
   isMuted,
@@ -45,11 +46,14 @@ export const VideoCard: React.FC<VideoCardProps> = ({
 }) => {
   const videoRef = useRef<Video>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  // Track if user manually paused (vs auto-pause during scroll)
+  // Play button should ONLY show when user pauses, not on initial load
+  const [userPaused, setUserPaused] = useState(false);
   const [error, setError] = useState(false);
   const [hasTrackedView, setHasTrackedView] = useState(false);
   const viewTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isUnmountedRef = useRef(false);
+  const isUnloadedRef = useRef(false);
 
   const resolvedAuth = typeof (firebaseConfig as any).getAuthInstance === 'function'
     ? (firebaseConfig as any).getAuthInstance()
@@ -61,70 +65,149 @@ export const VideoCard: React.FC<VideoCardProps> = ({
   const viewCount = video.viewCount || 0;
 
   /**
-   * Control playback based on isActive
+   * Register with VideoPlaybackManager on mount, unregister on unmount.
    */
   useEffect(() => {
-    const managePlayback = async () => {
-      if (!videoRef.current || isUnmountedRef.current) return;
-
+    const handleBecomeActive = async () => {
+      const ref = videoRef.current;
+      if (!ref || isUnmountedRef.current) return;
+      
+      console.debug(`[VideoCard] onBecomeActive - id=${video.id}, isUnloaded=${isUnloadedRef.current}`);
+      
+      // Reset user pause state when video becomes active
+      setUserPaused(false);
+      
       try {
-        if (isActive) {
-          // First stop any existing playback
-          await videoRef.current.stopAsync().catch(() => {});
-          // Reset position
-          await videoRef.current.setPositionAsync(0).catch(() => {});
-          // Ensure mute state is correct before playing. Try to set it, but
-          // don't aggressively unload the native player if the underlying
-          // view has been recycled by the platform (emulator quirk on Android).
+        // If the player was previously unloaded, reload it first (critical for Android scroll-back)
+        if (isUnloadedRef.current) {
+          console.debug(`[VideoCard] reloading unloaded video - id=${video.id}`);
           try {
-            await videoRef.current.setIsMutedAsync(isMuted);
-          } catch (muteErr) {
-            const muteMessage = muteErr?.message || String(muteErr);
-            if (muteMessage.includes('Invalid view returned from registry')) {
-              // Don't unload here — a mute toggle shouldn't destroy the player.
-              // Log and continue to attempt to play; if the player is truly
-              // invalid, subsequent calls will noop safely.
-              console.warn('setIsMutedAsync failed due to recycled native view (ignored).');
-            } else {
-              // Other errors should still be surfaced to the outer handler
-              throw muteErr;
-            }
+            await ref.loadAsync({ uri: video.videoUrl }, {}, false);
+            isUnloadedRef.current = false;
+            console.debug(`[VideoCard] reload successful - id=${video.id}`);
+          } catch (loadErr) {
+            console.error(`[VideoCard] Error reloading video ${video.id}:`, loadErr);
+            return; // Don't attempt playback if reload failed
           }
-          // Play when active
-          await videoRef.current.playAsync();
-          setIsPlaying(true);
         } else {
-          // Aggressively stop audio when inactive
-          // Mute first to prevent any audio leakage
-          await videoRef.current.setIsMutedAsync(true);
-          // Stop playback
-          await videoRef.current.stopAsync();
-          // Reset position
-          await videoRef.current.setPositionAsync(0);
-          setIsPlaying(false);
+          // Player is loaded, stop any existing playback and reset position
+          await ref.stopAsync().catch(() => {});
+          await ref.setPositionAsync(0).catch(() => {});
         }
+        
+        // Set mute state
+        try {
+          await ref.setIsMutedAsync(isMuted);
+        } catch (muteErr) {
+          const muteMessage = muteErr?.message || String(muteErr);
+          if (!muteMessage.includes('Invalid view returned from registry')) {
+            throw muteErr;
+          }
+          console.warn('[VideoCard] setIsMutedAsync failed due to recycled view (ignored)');
+        }
+        
+        // Play
+        await ref.playAsync();
+        setIsPlaying(true);
       } catch (err) {
-        // Some emulator / native errors (for example: "Invalid view returned from registry")
-        // may be thrown when the native view backed by the Video ref has been recycled
-        // by the platform. Treat these as recoverable on emulator (no-redbox) and
-        // attempt a safe cleanup to prevent the app showing a red error screen.
         const message = err?.message || String(err);
-        if (message.includes('Invalid view returned from registry')) {
-          // The native view backing the player was recycled by the platform
-          // (common on Android emulator when views are aggressively recycled).
-          // Don't forcefully unload the player on this error — unloading can
-          // make mute/unmute toggles irrecoverable. Instead log a warning and
-          // mark playback as stopped so the UI stays consistent.
-          console.warn('Video playback native view recycled - skipping aggressive cleanup.');
-          setIsPlaying(false);
-        } else if (!isUnmountedRef.current) {
-          console.error('Error managing video playback:', err);
+        if (!message.includes('Invalid view returned from registry') && !isUnmountedRef.current) {
+          console.error('[VideoCard] Error in onBecomeActive:', err);
         }
       }
     };
+    
+    const handleBecomeInactive = async () => {
+      const ref = videoRef.current;
+      if (!ref || isUnmountedRef.current) return;
+      
+      console.debug(`[VideoCard] onBecomeInactive - id=${video.id}`);
+      
+      try {
+        // 1. Mute IMMEDIATELY to prevent audio leakage
+        await ref.setIsMutedAsync(true);
+        // 2. Pause (faster response than stop)
+        await ref.pauseAsync();
+        // 3. Stop playback
+        await ref.stopAsync();
+        // 4. Reset position
+        await ref.setPositionAsync(0);
+        setIsPlaying(false);
+        
+        // On Android, unload to free memory (manager will handle this)
+        if (Platform.OS === 'android') {
+          try {
+            await ref.unloadAsync();
+            isUnloadedRef.current = true;
+            console.debug(`[VideoCard] unloadAsync called - id=${video.id}`);
+          } catch (unloadErr) {
+            console.warn('[VideoCard] unloadAsync failed (ignored):', unloadErr);
+          }
+        }
+      } catch (err) {
+        const message = err?.message || String(err);
+        if (!message.includes('Invalid view returned from registry') && !isUnmountedRef.current) {
+          console.error('[VideoCard] Error in onBecomeInactive:', err);
+        }
+      }
+    };
+    
+    // Register with playback manager
+    videoPlaybackManager.register({
+      videoId: video.id,
+      ref: videoRef.current,
+      onBecomeActive: handleBecomeActive,
+      onBecomeInactive: handleBecomeInactive,
+    });
+    
+    return () => {
+      // Unregister on unmount
+      videoPlaybackManager.unregister(video.id);
+    };
+  }, [video.id, video.videoUrl]); // Dependencies: video.id and videoUrl
+  
+  /**
+   * Request activation when isActive changes.
+   */
+  useEffect(() => {
+    const managePlayback = async () => {
+      console.debug(`[VideoCard] managePlayback - id=${video.id} isActive=${isActive}`);
+      if (!videoRef.current || isUnmountedRef.current) return;
+
+      // Request activation/deactivation via manager
+      if (isActive) {
+        // Delay to ensure scroll has settled and previous video has unloaded (Android fix)
+        setTimeout(() => {
+          if (isUnmountedRef.current) return;
+          videoPlaybackManager.setActiveVideo(video.id);
+        }, Platform.OS === 'android' ? 250 : 0); // Increased from 150ms to 250ms
+      }
+      // Note: deactivation happens automatically when another video becomes active
+    };
 
     managePlayback();
-  }, [isActive, isMuted]);
+  }, [isActive, video.id]);
+  
+  /**
+   * Update mute state when isMuted prop changes.
+   */
+  useEffect(() => {
+    const updateMuteState = async () => {
+      const ref = videoRef.current;
+      if (!ref || !isPlaying) return;
+      
+      try {
+        await ref.setIsMutedAsync(isMuted);
+      } catch (err) {
+        const m = err?.message || String(err);
+        if (!m.includes('Invalid view returned from registry')) {
+          console.warn('[VideoCard] setIsMutedAsync failed:', err);
+        }
+      }
+    };
+    
+    updateMuteState();
+  }, [isMuted, isPlaying]);
 
   /**
    * Track view after 3 seconds of play
@@ -156,17 +239,19 @@ export const VideoCard: React.FC<VideoCardProps> = ({
     return () => {
       isUnmountedRef.current = true;
       // Cleanup when component unmounts or becomes inactive
-      if (videoRef.current) {
-        videoRef.current.stopAsync().catch(() => {
+      const ref = videoRef.current;
+      if (ref) {
+        ref.stopAsync().catch(() => {
           // Ignore errors
         });
-        videoRef.current.setPositionAsync(0).catch(() => {
+        ref.setPositionAsync(0).catch(() => {
           // Ignore errors
         });
-        videoRef.current.setIsMutedAsync(true).catch(() => {
+        ref.setIsMutedAsync(true).catch(() => {
           // Mute to prevent any audio leakage
         });
-        videoRef.current.unloadAsync().catch(() => {
+        // Attempt to unload to free native resources
+        ref.unloadAsync().catch(() => {
           // Ignore errors on cleanup
         });
       }
@@ -181,7 +266,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({
    */
   const handlePlaybackStatusUpdate = (status: AVPlaybackStatus) => {
     if (status.isLoaded) {
-      setIsLoading(false);
+      // REMOVED setIsLoading(false) - eliminates play button flash
       if (status.didJustFinish) {
         // Loop video
         videoRef.current?.replayAsync();
@@ -193,15 +278,18 @@ export const VideoCard: React.FC<VideoCardProps> = ({
    * Toggle play/pause
    */
   const handlePlayPause = async () => {
-    if (!videoRef.current) return;
+    const ref = videoRef.current;
+    if (!ref) return;
 
     try {
       if (isPlaying) {
-        await videoRef.current.pauseAsync();
+        await ref.pauseAsync();
         setIsPlaying(false);
+        setUserPaused(true); // User manually paused
       } else {
-        await videoRef.current.playAsync();
+        await ref.playAsync();
         setIsPlaying(true);
+        setUserPaused(false); // User resumed
       }
     } catch (err) {
       console.error('Error toggling playback:', err);
@@ -221,8 +309,9 @@ export const VideoCard: React.FC<VideoCardProps> = ({
       onMuteToggle(newMutedState);
       // Best-effort: if the ref is valid, attempt to set mute asynchronously
       // but don't fail if it errors (prevents redbox on emulator).
-      if (videoRef.current) {
-        videoRef.current.setIsMutedAsync(newMutedState).catch((e) => {
+      const ref = videoRef.current;
+      if (ref) {
+        ref.setIsMutedAsync(newMutedState).catch((e) => {
           // Ignore failures; the Video component will receive the new prop
           // and should apply it when possible.
           const m = e?.message || String(e);
@@ -263,7 +352,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({
    */
   const handleError = () => {
     setError(true);
-    setIsLoading(false);
+    // REMOVED setIsLoading(false)
     console.error('Video failed to load:', video.videoUrl);
   };
 
@@ -368,15 +457,10 @@ export const VideoCard: React.FC<VideoCardProps> = ({
             posterSource={{ uri: video.thumbnailUrl || '' }}
           />
 
-          {/* Loading indicator */}
-          {isLoading && (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#fff" />
-            </View>
-          )}
+          {/* REMOVED loading indicator - causes play button flash during scroll */}
 
-          {/* Play/Pause overlay */}
-          {!isPlaying && !isLoading && (
+          {/* Play/Pause overlay - ONLY show when user manually paused (like TikTok/Instagram) */}
+          {userPaused && (
             <View style={styles.playOverlay}>
               <Ionicons name="play-circle" size={80} color="rgba(255,255,255,0.9)" />
             </View>
@@ -425,12 +509,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  loadingContainer: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
+  // REMOVED loadingContainer - no longer showing loading state
   playOverlay: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
@@ -523,3 +602,9 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
 });
+
+// Memoize to avoid unnecessary re-renders in large FlatList
+const VideoCard = React.memo(VideoCardComponent);
+VideoCard.displayName = 'VideoCard';
+
+export { VideoCard };

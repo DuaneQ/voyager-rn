@@ -35,6 +35,13 @@ This reference lists the newly organized documentation files (created as part of
 - docs/profile/ITINERARY_CARD_PROFILE_PHOTO_FIX.md — Fixes for profile photo display in itinerary cards and related rendering bugs.
 - docs/profile/PROFILE_PWA_PARITY.md — Profile page implementation notes to match the PWA (fields, validation, UI, tests).
 
+## docs/auth/
+
+- `docs/auth/AUTH_CONTEXT_EXPLAINED.md` — Beginner-friendly explanation of `AuthContext`, startup/restore behavior, platform differences (SecureStore vs AsyncStorage), and quick flow diagrams.
+- `docs/auth/AUTH_FLOW_CODE_REVIEW.md` — Comprehensive code review for signup/login/logout, token handling, Google Sign-In flow, and security recommendations for junior engineers.
+- `docs/auth/AUTH_SECURITY_ANALYSIS.md` — (existing) Detailed security analysis for authentication flows.
+- `docs/auth/README.md` — (existing) Overall auth documentation and setup notes.
+
 ---
 
 ## Notes & Next Steps

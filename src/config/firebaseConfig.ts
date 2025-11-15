@@ -54,6 +54,9 @@ export const db = getFirestore(app);
 export const storage = getStorage(app);
 export const functions = getFunctions(app, 'us-central1');
 
+// Helper function for compatibility with existing code that expects getAuthInstance()
+export const getAuthInstance = () => auth;
+
 console.log('🔥 Firebase initialized for voyager-RN');
 console.log('📱 Using project:', firebaseConfig.projectId);
 console.log('💾 Auth persistence:', Platform.OS === 'web' ? 'Browser' : 'AsyncStorage');

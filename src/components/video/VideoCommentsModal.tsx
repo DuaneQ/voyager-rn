@@ -58,11 +58,13 @@ export const VideoCommentsModal: React.FC<VideoCommentsModalProps> = ({
   const maxCommentLength = 300;
 
   // Load comments when modal opens
+  // Only reload when modal becomes visible or video ID changes
+  // Do NOT reload on video.comments changes to avoid re-opening after comment submission
   useEffect(() => {
     if (visible && video.id) {
       loadComments();
     }
-  }, [visible, video.id, video.comments]);
+  }, [visible, video.id]);
 
   const loadComments = async () => {
     setLoading(true);

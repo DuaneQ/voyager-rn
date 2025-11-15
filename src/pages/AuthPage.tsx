@@ -23,6 +23,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
+import mapAuthError from '../utils/auth/firebaseAuthErrorMapper';
 
 // Form Components
 import LoginForm from '../components/auth/forms/LoginForm';
@@ -55,15 +56,8 @@ const AuthPage: React.FC = () => {
       }
       // Navigation will be handled by auth state change in AppNavigator
     } catch (error: any) {
-      if (error.message.includes('Email not verified')) {
-        showAlert(
-          'error',
-          'Your email has not been verified. Please check your inbox or spam folder, or click the link below to resend another verification email.'
-        );
-      } else {
-        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-        showAlert('error', errorMessage);
-      }
+      const friendly = mapAuthError(error);
+      showAlert('error', friendly.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -79,16 +73,8 @@ const AuthPage: React.FC = () => {
       showAlert('success', 'A verification link has been sent to your email for verification.');
       setMode('login');
     } catch (error: any) {
-      if (error.code === 'auth/email-already-in-use') {
-        showAlert('error', 'An account already exists for that email. Please sign in instead.');
-      } else if (error.code === 'auth/invalid-email') {
-        showAlert('error', 'Please enter a valid email address.');
-      } else if (error.code === 'auth/weak-password') {
-        showAlert('error', 'Password should be at least 6 characters.');
-      } else {
-        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-        showAlert('error', errorMessage);
-      }
+      const friendly = mapAuthError(error);
+      showAlert('error', friendly.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -104,8 +90,8 @@ const AuthPage: React.FC = () => {
       showAlert('success', 'Check your email for the reset link.');
       setMode('login');
     } catch (error: any) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to send password reset email.';
-      showAlert('error', errorMessage);
+      const friendly = mapAuthError(error);
+      showAlert('error', friendly.message || 'Failed to send password reset email.');
     } finally {
       setIsSubmitting(false);
     }
@@ -120,8 +106,8 @@ const AuthPage: React.FC = () => {
       await resendVerification();
       showAlert('success', 'Verification email sent.');
     } catch (error: any) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to resend verification email.';
-      showAlert('error', errorMessage);
+      const friendly = mapAuthError(error);
+      showAlert('error', friendly.message || 'Failed to resend verification email.');
     } finally {
       setIsSubmitting(false);
     }

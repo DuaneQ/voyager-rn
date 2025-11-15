@@ -19,8 +19,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { signInWithCustomToken } from 'firebase/auth';
 import { auth } from '../../config/firebaseConfig';
-import { httpsCallable } from 'firebase/functions';
-import { functions } from '../../config/firebaseConfig';
 import { Platform } from 'react-native';
 
 const API_KEY = 'AIzaSyCbckV9cMuKUM4ZnvYDJZUvfukshsZfvM0'; // mundo1-dev
@@ -35,6 +33,7 @@ export interface FirebaseUser {
   idToken: string;
   refreshToken: string;
   expiresIn: string;
+  isNewUser?: boolean;
 }
 
 interface AuthResponse {
@@ -95,9 +94,7 @@ export class FirebaseAuthService {
         refreshToken,
         expiresIn: '3600', // Default expiry
       };
-      
-      console.log('[FirebaseAuthService] Found stored user:', user.uid);
-        
+              
       const tokenExpiry = await AsyncStorage.getItem('FIREBASE_TOKEN_EXPIRY');
       if (tokenExpiry && Date.now() < parseInt(tokenExpiry)) {
         this.currentUser = user;
@@ -105,10 +102,8 @@ export class FirebaseAuthService {
         // CRITICAL: Sync with Auth SDK BEFORE notifying listeners
         // This ensures the Auth SDK has the signed-in user before any
         // Cloud Functions are called (which require auth context)
-        console.log('[FirebaseAuthService] Syncing with Auth SDK on restore...');
         try {
           await this.syncWithAuthSDK(user.idToken);
-          console.log('[FirebaseAuthService] Auth SDK sync complete, notifying listeners');
         } catch (e) {
           console.warn('[FirebaseAuthService] Auth SDK sync failed during restore:', e);
           // Continue anyway - REST API still works
@@ -116,17 +111,13 @@ export class FirebaseAuthService {
         
         // Only notify AFTER sync completes (or fails)
         this.notifyAuthStateChanged(user);
-        console.log('[FirebaseAuthService] Token valid, user loaded and synced');
         return user;
       } else {
-        console.log('[FirebaseAuthService] Token expired, refreshing...');
         const refreshedUser = await this.refreshToken(user.refreshToken);
         if (refreshedUser) {
           // Sync BEFORE notifying listeners
-          console.log('[FirebaseAuthService] Syncing Auth SDK after token refresh...');
           try {
             await this.syncWithAuthSDK(refreshedUser.idToken);
-            console.log('[FirebaseAuthService] Auth SDK sync complete after refresh');
           } catch (e) {
             console.warn('[FirebaseAuthService] Auth SDK sync failed after refresh:', e);
           }
@@ -191,7 +182,6 @@ export class FirebaseAuthService {
     // This prevents listeners (which call callable Functions) from firing
     // before the Auth SDK has a signed-in user and ensures auth tokens
     // are attached to httpsCallable requests.
-    console.log('[FirebaseAuthService] Syncing with Auth SDK after sign in...');
     try {
       await this.syncWithAuthSDK(user.idToken);
       console.log('[FirebaseAuthService] Auth SDK sync complete after sign in');
@@ -249,7 +239,6 @@ export class FirebaseAuthService {
         // Sign in to Firebase Auth SDK with the custom token
         await signInWithCustomToken(auth, result.result.customToken);
         
-        console.log('✅ [FirebaseAuthService] Successfully synced with Firebase Auth SDK');
         return; // Success - exit
         
       } catch (error) {
@@ -303,6 +292,63 @@ export class FirebaseAuthService {
     // Don't persist unverified users to storage
     this.currentUser = user;
     
+    return user;
+  }
+
+  /**
+   * Sign in / sign up using an IDP token (Google) via the REST endpoint
+   * POST to accounts:signInWithIdp
+   */
+  static async signInWithGoogleIdToken(idToken: string): Promise<FirebaseUser> {
+    const url = `${AUTH_DOMAIN}/accounts:signInWithIdp?key=${API_KEY}`;
+
+    // requestUri can be any valid URL; it's required by the endpoint
+    const body = {
+      postBody: `id_token=${encodeURIComponent(idToken)}&providerId=google.com`,
+      requestUri: 'http://localhost',
+      returnSecureToken: true,
+    };
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error?.message || 'Google sign-in failed');
+    }
+
+    const data: any = await response.json();
+
+    // Some responses include isNewUser
+    const isNew = !!data.isNewUser;
+
+    const user: FirebaseUser = {
+      uid: data.localId || data.userId || data.localId,
+      email: data.email || null,
+      emailVerified: data.emailVerified ?? true,
+      displayName: data.displayName || null,
+      photoURL: data.photoUrl || data.photoURL || null,
+      idToken: data.idToken,
+      refreshToken: data.refreshToken,
+      expiresIn: data.expiresIn || '3600',
+      isNewUser: isNew,
+    };
+
+    await this.persistUser(user);
+    this.currentUser = user;
+
+    try {
+      await this.syncWithAuthSDK(user.idToken);
+      console.log('[FirebaseAuthService] Auth SDK sync complete after Google sign in');
+    } catch (e) {
+      console.warn('[FirebaseAuthService] syncWithAuthSDK failed for Google sign-in:', e);
+    }
+
+    this.notifyAuthStateChanged(user);
+
     return user;
   }
 

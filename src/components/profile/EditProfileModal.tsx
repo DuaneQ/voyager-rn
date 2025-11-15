@@ -20,6 +20,11 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import {
+  GENDER_OPTIONS,
+  STATUS_OPTIONS,
+  SEXUAL_ORIENTATION_OPTIONS,
+} from '../../types/ManualItinerary';
 
 // iOS Picker Modal Component
 const IOSPickerModal: React.FC<{
@@ -91,9 +96,6 @@ export interface ProfileData {
 }
 
 // Constants from PWA
-const GENDER_OPTIONS = ['Male', 'Female', 'Non-binary', 'Other', 'Prefer not to say'];
-const STATUS_OPTIONS = ['Single', 'Couple', 'Group'];
-const SEXUAL_ORIENTATION_OPTIONS = ['Heterosexual', 'Homosexual', 'Bisexual', 'Pansexual', 'Asexual', 'Other', 'Prefer not to say'];
 const EDUCATION_OPTIONS = ['High School', "Bachelor's Degree", "Master's Degree", 'PhD', 'Trade School', 'Some College', 'Other'];
 const FREQUENCY = ['Never', 'Occasionally', 'Socially', 'Regularly'];
 

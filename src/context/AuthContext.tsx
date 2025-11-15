@@ -6,6 +6,20 @@
  * - @react-native-firebase has build issues with this stack
  * - REST API provides full feature parity and is platform-agnostic
  * - See docs/FIREBASE_AUTH_FINAL_DECISION.md for details
+ *
+ * Quick developer notes:
+ * - High-level docs: `docs/auth/AUTH_CONTEXT_EXPLAINED.md`
+ * - Auth flows use `src/services/auth/FirebaseAuthService.ts` (REST) and
+ *   `src/services/userProfile/UserProfileService.ts` (Cloud Functions for profile ops).
+ * - Google Sign-In: a cross-platform helper exists at `src/utils/auth/googleSignIn.ts`,
+ *   but `AuthContext.signInWithGoogle` / `signUpWithGoogle` are intentionally
+ *   left unimplemented here. To enable Google sign-in you must:
+ *     1) Install and configure `@react-native-google-signin/google-signin` for mobile.
+ *     2) Wire the helper in `AuthContext` and handle token-to-backend exchange
+ *        or SDK sign-in as appropriate.
+ * - Security: mobile stores tokens with `expo-secure-store`; web falls back to AsyncStorage.
+ *
+ * See `docs/auth/AUTH_FLOW_CODE_REVIEW.md` for a detailed code review and security notes.
  */
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
@@ -73,13 +87,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
 
   // Initialize Firebase REST API auth and listen to auth state changes
-  useEffect(() => {
-    console.log('🔐 Initializing Firebase Auth Service...');
-    
+  useEffect(() => {    
     // Initialize auth service and restore session if exists
     FirebaseAuthService.initialize().then(async (storedUser) => {
       if (storedUser) {
-        console.log('🔥 Restored user session:', storedUser.uid);
         setUser(storedUser);
         setStatus('authenticated');
         
@@ -93,9 +104,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     });
 
     // Subscribe to auth state changes
-    const unsubscribe = FirebaseAuthService.onAuthStateChanged((firebaseUser) => {
-      console.log('🔥 Auth state changed:', firebaseUser ? `User ${firebaseUser.uid}` : 'No user');
-      
+    const unsubscribe = FirebaseAuthService.onAuthStateChanged((firebaseUser) => {      
       setUser(firebaseUser);
       setStatus(firebaseUser ? 'authenticated' : 'idle');
     });
@@ -292,11 +301,79 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const signInWithGoogle = async (): Promise<any> => {
-    throw new Error('Google Sign-In not yet implemented with Firebase Web SDK');
+    try {
+      setStatus('loading');
+
+      if (Platform.OS === 'web') {
+        // For web we rely on firebase/web popup flow; keep the original message expected by tests
+        throw new Error('Google Sign-In not yet implemented with Firebase Web SDK');
+      }
+
+      // Mobile flow: use @react-native-google-signin/google-signin to obtain idToken
+      // dynamic require so this module can be imported even when native package isn't installed
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { GoogleSignin } = require('@react-native-google-signin/google-signin');
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      const userInfo = await GoogleSignin.signIn();
+      const idToken = userInfo?.idToken;
+      if (!idToken) throw new Error('Google Sign-In failed to return an idToken');
+
+      const firebaseUser = await FirebaseAuthService.signInWithGoogleIdToken(idToken);
+      // If this was a new user, UI may want to create a profile; AuthContext does not auto-create
+      setStatus('authenticated');
+      return firebaseUser;
+    } catch (error: any) {
+      setStatus('error');
+      console.error('❌ Google sign-in error:', error);
+      throw error;
+    }
   };
 
   const signUpWithGoogle = async (): Promise<any> => {
-    throw new Error('Google Sign-Up not yet implemented with Firebase Web SDK');
+    try {
+      setStatus('loading');
+
+      if (Platform.OS === 'web') {
+        throw new Error('Google Sign-Up not yet implemented with Firebase Web SDK');
+      }
+
+      // Mobile: Use Google Signin to get idToken, then sign in via REST and create profile if new
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { GoogleSignin } = require('@react-native-google-signin/google-signin');
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      const userInfo = await GoogleSignin.signIn();
+      const idToken = userInfo?.idToken;
+      if (!idToken) throw new Error('Google Sign-In failed to return an idToken');
+
+      const firebaseUser = await FirebaseAuthService.signInWithGoogleIdToken(idToken);
+
+      // If this is a new user, create a profile via cloud function (mirrors email sign-up flow)
+      if (firebaseUser.isNewUser) {
+        const userProfile = {
+          username: firebaseUser.email ? firebaseUser.email.split('@')[0] : 'newuser',
+          email: firebaseUser.email,
+          photos: [],
+          subscriptionType: 'free',
+          subscriptionStartDate: null,
+          subscriptionEndDate: null,
+          subscriptionCancelled: false,
+          stripeCustomerId: null,
+        };
+        try {
+          await UserProfileService.createUserProfile(firebaseUser.uid, userProfile as any);
+          console.log('✅ User profile created via Cloud Function (Google sign-up)');
+        } catch (profileErr) {
+          console.warn('⚠️ Failed to create user profile after Google sign-up:', profileErr);
+        }
+      }
+
+      setStatus('idle');
+      return firebaseUser;
+    } catch (error: any) {
+      setStatus('error');
+      console.error('❌ Google sign-up error:', error);
+      throw error;
+    }
   };
 
   const value: AuthContextValue = {

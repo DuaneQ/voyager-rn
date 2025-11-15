@@ -883,5 +883,61 @@ describe('FirebaseAuthService', () => {
       expect(user).toBeDefined();
       expect(user?.uid).toBe('user-123');
     });
+
+    it('should handle Cloud Function returning 200 but missing customToken gracefully', async () => {
+      const mockAuthResponse = {
+        idToken: 'mock-id-token',
+        email: 'user@example.com',
+        refreshToken: 'mock-refresh-token',
+        expiresIn: '3600',
+        localId: 'user-123',
+        emailVerified: true,
+      };
+
+      // Sign in and user data succeed
+      (global.fetch as jest.Mock)
+        .mockResolvedValueOnce({ ok: true, json: async () => mockAuthResponse })
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ users: [{ emailVerified: true }] }) })
+        // CF returns 200 but body lacks result.customToken
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ result: {} }) });
+
+      // signInWithCustomToken won't be called because CF response is invalid; ensure it isn't required
+      mockSignInWithCustomToken.mockResolvedValue({});
+
+      const signInPromise = FirebaseAuthService.signInWithEmailAndPassword('user@example.com', 'password123');
+      await jest.runAllTimersAsync();
+      await expect(signInPromise).resolves.not.toThrow();
+
+      const user = FirebaseAuthService.getCurrentUser();
+      expect(user).toBeDefined();
+      expect(user?.uid).toBe('user-123');
+    });
+
+    it('should handle Cloud Function returning non-OK (e.g. 500) and proceed without SDK sync', async () => {
+      const mockAuthResponse = {
+        idToken: 'mock-id-token',
+        email: 'user@example.com',
+        refreshToken: 'mock-refresh-token',
+        expiresIn: '3600',
+        localId: 'user-123',
+        emailVerified: true,
+      };
+
+      (global.fetch as jest.Mock)
+        .mockResolvedValueOnce({ ok: true, json: async () => mockAuthResponse })
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ users: [{ emailVerified: true }] }) })
+        // CF returns non-OK
+        .mockResolvedValueOnce({ ok: false, status: 500, text: async () => 'Internal Server Error' });
+
+      mockSignInWithCustomToken.mockResolvedValue({});
+
+      const signInPromise = FirebaseAuthService.signInWithEmailAndPassword('user@example.com', 'password123');
+      await jest.runAllTimersAsync();
+      await expect(signInPromise).resolves.not.toThrow();
+
+      const user = FirebaseAuthService.getCurrentUser();
+      expect(user).toBeDefined();
+      expect(user?.uid).toBe('user-123');
+    });
   });
 });

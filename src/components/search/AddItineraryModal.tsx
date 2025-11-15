@@ -71,6 +71,8 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
   }, [visible, itineraries]);
   // Form state
   const [destination, setDestination] = useState('');
+  // Keep a ref to the GooglePlacesAutocomplete component so we can programmatically set text
+  const placesRef = useRef<any>(null);
   const [startDate, setStartDate] = useState(new Date());
   const [endDate, setEndDate] = useState(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
   const [description, setDescription] = useState('');
@@ -121,6 +123,16 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
     if (!itinerary) return;
 
     setDestination(itinerary.destination);
+    // If the GooglePlacesAutocomplete exposes setAddressText, update its displayed text
+    try {
+      if (placesRef.current && typeof placesRef.current.setAddressText === 'function') {
+        placesRef.current.setAddressText(itinerary.destination || '');
+      }
+    } catch (err) {
+      // Non-fatal - continue
+      // eslint-disable-next-line no-console
+      console.warn('[AddItineraryModal] setAddressText failed', err);
+    }
     setStartDate(new Date(itinerary.startDate));
     setEndDate(new Date(itinerary.endDate));
     setDescription(itinerary.description || '');
@@ -400,6 +412,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
             <GooglePlacesAutocomplete
               placeholder="Where do you want to go?"
               predefinedPlaces={[]}
+              ref={placesRef}
               onPress={(data, details = null) => {
                 setDestination(data.description);
               }}

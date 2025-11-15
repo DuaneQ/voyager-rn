@@ -24,6 +24,7 @@ import { VideoCommentsModal } from '../components/video/VideoCommentsModal';
 import { useVideoFeed, VideoFilter } from '../hooks/video/useVideoFeed';
 import { useVideoUpload } from '../hooks/video/useVideoUpload';
 import { shareVideo } from '../utils/videoSharing';
+import { videoPlaybackManager } from '../services/video/VideoPlaybackManager';
 
 const { height } = Dimensions.get('window');
 
@@ -52,6 +53,9 @@ const VideoFeedPage: React.FC = () => {
   const [selectedVideoForComments, setSelectedVideoForComments] = useState<typeof videos[0] | null>(null);
   const [isScreenFocused, setIsScreenFocused] = useState(true); // Track if screen is focused
   const flatListRef = useRef<FlatList>(null);
+  const isScrollingRef = useRef(false); // Use ref instead of state to prevent stale closures
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastViewabilityChangeRef = useRef<number>(0); // Track last viewability change time
 
   // Stop video playback when navigating away (fixes Android audio continuing)
   useFocusEffect(
@@ -60,27 +64,52 @@ const VideoFeedPage: React.FC = () => {
       setIsScreenFocused(true);
       
       return () => {
-        // Screen is unfocused - stop playback
+        // Screen is unfocused - stop playback and cleanup manager
         setIsScreenFocused(false);
+        videoPlaybackManager.deactivateAll();
+        
+        // Cleanup scroll timeout
+        if (scrollTimeoutRef.current) {
+          clearTimeout(scrollTimeoutRef.current);
+        }
       };
     }, [])
   );
 
-  // Request a sensible audio mode on Android so ExoPlayer has proper audio
-  // focus/route behavior on emulator and devices. This often fixes muted or
-  // silent playback cases on certain emulator system images.
+  // Configure audio session for both iOS and Android
+  // iOS: Enable audio even when silent switch is on (critical for physical devices)
+  // Android: Proper ExoPlayer audio focus/route behavior
   useEffect(() => {
-    if (Platform.OS === 'android') {
-      Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        staysActiveInBackground: false,
-        // Avoid referencing interruptionModeAndroid constants directly
-        // (SDK differences). Keep shouldDuckAndroid false to avoid
-        // silent ducking on emulator images.
-        shouldDuckAndroid: false,
-        playThroughEarpieceAndroid: false,
-      }).catch((e) => console.warn('Audio.setAudioModeAsync failed', e));
-    }
+    const setupAudio = async () => {
+      try {
+        if (Platform.OS === 'ios') {
+          // iOS: Set audio category to play even when silent switch is on
+          await Audio.setAudioModeAsync({
+            playsInSilentModeIOS: true,  // 🔑 KEY FIX for iOS physical devices!
+            staysActiveInBackground: false,
+            shouldDuckAndroid: false,
+            allowsRecordingIOS: false,
+            interruptionModeIOS: 2, // Duck other audio (standard for video apps)
+          });
+          console.log('✅ iOS audio session configured: playsInSilentMode=true');
+        } else if (Platform.OS === 'android') {
+          await Audio.setAudioModeAsync({
+            allowsRecordingIOS: false,
+            staysActiveInBackground: false,
+            // Avoid referencing interruptionModeAndroid constants directly
+            // (SDK differences). Keep shouldDuckAndroid false to avoid
+            // silent ducking on emulator images.
+            shouldDuckAndroid: false,
+            playThroughEarpieceAndroid: false,
+          });
+          console.log('✅ Android audio session configured');
+        }
+      } catch (e) {
+        console.warn('⚠️ Audio.setAudioModeAsync failed:', e);
+      }
+    };
+    
+    setupAudio();
   }, []);
 
   /**
@@ -102,6 +131,42 @@ const VideoFeedPage: React.FC = () => {
       await shareVideo(video);
     }
   }, [videos]);
+
+  /**
+   * Handle scroll begin - pause video activation during scroll
+   */
+  const handleScrollBeginDrag = useCallback(() => {
+    console.debug('[VideoFeedPage] scroll begin drag - setting isScrolling=true');
+    isScrollingRef.current = true;
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+  }, []);
+
+  /**
+   * Handle momentum scroll end - ONLY clear scrolling flag
+   * CRITICAL: Let onViewableItemsChanged handle ALL video index changes
+   * Setting index from both places causes race conditions and crashes
+   */
+  const handleMomentumScrollEnd = useCallback(() => {
+    console.debug('[VideoFeedPage] momentum end - clearing isScrolling flag');
+    
+    // Clear scrolling flag after a delay to allow viewability to settle
+    scrollTimeoutRef.current = setTimeout(() => {
+      isScrollingRef.current = false;
+      console.debug('[VideoFeedPage] isScrolling cleared - viewability can now activate videos');
+    }, 150);
+  }, []);
+
+  /**
+   * Handle scroll end (for non-momentum scrolls)
+   */
+  const handleScrollEndDrag = useCallback(() => {
+    // Set a timeout in case momentum scroll doesn't fire
+    scrollTimeoutRef.current = setTimeout(() => {
+      isScrollingRef.current = false;
+    }, 300);
+  }, []);
 
   /**
    * Handle pull-to-refresh
@@ -128,12 +193,12 @@ const VideoFeedPage: React.FC = () => {
   }, [videos]);
 
   /**
-   * Handle comment added - refresh video data
+   * Handle comment added - no need to refresh, optimistic update handles it
    */
   const handleCommentAdded = useCallback(() => {
-    // Refresh videos to get updated comment count
-    refreshVideos();
-  }, [refreshVideos]);
+    // Optimistic update in VideoCommentsModal already updated local state
+    // No need to refresh entire feed and cause modal to close/reopen
+  }, []);
 
   /**
    * Handle filter change
@@ -169,19 +234,68 @@ const VideoFeedPage: React.FC = () => {
 
   /**
    * Handle viewable items changed (for tracking current video)
+   * Only update if not actively scrolling to prevent premature activation
+   * 
+   * CRITICAL FIX: Detect rapid viewability changes as scroll events
+   * If viewability changes faster than 500ms, treat it as scrolling
    */
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
     if (viewableItems.length > 0) {
       const index = viewableItems[0].index;
-      if (index !== null && index !== currentVideoIndex) {
+      const now = Date.now();
+      const timeSinceLastChange = now - lastViewabilityChangeRef.current;
+      const isScrolling = isScrollingRef.current;
+      
+      // Detect rapid changes (< 500ms) as scroll events
+      const isRapidChange = timeSinceLastChange < 500 && lastViewabilityChangeRef.current > 0;
+      
+      console.debug(
+        `[VideoFeedPage] viewable index changed -> ${index}, ` +
+        `isScrolling=${isScrolling}, timeSinceLastChange=${timeSinceLastChange}ms, ` +
+        `isRapidChange=${isRapidChange}`
+      );
+      
+      lastViewabilityChangeRef.current = now;
+      
+      // Block activation if:
+      // 1. Explicitly scrolling (isScrollingRef.current = true), OR
+      // 2. Rapid viewability changes (< 500ms apart)
+      if (!isScrolling && !isRapidChange && index !== null && index !== currentVideoIndex) {
+        console.debug(`[VideoFeedPage] ✅ Allowing index change: ${currentVideoIndex} -> ${index}`);
+        
+        // CRITICAL for Android: Force deactivate ALL videos before activating new one
+        // This prevents audio overlap during rapid scrolling
+        if (Platform.OS === 'android') {
+          videoPlaybackManager.deactivateAll();
+        }
+        
         setCurrentVideoIndex(index);
+      } else {
+        console.debug(
+          `[VideoFeedPage] 🚫 Blocking index change (isScrolling=${isScrolling}, isRapidChange=${isRapidChange})`
+        );
       }
     }
   }).current;
 
   const viewabilityConfig = useRef({
-    itemVisiblePercentThreshold: 50,
+    // CRITICAL for Android: Higher threshold prevents activation during partial views
+    itemVisiblePercentThreshold: Platform.OS === 'android' ? 95 : 80,
+    // Android needs longer view time to prevent audio overlap during rapid scrolling
+    minimumViewTime: Platform.OS === 'android' ? 200 : 100,
   }).current;
+
+  /**
+   * Get item layout for precise scroll positioning (critical for Android)
+   */
+  const getItemLayout = useCallback(
+    (_data: any, index: number) => ({
+      length: height,
+      offset: height * index,
+      index,
+    }),
+    []
+  );
 
   /**
    * Render individual video card
@@ -334,17 +448,31 @@ const VideoFeedPage: React.FC = () => {
         data={videos}
         renderItem={renderVideoCard}
         keyExtractor={(item) => item.id}
-        pagingEnabled
         showsVerticalScrollIndicator={false}
-        snapToInterval={height}
+        // REMOVED explicit height - was causing Android freeze on scroll
+        // FlatList fills available space via flex:1 in container
+        // CRITICAL for Android: pagingEnabled ensures ONLY one video visible
+        // snapToInterval can show partial views of multiple videos
+        pagingEnabled={Platform.OS === 'android'}
+        snapToInterval={Platform.OS === 'ios' ? height : undefined}
         snapToAlignment="start"
         decelerationRate="fast"
-        removeClippedSubviews={false}
-        windowSize={3}
-        maxToRenderPerBatch={1}
-        initialNumToRender={1}
+        // Enable clipped subviews to release off-screen native views (Android memory)
+        removeClippedSubviews={Platform.OS === 'android'}
+        // Keep a small window to reduce memory pressure
+        windowSize={3} // Increased to 3 for smoother scroll (preload next)
+        maxToRenderPerBatch={2}
+        initialNumToRender={2}
+        // Scroll event handlers for snap behavior
+        onScrollBeginDrag={handleScrollBeginDrag}
+        onScrollEndDrag={handleScrollEndDrag}
+        onMomentumScrollEnd={handleMomentumScrollEnd}
+        // Viewability tracking
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
+        getItemLayout={getItemLayout}
+        // Prevent scroll during rapid events
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}

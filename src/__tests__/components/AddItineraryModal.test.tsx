@@ -293,6 +293,28 @@ describe('AddItineraryModal', () => {
       expect(destinationInput.props.value).toBe('Tokyo, Japan');
     });
 
+    it('should populate destination input when editing an existing itinerary', async () => {
+      const { getByTestId } = render(
+        <AddItineraryModal
+          visible={true}
+          onClose={mockOnClose}
+          onItineraryAdded={mockOnItineraryAdded}
+          itineraries={mockItineraries}
+          userProfile={mockUserProfile}
+        />
+      );
+
+      // Simulate pressing the edit button on the itinerary list item
+      const editButton = getByTestId('edit-button-itinerary-1');
+      fireEvent.press(editButton);
+
+      // The places input should now contain the itinerary destination
+      const destinationInput = getByTestId('google-places-input');
+      await waitFor(() => {
+        expect(destinationInput.props.value).toBe('Paris, France');
+      });
+    });
+
     it('should accept Google Places selection', () => {
       const { getByTestId } = render(
         <AddItineraryModal
