@@ -7,7 +7,6 @@ import { Audio } from 'expo-av';
 import * as VideoThumbnails from 'expo-video-thumbnails';
 import * as FileSystem from 'expo-file-system';
 import { VideoValidationResult, VIDEO_CONSTRAINTS } from '../types/Video';
-// import * as FileSystem from 'expo-file-system'; // Temporarily disabled - Expo SDK 54 build issue
 
 /**
  * Validates a video file before upload

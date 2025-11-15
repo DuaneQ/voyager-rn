@@ -239,9 +239,12 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
               });
 
               // Refresh user profile from context
-              if (updateUserProfile) {
-                // Context will reload from Firestore
-                updateUserProfile({});
+              if (updateUserProfile && currentUserId) {
+                // Fetch fresh profile data after blocking
+                const userDoc = await getDoc(doc(db, 'users', currentUserId));
+                if (userDoc.exists()) {
+                  updateUserProfile(userDoc.data() as any);
+                }
               }
 
               Alert.alert('Success', 'User blocked successfully');

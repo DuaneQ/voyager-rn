@@ -26,7 +26,6 @@ import {
 import { storage, db } from '../../config/firebaseConfig';
 import { Video, VideoUploadData } from '../../types/Video';
 import { generateVideoThumbnail } from '../../utils/videoValidation';
-import * as FileSystem from 'expo-file-system';
 
 export class VideoService {
   /**
