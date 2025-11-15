@@ -9,7 +9,7 @@ import { Alert } from 'react-native';
 import { videoService } from '../../services/video/VideoService';
 import { Video, VideoUploadData, VideoUploadState } from '../../types/Video';
 import { validateVideoFile, validateVideoMetadata, getFileSize } from '../../utils/videoValidation';
-import { auth } from '../../config/firebaseConfig';
+import * as firebaseCfg from '../../config/firebaseConfig';
 
 export const useVideoUpload = () => {
   const [uploadState, setUploadState] = useState<VideoUploadState>({
@@ -76,7 +76,11 @@ export const useVideoUpload = () => {
    */
   const uploadVideo = useCallback(
     async (videoData: VideoUploadData): Promise<Video | null> => {
-      const userId = auth.currentUser?.uid;
+  const tentative = typeof (firebaseCfg as any).getAuthInstance === 'function'
+    ? (firebaseCfg as any).getAuthInstance()
+    : (firebaseCfg as any).auth;
+  const effectiveAuth = tentative && tentative.currentUser ? tentative : (firebaseCfg as any).auth;
+  const userId = effectiveAuth?.currentUser?.uid;
       if (!userId) {
         Alert.alert('Error', 'You must be logged in to upload videos');
         return null;
@@ -167,15 +171,30 @@ export const useVideoUpload = () => {
    * Load user videos
    */
   const loadUserVideos = useCallback(async (): Promise<Video[]> => {
-    const userId = auth.currentUser?.uid;
+  const tentative2 = typeof (firebaseCfg as any).getAuthInstance === 'function'
+    ? (firebaseCfg as any).getAuthInstance()
+    : (firebaseCfg as any).auth;
+  const effectiveAuth2 = tentative2 && tentative2.currentUser ? tentative2 : (firebaseCfg as any).auth;
+  const userId = effectiveAuth2?.currentUser?.uid;
     if (!userId) {
+      console.log('[useVideoUpload] No user ID, cannot load videos');
       return [];
     }
 
     try {
-      return await videoService.getUserVideos(userId);
+      console.log('[useVideoUpload] Loading videos for user:', userId);
+      const videos = await videoService.getUserVideos(userId);
+      console.log('[useVideoUpload] Loaded videos:', videos.length, 'videos');
+      videos.forEach((video, index) => {
+        console.log(`[useVideoUpload] Video ${index + 1}:`, {
+          id: video.id,
+          hasThumbnail: !!video.thumbnailUrl,
+          hasVideoUrl: !!video.videoUrl,
+        });
+      });
+      return videos;
     } catch (error) {
-      console.error('Error loading videos:', error);
+      console.error('[useVideoUpload] Error loading videos:', error);
       return [];
     }
   }, []);

@@ -1,9 +1,20 @@
 /**
- * Search Screen - Working React Native implementation
- * Simplified but functional version to get the app working
+ * SearchPage - React Native implementation of itinerary matching
+ * 
+ * @module pages/SearchPage
+ * @description Main screen for discovering and matching with other travelers.
+ * Features: itinerary selector, card-based matching UI, like/dislike actions,
+ * mutual match detection, usage limit enforcement.
+ * 
+ * Flow:
+ * 1. User selects own itinerary from dropdown
+ * 2. System searches for matching itineraries
+ * 3. User views matches one-by-one with ItineraryCard
+ * 4. Like/Dislike actions advance to next match
+ * 5. Mutual likes create connection → chat enabled
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,44 +22,89 @@ import {
   SafeAreaView,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
+  ScrollView,
+  ImageBackground,
 } from 'react-native';
-import { auth } from '../config/firebaseConfig';
+import { Picker } from '@react-native-picker/picker';
+import { getAuthInstance } from '../config/firebaseConfig';
+import { Itinerary } from '../types/Itinerary';
+import ItineraryCard from '../components/forms/ItineraryCard';
+import { ItinerarySelector } from '../components/search/ItinerarySelector';
+import useSearchItineraries from '../hooks/useSearchItineraries';
+import { useUsageTracking } from '../hooks/useUsageTracking';
+import { useUpdateItinerary } from '../hooks/useUpdateItinerary';
 import { useAlert } from '../context/AlertContext';
+import { useUserProfile } from '../context/UserProfileContext';
+import { useAllItineraries } from '../hooks/useAllItineraries';
+import { connectionRepository } from '../repositories/ConnectionRepository';
+import { saveViewedItinerary, hasViewedItinerary } from '../utils/viewedStorage';
+import AddItineraryModal from '../components/search/AddItineraryModal';
 
 const SearchPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
-  const [dailyViews, setDailyViews] = useState(0);
-  const [currentItinerary, setCurrentItinerary] = useState(0);
+  const [currentMockIndex, setCurrentMockIndex] = useState(0);
+  const [selectedItineraryId, setSelectedItineraryId] = useState<string | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
   const { showAlert } = useAlert();
+  const { userProfile } = useUserProfile();
+  
+  // Usage tracking hook
+  const { hasReachedLimit, trackView, dailyViewCount } = useUsageTracking();
+  
+  // Update itinerary hook (for persisting likes)
+  const { updateItinerary } = useUpdateItinerary();
+  
+  // Fetch all itineraries (AI + manual) from PostgreSQL
+  const { itineraries, loading: itinerariesLoading, error: itinerariesError, refreshItineraries } = useAllItineraries();
+  
+  // Search hook for finding matching itineraries
+  const { 
+    matchingItineraries, 
+    searchItineraries, 
+    getNextItinerary, 
+    loading: searchLoading, 
+    hasMore, 
+    error: searchError 
+  } = useSearchItineraries();
 
+  // Mock itineraries shown only when user has no real itineraries
   const mockItineraries = [
     {
       title: 'Amazing Tokyo Adventure',
       destination: 'Tokyo, Japan',
       duration: '7 days',
-      description: 'AI Generated - Here is where you will search for other travelers going to the same destination with overlapping dates.  If you would like to match with the person click the airplane icon.',
+      description: 'AI Generated - Here is where you will search for other travelers going to the same destination with overlapping dates.  After saving your user profile, you can click the Add Itinerary button above to manually create an itinerary.',
       creator: 'TokyoExplorer'
     },
     {
       title: 'Paris Romance',
       destination: 'Paris, France',
       duration: '5 days',
-      description: 'You can view their profile and ratings from past travels with others.  If the same traveler likes your itinerary then it is a match!',
+      description: 'You can use AI to create an itinerary for you after saving your travel preference profile. After you have itineraries you will select one from the combobox above. If you have any potential matches they will appear here.',
       creator: 'ParisianDreamer'
     },
     {
       title: 'NYC Urban Explorer',
       destination: 'New York, USA',
       duration: '4 days',
-      description: 'Once you match you can navigate to the Chats tab to start planning your trip together!',
+      description: 'You can view their profile and ratings from past travels with others.  Click the airplane to like their itinerary. If the same traveler likes your itinerary then it is a match! Once you match you can navigate to the Chats tab to start planning your trip together!',
       creator: 'CityWalker'
     }
   ];
 
   useEffect(() => {
     // Simple auth check
-    const unsubscribe = auth.onAuthStateChanged((user) => {
+    const authInstance = typeof getAuthInstance === 'function' ? getAuthInstance() : null;
+    
+    if (!authInstance?.onAuthStateChanged) {
+      // No auth available - set loading to false immediately
+      setIsLoading(false);
+      return () => {};
+    }
+    
+    const unsubscribe = authInstance.onAuthStateChanged((user) => {
       setUserId(user?.uid || null);
       setIsLoading(false);
     });
@@ -56,98 +112,291 @@ const SearchPage: React.FC = () => {
     return unsubscribe;
   }, []);
 
-  const handleLike = () => {
+  const handleItinerarySelect = async (id: string) => {
+    setSelectedItineraryId(id);
+    
     if (!userId) {
-      showAlert('Please log in to like itineraries', 'warning');
+      showAlert('warning', 'Please log in to search for matches');
       return;
     }
     
-    if (dailyViews >= 10) {
-      showAlert('Daily limit reached! Upgrade to premium for unlimited views.', 'info');
+    // Find the selected itinerary
+    const selectedItinerary = itineraries.find(itin => itin.id === id);
+    if (!selectedItinerary) {
+      console.error('[SearchPage] Selected itinerary not found:', id);
       return;
     }
-
-    setDailyViews(prev => prev + 1);
-    showAlert(`Liked "${mockItineraries[currentItinerary].title}"!`, 'success');
-    nextItinerary();
+    
+    console.log('[SearchPage] Searching for matches for itinerary:', id);
+    // Trigger search for matching itineraries
+    await searchItineraries(selectedItinerary as any, userId);
   };
 
-  const handleDislike = () => {
+  const handleAddItinerary = () => {
+    // Check profile completion before opening modal
+    if (!userProfile?.dob || !userProfile?.gender) {
+      Alert.alert(
+        'Complete Your Profile',
+        'Please complete your profile (date of birth and gender) before creating an itinerary.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    setModalVisible(true);
+  };
+
+  const handleItineraryAdded = async () => {
+    // Refresh itinerary list after create/edit/delete
+    await refreshItineraries();
+    setModalVisible(false);
+    showAlert('Itinerary saved successfully!', 'success');
+  };
+
+  const handleLike = async (itinerary: Itinerary) => {
     if (!userId) {
-      showAlert('Please log in to browse itineraries', 'warning');
+      showAlert('warning', 'Please log in to like itineraries');
+      return;
+    }
+    
+    // Check limit before tracking
+    if (hasReachedLimit()) {
+      showAlert('info', 'Daily limit reached! Upgrade to premium for unlimited views.');
       return;
     }
 
-    if (dailyViews >= 10) {
-      showAlert('Daily limit reached! Upgrade to premium for unlimited views.', 'info');
+    // Track usage
+    const success = await trackView();
+    if (!success) {
+      showAlert('warning', 'Unable to track usage. Please try again.');
       return;
     }
 
-    setDailyViews(prev => prev + 1);
-    showAlert(`Passed on "${mockItineraries[currentItinerary].title}"`, 'info');
-    nextItinerary();
+    try {
+      // Save as viewed
+      saveViewedItinerary(itinerary.id);
+      
+      // Update the liked itinerary with current user's ID
+      const existingLikes = Array.isArray(itinerary.likes) ? itinerary.likes : [];
+      const newLikes = Array.from(new Set([...existingLikes, userId]));
+      
+      // Persist likes via RPC
+      const updatedItinerary = await updateItinerary(itinerary.id, { likes: newLikes });
+      if (!updatedItinerary) {
+        throw new Error('Failed to update itinerary likes');
+      }
+      
+      // Check for mutual match
+      const selectedItinerary = itineraries.find(itin => itin.id === selectedItineraryId);
+      if (selectedItinerary) {
+        const myLikes = Array.isArray(selectedItinerary.likes) ? selectedItinerary.likes : [];
+        const otherUserUid = itinerary.userInfo?.uid;
+        
+        if (otherUserUid && myLikes.includes(otherUserUid)) {
+          // MUTUAL MATCH! Create connection
+          console.log('[SearchPage] 🎉 MUTUAL MATCH detected!');
+          
+          try {
+            await connectionRepository.createConnection({
+              user1Id: userId,
+              user2Id: otherUserUid,
+              itinerary1Id: selectedItineraryId,
+              itinerary2Id: itinerary.id,
+              itinerary1: selectedItinerary as any,
+              itinerary2: itinerary as any
+            });
+            
+            showAlert('success', '🎉 It\'s a match! You can now chat with this traveler.');
+          } catch (connError) {
+            console.error('[SearchPage] Error creating connection:', connError);
+            // Don't fail the like action if connection creation fails
+            showAlert('warning', 'Match detected but connection setup had issues. Please check Chats.');
+          }
+        }
+      }
+      
+      // Advance to next itinerary
+      await getNextItinerary();
+      
+    } catch (error) {
+      console.error('[SearchPage] Error handling like:', error);
+      showAlert('error', 'Failed to like itinerary. Please try again.');
+    }
   };
 
-  const nextItinerary = () => {
-    setCurrentItinerary(prev => (prev + 1) % mockItineraries.length);
+  const handleDislike = async (itinerary: Itinerary) => {
+    if (!userId) {
+      showAlert('warning', 'Please log in to browse itineraries');
+      return;
+    }
+
+    // Check limit before tracking
+    if (hasReachedLimit()) {
+      showAlert('info', 'Daily limit reached! Upgrade to premium for unlimited views.');
+      return;
+    }
+
+    // Track usage
+    const success = await trackView();
+    if (!success) {
+      showAlert('warning', 'Unable to track usage. Please try again.');
+      return;
+    }
+
+    try {
+      // Save as viewed
+      saveViewedItinerary(itinerary.id);
+      
+      // Advance to next itinerary
+      await getNextItinerary();
+      
+    } catch (error) {
+      console.error('[SearchPage] Error handling dislike:', error);
+      showAlert('error', 'Failed to process dislike. Please try again.');
+    }
+  };
+
+  // Handle mock itinerary navigation (only for onboarding)
+  const handleMockLike = () => {
+    nextMockItinerary();
+  };
+
+  const handleMockDislike = () => {
+    nextMockItinerary();
+  };
+
+  const nextMockItinerary = () => {
+    setCurrentMockIndex(prev => (prev + 1) % mockItineraries.length);
   };
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.centerContent}>
-          <Text style={styles.loadingText}>Loading...</Text>
-        </View>
-      </SafeAreaView>
+      <ImageBackground 
+        source={require('../../assets/images/login-image.jpeg')}
+        style={styles.container}
+        resizeMode="cover"
+        imageStyle={styles.backgroundImage}
+      >
+        <SafeAreaView style={styles.safeArea}>
+          <View style={styles.centerContent}>
+            <Text style={styles.loadingText}>Loading...</Text>
+          </View>
+        </SafeAreaView>
+      </ImageBackground>
     );
   }
 
   return (
-    <SafeAreaView
-      testID="homeScreen"
-      accessible={true}
-      accessibilityLabel="homeScreen"
+    <ImageBackground 
+      source={require('../../assets/images/login-image.jpeg')}
       style={styles.container}
+      resizeMode="cover"
+      imageStyle={styles.backgroundImage}
     >
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Find Matches</Text>
-        <TouchableOpacity style={styles.addButton}>
-          <Text style={styles.addButtonText}>+ Add Itinerary</Text>
-        </TouchableOpacity>
-      </View>
+      <SafeAreaView
+        testID="homeScreen"
+        accessible={true}
+        accessibilityLabel="homeScreen"
+        style={styles.safeArea}
+      >
+        {/* Itinerary Selector Dropdown */}
+        <ItinerarySelector
+          itineraries={itineraries}
+          selectedItineraryId={selectedItineraryId}
+          onSelect={handleItinerarySelect}
+          onAddItinerary={handleAddItinerary}
+          loading={itinerariesLoading}
+        />
 
-      {/* Usage Counter */}
-      <View style={styles.usageContainer}>
-        <Text style={styles.usageText}>Views today: {dailyViews}/10</Text>
-      </View>
+      {/* Usage Counter - only show when user has itineraries */}
+      {itineraries.length > 0 && (
+        <View style={styles.usageContainer}>
+          <Text style={styles.usageText}>Views today: {dailyViewCount}/10</Text>
+        </View>
+      )}
 
       {/* Main Content */}
       <View style={styles.content}>
         {userId ? (
-          <View style={styles.cardContainer}>
-            <View style={styles.itineraryCard}>
-              <Text style={styles.cardTitle}>{mockItineraries[currentItinerary].title}</Text>
-              <Text style={styles.cardDestination}>{mockItineraries[currentItinerary].destination}</Text>
-              <Text style={styles.cardDuration}>{mockItineraries[currentItinerary].duration}</Text>
-              <Text style={styles.cardDescription}>
-                {mockItineraries[currentItinerary].description}
-              </Text>
-              <View style={styles.userInfo}>
-                <Text style={styles.userText}>Created by: {mockItineraries[currentItinerary].creator}</Text>
-              </View>
-            </View>
+          <>
+            {/* Show mock itineraries only when user has no real itineraries */}
+            {itineraries.length === 0 ? (
+              <View style={styles.cardContainer}>
+                <View style={styles.itineraryCard}>
+                  <Text style={styles.cardTitle}>{mockItineraries[currentMockIndex].title}</Text>
+                  <Text style={styles.cardDestination}>{mockItineraries[currentMockIndex].destination}</Text>
+                  <Text style={styles.cardDuration}>{mockItineraries[currentMockIndex].duration}</Text>
+                  <Text style={styles.cardDescription}>
+                    {mockItineraries[currentMockIndex].description}
+                  </Text>
+                  <View style={styles.userInfo}>
+                    <Text style={styles.userText}>Created by: {mockItineraries[currentMockIndex].creator}</Text>
+                  </View>
+                </View>
 
-            {/* Action Buttons */}
-            <View style={styles.actionButtons}>
-              <TouchableOpacity style={styles.dislikeButton} onPress={handleDislike}>
-                <Text style={styles.buttonText}>✕</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.likeButton} onPress={handleLike}>
-                <Text style={styles.buttonText}>♡</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+                {/* Action Buttons for Mock Itineraries */}
+                <View style={styles.actionButtons}>
+                  <TouchableOpacity 
+                    testID="dislike-button"
+                    style={styles.dislikeButton} 
+                    onPress={handleMockDislike}
+                  >
+                    <Text style={styles.buttonText}>✕</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    testID="like-button"
+                    style={styles.likeButton} 
+                    onPress={handleMockLike}
+                  >
+                    <Text style={styles.buttonText}>✈️</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : selectedItineraryId ? (
+              /* User has selected an itinerary - show matching results */
+              <>
+                {searchLoading ? (
+                  <View style={styles.centerContent}>
+                    <ActivityIndicator size="large" color="#ebf2f3ff" />
+                    <Text style={[styles.loadingText, { color: '#fff' }]}>Searching for matches...</Text>
+                  </View>
+                ) : matchingItineraries.length > 0 ? (
+                  /* Show ItineraryCard for current match */
+                  <ScrollView 
+                    style={styles.cardScrollContainer}
+                    contentContainerStyle={styles.cardScrollContent}
+                    showsVerticalScrollIndicator={false}
+                  >
+                    <ItineraryCard
+                      itinerary={matchingItineraries[0] as any}
+                      onLike={handleLike}
+                      onDislike={handleDislike}
+                      showEditDelete={false}
+                    />
+                  </ScrollView>
+                ) : (
+                  /* No matches found */
+                  <View style={styles.centerContent}>
+                    <Text style={styles.emptyText}>
+                      {searchError ? (
+                        <Text style={{ color: '#fff' }}>Error: {searchError}</Text>
+                      ) : (
+                        <Text style={{ color: '#fff' }}>
+                          No matches found for this itinerary. Try adjusting your preferences or dates.
+                        </Text>
+                      )}
+                    </Text>
+                  </View>
+                )}
+              </>
+            ) : (
+              /* User has itineraries but hasn't selected one yet */
+              <View style={styles.centerContent}>
+                <Text style={styles.emptyText}>
+                  Select an itinerary above to find travel companions
+                </Text>
+              </View>
+            )}
+          </>
         ) : (
           <View style={styles.centerContent}>
             <Text style={styles.emptyText}>Please log in to see itineraries</Text>
@@ -155,45 +404,32 @@ const SearchPage: React.FC = () => {
         )}
       </View>
 
-      {/* Instructions */}
-      <View style={styles.instructions}>
-        <Text style={styles.instructionText}>Tap buttons to like or pass</Text>
-      </View>
+      <AddItineraryModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        onItineraryAdded={handleItineraryAdded}
+        itineraries={itineraries}
+        userProfile={userProfile}
+      />
+
     </SafeAreaView>
+    </ImageBackground>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fafafa',
+    width: '100%',
+    height: '100%',
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.12)',
-    marginTop: 40,
+  backgroundImage: {
+    width: '100%',
+    height: '100%',
   },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  addButton: {
-    backgroundColor: '#1976d2',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 4,
-  },
-  addButtonText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '500',
+  safeArea: {
+    flex: 1,
+    backgroundColor: 'transparent',
   },
   usageContainer: {
     alignItems: 'center',
@@ -329,6 +565,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: 'rgba(0, 0, 0, 0.6)',
     textAlign: 'center',
+  },
+  cardScrollContainer: {
+    flex: 1,
+  },
+  cardScrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 16,
   },
 });
 

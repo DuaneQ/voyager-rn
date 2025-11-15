@@ -2,9 +2,10 @@
 // Replicating EXACT same config as voyager-pwa to share the database
 
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { getAuth, signInWithCustomToken as firebaseSignInWithCustomToken } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
+import { getFunctions } from 'firebase/functions';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
@@ -51,6 +52,20 @@ if (Platform.OS !== 'web') {
 
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+export const functions = getFunctions(app, 'us-central1');
+
+// Helper function for compatibility with existing code that expects getAuthInstance()
+export const getAuthInstance = () => auth;
+
+// Re-export signInWithCustomToken for auth sync
+export const signInWithCustomToken = firebaseSignInWithCustomToken;
+
+// Helper to get Cloud Function URL (for direct HTTP calls)
+export const getCloudFunctionUrl = (functionName: string): string => {
+  const projectId = firebaseConfig.projectId;
+  const region = 'us-central1';
+  return `https://${region}-${projectId}.cloudfunctions.net/${functionName}`;
+};
 
 console.log('🔥 Firebase initialized for voyager-RN');
 console.log('📱 Using project:', firebaseConfig.projectId);

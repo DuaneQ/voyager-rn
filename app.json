@@ -1,10 +1,11 @@
 {
   "expo": {
-    "name": "Traval",
-    "slug": "voyager-rn",
+    "name": "TravalPass",
+    "slug": "travalpass-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "icon": "./assets/icon.png",
     "splash": {
       "backgroundColor": "#ffffff"
     },
@@ -13,8 +14,9 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.voyager.rn",
-      "deploymentTarget": "15.0",
+      "bundleIdentifier": "com.travalpass.app",
+      "buildNumber": "1.0.0",
+      "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to upload profile and gallery photos.",
         "NSCameraUsageDescription": "This app needs access to your camera to take profile and gallery photos.",
@@ -22,7 +24,9 @@
       }
     },
     "android": {
-      "package": "com.voyager.rn",
+      "package": "com.travalpass.app",
+      "googleServicesFile": "./google-services.json",
+      "icon": "./AppIcons/playstore.png",
       "permissions": [
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
@@ -30,7 +34,7 @@
       ]
     },
     "web": {},
-    "scheme": "voyager-rn",
+    "scheme": "travalpass",
     "platforms": [
       "ios",
       "android",

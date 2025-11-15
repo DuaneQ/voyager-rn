@@ -19,6 +19,12 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import {
+  GENDER_OPTIONS,
+  STATUS_OPTIONS,
+  SEXUAL_ORIENTATION_OPTIONS,
+} from '../../types/ManualItinerary';
 
 // iOS Picker Modal Component
 const IOSPickerModal: React.FC<{
@@ -90,9 +96,6 @@ export interface ProfileData {
 }
 
 // Constants from PWA
-const GENDER_OPTIONS = ['Male', 'Female', 'Non-binary', 'Other', 'Prefer not to say'];
-const STATUS_OPTIONS = ['Single', 'Couple', 'Group'];
-const SEXUAL_ORIENTATION_OPTIONS = ['Heterosexual', 'Homosexual', 'Bisexual', 'Pansexual', 'Asexual', 'Other', 'Prefer not to say'];
 const EDUCATION_OPTIONS = ['High School', "Bachelor's Degree", "Master's Degree", 'PhD', 'Trade School', 'Some College', 'Other'];
 const FREQUENCY = ['Never', 'Occasionally', 'Socially', 'Regularly'];
 
@@ -113,6 +116,18 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   const [eduModalVisible, setEduModalVisible] = useState(false);
   const [drinkingModalVisible, setDrinkingModalVisible] = useState(false);
   const [smokingModalVisible, setSmokingModalVisible] = useState(false);
+  
+  // Date picker state
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [tempDate, setTempDate] = useState<Date>(() => {
+    if (initialData.dob) {
+      return new Date(initialData.dob);
+    }
+    // Default to 25 years ago
+    const defaultDate = new Date();
+    defaultDate.setFullYear(defaultDate.getFullYear() - 25);
+    return defaultDate;
+  });
 
   useEffect(() => {
     setFormData(initialData);
@@ -272,14 +287,84 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
           {/* Date of Birth */}
           <View style={styles.fieldContainer}>
             <Text style={styles.label}>Date of Birth *</Text>
-            <TextInput
+            <TouchableOpacity
               testID="dob-input"
               style={[styles.input, errors.dob && styles.inputError]}
-              value={formData.dob}
-              onChangeText={(value) => handleChange('dob', value)}
-              placeholder="YYYY-MM-DD"
-              maxLength={10}
-            />
+              onPress={() => setShowDatePicker(true)}
+            >
+              <Text style={[styles.inputText, !formData.dob && styles.placeholderText]}>
+                {formData.dob || 'Select date of birth...'}
+              </Text>
+              <Ionicons name="calendar-outline" size={20} color="#999" />
+            </TouchableOpacity>
+            
+            {/* iOS Date Picker Modal */}
+            {Platform.OS === 'ios' && showDatePicker && (
+              <Modal
+                visible={showDatePicker}
+                transparent={true}
+                animationType="slide"
+              >
+                <View style={styles.datePickerModalOverlay}>
+                  <View style={styles.datePickerModalContent}>
+                    <View style={styles.datePickerHeader}>
+                      <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                        <Text style={styles.datePickerCancelButton}>Cancel</Text>
+                      </TouchableOpacity>
+                      <Text style={styles.datePickerTitle}>Date of Birth</Text>
+                      <TouchableOpacity
+                        onPress={() => {
+                          // Format the tempDate and save it
+                          const year = tempDate.getFullYear();
+                          const month = String(tempDate.getMonth() + 1).padStart(2, '0');
+                          const day = String(tempDate.getDate()).padStart(2, '0');
+                          const formattedDate = `${year}-${month}-${day}`;
+                          handleChange('dob', formattedDate);
+                          setShowDatePicker(false);
+                        }}
+                      >
+                        <Text style={styles.datePickerDoneButton}>Done</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <DateTimePicker
+                      testID="dateTimePicker"
+                      value={tempDate}
+                      mode="date"
+                      display="spinner"
+                      onChange={(event, selectedDate) => {
+                        if (selectedDate) {
+                          setTempDate(selectedDate);
+                        }
+                      }}
+                      maximumDate={new Date()}
+                    />
+                  </View>
+                </View>
+              </Modal>
+            )}
+            
+            {/* Android Date Picker */}
+            {Platform.OS === 'android' && showDatePicker && (
+              <DateTimePicker
+                testID="dateTimePicker"
+                value={tempDate}
+                mode="date"
+                display="default"
+                onChange={(event, selectedDate) => {
+                  setShowDatePicker(false);
+                  if (event.type === 'set' && selectedDate) {
+                    setTempDate(selectedDate);
+                    const year = selectedDate.getFullYear();
+                    const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                    const day = String(selectedDate.getDate()).padStart(2, '0');
+                    const formattedDate = `${year}-${month}-${day}`;
+                    handleChange('dob', formattedDate);
+                  }
+                }}
+                maximumDate={new Date()}
+              />
+            )}
+            
             {errors.dob && (
               <Text style={styles.errorText}>{errors.dob}</Text>
             )}
@@ -712,6 +797,40 @@ const styles = StyleSheet.create({
   pickerModalItem: {
     fontSize: 20,
     height: 216,
+  },
+  // Date Picker Modal styles (iOS)
+  datePickerModalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+  },
+  datePickerModalContent: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 0,
+  },
+  datePickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  datePickerCancelButton: {
+    fontSize: 16,
+    color: '#666',
+  },
+  datePickerTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  datePickerDoneButton: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1976d2',
   },
   errorText: {
     color: '#f44336',

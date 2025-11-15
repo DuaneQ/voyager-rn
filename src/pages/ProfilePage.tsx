@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -8,8 +8,8 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
-import { auth } from '../config/firebaseConfig';
-import { signOut } from 'firebase/auth';
+import { useRoute, RouteProp } from '@react-navigation/native';
+import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
 import { useUserProfile } from '../context/UserProfileContext';
 import { usePhotoUpload } from '../hooks/photo/usePhotoUpload';
@@ -23,13 +23,37 @@ import type { PhotoSlot } from '../types/Photo';
 
 type TabType = 'profile' | 'photos' | 'videos' | 'itinerary';
 
+type ProfilePageRouteParams = {
+  openEditModal?: boolean;
+  incompleteProfile?: boolean;
+};
+
 const ProfilePage: React.FC = () => {
+  const route = useRoute<RouteProp<{ Profile: ProfilePageRouteParams }, 'Profile'>>();
   const { showAlert } = useAlert();
-  const { userProfile, updateProfile, loading: profileLoading } = useUserProfile();
+  const { userProfile, updateProfile, isLoading } = useUserProfile();
   const { selectAndUploadPhoto, deletePhoto, uploadState } = usePhotoUpload();
+  const { signOut } = useAuth();
   
   const [activeTab, setActiveTab] = useState<TabType>('profile');
   const [editModalVisible, setEditModalVisible] = useState(false);
+
+  // Check navigation params to auto-open EditProfileModal
+  useEffect(() => {
+    if (route.params?.openEditModal && route.params?.incompleteProfile) {
+      setEditModalVisible(true);
+      showAlert('warning', 'Please complete your profile to use all features');
+    }
+  }, [route.params]);
+
+  // If loading finished but there is no profile, auto-open edit modal so user can create one.
+  // This hook must be unconditional to avoid changing the hooks order.
+  useEffect(() => {
+    if (!isLoading && !userProfile && !editModalVisible) {
+      setEditModalVisible(true);
+      showAlert('warning', 'Please create your profile to continue');
+    }
+  }, [isLoading, userProfile, editModalVisible, showAlert]);
 
   // Calculate profile completeness based on PWA fields
   const calculateCompleteness = (): number => {
@@ -117,19 +141,71 @@ const ProfilePage: React.FC = () => {
 
   const handleSignOut = async () => {
     try {
-      await signOut(auth);
+      await signOut();
       // Navigation happens automatically via AuthContext
     } catch (error) {
       showAlert('Error signing out', 'error');
     }
   };
 
-  if (!userProfile) {
+  // Debug logging
+  console.log('[ProfilePage] isLoading:', isLoading, 'userProfile:', userProfile?.username);
+
+  // Show loading state while profile is being fetched
+  if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>Loading profile...</Text>
         </View>
+      </SafeAreaView>
+    );
+  }
+
+  // If no profile exists after loading completes, auto-open edit modal to create profile
+  // This handles cases where Firestore data was deleted or sign-up failed to create profile
+  if (!userProfile) {
+
+    // Show minimal UI with edit modal
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.emptyStateTitle}>Profile Not Found</Text>
+          <Text style={styles.emptyStateText}>
+            Let's create your profile to get started
+          </Text>
+          <TouchableOpacity 
+            style={styles.createProfileButton}
+            onPress={() => setEditModalVisible(true)}
+          >
+            <Text style={styles.createProfileButtonText}>Create Profile</Text>
+          </TouchableOpacity>
+        </View>
+        
+        {/* Edit modal for creating new profile */}
+        <EditProfileModal
+          visible={editModalVisible}
+          onClose={() => {
+            // Don't allow closing without creating profile
+            Alert.alert(
+              'Profile Required',
+              'You need to create a profile to use the app',
+              [{ text: 'OK' }]
+            );
+          }}
+          onSave={handleSaveProfile}
+          initialData={{
+            username: '',
+            bio: '',
+            dob: '',
+            gender: '',
+            sexualOrientation: '',
+            status: '',
+            edu: '',
+            drinking: '',
+            smoking: '',
+          }}
+        />
       </SafeAreaView>
     );
   }
@@ -164,7 +240,7 @@ const ProfilePage: React.FC = () => {
         return <VideoGrid />;
       
       case 'itinerary':
-        return <AIItinerarySection />;
+        return <AIItinerarySection onRequestEditProfile={handleEditProfile} />;
       
       default:
         return null;
@@ -234,11 +310,21 @@ const ProfilePage: React.FC = () => {
       </ScrollView>
 
       {/* Edit Profile Modal */}
-      <EditProfileModal
+            <EditProfileModal
         visible={editModalVisible}
         onClose={() => setEditModalVisible(false)}
         onSave={handleSaveProfile}
-        initialData={profileData}
+        initialData={{
+          username: userProfile?.username || '',
+          bio: userProfile?.bio || '',
+          dob: userProfile?.dob || '',
+          gender: userProfile?.gender || '',
+          sexualOrientation: userProfile?.sexualOrientation || '',
+          status: userProfile?.status || '',
+          edu: userProfile?.edu || '',
+          drinking: userProfile?.drinking || '',
+          smoking: userProfile?.smoking || '',
+        }}
       />
     </SafeAreaView>
   );
@@ -258,14 +344,76 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
+    fontSize: 18,
+    color: '#666',
+  },
+  emptyStateTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  emptyStateText: {
     fontSize: 16,
-    color: '#999',
+    color: '#666',
+    textAlign: 'center',
+    paddingHorizontal: 32,
+    marginBottom: 32,
+  },
+  createProfileButton: {
+    backgroundColor: '#1976d2',
+    paddingHorizontal: 48,
+    paddingVertical: 16,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  createProfileButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  welcomeTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  welcomeText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    paddingHorizontal: 32,
+    marginBottom: 32,
+  },
+  getStartedButton: {
+    backgroundColor: '#1976d2',
+    paddingHorizontal: 48,
+    paddingVertical: 16,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  getStartedButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   tabContainer: {
     flexDirection: 'row',
     backgroundColor: 'white',
     marginHorizontal: 16,
     marginTop: 12,
+    marginBottom: 16,
     borderRadius: 12,
     padding: 4,
     shadowColor: '#000',

@@ -23,6 +23,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
+import mapAuthError from '../utils/auth/firebaseAuthErrorMapper';
 
 // Form Components
 import LoginForm from '../components/auth/forms/LoginForm';
@@ -45,12 +46,6 @@ const AuthPage: React.FC = () => {
    * Login Handler - Matches PWA's SignInForm.tsx handleSubmit exactly
    */
   const handleLogin = async (email: string, password: string) => {
-    // Debug: log incoming credentials for automation troubleshooting
-    try {
-      console.log('[AuthPage] handleLogin called with email:', email, 'password length:', password ? password.length : 0);
-    } catch (e) {
-      // ignore logging errors
-    }
     setIsSubmitting(true);
     try {
       await signIn(email, password);
@@ -58,20 +53,11 @@ const AuthPage: React.FC = () => {
       // On web we keep the friendly success alert, but on iOS/Android we log instead
       if (Platform.OS === 'web') {
         showAlert('success', 'Login successful! Welcome back.');
-      } else {
-        console.log('[AuthPage] Login successful (mobile) - suppressing success alert for automation');
       }
       // Navigation will be handled by auth state change in AppNavigator
     } catch (error: any) {
-      if (error.message.includes('Email not verified')) {
-        showAlert(
-          'error',
-          'Your email has not been verified. Please check your inbox or spam folder, or click the link below to resend another verification email.'
-        );
-      } else {
-        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-        showAlert('error', errorMessage);
-      }
+      const friendly = mapAuthError(error);
+      showAlert('error', friendly.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -87,16 +73,8 @@ const AuthPage: React.FC = () => {
       showAlert('success', 'A verification link has been sent to your email for verification.');
       setMode('login');
     } catch (error: any) {
-      if (error.code === 'auth/email-already-in-use') {
-        showAlert('error', 'An account already exists for that email. Please sign in instead.');
-      } else if (error.code === 'auth/invalid-email') {
-        showAlert('error', 'Please enter a valid email address.');
-      } else if (error.code === 'auth/weak-password') {
-        showAlert('error', 'Password should be at least 6 characters.');
-      } else {
-        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-        showAlert('error', errorMessage);
-      }
+      const friendly = mapAuthError(error);
+      showAlert('error', friendly.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -112,8 +90,8 @@ const AuthPage: React.FC = () => {
       showAlert('success', 'Check your email for the reset link.');
       setMode('login');
     } catch (error: any) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to send password reset email.';
-      showAlert('error', errorMessage);
+      const friendly = mapAuthError(error);
+      showAlert('error', friendly.message || 'Failed to send password reset email.');
     } finally {
       setIsSubmitting(false);
     }
@@ -128,8 +106,8 @@ const AuthPage: React.FC = () => {
       await resendVerification();
       showAlert('success', 'Verification email sent.');
     } catch (error: any) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to resend verification email.';
-      showAlert('error', errorMessage);
+      const friendly = mapAuthError(error);
+      showAlert('error', friendly.message || 'Failed to resend verification email.');
     } finally {
       setIsSubmitting(false);
     }
@@ -178,15 +156,12 @@ const AuthPage: React.FC = () => {
             onSubmit={handleLogin}
             onGoogleSignIn={handleGoogleSignIn}
             onForgotPassword={() => {
-              console.log('[AuthPage] Navigation: Login → Forgot Password');
               setMode('forgot');
             }}
             onResendVerification={() => {
-              console.log('[AuthPage] Navigation: Login → Resend Verification');
               setMode('resend');
             }}
             onSignUpPress={() => {
-              console.log('[AuthPage] Navigation: Login → Register');
               setMode('register');
             }}
             isLoading={isLoading}
@@ -199,7 +174,6 @@ const AuthPage: React.FC = () => {
             onSubmit={handleRegister}
             onGoogleSignUp={handleGoogleSignUp}
             onSignInPress={() => {
-              console.log('[AuthPage] Navigation: Register → Login');
               setMode('login');
             }}
             isLoading={isLoading}
@@ -211,7 +185,6 @@ const AuthPage: React.FC = () => {
           <ForgotPasswordForm
             onSubmit={handleForgotPassword}
             onBackPress={() => {
-              console.log('[AuthPage] Navigation: Forgot Password → Login');
               setMode('login');
             }}
             isLoading={isLoading}
@@ -223,7 +196,6 @@ const AuthPage: React.FC = () => {
           <ResendVerificationForm
             onSubmit={handleResendVerification}
             onBackPress={() => {
-              console.log('[AuthPage] Navigation: Resend Verification → Login');
               setMode('login');
             }}
             isLoading={isLoading}

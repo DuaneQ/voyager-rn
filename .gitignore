@@ -8,11 +8,22 @@ yarn-error.log
 .expo-shared/
 android/build/
 android/gradle.properties
+android/gradle-user-home/
 ios/build/
 ios/Pods/
 ios/Podfile.lock
+ios/xcodebuild.log
 *.keystore
 *.jks
+
+# Firebase Config (sensitive)
+firebase-config.js
+google-services.json
+GoogleService-Info.plist
+firestore-temp-test.rules
+
+# Functions (if using separate Firebase project)
+functions/
 
 # Editor / macOS
 .vscode/
@@ -35,8 +46,16 @@ automation/debug-page-source*.xml
 automation/appium.log
 automation/appium.out
 automation/appium.pid
+automation/node_modules/
 
 # Local env
 .env
 .env.local
-firebase-config.js
+
+# Test scripts
+test_auth_call.js
+test_auth_call_simple.js
+test-live-auth-flow.sh
+
+# Tools directory (local dev utilities)
+tools/

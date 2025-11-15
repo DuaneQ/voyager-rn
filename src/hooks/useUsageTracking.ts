@@ -5,7 +5,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { getFirestore, doc, updateDoc, getDoc } from 'firebase/firestore';
-import { auth, db } from '../config/firebaseConfig';
+import * as firebaseCfg from '../config/firebaseConfig';
 
 const FREE_DAILY_LIMIT = 10;
 const FREE_DAILY_AI_LIMIT = 5;
@@ -14,7 +14,15 @@ const PREMIUM_DAILY_AI_LIMIT = 20;
 export const useUsageTracking = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [userProfile, setUserProfile] = useState<any | null>(null);
-  const userId = auth.currentUser?.uid;
+  // Resolve the current user ID lazily so tests can alter the mocked
+  // getAuthInstance/auth at runtime and the hook picks up the change.
+  const getCurrentUserId = () => {
+    const tentative = typeof (firebaseCfg as any).getAuthInstance === 'function'
+      ? (firebaseCfg as any).getAuthInstance()
+      : (firebaseCfg as any).auth;
+    const effective = tentative && tentative.currentUser ? tentative : (firebaseCfg as any).auth;
+    return effective?.currentUser?.uid;
+  };
 
   // Get today's date in YYYY-MM-DD format (same as PWA)
   const getTodayString = () => {
@@ -24,10 +32,11 @@ export const useUsageTracking = () => {
   // Load user profile from Firestore
   useEffect(() => {
     const loadUserProfile = async () => {
-      if (!userId) return;
-      
+      const userIdNow = getCurrentUserId();
+      if (!userIdNow) return;
+
       try {
-        const docRef = doc(db, 'users', userId);
+  const docRef = doc((firebaseCfg as any).db, 'users', userIdNow);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           setUserProfile(docSnap.data());
@@ -38,7 +47,7 @@ export const useUsageTracking = () => {
     };
 
     loadUserProfile();
-  }, [userId]);
+  }, []);
 
   // Check if user is premium (same logic as PWA)
   const hasPremium = useCallback(() => {
@@ -74,7 +83,8 @@ export const useUsageTracking = () => {
 
   // Track a view (same logic as PWA)
   const trackView = useCallback(async (): Promise<boolean> => {
-    if (!userId || !userProfile) {
+    const userIdNow = getCurrentUserId();
+    if (!userIdNow || !userProfile) {
       console.error('No user ID or profile found');
       return false;
     }
@@ -102,7 +112,7 @@ export const useUsageTracking = () => {
       };
 
       // Update Firestore (same as PWA)
-      const userRef = doc(db, 'users', userId);
+  const userRef = doc((firebaseCfg as any).db, 'users', userIdNow);
       await updateDoc(userRef, {
         dailyUsage: updatedUsage
       });
@@ -122,7 +132,7 @@ export const useUsageTracking = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [userId, userProfile, hasReachedLimit]);
+  }, [userProfile, hasReachedLimit]);
 
   // AI-specific tracking (same logic as PWA)
   const hasReachedAILimit = useCallback(() => {
@@ -144,7 +154,8 @@ export const useUsageTracking = () => {
   }, [userProfile, hasPremium]);
 
   const trackAICreation = useCallback(async (): Promise<boolean> => {
-    if (!userId || !userProfile) {
+    const userIdNow = getCurrentUserId();
+    if (!userIdNow || !userProfile) {
       console.error('No user ID or profile found');
       return false;
     }
@@ -177,7 +188,7 @@ export const useUsageTracking = () => {
         aiItineraries: updatedAIUsage
       };
 
-      const userRef = doc(db, 'users', userId);
+  const userRef = doc((firebaseCfg as any).db, 'users', userIdNow);
       await updateDoc(userRef, {
         dailyUsage: updatedDailyUsage
       });
@@ -196,7 +207,7 @@ export const useUsageTracking = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [userId, userProfile, hasPremium, hasReachedAILimit]);
+  }, [userProfile, hasPremium, hasReachedAILimit]);
 
   return {
     hasReachedLimit,
