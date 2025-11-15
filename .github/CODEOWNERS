@@ -1,0 +1,47 @@
+# CODEOWNERS - Automatic reviewer assignment for pull requests
+# Learn more: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owners for everything in the repo
+# These users will be requested for review when a PR is opened
+* @DuaneQ
+
+# Specific file ownership rules (more specific rules override general ones)
+
+# GitHub Actions and CI/CD
+/.github/ @DuaneQ
+/.github/workflows/ @DuaneQ
+
+# Mobile automation and testing
+/automation/ @DuaneQ
+/automation/tests/ @DuaneQ
+
+# Core application code
+/src/ @DuaneQ
+
+# Authentication and security-critical code (require careful review)
+/src/services/auth/ @DuaneQ
+/src/pages/AuthPage.tsx @DuaneQ
+/src/components/auth/ @DuaneQ
+
+# Firebase configuration (critical - require review)
+/firebase-config.js @DuaneQ
+/src/config/ @DuaneQ
+
+# Navigation (impacts user flow)
+/src/navigation/ @DuaneQ
+
+# Build configuration
+/package.json @DuaneQ
+/package-lock.json @DuaneQ
+/tsconfig.json @DuaneQ
+/babel.config.js @DuaneQ
+/jest.config.js @DuaneQ
+
+# Platform-specific code
+/ios/ @DuaneQ
+/android/ @DuaneQ
+/eas.json @DuaneQ
+
+# Documentation
+*.md @DuaneQ
+/docs/ @DuaneQ

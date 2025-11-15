@@ -496,12 +496,27 @@ The integration tests validate the **most important feature** - comprehensive tr
 
 ## 🤝 Contributing
 
+### Pull Request Process
+**✅ Automated Reviews Enabled by Default**
+
+All pull requests automatically receive:
+- 🤖 Automated code quality review
+- 🔍 TypeScript type checking
+- 📊 Change analysis and statistics
+- ⚠️ Code quality warnings (console.log, missing tests, etc.)
+- 👤 Automatic reviewer assignment via CODEOWNERS
+
+### Code Guidelines
 1. Follow the S.O.L.I.D principles outlined in the architecture
 2. Maintain exact functional parity with voyager-pwa
 3. Use TypeScript with strict typing (no `any` types)
 4. Implement proper error handling and logging
 5. Write unit tests for services and repositories
 6. Follow the established file naming conventions
+7. Remove debug console.log statements before submitting PRs
+8. Update tests when modifying code functionality
+
+For detailed workflow information, see [.github/workflows/README.md](.github/workflows/README.md)
 
 ## 📄 License
 
