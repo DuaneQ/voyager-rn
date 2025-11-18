@@ -46,14 +46,8 @@ const ProfilePage: React.FC = () => {
     }
   }, [route.params]);
 
-  // If loading finished but there is no profile, auto-open edit modal so user can create one.
-  // This hook must be unconditional to avoid changing the hooks order.
-  useEffect(() => {
-    if (!isLoading && !userProfile && !editModalVisible) {
-      setEditModalVisible(true);
-      showAlert('warning', 'Please create your profile to continue');
-    }
-  }, [isLoading, userProfile, editModalVisible, showAlert]);
+  // Removed auto-opening modal when no profile exists
+  // Profile completion will be prompted when user tries to create itineraries
 
   // Calculate profile completeness based on PWA fields
   const calculateCompleteness = (): number => {
@@ -186,10 +180,11 @@ const ProfilePage: React.FC = () => {
         <EditProfileModal
           visible={editModalVisible}
           onClose={() => {
-            // Don't allow closing without creating profile
+            // Allow user to dismiss the modal
+            setEditModalVisible(false);
             Alert.alert(
-              'Profile Required',
-              'You need to create a profile to use the app',
+              'Profile Incomplete',
+              'Some features may be limited until you complete your profile. You can create it anytime from the Profile tab.',
               [{ text: 'OK' }]
             );
           }}

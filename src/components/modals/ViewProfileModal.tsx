@@ -26,6 +26,7 @@ import {
   Alert,
   Dimensions,
   SafeAreaView,
+  TextInput,
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import {
@@ -85,6 +86,13 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
   const [enlargedVideo, setEnlargedVideo] = useState<any | null>(null);
   const [enlargedPhoto, setEnlargedPhoto] = useState<string | null>(null);
   const [isVideoMuted, setIsVideoMuted] = useState(false); // Mute state for enlarged video
+  
+  // Rating submission state
+  const [ratingDialogVisible, setRatingDialogVisible] = useState(false);
+  const [newRating, setNewRating] = useState<number | null>(null);
+  const [newComment, setNewComment] = useState<string>('');
+  const [submittingRating, setSubmittingRating] = useState(false);
+  const [userRating, setUserRating] = useState<number | null>(null);
 
   // Resolve auth lazily - prefer getAuthInstance() but fall back to legacy auth
   const _tentativeAuth: any = typeof (firebaseCfg as any).getAuthInstance === 'function'
@@ -189,6 +197,17 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
     fetchProfile();
   }, [visible, userId, db, storage, onClose]);
 
+  // Initialize rating state from existing user rating
+  useEffect(() => {
+    if (profile?.ratings?.ratedBy && currentUserId) {
+      const existingRating = profile.ratings.ratedBy[currentUserId]?.rating || null;
+      const existingComment = profile.ratings.ratedBy[currentUserId]?.comment || '';
+      setUserRating(existingRating);
+      setNewRating(existingRating);
+      setNewComment(existingComment);
+    }
+  }, [profile, currentUserId]);
+
   // Load videos when Videos tab is selected
   useEffect(() => {
     if (currentTab !== 2 || !visible || !userId || userVideos.length > 0) return;
@@ -218,6 +237,93 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
 
     loadVideos();
   }, [currentTab, visible, userId, db, userVideos.length]);
+
+  const handleOpenRatingDialog = () => {
+    if (canRate) {
+      setRatingDialogVisible(true);
+    }
+  };
+
+  const handleCloseRatingDialog = () => {
+    setRatingDialogVisible(false);
+    // Reset to existing rating
+    setNewRating(userRating);
+    setNewComment(
+      currentUserId && profile?.ratings?.ratedBy && profile.ratings.ratedBy[currentUserId]
+        ? profile.ratings.ratedBy[currentUserId].comment || ''
+        : ''
+    );
+  };
+
+  const handleSubmitRating = async () => {
+    if (!currentUserId || !userId || newRating === null) {
+      Alert.alert('Error', 'Please select a star rating');
+      return;
+    }
+
+    setSubmittingRating(true);
+
+    try {
+      const userRef = doc(db, 'users', userId);
+      const userSnap = await getDoc(userRef);
+
+      if (!userSnap.exists()) {
+        throw new Error('User not found');
+      }
+
+      const userData = userSnap.data();
+      const currentRatings = userData.ratings || {
+        average: 0,
+        count: 0,
+        ratedBy: {},
+      };
+      const oldRating = currentRatings.ratedBy[currentUserId]?.rating || 0;
+
+      // Calculate new average rating
+      let newAverage = currentRatings.average;
+      let newCount = currentRatings.count;
+
+      if (oldRating === 0) {
+        // First time rating this user
+        newCount += 1;
+        newAverage = ((currentRatings.average * (newCount - 1)) + newRating) / newCount;
+      } else {
+        // Updating previous rating
+        newAverage = ((currentRatings.average * newCount) - oldRating + newRating) / newCount;
+      }
+
+      // Update the ratings object
+      const updatedRatings = {
+        average: parseFloat(newAverage.toFixed(2)),
+        count: newCount,
+        ratedBy: {
+          ...currentRatings.ratedBy,
+          [currentUserId]: {
+            rating: newRating,
+            comment: newComment.trim(),
+            timestamp: Date.now(),
+          },
+        },
+      };
+
+      // Update Firestore
+      await updateDoc(userRef, {
+        ratings: updatedRatings,
+      });
+
+      // Update local state
+      setUserRating(newRating);
+      setProfile({ ...profile, ratings: updatedRatings });
+
+      Alert.alert('Success', 'Rating and comment submitted successfully');
+      setRatingDialogVisible(false);
+    } catch (error) {
+      console.error('Error submitting rating:', error);
+      Alert.alert('Error', 'Failed to submit rating');
+    } finally {
+      setSubmittingRating(false);
+    }
+  };
 
   const handleBlock = async () => {
     Alert.alert(
@@ -627,11 +733,14 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                       </View>
 
                       {canRate && (
-                        <View style={styles.ratePrompt}>
-                          <Text style={styles.ratePromptText}>
-                            You're connected! You can rate this user.
+                        <TouchableOpacity 
+                          style={styles.rateButton}
+                          onPress={handleOpenRatingDialog}
+                        >
+                          <Text style={styles.rateButtonText}>
+                            {userRating ? '✏️ Update Your Rating' : '⭐ Leave a Rating & Comment'}
                           </Text>
-                        </View>
+                        </TouchableOpacity>
                       )}
 
                       {/* Ratings Comments List */}
@@ -763,6 +872,83 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
+        </View>
+      </Modal>
+
+      {/* Rating Dialog Modal */}
+      <Modal
+        visible={ratingDialogVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={handleCloseRatingDialog}
+      >
+        <View style={styles.ratingDialogContainer}>
+          <View style={styles.ratingDialogContent}>
+            <View style={styles.ratingDialogHeader}>
+              <Text style={styles.ratingDialogTitle}>
+                Rate {profile?.username || 'User'}
+              </Text>
+              <TouchableOpacity onPress={handleCloseRatingDialog}>
+                <Text style={styles.ratingDialogClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.ratingDialogBody}>
+              <Text style={styles.ratingLabel}>Your Rating</Text>
+              <View style={styles.ratingStarsInput}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <TouchableOpacity
+                    key={star}
+                    onPress={() => setNewRating(star)}
+                    style={styles.starButton}
+                  >
+                    <Text
+                      style={[
+                        styles.starInputText,
+                        star <= (newRating || 0) && styles.starInputTextFilled,
+                      ]}
+                    >
+                      ★
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.commentLabel}>Your Comment (Optional)</Text>
+              <TextInput
+                style={styles.commentInput}
+                placeholder="Share your experience..."
+                placeholderTextColor="#999"
+                value={newComment}
+                onChangeText={setNewComment}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
+
+              <View style={styles.ratingDialogActions}>
+                <TouchableOpacity
+                  style={[styles.ratingDialogButton, styles.cancelButton]}
+                  onPress={handleCloseRatingDialog}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.ratingDialogButton, styles.submitButton]}
+                  onPress={handleSubmitRating}
+                  disabled={submittingRating || newRating === null}
+                >
+                  {submittingRating ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.submitButtonText}>
+                      {userRating ? 'Update Rating' : 'Submit Rating'}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
         </View>
       </Modal>
     </Modal>
@@ -920,6 +1106,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
   },
+  rateButton: {
+    backgroundColor: '#1976d2',
+    padding: 16,
+    borderRadius: 8,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  rateButtonText: {
+    fontSize: 16,
+    color: '#fff',
+    fontWeight: 'bold',
+  },
   ratePrompt: {
     backgroundColor: '#e3f2fd',
     padding: 12,
@@ -929,6 +1127,110 @@ const styles = StyleSheet.create({
   ratePromptText: {
     fontSize: 14,
     color: '#1976d2',
+  },
+  // Rating Dialog Styles
+  ratingDialogContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  ratingDialogContent: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  ratingDialogHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  ratingDialogTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  ratingDialogClose: {
+    fontSize: 24,
+    color: '#666',
+  },
+  ratingDialogBody: {
+    padding: 20,
+  },
+  ratingLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 12,
+  },
+  ratingStarsInput: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  starButton: {
+    padding: 4,
+  },
+  starInputText: {
+    fontSize: 40,
+    color: '#ddd',
+  },
+  starInputTextFilled: {
+    color: '#ffa000',
+  },
+  commentLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+  },
+  commentInput: {
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    color: '#333',
+    minHeight: 100,
+    marginBottom: 20,
+  },
+  ratingDialogActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+  },
+  ratingDialogButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    minWidth: 100,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#f5f5f5',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '600',
+  },
+  submitButton: {
+    backgroundColor: '#1976d2',
+  },
+  submitButtonText: {
+    fontSize: 16,
+    color: '#fff',
+    fontWeight: 'bold',
   },
   comingSoon: {
     fontSize: 16,

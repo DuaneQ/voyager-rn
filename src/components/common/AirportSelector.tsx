@@ -115,7 +115,8 @@ const AirportSelector: React.FC<AirportSelectorProps> = ({
 
       // If we have a location context, search near that location
       if (location && location.trim()) {
-        const searchResult = await airportService.searchAirportsNearLocation(location, undefined, 200, 10);
+        // Request more airports (20) so we have enough to filter to 5 intl + 1 domestic
+        const searchResult = await airportService.searchAirportsNearLocation(location, undefined, 200, 20);
         results = searchResult.airports;
 
         // Filter results by query if user is typing
@@ -130,6 +131,14 @@ const AirportSelector: React.FC<AirportSelectorProps> = ({
         // Direct search by query
         results = await airportService.searchAirportsByQuery(query);
       }
+
+      // CRITICAL: Filter out non-airports (items without valid IATA codes)
+      // Google Places sometimes returns heliports, parking, etc. that aren't actual airports
+      results = results.filter(airport => 
+        airport.iataCode && 
+        airport.iataCode.trim().length === 3 &&
+        /^[A-Z]{3}$/i.test(airport.iataCode.trim())
+      );
 
       setAirports(results);
 
@@ -211,7 +220,51 @@ const AirportSelector: React.FC<AirportSelectorProps> = ({
               });
 
               const unique = Array.from(uniqueMap.values());
-              setAirports(unique);
+              
+              // Final filter: ensure all results have valid IATA codes
+              const validAirports = unique.filter(airport => 
+                airport.iataCode && 
+                airport.iataCode.trim().length === 3 &&
+                /^[A-Z]{3}$/i.test(airport.iataCode.trim())
+              );
+              
+              // Separate into international and domestic, then limit results
+              // We want: 5 closest international + 1 closest domestic
+              const international: Airport[] = [];
+              const domestic: Airport[] = [];
+              
+              validAirports.forEach(airport => {
+                const isIntl = determineInternational(airport, location);
+                if (isIntl === true) {
+                  international.push(airport);
+                } else if (isIntl === false) {
+                  domestic.push(airport);
+                } else {
+                  // If we can't determine, treat as international (safer default)
+                  international.push(airport);
+                }
+              });
+              
+              // Sort both by distance (closest first)
+              const sortByDistance = (a: Airport, b: Airport) => {
+                const distA = a.distance || Number.MAX_SAFE_INTEGER;
+                const distB = b.distance || Number.MAX_SAFE_INTEGER;
+                return distA - distB;
+              };
+              
+              international.sort(sortByDistance);
+              domestic.sort(sortByDistance);
+              
+              // Take 5 closest international + 1 closest domestic
+              const limitedResults = [
+                ...international.slice(0, 5),
+                ...domestic.slice(0, 1)
+              ];
+              
+              // Re-sort combined results by distance
+              limitedResults.sort(sortByDistance);
+              
+              setAirports(limitedResults);
             } catch (e) {
               console.warn('AirportSelector: enrichment failed', e);
             }

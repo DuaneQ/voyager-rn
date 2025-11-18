@@ -51,8 +51,13 @@ export const useCreateItinerary = () => {
       const endDate = new Date(formData.endDate);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
+      
+      // Normalize startDate to midnight for fair comparison
+      const startDateNormalized = new Date(startDate);
+      startDateNormalized.setHours(0, 0, 0, 0);
 
-      if (startDate < today) {
+      // Allow today's date (startDate >= today)
+      if (startDateNormalized < today) {
         errors.push({ field: 'startDate', message: 'Start date cannot be in the past' });
       }
 

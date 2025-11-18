@@ -14,7 +14,7 @@ import {
   Animated,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
+import { PlacesAutocomplete } from '../common/PlacesAutocomplete';
 import RangeSlider from '../common/RangeSlider';
 import { useCreateItinerary } from '../../hooks/useCreateItinerary';
 import { useDeleteItinerary } from '../../hooks/useDeleteItinerary';
@@ -26,7 +26,6 @@ import {
 } from '../../types/ManualItinerary';
 import { Itinerary } from '../../hooks/useAllItineraries';
 import ItineraryListItem from './ItineraryListItem';
-import { getGooglePlacesApiKey } from '../../constants/apiConfig';
 
 // Minimal UserProfile interface needed for this component
 interface UserProfile {
@@ -71,8 +70,6 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
   }, [visible, itineraries]);
   // Form state
   const [destination, setDestination] = useState('');
-  // Keep a ref to the GooglePlacesAutocomplete component so we can programmatically set text
-  const placesRef = useRef<any>(null);
   const [startDate, setStartDate] = useState(new Date());
   const [endDate, setEndDate] = useState(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
   const [description, setDescription] = useState('');
@@ -123,16 +120,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
     if (!itinerary) return;
 
     setDestination(itinerary.destination);
-    // If the GooglePlacesAutocomplete exposes setAddressText, update its displayed text
-    try {
-      if (placesRef.current && typeof placesRef.current.setAddressText === 'function') {
-        placesRef.current.setAddressText(itinerary.destination || '');
-      }
-    } catch (err) {
-      // Non-fatal - continue
-      // eslint-disable-next-line no-console
-      console.warn('[AddItineraryModal] setAddressText failed', err);
-    }
+    // Custom PlacesAutocomplete uses value prop, so just setting state is enough
     setStartDate(new Date(itinerary.startDate));
     setEndDate(new Date(itinerary.endDate));
     setDescription(itinerary.description || '');
@@ -203,8 +191,19 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
 
   // Save itinerary
   const handleSave = async () => {
+    console.log('[AddItineraryModal] handleSave called', {
+      profileComplete,
+      destination: destination.trim(),
+      userProfile: !!userProfile,
+    });
+
     if (!profileComplete) {
       Alert.alert('Profile Incomplete', 'Please complete your profile (date of birth and gender) before creating an itinerary.');
+      return;
+    }
+
+    if (!destination.trim()) {
+      Alert.alert('Validation Error', 'Please enter a destination.');
       return;
     }
 
@@ -221,7 +220,9 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
       upperRange,
     };
 
+    console.log('[AddItineraryModal] Calling createItinerary with:', formData);
     const response = await createItinerary(formData, userProfile!, editingItineraryId || undefined);
+    console.log('[AddItineraryModal] createItinerary response:', response);
 
     if (response.success) {
       // Parent will show a unified success notification. Close modal and refresh list.
@@ -229,7 +230,16 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
       onItineraryAdded();
       onClose();
     } else if (response.validationErrors) {
-      setValidationErrors(response.validationErrors.map(e => `${e.field}: ${e.message}`));
+      const errors = response.validationErrors.map(e => `${e.field}: ${e.message}`);
+      setValidationErrors(errors);
+      // Scroll to top to show errors
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+      // Also show an alert for immediate feedback
+      Alert.alert(
+        'Validation Error', 
+        response.validationErrors.map(e => e.message).join('\n'),
+        [{ text: 'OK' }]
+      );
     } else {
       Alert.alert('Error', response.error || 'Failed to save itinerary');
     }
@@ -377,13 +387,10 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
           ref={scrollViewRef}
           style={styles.scrollView} 
           contentContainerStyle={styles.scrollContent}
-          // Ensure taps on nested lists (autocomplete) are handled and
-          // allow nested scrolling on Android. This prevents the
-          // VirtualizedList-inside-ScrollView touch swallowing and the
-          // "VirtualizedLists should never be nested" warning interfering
-          // with selection of autocomplete rows on Android emulators.
+          // Per react-native-google-places-autocomplete docs:
+          // keyboardShouldPersistTaps must be 'handled' or 'always' on all ancestor ScrollViews
+          // to prevent the VirtualizedList touch issues on Android
           keyboardShouldPersistTaps="handled"
-          nestedScrollEnabled={true}
         >
           {/* Profile Warning */}
           {!profileComplete && (
@@ -409,92 +416,16 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
 
             {/* Destination */}
             <Text style={styles.label}>Destination *</Text>
-            <GooglePlacesAutocomplete
+            <PlacesAutocomplete
+              testID="google-places-input"
               placeholder="Where do you want to go?"
-              predefinedPlaces={[]}
-              ref={placesRef}
-              onPress={(data, details = null) => {
-                setDestination(data.description);
+              value={destination}
+              onChangeText={setDestination}
+              onPlaceSelected={(description) => {
+                console.log('[AddItinerary] Selected place:', description);
+                setDestination(description);
               }}
-              query={{
-                key: getGooglePlacesApiKey(),
-                language: 'en',
-                types: '(cities)',
-              }}
-              styles={{
-                container: {
-                  flex: 0,
-                  width: '100%',
-                  zIndex: 1000,
-                },
-                textInputContainer: {
-                  backgroundColor: 'transparent',
-                  borderTopWidth: 0,
-                  borderBottomWidth: 0,
-                  width: '100%',
-                },
-                textInput: {
-                  marginLeft: 0,
-                  marginRight: 0,
-                  height: 42,
-                  color: '#333',
-                  fontSize: 15,
-                  backgroundColor: '#fff',
-                  borderRadius: 8,
-                  paddingHorizontal: 10,
-                  borderWidth: 1,
-                  borderColor: '#ddd',
-                  fontFamily: undefined,
-                },
-                predefinedPlacesDescription: {
-                  color: '#1faadb',
-                },
-                listView: {
-                  backgroundColor: 'white',
-                  borderRadius: 8,
-                  marginTop: 4,
-                  elevation: 5,
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.25,
-                  shadowRadius: 4,
-                  maxHeight: 200,
-                },
-                row: {
-                  backgroundColor: 'white',
-                  padding: 13,
-                  height: 44,
-                  flexDirection: 'row',
-                },
-                separator: {
-                  height: 0.5,
-                  backgroundColor: '#c8c7cc',
-                },
-                description: {
-                  color: '#333',
-                  fontSize: 15,
-                },
-                loader: {
-                  flexDirection: 'row',
-                  justifyContent: 'flex-end',
-                  height: 20,
-                },
-              }}
-              textInputProps={{
-                onChangeText: (text) => {
-                  setDestination(text);
-                },
-                placeholderTextColor: '#999',
-                autoCorrect: false,
-                autoCapitalize: 'none',
-                value: destination,
-              }}
-              enablePoweredByContainer={false}
-              fetchDetails={false}
-              debounce={200}
-              minLength={2}
-              keyboardShouldPersistTaps="handled"
-              listUnderlayColor="transparent"
+              error={!!destination && destination.length === 0}
             />
 
             {/* Start Date */}

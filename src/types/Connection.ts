@@ -32,6 +32,12 @@ export interface Connection {
     userId: string;
     addedBy: string; // User ID who added them
   }>;
+  lastMessagePreview?: {
+    text?: string;
+    sender?: string;
+    createdAt?: FirestoreTimestamp | Date;
+    imageUrl?: string;
+  };
 }
 
 /**
