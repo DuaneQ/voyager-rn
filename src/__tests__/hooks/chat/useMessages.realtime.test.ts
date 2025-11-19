@@ -9,11 +9,12 @@ import { Timestamp } from 'firebase/firestore';
 // Mock Firebase
 const mockOnSnapshot = jest.fn();
 const mockGetDocs = jest.fn();
-const mockCollection = jest.fn(() => 'messages-ref');
-const mockQuery = jest.fn(() => 'query-ref');
-const mockOrderBy = jest.fn(() => 'orderBy-ref');
-const mockLimit = jest.fn(() => 'limit-ref');
-const mockStartAfter = jest.fn(() => 'startAfter-ref');
+// Make these mocks accept variadic args so spreading `...args` is type-safe
+const mockCollection = jest.fn((..._args: any[]) => 'messages-ref');
+const mockQuery = jest.fn((..._args: any[]) => 'query-ref');
+const mockOrderBy = jest.fn((..._args: any[]) => 'orderBy-ref');
+const mockLimit = jest.fn((..._args: any[]) => 'limit-ref');
+const mockStartAfter = jest.fn((..._args: any[]) => 'startAfter-ref');
 
 jest.mock('firebase/firestore', () => ({
   collection: jest.fn((...args: any[]) => mockCollection(...args)),
