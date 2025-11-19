@@ -138,7 +138,7 @@ Think of a **Connection** as a chat room created when two users match on travel 
 │  useMessages(connectionId)                           │
 │  ├─ Subscribes to messages subcollection             │
 │  ├─ Sorts: orderBy('createdAt', 'desc')              │
-│  ├─ Pagination: limit(5), startAfter cursor          │
+│  ├─ Pagination: limit(10), startAfter cursor         │
 │  ├─ Deduplication: Tracks seen clientMessageIds      │
 │  └─ Returns: { messages, loading, loadMore }         │
 │                                                       │
@@ -597,7 +597,7 @@ export function useMessages(connectionId: string | null) {
     const q = query(
       messagesRef,
       orderBy('createdAt', 'desc'), // Newest first (reversed for display)
-      limit(5)                       // Small page size for performance
+      limit(10)                      // Small page size for performance
     );
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -644,7 +644,7 @@ export function useMessages(connectionId: string | null) {
       messagesRef,
       orderBy('createdAt', 'desc'),
       startAfter(lastDoc),
-      limit(5)
+      limit(10)
     );
     
     const snapshot = await getDocs(q); // One-time fetch using getDocs
@@ -675,7 +675,7 @@ export function useMessages(connectionId: string | null) {
 ```
 
 **Key Optimizations**:
-1. **Small page size (5)**: Faster initial load
+1. **Small page size (10)**: Faster initial load
 2. **Deduplication**: Prevents duplicate messages from optimistic UI
 3. **getDocs for pagination**: Avoids setting up new listeners for old messages
 4. **Set for tracking**: O(1) lookups vs O(n) array searches

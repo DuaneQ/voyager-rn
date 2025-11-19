@@ -189,7 +189,7 @@ Default avatar behavior
 - Accessibility: default avatar should have same `accessibilityLabel` semantics as a real photo (e.g., "{displayName} — open profile").
 
 Minimizing Firestore reads/writes (cost control)
-- When opening a chat thread, only read the last 5 messages initially. Use a paged read model where `loadMore()` fetches the previous 5 messages on demand (infinite scroll / pull-up to load older). Use queries with `limit(5)` and `startAfter` / `endBefore` cursors to page.
+- When opening a chat thread, only read the last 10 messages initially. Use a paged read model where `loadMore()` fetches the previous 10 messages on demand (infinite scroll / pull-up to load older). Use queries with `limit(10)` and `startAfter` / `endBefore` cursors to page.
 - Keep `connections` documents aggregated with `lastMessagePreview` and `lastMessageTimestamp` so the connections list can be rendered without per-row subcollection reads. Prefer server-side aggregation (Cloud Function) or update `connections.lastMessagePreview` on message write to avoid extra reads.
 - When sending messages, update `unreadCounts` in a single batched write where possible to minimize multiple writes.
 
@@ -208,7 +208,7 @@ Testing requirements (unit & integration)
   - Avatar fallback: test that components render the default avatar when `avatarUrl` is missing.
   - Connections list rendering: render stubbed `connections` and ensure `lastMessagePreview` and unread badges display correctly.
   - Delete/hide action: test that confirming calls the repository method and that only allowed users can invoke the API.
-  - Pagination: test the hook logic for initial `limit(5)` and `loadMore()` fetching the next 5 messages.
+  - Pagination: test the hook logic for initial `limit(10)` and `loadMore()` fetching the next 10 messages.
 
 - Integration tests (Firestore emulator):
   - Open chat flow reads only 5 messages initially and loads more when `loadMore` is called.
