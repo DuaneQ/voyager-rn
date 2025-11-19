@@ -16,13 +16,13 @@ const mockLimit = jest.fn(() => 'limit-ref');
 const mockStartAfter = jest.fn(() => 'startAfter-ref');
 
 jest.mock('firebase/firestore', () => ({
-  collection: (...args: any[]) => mockCollection(...args),
-  query: (...args: any[]) => mockQuery(...args),
-  orderBy: (...args: any[]) => mockOrderBy(...args),
-  limit: (...args: any[]) => mockLimit(...args),
-  startAfter: (...args: any[]) => mockStartAfter(...args),
-  onSnapshot: (...args: any[]) => mockOnSnapshot(...args),
-  getDocs: (...args: any[]) => mockGetDocs(...args),
+  collection: jest.fn((...args: any[]) => mockCollection(...args)),
+  query: jest.fn((...args: any[]) => mockQuery(...args)),
+  orderBy: jest.fn((...args: any[]) => mockOrderBy(...args)),
+  limit: jest.fn((...args: any[]) => mockLimit(...args)),
+  startAfter: jest.fn((...args: any[]) => mockStartAfter(...args)),
+  onSnapshot: jest.fn((...args: any[]) => mockOnSnapshot(...args)),
+  getDocs: jest.fn((...args: any[]) => mockGetDocs(...args)),
   Timestamp: {
     now: () => ({ seconds: Date.now() / 1000, nanoseconds: 0 }),
     fromDate: (date: Date) => ({

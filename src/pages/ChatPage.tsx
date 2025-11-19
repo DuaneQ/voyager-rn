@@ -99,10 +99,10 @@ const ChatPage: React.FC = () => {
         style={styles.connectionItem}
         onPress={() => {
           console.log('[ChatPage] Opening chat:', item.id);
-          navigation.navigate('ChatThread' as never, {
+          (navigation.navigate as any)('ChatThread', {
             connectionId: item.id,
             otherUserName: otherUserNames,
-          } as never);
+          });
         }}
       >
         {/* Avatar with actual profile photo or placeholder */}
