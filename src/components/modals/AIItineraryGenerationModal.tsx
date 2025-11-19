@@ -117,12 +117,21 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
   const [showPreferenceDropdown, setShowPreferenceDropdown] = useState(false);
   const [showFlightClassDropdown, setShowFlightClassDropdown] = useState(false);
   const [showStopPrefDropdown, setShowStopPrefDropdown] = useState(false);
+  const [wasOpen, setWasOpen] = useState(false);
 
   // Initialize form when modal opens (matching PWA logic)
   useEffect(() => {
-    if (visible) {
+    console.log('[AIItineraryGenerationModal] useEffect FIRED - visible:', visible, 'wasOpen:', wasOpen);
+    
+    if (visible && !wasOpen) {
+      // Modal just opened - only run ONCE per open
+      console.log('[AIItineraryGenerationModal] INITIALIZING (first open)');
+      setWasOpen(true);
+
       const defaultProfileId = preferences?.profiles?.find((p: any) => p.isDefault)?.id || '';
       const initProfileId = initialPreferenceProfileId || defaultProfileId || '';
+
+      console.log('[AIItineraryGenerationModal] SETTING formData - profileId:', initProfileId);
 
       setFormData({
         destination: initialDestination,
@@ -146,37 +155,30 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
       setFormErrors({});
       setShowSuccessState(false);
     }
-  }, [visible, initialDestination, initialDates, initialPreferenceProfileId, preferences]);
+    
+    if (!visible && wasOpen) {
+      // Modal closed - reset wasOpen flag
+      console.log('[AIItineraryGenerationModal] Modal closed - resetting wasOpen flag');
+      setWasOpen(false);
+    }
+  }, [visible, wasOpen]);
 
   // Get selected profile (matching PWA logic exactly)
   const selectedProfile = useMemo(() => {
+    console.log('[AIItineraryGenerationModal] selectedProfile RECALCULATED - preferenceProfileId:', formData.preferenceProfileId, 'preferences available:', !!preferences?.profiles);
     if (!formData.preferenceProfileId || !preferences?.profiles) return null;
     return preferences.profiles.find((p: any) => p.id === formData.preferenceProfileId) || null;
   }, [formData.preferenceProfileId, preferences]);
 
   // Check if flights should be shown using ProfileValidationService (matching PWA)
   const shouldShowFlights = useMemo(() => {
+    console.log('[AIItineraryGenerationModal] shouldShowFlights RECALCULATED - selectedProfile:', !!selectedProfile);
     return ProfileValidationService.isFlightSectionVisible(selectedProfile);
   }, [selectedProfile]);
 
-  // Debug: log shapes that commonly cause `.filter` on undefined errors
-  React.useEffect(() => {
-    if (visible) {
-      // eslint-disable-next-line no-console
-      console.log('[AIItineraryGenerationModal] opened - debug shapes:', {
-        preferencesType: typeof preferences,
-        preferencesProfilesIsArray: Array.isArray(preferences?.profiles),
-        preferencesProfilesLength: preferences?.profiles?.length,
-        formDataMustIncludeIsArray: Array.isArray((formData as any)?.mustInclude),
-        formDataMustAvoidIsArray: Array.isArray((formData as any)?.mustAvoid),
-        selectedProfilePresent: !!selectedProfile,
-        userProfileType: typeof userProfile,
-      });
-    }
-  }, [visible, preferences, formData, selectedProfile, userProfile]);
-
   // Handle field changes
   const handleFieldChange = useCallback((field: string, value: any) => {
+    console.log('[AIItineraryGenerationModal] handleFieldChange CALLED - field:', field, 'value:', typeof value === 'string' ? value.substring(0, 50) : value);
     setFormData(prev => {
       const updated = { ...prev, [field]: value };
       return updated;
@@ -309,6 +311,8 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
 
   // Handle modal close (matching PWA logic)
   const handleClose = useCallback(() => {
+    console.log('[AIItineraryGenerationModal] handleClose CALLED - isGenerating:', isGenerating);
+    
     if (isGenerating) {
       cancelGeneration();
     }
@@ -336,6 +340,9 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
       }
     });
 
+    // Mark as not-open so next open will reinitialize
+    setWasOpen(false);
+    
     onClose();
   }, [isGenerating, cancelGeneration, onClose, preferences]);
 
@@ -500,7 +507,10 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
                     placeholder="Where do you want to go?"
                     predefinedPlaces={[]}
                     onPress={(data, details = null) => {
-                      handleFieldChange('destination', data.description);
+                      console.log('[AIItineraryGenerationModal] GooglePlaces destination onPress - data:', data?.description);
+                      if (data && data.description && data.description.trim()) {
+                        handleFieldChange('destination', data.description);
+                      }
                     }}
                     query={{
                       key: getGooglePlacesApiKey(),
@@ -567,9 +577,6 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
                       },
                     }}
                     textInputProps={{
-                      onChangeText: (text) => {
-                        handleFieldChange('destination', text);
-                      },
                       placeholderTextColor: '#999',
                       autoCorrect: false,
                       autoCapitalize: 'none',
@@ -613,7 +620,10 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
                     placeholder="Where are you traveling from?"
                     predefinedPlaces={[]}
                     onPress={(data, details = null) => {
-                      handleFieldChange('departure', data.description);
+                      console.log('[AIItineraryGenerationModal] GooglePlaces departure onPress - data:', data?.description);
+                      if (data && data.description && data.description.trim()) {
+                        handleFieldChange('departure', data.description);
+                      }
                     }}
                     query={{
                       key: getGooglePlacesApiKey(),
@@ -680,9 +690,6 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
                       },
                     }}
                     textInputProps={{
-                      onChangeText: (text) => {
-                        handleFieldChange('departure', text);
-                      },
                       placeholderTextColor: '#999',
                       autoCorrect: false,
                       autoCapitalize: 'none',

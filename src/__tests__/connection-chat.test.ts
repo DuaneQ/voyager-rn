@@ -3,11 +3,7 @@
  * All tests consolidated in src/__tests__ directory
  */
 
-import { addUserToConnection, removeUserFromConnection } from '../utils/connectionUtils';
-import { getEligibleUsersForChat } from '../utils/getEligibleUsersForChat';
-import { useRemoveConnection } from '../hooks/useRemoveConnection';
-import { sanitizeMessage, isValidMessageLength, hasValidContent } from '../utils/sanitizeMessage';
-import { validateImage, compressImage, prepareImageForUpload } from '../utils/imageValidation';
+import { sanitizeMessage } from '../utils/sanitizeMessage';
 
 // Mock Firebase
 jest.mock('firebase/firestore');

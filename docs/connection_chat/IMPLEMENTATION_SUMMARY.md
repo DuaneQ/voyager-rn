@@ -1615,7 +1615,7 @@ Exception in HostFunction: Expected argument 7 of method "sendRequest" to be a n
    ```xml
    <meta-data
      android:name="com.google.android.geo.API_KEY"
-     android:value="AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8" />
+     android:value="" />
    ```
 3. Build and run: `npx expo run:android`
 4. Test GooglePlacesAutocomplete in Add Itinerary modal

@@ -43,7 +43,6 @@ import {
 import { getStorage, ref, getDownloadURL } from 'firebase/storage';
 import { UserProfileContext } from '../../context/UserProfileContext';
 import * as firebaseCfg from '../../config/firebaseConfig';
-import { calculateAge } from '../../utils/calculateAge';
 import { VideoService } from '../../services/video/VideoService';
 import { Ionicons } from '@expo/vector-icons';
 

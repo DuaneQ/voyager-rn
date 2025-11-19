@@ -16,14 +16,12 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   ActivityIndicator,
   Image,
   StatusBar,
   Alert,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
 import { Ionicons } from '@expo/vector-icons';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { prepareImageForUpload } from '../utils/imageValidation';
@@ -57,12 +55,14 @@ const ChatThreadScreen: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [viewProfileUserId, setViewProfileUserId] = useState<string | null>(null);
   const [viewProfileVisible, setViewProfileVisible] = useState(false);
+  const [isUserScrolling, setIsUserScrolling] = useState(false);
 
   const flatListRef = useRef<FlatList>(null);
   const currentUserId = userProfile?.uid;
 
   // Use the useMessages hook instead of duplicating the query
   const { messages, loading, error, hasMore, loadMore } = useMessages(connectionId);
+  const [loadingMore, setLoadingMore] = useState(false);
   
   // Get connection details for user info
   const { connections } = useConnections(currentUserId || null);
@@ -477,12 +477,29 @@ const ChatThreadScreen: React.FC = () => {
               keyExtractor={(item) => item.day}
               renderItem={renderDayGroup}
               contentContainerStyle={styles.messagesList}
+              inverted={false}
               onContentSizeChange={() => {
                 // Auto-scroll when content size changes (new messages)
                 if (messages.length > 0) {
                   flatListRef.current?.scrollToEnd({ animated: true });
                 }
               }}
+              onScroll={(event) => {
+                // Detect when user scrolls near top (within 100px) to load older messages
+                const { contentOffset } = event.nativeEvent;
+                const distanceFromTop = contentOffset.y;
+                
+                // Only trigger loadMore if user has actually scrolled (not initial layout)
+                // AND they're near the top
+                if (distanceFromTop < 100 && distanceFromTop > 0 && hasMore && !loading && !loadingMore && isUserScrolling) {
+                  setLoadingMore(true);
+                  loadMore().finally(() => setLoadingMore(false));
+                }
+              }}
+              onScrollBeginDrag={() => {
+                setIsUserScrolling(true);
+              }}
+              scrollEventThrottle={400}
               ListEmptyComponent={
                 <View style={styles.emptyContainer}>
                   <Text style={styles.emptyText}>No messages yet</Text>
@@ -491,9 +508,27 @@ const ChatThreadScreen: React.FC = () => {
               }
               ListHeaderComponent={
                 hasMore ? (
-                  <TouchableOpacity style={styles.loadMoreButton} onPress={loadMore}>
-                    <Text style={styles.loadMoreText}>Load older messages</Text>
-                  </TouchableOpacity>
+                  loadingMore ? (
+                    <View style={styles.loadMoreButton}>
+                      <ActivityIndicator size="small" color="#007AFF" />
+                      <Text style={styles.loadMoreText}>Loading...</Text>
+                    </View>
+                  ) : (
+                    <TouchableOpacity 
+                      style={styles.loadMoreButton} 
+                      onPress={async () => {
+                        setLoadingMore(true);
+                        await loadMore();
+                        setLoadingMore(false);
+                      }}
+                    >
+                      <Text style={styles.loadMoreText}>↑ Load older messages</Text>
+                    </TouchableOpacity>
+                  )
+                ) : messages.length > 0 ? (
+                  <View style={styles.loadMoreButton}>
+                    <Text style={styles.loadMoreTextDisabled}>• No more messages •</Text>
+                  </View>
                 ) : null
               }
             />
@@ -728,11 +763,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     marginBottom: 8,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
   },
   loadMoreText: {
     fontSize: 14,
     color: '#007AFF',
     fontWeight: '600',
+  },
+  loadMoreTextDisabled: {
+    fontSize: 12,
+    color: '#999',
+    fontStyle: 'italic',
   },
   emptyContainer: {
     flex: 1,

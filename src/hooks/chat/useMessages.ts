@@ -5,8 +5,8 @@
  * Implements infinite scroll pattern with real-time updates.
  * 
  * Requirements:
- * - Load 5 messages initially (limit(5))
- * - loadMore() fetches previous 5 messages with cursor-based pagination
+ * - Load 10 messages initially (limit(10))
+ * - loadMore() fetches previous 10 messages with cursor-based pagination
  * - Real-time listener for new messages
  * - Deduplication via clientMessageId
  * - Optimistic UI support (pending flag)
@@ -37,7 +37,7 @@ interface UseMessagesResult {
   refresh: () => void;
 }
 
-const MESSAGES_PER_PAGE = 20;
+const MESSAGES_PER_PAGE = 10;
 
 /**
  * Hook for managing message pagination and real-time updates in a chat thread.
@@ -46,7 +46,9 @@ const MESSAGES_PER_PAGE = 20;
  * @returns Message list, loading state, pagination controls
  */
 export function useMessages(connectionId: string | null | undefined): UseMessagesResult {
-  const [messages, setMessages] = useState<Message[]>([]);
+  // Separate state for latest (real-time) and older (paginated) messages - MATCHES PWA
+  const [latestMessages, setLatestMessages] = useState<Message[]>([]);
+  const [olderMessages, setOlderMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [hasMore, setHasMore] = useState(true);
@@ -54,13 +56,17 @@ export function useMessages(connectionId: string | null | undefined): UseMessage
   
   const unsubscribeRef = useRef<(() => void) | null>(null);
 
+  // Combined messages: older messages first, then latest messages
+  const messages = [...olderMessages, ...latestMessages];
+
   /**
    * Load initial messages and set up real-time listener.
-   * MATCHES PWA: Real-time listener replaces entire message array on each update
+   * MATCHES PWA: Real-time listener only updates latestMessages, pagination updates olderMessages
    */
   const loadInitialMessages = useCallback(() => {
     if (!connectionId) {
-      setMessages([]);
+      setLatestMessages([]);
+      setOlderMessages([]);
       setLoading(false);
       return;
     }
@@ -97,8 +103,8 @@ export function useMessages(connectionId: string | null | undefined): UseMessage
             })
             .reverse(); // oldest at top - EXACTLY like PWA
 
-          // Set messages directly - real-time listener handles everything
-          setMessages(msgs);
+          // Update ONLY latestMessages - CRITICAL: don't mix with olderMessages
+          setLatestMessages(msgs);
           
           // Set pagination cursor
           const lastVisible = snapshot.docs[snapshot.docs.length - 1] || null;
@@ -166,12 +172,13 @@ export function useMessages(connectionId: string | null | undefined): UseMessage
 
       // Reverse and prepend (older messages go at the beginning)
       olderMessages.reverse();
-      setMessages((prev) => [...olderMessages, ...prev]);
+      // Update ONLY olderMessages - CRITICAL: don't touch latestMessages
+      setOlderMessages((prev) => [...olderMessages, ...prev]);
       setLastDoc(lastVisible);
       setHasMore(snapshot.docs.length === MESSAGES_PER_PAGE);
       setLoading(false);
     } catch (err) {
-      console.error('Error loading more messages:', err);
+      console.error('[useMessages] Error loading more messages:', err);
       setError(err as Error);
       setLoading(false);
     }
@@ -185,7 +192,8 @@ export function useMessages(connectionId: string | null | undefined): UseMessage
       unsubscribeRef.current();
       unsubscribeRef.current = null;
     }
-    setMessages([]);
+    setLatestMessages([]);
+    setOlderMessages([]);
     setLastDoc(null);
     setHasMore(true);
     loadInitialMessages();
@@ -202,7 +210,7 @@ export function useMessages(connectionId: string | null | undefined): UseMessage
         unsubscribeRef.current = null;
       }
     };
-  }, [loadInitialMessages]);
+  }, [loadInitialMessages, connectionId]);
 
   return {
     messages,

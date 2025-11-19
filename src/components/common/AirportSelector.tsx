@@ -115,9 +115,26 @@ const AirportSelector: React.FC<AirportSelectorProps> = ({
 
       // If we have a location context, search near that location
       if (location && location.trim()) {
-        // Request more airports (20) so we have enough to filter to 5 intl + 1 domestic
-        const searchResult = await airportService.searchAirportsNearLocation(location, undefined, 200, 20);
-        results = searchResult.airports;
+        // First try curated mappings (most reliable for major cities)
+        const curatedAirports = await (async () => {
+          try {
+            const curated = await airportService.searchAirportsByQuery(location);
+            return curated.filter(a => a.iataCode && a.iataCode.length === 3);
+          } catch {
+            return [];
+          }
+        })();
+        
+        // If we have curated airports, use ONLY those (skip Google Places)
+        if (curatedAirports.length > 0) {
+          console.log(`[AirportSelector] Using ${curatedAirports.length} curated airports for "${location}"`);
+          results = curatedAirports;
+        } else {
+          // No curated data, fall back to Google Places API
+          console.log(`[AirportSelector] No curated data for "${location}", using Google Places`);
+          const searchResult = await airportService.searchAirportsNearLocation(location, undefined, 200, 20);
+          results = searchResult.airports;
+        }
 
         // Filter results by query if user is typing
         if (query !== location) {

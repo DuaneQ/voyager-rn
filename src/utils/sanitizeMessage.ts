@@ -4,8 +4,6 @@
  * Cross-platform implementation (web uses DOMPurify, native uses safe normalization)
  */
 
-import { Platform } from 'react-native';
-
 const MAX_MESSAGE_LENGTH = 1000;
 
 // Control characters to strip (except newlines and tabs)

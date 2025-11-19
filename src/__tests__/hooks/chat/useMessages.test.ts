@@ -103,7 +103,7 @@ describe('useMessages', () => {
       
       expect(mockCollection).toHaveBeenCalled();
       expect(mockOrderBy).toHaveBeenCalledWith('createdAt', 'desc');
-      expect(mockLimit).toHaveBeenCalledWith(20); // Updated to match MESSAGES_PER_PAGE
+      expect(mockLimit).toHaveBeenCalledWith(10); // Updated to match MESSAGES_PER_PAGE
     });
   });
 
@@ -254,7 +254,7 @@ describe('useMessages', () => {
 
   describe('pagination with loadMore', () => {
     it('should load more messages using getDocs', async () => {
-      const initialDocs = Array.from({ length: 20 }, (_, i) => ({
+      const initialDocs = Array.from({ length: 10 }, (_, i) => ({
         id: `msg${i}`,
         data: () => ({
           sender: 'user1',
@@ -277,7 +277,7 @@ describe('useMessages', () => {
       });
 
       const moreDocs = Array.from({ length: 3 }, (_, i) => ({
-        id: `msg${20 + i}`,
+        id: `msg${10 + i}`,
         data: () => ({
           sender: 'user1',
           text: `Older message ${i}`,
@@ -295,13 +295,13 @@ describe('useMessages', () => {
       const { result } = renderHook(() => useMessages('conn123'));
       
       await waitFor(() => {
-        expect(result.current.messages).toHaveLength(20);
+        expect(result.current.messages).toHaveLength(10);
       });
       
       await result.current.loadMore();
       
       await waitFor(() => {
-        expect(result.current.messages).toHaveLength(23);
+        expect(result.current.messages).toHaveLength(13); // 10 latest + 3 older
       });
       
       expect(mockGetDocs).toHaveBeenCalled();
@@ -344,7 +344,7 @@ describe('useMessages', () => {
     });
 
     it('should handle loadMore errors gracefully', async () => {
-      const initialDocs = Array.from({ length: 20 }, (_, i) => ({
+      const initialDocs = Array.from({ length: 10 }, (_, i) => ({
         id: `msg${i}`,
         data: () => ({
           sender: 'user1',
@@ -374,7 +374,7 @@ describe('useMessages', () => {
       const { result } = renderHook(() => useMessages('conn123'));
       
       await waitFor(() => {
-        expect(result.current.messages).toHaveLength(20);
+        expect(result.current.messages).toHaveLength(10);
       });
       
       await result.current.loadMore();
@@ -383,13 +383,13 @@ describe('useMessages', () => {
         expect(result.current.error).toBe(testError);
       });
       
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Error loading more messages:', testError);
+      expect(consoleErrorSpy).toHaveBeenCalledWith('[useMessages] Error loading more messages:', testError);
       
       consoleErrorSpy.mockRestore();
     });
 
     it('should prepend older messages when loading more', async () => {
-      const initialDocs = Array.from({ length: 20 }, (_, i) => ({
+      const initialDocs = Array.from({ length: 10 }, (_, i) => ({
         id: `msg-${i}`,
         data: () => ({
           sender: 'user1',
@@ -430,13 +430,13 @@ describe('useMessages', () => {
       const { result } = renderHook(() => useMessages('conn123'));
       
       await waitFor(() => {
-        expect(result.current.messages).toHaveLength(20);
+        expect(result.current.messages).toHaveLength(10);
       });
       
       await result.current.loadMore();
       
       await waitFor(() => {
-        expect(result.current.messages).toHaveLength(21);
+        expect(result.current.messages).toHaveLength(11); // 10 latest + 1 older
       });
       
       // Older message should be prepended (first in array)
