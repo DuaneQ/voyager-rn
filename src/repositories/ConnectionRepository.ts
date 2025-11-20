@@ -10,6 +10,7 @@ import {
   doc,
   setDoc,
   getDoc,
+  updateDoc,
   query,
   where,
   getDocs,
@@ -34,6 +35,7 @@ export interface IConnectionRepository {
   checkMutualMatch(userId: string, theirItineraryId: string): Promise<MutualMatchResult>;
   getConnectionById(connectionId: string): Promise<Connection | null>;
   getUserConnections(userId: string): Promise<Connection[]>;
+  markMessagesAsRead(connectionId: string, userId: string): Promise<void>;
 }
 
 /**
@@ -186,6 +188,30 @@ export class FirestoreConnectionRepository implements IConnectionRepository {
       }
       
       throw new Error('Failed to fetch connections. Please try again.');
+    }
+  }
+
+  /**
+   * Mark all messages as read for a user in a connection
+   * Resets the unread count to 0 for the specified user
+   * @param connectionId - Connection ID
+   * @param userId - User ID to reset unread count for
+   */
+  async markMessagesAsRead(connectionId: string, userId: string): Promise<void> {
+    try {
+      if (!connectionId || !userId) {
+        throw new Error('Invalid connection ID or user ID');
+      }
+
+      const connectionRef = doc(this.db, this.connectionsCollection, connectionId);
+      await updateDoc(connectionRef, {
+        [`unreadCounts.${userId}`]: 0
+      });
+
+      console.log('[ConnectionRepository] Messages marked as read for user:', userId);
+    } catch (error: any) {
+      console.error('[ConnectionRepository] markMessagesAsRead error:', error);
+      // Don't throw - this is a non-critical operation
     }
   }
 }

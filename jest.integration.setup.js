@@ -9,10 +9,7 @@
 process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8080';
 process.env.FIREBASE_AUTH_EMULATOR_HOST = '127.0.0.1:9099';
 process.env.FIREBASE_FUNCTIONS_EMULATOR = 'http://127.0.0.1:5001';
-console.log('✅ [Setup] Emulator environment configured:');
-console.log(`   - FIRESTORE_EMULATOR_HOST: ${process.env.FIRESTORE_EMULATOR_HOST}`);
-console.log(`   - FIREBASE_AUTH_EMULATOR_HOST: ${process.env.FIREBASE_AUTH_EMULATOR_HOST}`);
-console.log(`   - FIREBASE_FUNCTIONS_EMULATOR: ${process.env.FIREBASE_FUNCTIONS_EMULATOR}`);
+
 
 // Polyfill fetch for Firebase Admin SDK and callFunction
 if (!global.fetch) {
@@ -25,7 +22,6 @@ const admin = require('firebase-admin');
 // Clean up any existing apps on startup
 const existingApps = admin.apps;
 if (existingApps.length > 0) {
-  console.log(`🧹 Cleaning up ${existingApps.length} existing Firebase Admin apps...`);
   existingApps.filter(app => app).forEach(app => {
     try {
       app.delete();
@@ -35,5 +31,4 @@ if (existingApps.length > 0) {
   });
 }
 
-console.log('✅ Integration test setup complete (Firebase Admin SDK ready)');
 

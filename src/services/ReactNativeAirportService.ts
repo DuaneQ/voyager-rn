@@ -3,6 +3,7 @@ import { Airport, AirportSearchResult, LocationCoordinates } from '../types/Airp
 import { IAirportService, IDistanceCalculator } from './interfaces/IAirportService';
 import { DistanceCalculator } from './DistanceCalculator';
 import { getGooglePlacesApiKey } from '../constants/apiConfig';
+import { getAirportsForLocation } from '../data/cityAirportMappings';
 
 export class ReactNativeAirportService implements IAirportService {
   private distanceCalculator: IDistanceCalculator;
@@ -126,7 +127,51 @@ export class ReactNativeAirportService implements IAirportService {
         return airport ? [airport] : [];
       }
 
-      // Otherwise search by name/location
+      // STEP 1: Check curated city-to-airport mappings first
+      const curatedAirportCodes = getAirportsForLocation(query);
+      if (curatedAirportCodes && curatedAirportCodes.length > 0) {
+        console.log(`[searchAirportsByQuery] Found ${curatedAirportCodes.length} curated airports for "${query}": ${curatedAirportCodes.join(', ')}`);
+        
+        // Get full airport data from OpenFlights dataset
+        const major = this.getMajorAirports();
+        const curatedAirports = curatedAirportCodes
+          .map(code => major.find(a => a.iataCode === code))
+          .filter((a): a is Airport => a !== undefined);
+        
+        if (curatedAirports.length > 0) {
+          return curatedAirports;
+        }
+      }
+
+      // STEP 2: If not in curated list, search OpenFlights dataset
+      // Extract country from query if present (e.g., "Paris, France" -> "France")
+      const queryParts = query.split(',').map(p => p.trim());
+      const cityQuery = queryParts[0].toLowerCase();
+      const countryQuery = queryParts.length > 1 ? queryParts[queryParts.length - 1].toLowerCase() : null;
+      
+      const major = this.getMajorAirports();
+      const matches = major.filter(airport => {
+        const cityMatch = airport.city.toLowerCase().includes(cityQuery);
+        const nameMatch = airport.name.toLowerCase().includes(cityQuery);
+        const iataMatch = airport.iataCode.toLowerCase().includes(cityQuery);
+        
+        // If country is specified in query, must match country too
+        if (countryQuery) {
+          const countryMatch = airport.country.toLowerCase().includes(countryQuery);
+          return (cityMatch || nameMatch || iataMatch) && countryMatch;
+        }
+        
+        return cityMatch || nameMatch || iataMatch;
+      });
+      
+      // If we found airports in our dataset, return them
+      if (matches.length > 0) {
+        console.log(`[searchAirportsByQuery] Found ${matches.length} airports for "${query}" in OpenFlights dataset`);
+        return matches;
+      }
+      
+      // STEP 3: If no matches in our dataset, try Google Places as last resort
+      console.log(`[searchAirportsByQuery] No matches in OpenFlights for "${query}", trying Google Places`);
       const result = await this.searchAirportsNearLocation(query);
       return result.airports;
     } catch (error) {
@@ -290,12 +335,12 @@ export class ReactNativeAirportService implements IAirportService {
     const major = this.getMajorAirports();
     const query = locationName.toLowerCase();
     
-    // Return relevant airports based on location name
+    // Return relevant airports based on location name (increased from 3 to 20)
     return major.filter(airport => 
       airport.city.toLowerCase().includes(query) ||
       airport.name.toLowerCase().includes(query) ||
       airport.iataCode.toLowerCase().includes(query)
-    ).slice(0, 3);
+    ).slice(0, 20);
   }
 
   /**

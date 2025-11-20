@@ -257,6 +257,8 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
       if (includeFlights && sanitizedRequest.departureAirportCode && sanitizedRequest.destinationAirportCode) {
         const flightPayload = {
           ...basePayload,
+          departureDate: sanitizedRequest.startDate, // searchFlights expects departureDate
+          returnDate: sanitizedRequest.endDate, // searchFlights expects returnDate
           departureAirportCode: sanitizedRequest.departureAirportCode,
           destinationAirportCode: sanitizedRequest.destinationAirportCode,
           cabinClass: sanitizedRequest.flightPreferences?.class?.toUpperCase() || 'ECONOMY',

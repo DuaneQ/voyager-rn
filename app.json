@@ -40,6 +40,9 @@
       "android",
       "web"
     ],
+    "plugins": [
+      "./plugins/withGooglePlacesAndroid"
+    ],
     "extra": {
       "eas": {
         "projectId": "6fc90234-4d23-427c-918f-75d141efe8ed"

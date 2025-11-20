@@ -355,7 +355,7 @@ describe('AirportSelector - Edge Cases', () => {
           'Los Angeles',
           undefined,
           200,
-          10
+          20
         );
       });
     });

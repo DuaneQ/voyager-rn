@@ -264,6 +264,23 @@ export class PhotoService implements IPhotoService {
    */
   private async uriToBlob(uri: string): Promise<Blob> {
     try {
+      // On Android, use XMLHttpRequest to avoid axios interceptor issues with file:// URIs
+      if (Platform.OS === 'android' && uri.startsWith('file://')) {
+        return await new Promise<Blob>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.onload = function() {
+            resolve(xhr.response);
+          };
+          xhr.onerror = function() {
+            reject(new Error('Failed to read file via XMLHttpRequest'));
+          };
+          xhr.responseType = 'blob';
+          xhr.open('GET', uri, true);
+          xhr.send(null);
+        });
+      }
+      
+      // On iOS or web, use fetch
       const response = await fetch(uri);
       const blob = await response.blob();
       return blob;

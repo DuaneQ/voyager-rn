@@ -17,8 +17,9 @@ import {
   KeyboardAvoidingView,
   Platform
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
-import { format, addDays } from 'date-fns';
+import { format, addDays, parse } from 'date-fns';
 import * as firebaseCfg from '../../config/firebaseConfig';
 import { useAIGeneration } from '../../hooks/useAIGeneration';
 import { AIGenerationRequest } from '../../types/AIGeneration';
@@ -117,6 +118,8 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
   const [showPreferenceDropdown, setShowPreferenceDropdown] = useState(false);
   const [showFlightClassDropdown, setShowFlightClassDropdown] = useState(false);
   const [showStopPrefDropdown, setShowStopPrefDropdown] = useState(false);
+  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
+  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
 
   // Initialize form when modal opens (matching PWA logic)
   useEffect(() => {
@@ -567,9 +570,6 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
                       },
                     }}
                     textInputProps={{
-                      onChangeText: (text) => {
-                        handleFieldChange('destination', text);
-                      },
                       placeholderTextColor: '#999',
                       autoCorrect: false,
                       autoCapitalize: 'none',
@@ -680,9 +680,6 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
                       },
                     }}
                     textInputProps={{
-                      onChangeText: (text) => {
-                        handleFieldChange('departure', text);
-                      },
                       placeholderTextColor: '#999',
                       autoCorrect: false,
                       autoCapitalize: 'none',
@@ -720,13 +717,18 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
                 <View style={styles.dateRow}>
                   <View style={styles.dateField}>
                     <Text style={styles.fieldLabel}>Start Date *</Text>
-                    <TextInput
-                      style={[styles.textInput, formErrors.startDate && styles.inputError]}
-                      value={formData.startDate}
-                      onChangeText={(text) => handleFieldChange('startDate', text)}
-                      placeholder="YYYY-MM-DD"
-                      placeholderTextColor="#999"
-                    />
+                    <TouchableOpacity
+                      style={[styles.datePickerButton, formErrors.startDate && styles.inputError]}
+                      onPress={() => {
+                        setShowEndDatePicker(false);
+                        setShowStartDatePicker(true);
+                      }}
+                    >
+                      <Text style={styles.datePickerButtonText}>
+                        {formData.startDate ? format(parse(formData.startDate, 'yyyy-MM-dd', new Date()), 'MMM d, yyyy') : 'Select date'}
+                      </Text>
+                      <Text style={styles.calendarIcon}>📅</Text>
+                    </TouchableOpacity>
                     {formErrors.startDate && (
                       <Text style={styles.fieldError}>{formErrors.startDate}</Text>
                     )}
@@ -734,18 +736,99 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
 
                   <View style={styles.dateField}>
                     <Text style={styles.fieldLabel}>End Date *</Text>
-                    <TextInput
-                      style={[styles.textInput, formErrors.endDate && styles.inputError]}
-                      value={formData.endDate}
-                      onChangeText={(text) => handleFieldChange('endDate', text)}
-                      placeholder="YYYY-MM-DD"
-                      placeholderTextColor="#999"
-                    />
+                    <TouchableOpacity
+                      style={[styles.datePickerButton, formErrors.endDate && styles.inputError]}
+                      onPress={() => {
+                        setShowStartDatePicker(false);
+                        setShowEndDatePicker(true);
+                      }}
+                    >
+                      <Text style={styles.datePickerButtonText}>
+                        {formData.endDate ? format(parse(formData.endDate, 'yyyy-MM-dd', new Date()), 'MMM d, yyyy') : 'Select date'}
+                      </Text>
+                      <Text style={styles.calendarIcon}>📅</Text>
+                    </TouchableOpacity>
                     {formErrors.endDate && (
                       <Text style={styles.fieldError}>{formErrors.endDate}</Text>
                     )}
                   </View>
                 </View>
+
+                {/* Start Date Picker Modal */}
+                {showStartDatePicker && (
+                  <Modal
+                    visible={showStartDatePicker}
+                    transparent={true}
+                    animationType="slide"
+                    onRequestClose={() => setShowStartDatePicker(false)}
+                  >
+                    <View style={styles.datePickerModalOverlay}>
+                      <View style={styles.datePickerModalContent}>
+                        <View style={styles.datePickerHeader}>
+                          <TouchableOpacity onPress={() => setShowStartDatePicker(false)}>
+                            <Text style={styles.datePickerCancelText}>Cancel</Text>
+                          </TouchableOpacity>
+                          <Text style={styles.datePickerTitle}>Select Start Date</Text>
+                          <TouchableOpacity onPress={() => setShowStartDatePicker(false)}>
+                            <Text style={styles.datePickerDoneText}>Done</Text>
+                          </TouchableOpacity>
+                        </View>
+                        <DateTimePicker
+                          value={formData.startDate ? parse(formData.startDate, 'yyyy-MM-dd', new Date()) : new Date()}
+                          mode="date"
+                          display="spinner"
+                          onChange={(event, selectedDate) => {
+                            if (event.type === 'dismissed') {
+                              setShowStartDatePicker(false);
+                            } else if (selectedDate) {
+                              handleFieldChange('startDate', format(selectedDate, 'yyyy-MM-dd'));
+                            }
+                          }}
+                          minimumDate={new Date()}
+                          textColor="#000000"
+                        />
+                      </View>
+                    </View>
+                  </Modal>
+                )}
+
+                {/* End Date Picker Modal */}
+                {showEndDatePicker && (
+                  <Modal
+                    visible={showEndDatePicker}
+                    transparent={true}
+                    animationType="slide"
+                    onRequestClose={() => setShowEndDatePicker(false)}
+                  >
+                    <View style={styles.datePickerModalOverlay}>
+                      <View style={styles.datePickerModalContent}>
+                        <View style={styles.datePickerHeader}>
+                          <TouchableOpacity onPress={() => setShowEndDatePicker(false)}>
+                            <Text style={styles.datePickerCancelText}>Cancel</Text>
+                          </TouchableOpacity>
+                          <Text style={styles.datePickerTitle}>Select End Date</Text>
+                          <TouchableOpacity onPress={() => setShowEndDatePicker(false)}>
+                            <Text style={styles.datePickerDoneText}>Done</Text>
+                          </TouchableOpacity>
+                        </View>
+                        <DateTimePicker
+                          value={formData.endDate ? parse(formData.endDate, 'yyyy-MM-dd', new Date()) : addDays(new Date(), 7)}
+                          mode="date"
+                          display="spinner"
+                          onChange={(event, selectedDate) => {
+                            if (event.type === 'dismissed') {
+                              setShowEndDatePicker(false);
+                            } else if (selectedDate) {
+                              handleFieldChange('endDate', format(selectedDate, 'yyyy-MM-dd'));
+                            }
+                          }}
+                          minimumDate={formData.startDate ? parse(formData.startDate, 'yyyy-MM-dd', new Date()) : new Date()}
+                          textColor="#000000"
+                        />
+                      </View>
+                    </View>
+                  </Modal>
+                )}
 
                 {/* Trip Type */}
                 <View style={styles.field}>
@@ -1335,6 +1418,27 @@ const styles = StyleSheet.create({
   dateField: {
     flex: 1
   },
+  datePickerButton: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: '#ffffff',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    minHeight: 48
+  },
+  datePickerButtonText: {
+    fontSize: 15,
+    color: '#111827',
+    flex: 1
+  },
+  calendarIcon: {
+    fontSize: 18,
+    marginLeft: 8
+  },
   pickerContainer: {
     borderWidth: 1,
     borderColor: '#D1D5DB',
@@ -1601,6 +1705,42 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#6B7280',
     fontWeight: '500'
+  },
+  // Date Picker Modal Styles
+  datePickerModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end'
+  },
+  datePickerModalContent: {
+    backgroundColor: '#ffffff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 20
+  },
+  datePickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB'
+  },
+  datePickerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827'
+  },
+  datePickerCancelText: {
+    fontSize: 16,
+    color: '#6B7280',
+    fontWeight: '500'
+  },
+  datePickerDoneText: {
+    fontSize: 16,
+    color: '#3B82F6',
+    fontWeight: '600'
   },
   // Legacy dropdown menu styles (still used for flight class/stop pref)
   dropdownMenu: {

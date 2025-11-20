@@ -48,10 +48,15 @@ jobs:
           echo "=== CRITICAL & HIGH VULNERABILITIES ==="
           npm audit --audit-level=high || echo "No critical/high vulnerabilities found"
           
-          # Check automation dependencies
+          # Check automation dependencies (only if `automation/` exists)
           echo "=== AUTOMATION DEPENDENCIES ==="
-          cd automation
-          npm audit --audit-level=high || echo "No critical/high vulnerabilities in automation"
+          if [ -d automation ]; then
+            cd automation
+            npm audit --audit-level=high || echo "No critical/high vulnerabilities in automation"
+            cd - > /dev/null
+          else
+            echo "automation/ directory not found; skipping automation audit"
+          fi
 
       - name: Check for outdated dependencies
         run: |
@@ -59,8 +64,13 @@ jobs:
           npm outdated || true
           
           echo "=== OUTDATED AUTOMATION DEPENDENCIES ==="
-          cd automation
-          npm outdated || true
+          if [ -d automation ]; then
+            cd automation
+            npm outdated || true
+            cd - > /dev/null
+          else
+            echo "automation/ directory not found; skipping automation outdated check"
+          fi
 
       - name: Upload audit report
         if: always()
