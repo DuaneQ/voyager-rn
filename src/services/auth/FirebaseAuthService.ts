@@ -113,6 +113,8 @@ export class FirebaseAuthService {
         this.notifyAuthStateChanged(user);
         return user;
       } else {
+        // Set currentUser BEFORE calling refreshToken so it has context to spread
+        this.currentUser = user;
         const refreshedUser = await this.refreshToken(user.refreshToken);
         if (refreshedUser) {
           // Sync BEFORE notifying listeners
@@ -481,8 +483,15 @@ export class FirebaseAuthService {
 
       const data = await response.json();
       
+      // Ensure we have a currentUser before spreading
+      if (!this.currentUser) {
+        console.error('[FirebaseAuthService] No currentUser during token refresh');
+        await this.signOut();
+        return null;
+      }
+      
       const user: FirebaseUser = {
-        ...this.currentUser!,
+        ...this.currentUser,
         idToken: data.id_token,
         refreshToken: data.refresh_token,
         expiresIn: data.expires_in,
@@ -526,7 +535,14 @@ export class FirebaseAuthService {
   private static async persistUser(user: FirebaseUser): Promise<void> {
     const expiry = Date.now() + parseInt(user.expiresIn) * 1000;
     
+    // Defensive: Ensure required fields are present
+    if (!user.uid) {
+      console.error('[FirebaseAuthService] Cannot persist user without uid');
+      throw new Error('Cannot persist user without uid');
+    }
+    
     // Store non-sensitive data in AsyncStorage for quick access
+    // Only store values that are defined (never store undefined)
     await AsyncStorage.multiSet([
       ['FIREBASE_USER_UID', user.uid],
       ['FIREBASE_USER_EMAIL', user.email || ''],

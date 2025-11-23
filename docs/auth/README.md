@@ -1,5 +1,29 @@
 # Authentication Architecture Documentation
 
+## 🚀 NEW: Google Sign-In Testing Guide
+
+### ⚠️ Cannot Test with Expo Go (QR Code)
+Google Sign-In requires native modules. You MUST build a development build.
+
+### Quick Start
+```bash
+# Use the helper script
+./scripts/test-google-signin.sh
+
+# Or manually
+npx expo run:android --device
+```
+
+**📖 Complete Testing Guide:** [TESTING_GOOGLE_SIGNIN_ON_DEVICE.md](TESTING_GOOGLE_SIGNIN_ON_DEVICE.md)
+
+**📚 Google Sign-In Docs:**
+- [Implementation Summary](GOOGLE_SIGNIN_IMPLEMENTATION_SUMMARY.md) - What was built
+- [Business Logic](GOOGLE_SIGNIN_BUSINESS_LOGIC.md) - All 4 scenarios explained
+- [Test Coverage](GOOGLE_SIGNIN_TESTS_SUMMARY.md) - Unit tests overview
+- [Flow Diagrams](GOOGLE_SIGNIN_FLOW_DIAGRAMS.md) - Visual guides
+
+---
+
 ## Overview
 
 The voyager-RN authentication system implements a **clean S.O.L.I.D-based architecture** following a single-page authentication model with reusable form components. This design ensures maintainability, testability, and consistency across the application.

@@ -367,4 +367,84 @@ describe('ProfileValidationService', () => {
       });
     });
   });
+
+  describe('validateProfileCompleteness', () => {
+    it('should return error when profile is null', () => {
+      const result = ProfileValidationService.validateProfileCompleteness(null);
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0].message).toBe('Profile is required');
+    });
+
+    it('should return error when profile is undefined', () => {
+      const result = ProfileValidationService.validateProfileCompleteness(undefined);
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toHaveLength(1);
+    });
+
+    it('should return error when dob is missing', () => {
+      const profile: any = { gender: 'male' };
+      const result = ProfileValidationService.validateProfileCompleteness(profile);
+      expect(result.isValid).toBe(false);
+      expect(result.errors[0].message).toContain('date of birth');
+    });
+
+    it('should return error when gender is missing', () => {
+      const profile: any = { dob: '1990-01-01' };
+      const result = ProfileValidationService.validateProfileCompleteness(profile);
+      expect(result.isValid).toBe(false);
+      expect(result.errors[0].message).toContain('gender');
+    });
+
+    it('should return valid when profile is complete', () => {
+      const profile: any = { dob: '1990-01-01', gender: 'male' };
+      const result = ProfileValidationService.validateProfileCompleteness(profile);
+      expect(result.isValid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+    });
+  });
+
+  describe('validateTagsAndSpecialRequests', () => {
+    const limits = { maxTags: 5, maxTagLength: 50, maxSpecialRequestsLength: 500 };
+
+    it('should validate special requests length', () => {
+      const formData = { specialRequests: 'a'.repeat(600) };
+      const errors = ProfileValidationService.validateTagsAndSpecialRequests(formData, limits);
+      expect(errors.specialRequests).toContain('500 characters');
+    });
+
+    it('should validate mustInclude count', () => {
+      const formData = { mustInclude: ['a', 'b', 'c', 'd', 'e', 'f'] };
+      const errors = ProfileValidationService.validateTagsAndSpecialRequests(formData, limits);
+      expect(errors.mustInclude).toContain('5 items');
+    });
+
+    it('should validate mustAvoid count', () => {
+      const formData = { mustAvoid: ['a', 'b', 'c', 'd', 'e', 'f'] };
+      const errors = ProfileValidationService.validateTagsAndSpecialRequests(formData, limits);
+      expect(errors.mustAvoid).toContain('5 items');
+    });
+
+    it('should validate mustInclude item length', () => {
+      const formData = { mustInclude: ['a'.repeat(60)] };
+      const errors = ProfileValidationService.validateTagsAndSpecialRequests(formData, limits);
+      expect(errors.mustInclude).toContain('50 characters');
+    });
+
+    it('should validate mustAvoid item length', () => {
+      const formData = { mustAvoid: ['a'.repeat(60)] };
+      const errors = ProfileValidationService.validateTagsAndSpecialRequests(formData, limits);
+      expect(errors.mustAvoid).toContain('50 characters');
+    });
+
+    it('should pass validation for valid data', () => {
+      const formData = {
+        specialRequests: 'Valid request',
+        mustInclude: ['beach', 'museum'],
+        mustAvoid: ['crowds']
+      };
+      const errors = ProfileValidationService.validateTagsAndSpecialRequests(formData, limits);
+      expect(Object.keys(errors)).toHaveLength(0);
+    });
+  });
 });

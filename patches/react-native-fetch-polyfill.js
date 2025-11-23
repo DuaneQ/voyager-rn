@@ -46,7 +46,8 @@ if (Platform.OS === 'android') {
         url: urlString,
         method: (options.method || 'GET').toLowerCase(),
         headers: options.headers || {},
-        timeout: options.timeout || 60000,
+        timeout: 60000, // Always set timeout to avoid Android "argument 7" error
+        validateStatus: () => true, // Accept all status codes, handle errors manually
       };
       
       // Add body if present
@@ -117,4 +118,45 @@ if (Platform.OS === 'android') {
   };
   
   console.log('[Axios Fetch] Axios-based fetch replacement installed for Android');
+
+  /**
+   * Patch XMLHttpRequest.send() to ensure timeout is always set
+   * This fixes Google Places Autocomplete which uses XMLHttpRequest internally
+   */
+  const OriginalXMLHttpRequest = global.XMLHttpRequest;
+  
+  class PatchedXMLHttpRequest extends OriginalXMLHttpRequest {
+    constructor() {
+      super();
+      // Set default timeout if not already set
+      if (!this.timeout) {
+        this.timeout = 60000; // 60 seconds default
+      }
+    }
+    
+    open(method, url, async, user, password) {
+      if (__DEV__) {
+        console.log('[Patched XHR] Opening request:', {
+          method,
+          url: typeof url === 'string' ? url.substring(0, 100) : url,
+          isGooglePlaces: url && (url.includes('googleapis.com') || url.includes('maps.googleapis')),
+        });
+      }
+      return super.open(method, url, async, user, password);
+    }
+    
+    send(body) {
+      // Ensure timeout is always set before sending (critical fix for Android)
+      if (!this.timeout || this.timeout === 0) {
+        this.timeout = 60000;
+        if (__DEV__) {
+          console.log('[Patched XHR] Setting default timeout: 60000ms');
+        }
+      }
+      return super.send(body);
+    }
+  }
+  
+  global.XMLHttpRequest = PatchedXMLHttpRequest;
+  console.log('[Patched XHR] XMLHttpRequest timeout patch installed for Android');
 }

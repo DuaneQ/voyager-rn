@@ -115,16 +115,29 @@ const AuthPage: React.FC = () => {
 
   /**
    * Google Sign-In Handler
-   * TODO: Implement with @react-native-google-signin/google-signin
+   * Scenario 1: New user tries to sign in → redirect to sign up
+   * Scenario 4: Existing user signs in → success
    */
   const handleGoogleSignIn = async () => {
     setIsSubmitting(true);
     try {
       await signInWithGoogle();
       // Success - navigation happens automatically via AuthContext
+      if (Platform.OS === 'web') {
+        showAlert('success', 'Login successful! Welcome back.');
+      }
     } catch (error: any) {
-      const errorMessage = error instanceof Error ? error.message : 'Google sign-in failed';
-      showAlert('error', errorMessage);
+      // Handle specific error: new user trying to sign in
+      if (error.message === 'ACCOUNT_NOT_FOUND') {
+        showAlert(
+          'error',
+          'No account found for this Google account. Please sign up first.'
+        );
+        setMode('register'); // Switch to register form
+      } else {
+        const errorMessage = error instanceof Error ? error.message : 'Google sign-in failed';
+        showAlert('error', errorMessage);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -132,13 +145,15 @@ const AuthPage: React.FC = () => {
 
   /**
    * Google Sign-Up Handler
-   * TODO: Implement with @react-native-google-signin/google-signin
+   * Scenario 2: Existing user tries to sign up → sign them in
+   * Scenario 3: New user signs up → create profile and sign in
    */
   const handleGoogleSignUp = async () => {
     setIsSubmitting(true);
     try {
       await signUpWithGoogle();
       // Success - navigation happens automatically via AuthContext
+      showAlert('success', 'Successfully signed up with Google! Welcome to TravalPass.');
     } catch (error: any) {
       const errorMessage = error instanceof Error ? error.message : 'Google sign-up failed';
       showAlert('error', errorMessage);

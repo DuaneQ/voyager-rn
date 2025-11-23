@@ -100,4 +100,101 @@ describe('RegisterForm', () => {
     expect(username.props.editable).toBe(false);
     expect(email.props.editable).toBe(false);
   });
+
+  it('clears errors when input becomes empty', async () => {
+    const { getByPlaceholderText, queryByText } = render(<RegisterForm {...defaultProps} />);
+    const username = getByPlaceholderText('Username');
+
+    // Set invalid username to trigger error
+    fireEvent.changeText(username, 'A');
+    await waitFor(() => {
+      expect(queryByText('Username must be at least 2 characters')).toBeTruthy();
+    });
+
+    // Clear username - error should disappear
+    fireEvent.changeText(username, '');
+    await waitFor(() => {
+      expect(queryByText('Username must be at least 2 characters')).toBeNull();
+    });
+  });
+
+  it('validates confirm password when password changes', async () => {
+    const { getByPlaceholderText, queryByText } = render(<RegisterForm {...defaultProps} />);
+    const password = getByPlaceholderText('Enter your password');
+    const confirm = getByPlaceholderText('Confirm your password');
+
+    // Set confirm first
+    fireEvent.changeText(confirm, 'longenoughpass');
+    
+    // Change password to not match
+    fireEvent.changeText(password, 'differentpass');
+    
+    await waitFor(() => {
+      expect(queryByText('Passwords do not match')).toBeTruthy();
+    });
+  });
+
+  it('prevents submit when fields are empty', async () => {
+    const { getByTestId } = render(<RegisterForm {...defaultProps} />);
+    const submit = getByTestId('signup-button');
+
+    fireEvent.press(submit);
+
+    await waitFor(() => {
+      expect(mockOnSubmit).not.toHaveBeenCalled();
+    });
+  });
+
+  it('prevents submit when passwords do not match', async () => {
+    const { getByPlaceholderText, getByTestId } = render(<RegisterForm {...defaultProps} />);
+    const username = getByPlaceholderText('Username');
+    const email = getByPlaceholderText('your@email.com');
+    const password = getByPlaceholderText('Enter your password');
+    const confirm = getByPlaceholderText('Confirm your password');
+    const submit = getByTestId('signup-button');
+
+    fireEvent.changeText(username, 'Test User');
+    fireEvent.changeText(email, 'test@example.com');
+    fireEvent.changeText(password, 'longenoughpass');
+    fireEvent.changeText(confirm, 'differentpass');
+    fireEvent.press(submit);
+
+    await waitFor(() => {
+      expect(mockOnSubmit).not.toHaveBeenCalled();
+    });
+  });
+
+  it('toggles password visibility', () => {
+    const { getByPlaceholderText, getByTestId } = render(<RegisterForm {...defaultProps} />);
+    const password = getByPlaceholderText('Enter your password');
+    const toggle = getByTestId('toggle-password-visibility');
+    
+    // Initially password should be hidden (secureTextEntry = true)
+    expect(password.props.secureTextEntry).toBe(true);
+    
+    // Press toggle to show password
+    fireEvent.press(toggle);
+    expect(password.props.secureTextEntry).toBe(false);
+    
+    // Press again to hide
+    fireEvent.press(toggle);
+    expect(password.props.secureTextEntry).toBe(true);
+  });
+
+  it('toggles confirm password visibility', () => {
+    const { getByPlaceholderText, getByTestId } = render(<RegisterForm {...defaultProps} />);
+    const confirm = getByPlaceholderText('Confirm your password');
+    const toggle = getByTestId('toggle-confirm-visibility');
+    
+    // Initially confirm should be hidden (secureTextEntry = true)
+    expect(confirm.props.secureTextEntry).toBe(true);
+    
+    // Press toggle to show password
+    fireEvent.press(toggle);
+    expect(confirm.props.secureTextEntry).toBe(false);
+    
+    // Press again to hide
+    fireEvent.press(toggle);
+    expect(confirm.props.secureTextEntry).toBe(true);
+  });
 });

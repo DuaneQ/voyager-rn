@@ -26,6 +26,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { Platform } from 'react-native';
 import { auth } from '../config/firebaseConfig';
 import { FirebaseAuthService, FirebaseUser } from '../services/auth/FirebaseAuthService';
+import { SafeGoogleSignin } from '../utils/SafeGoogleSignin';
 // On web (tests) we sometimes want to use the firebase/web SDK mocks
 import {
   signInWithEmailAndPassword as webSignInWithEmailAndPassword,
@@ -85,6 +86,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [status, setStatus] = useState<AuthStatus>('idle');
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
+
+  // Initialize Google Sign-In configuration (one-time setup)
+  useEffect(() => {
+    if (Platform.OS !== 'web' && SafeGoogleSignin.isAvailable()) {
+      SafeGoogleSignin.configure({
+        webClientId: '296095212837-tg2mm4k2d72hmcf9ncmsa2b6jn7hakhg.apps.googleusercontent.com', // Web Client ID from google-services.json
+        iosClientId: '296095212837-iq6q8qiodt67lalsn3j5ej2s6sn1e01k.apps.googleusercontent.com', // iOS Client ID from google-services.json
+        offlineAccess: true,
+      });
+      console.log('✅ Google Sign-In configured');
+    }
+  }, []);
 
   // Initialize Firebase REST API auth and listen to auth state changes
   useEffect(() => {    
@@ -309,21 +322,40 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw new Error('Google Sign-In not yet implemented with Firebase Web SDK');
       }
 
-      // Mobile flow: use @react-native-google-signin/google-signin to obtain idToken
-      // dynamic require so this module can be imported even when native package isn't installed
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { GoogleSignin } = require('@react-native-google-signin/google-signin');
-      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-      const userInfo = await GoogleSignin.signIn();
+      // Check if Google Sign-In is available
+      if (!SafeGoogleSignin.isAvailable()) {
+        throw new Error('Google Sign-In is not configured. Please rebuild the app after installing dependencies.');
+      }
+
+      // Mobile flow: use SafeGoogleSignin wrapper
+      await SafeGoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      const userInfo = await SafeGoogleSignin.signIn();
       const idToken = userInfo?.idToken;
       if (!idToken) throw new Error('Google Sign-In failed to return an idToken');
 
+      // Authenticate with Firebase using Google ID token
       const firebaseUser = await FirebaseAuthService.signInWithGoogleIdToken(idToken);
-      // If this was a new user, UI may want to create a profile; AuthContext does not auto-create
+
+      // SCENARIO 1: New user trying to sign in (no profile exists)
+      // Check if user profile exists in Firestore
+      try {
+        await UserProfileService.getUserProfile(firebaseUser.uid);
+        console.log('✅ User profile found - signing in');
+      } catch (profileError: any) {
+        // Profile doesn't exist - this is a new user trying to sign in
+        console.log('⚠️ No profile found for user - redirecting to sign up');
+        await FirebaseAuthService.signOut();
+        setStatus('idle');
+        throw new Error('ACCOUNT_NOT_FOUND');
+      }
+
+      // SCENARIO 4: Existing user signing in successfully
+      setUser(firebaseUser);
       setStatus('authenticated');
+      console.log('✅ Google sign-in successful');
       return firebaseUser;
     } catch (error: any) {
-      setStatus('error');
+      setStatus('idle');
       console.error('❌ Google sign-in error:', error);
       throw error;
     }
@@ -337,40 +369,82 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw new Error('Google Sign-Up not yet implemented with Firebase Web SDK');
       }
 
-      // Mobile: Use Google Signin to get idToken, then sign in via REST and create profile if new
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { GoogleSignin } = require('@react-native-google-signin/google-signin');
-      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-      const userInfo = await GoogleSignin.signIn();
+      // Check if Google Sign-In is available
+      if (!SafeGoogleSignin.isAvailable()) {
+        throw new Error('Google Sign-In is not configured. Please rebuild the app after installing dependencies.');
+      }
+
+      // Mobile: Use SafeGoogleSignin wrapper
+      await SafeGoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      const userInfo = await SafeGoogleSignin.signIn();
       const idToken = userInfo?.idToken;
       if (!idToken) throw new Error('Google Sign-In failed to return an idToken');
 
+      // Authenticate with Firebase using Google ID token
       const firebaseUser = await FirebaseAuthService.signInWithGoogleIdToken(idToken);
 
-      // If this is a new user, create a profile via cloud function (mirrors email sign-up flow)
-      if (firebaseUser.isNewUser) {
-        const userProfile = {
-          username: firebaseUser.email ? firebaseUser.email.split('@')[0] : 'newuser',
-          email: firebaseUser.email,
-          photos: [],
-          subscriptionType: 'free',
-          subscriptionStartDate: null,
-          subscriptionEndDate: null,
-          subscriptionCancelled: false,
-          stripeCustomerId: null,
-        };
-        try {
-          await UserProfileService.createUserProfile(firebaseUser.uid, userProfile as any);
-          console.log('✅ User profile created via Cloud Function (Google sign-up)');
-        } catch (profileErr) {
-          console.warn('⚠️ Failed to create user profile after Google sign-up:', profileErr);
-        }
+      // Check if profile already exists
+      let profileExists = false;
+      try {
+        await UserProfileService.getUserProfile(firebaseUser.uid);
+        profileExists = true;
+        console.log('✅ User profile already exists');
+      } catch (error) {
+        console.log('ℹ️ No existing profile found - will create new profile');
       }
 
-      setStatus('idle');
-      return firebaseUser;
+      // SCENARIO 2: Existing user trying to sign up - just sign them in
+      if (profileExists) {
+        console.log('✅ Existing user signed up - logging them in');
+        setUser(firebaseUser);
+        setStatus('authenticated');
+        return firebaseUser;
+      }
+
+      // SCENARIO 3: New user signing up - create profile and sign in
+      const userProfile = {
+        username: firebaseUser.displayName || (firebaseUser.email ? firebaseUser.email.split('@')[0] : 'newuser'),
+        email: firebaseUser.email || '',
+        bio: '',
+        gender: '',
+        sexualOrientation: '',
+        edu: '',
+        drinking: '',
+        smoking: '',
+        dob: '',
+        photos: ['', '', '', '', ''],
+        subscriptionType: 'free',
+        subscriptionStartDate: null,
+        subscriptionEndDate: null,
+        subscriptionCancelled: false,
+        stripeCustomerId: null,
+        dailyUsage: {
+          date: new Date().toISOString().split('T')[0],
+          viewCount: 0,
+        },
+      };
+
+      try {
+        await UserProfileService.createUserProfile(firebaseUser.uid, userProfile as any);
+        console.log('✅ User profile created via Cloud Function (Google sign-up)');
+        
+        // Wait briefly to ensure Firestore write completes before UserProfileContext tries to read
+        // This prevents "User profile not found" race condition
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Sign in the newly created user
+        setUser(firebaseUser);
+        setStatus('authenticated');
+        return firebaseUser;
+      } catch (profileErr) {
+        console.error('❌ Failed to create user profile after Google sign-up:', profileErr);
+        // Sign out if profile creation failed
+        await FirebaseAuthService.signOut();
+        setStatus('idle');
+        throw new Error('Failed to create user profile. Please try again.');
+      }
     } catch (error: any) {
-      setStatus('error');
+      setStatus('idle');
       console.error('❌ Google sign-up error:', error);
       throw error;
     }

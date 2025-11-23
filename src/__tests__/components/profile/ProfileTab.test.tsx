@@ -8,13 +8,11 @@ import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import { ProfileTab } from '../../../components/profile/ProfileTab';
 import { useUserProfile } from '../../../context/UserProfileContext';
+import { useAuth } from '../../../context/AuthContext';
 
 // Mock dependencies
 jest.mock('../../../context/UserProfileContext');
-jest.mock('firebase/auth', () => ({
-  signOut: jest.fn(),
-  getAuth: jest.fn(() => ({})),
-}));
+jest.mock('../../../context/AuthContext');
 
 describe('ProfileTab', () => {
   const mockUserProfile = {
@@ -31,10 +29,17 @@ describe('ProfileTab', () => {
     photoURL: 'https://example.com/photo.jpg',
   };
 
+  const mockSignOut = jest.fn();
+
   beforeEach(() => {
     jest.clearAllMocks();
     (useUserProfile as jest.Mock).mockReturnValue({
       userProfile: mockUserProfile,
+    });
+    (useAuth as jest.Mock).mockReturnValue({
+      signOut: mockSignOut,
+      user: { uid: 'test-user-id' },
+      status: 'authenticated',
     });
   });
 
@@ -174,7 +179,6 @@ describe('ProfileTab', () => {
     });
 
     it('should call signOut when user confirms', async () => {
-      const { signOut: mockSignOut } = require('firebase/auth');
       const mockAlert = jest.spyOn(Alert, 'alert').mockImplementation(
         (title, message, buttons: any) => {
           // Simulate pressing "Sign Out" button
@@ -196,7 +200,6 @@ describe('ProfileTab', () => {
     });
 
     it('should show error alert when sign out fails', async () => {
-      const { signOut: mockSignOut } = require('firebase/auth');
       mockSignOut.mockRejectedValue(new Error('Sign out failed'));
       console.error = jest.fn();
       

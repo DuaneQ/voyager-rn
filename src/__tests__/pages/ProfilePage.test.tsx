@@ -37,11 +37,16 @@ jest.mock('@react-navigation/native', () => ({
 }));
 
 // Simplified AuthContext mock so components using useAuth() won't throw
+const mockSignOut = jest.fn();
 jest.mock('../../context/AuthContext', () => {
   const React = require('react');
   return {
     AuthProvider: ({ children }: any) => React.createElement(React.Fragment, null, children),
-    useAuth: () => ({ user: { uid: 'test-user-123' } }),
+    useAuth: () => ({ 
+      user: { uid: 'test-user-123' },
+      signOut: mockSignOut,
+      status: 'authenticated',
+    }),
   };
 });
 
@@ -356,7 +361,6 @@ describe('ProfilePage', () => {
     });
 
     it('should call signOut when user confirms', async () => {
-      const { signOut: mockSignOut } = require('firebase/auth');
       const mockAlert = jest.spyOn(Alert, 'alert').mockImplementation(
         (title, message, buttons) => {
           // Simulate pressing "Sign Out" button
@@ -379,8 +383,7 @@ describe('ProfilePage', () => {
     });
 
     it('should show error alert when sign out fails', async () => {
-      const { signOut: mockSignOut } = require('firebase/auth');
-      mockSignOut.mockRejectedValue(new Error('Sign out failed'));
+      mockSignOut.mockRejectedValueOnce(new Error('Sign out failed'));
       console.error = jest.fn();
       
       const mockAlert = jest.spyOn(Alert, 'alert');
@@ -404,6 +407,7 @@ describe('ProfilePage', () => {
       });
       
       mockAlert.mockRestore();
+      mockSignOut.mockReset();
     });
   });
 

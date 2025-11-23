@@ -353,10 +353,20 @@ describe('AuthContext - Google Sign-In', () => {
     await expect(act(async () => { await result.current.signInWithGoogle(); })).rejects.toThrow('Google Sign-In not yet implemented with Firebase Web SDK');
   });
 
-  it('signUpWithGoogle calls signInWithGoogle', async () => {
+  it('signUpWithGoogle throws for web platform', async () => {
     const wrapper = ({ children }: any) => <AuthProvider>{children}</AuthProvider>;
     const { result } = renderHook(() => useAuth(), { wrapper });
 
     await expect(act(async () => { await result.current.signUpWithGoogle(); })).rejects.toThrow('Google Sign-Up not yet implemented with Firebase Web SDK');
   });
 });
+
+// Note: Mobile Google Sign-In/Sign-Up scenarios (all 4 scenarios) are comprehensively tested
+// in src/__tests__/components/auth/AuthPage.google.test.tsx which includes:
+// - Scenario 1: New user tries Sign In → ACCOUNT_NOT_FOUND error + redirect to Sign Up
+// - Scenario 2: Existing user tries Sign Up → Logs in without creating duplicate profile
+// - Scenario 3: New user signs up → Creates profile and logs in
+// - Scenario 4: Existing user signs in → Normal login flow
+// - Edge cases: Module unavailable, missing token, profile creation failure, popup cancellation
+
+

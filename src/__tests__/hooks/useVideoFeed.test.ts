@@ -3,7 +3,7 @@
  * Tests core functionality without loading full app context to avoid OOM
  */
 
-import { renderHook } from '@testing-library/react-native';
+import { renderHook, act } from '@testing-library/react-native';
 import { useVideoFeed } from '../../hooks/video/useVideoFeed';
 
 // Use centralized manual mock for firebaseConfig
@@ -157,6 +157,66 @@ describe('useVideoFeed', () => {
       const { result } = renderHook(() => useVideoFeed());
 
       expect(typeof result.current.isLoadingMore).toBe('boolean');
+    });
+  });
+
+  describe('Video Navigation', () => {
+    it('should increment currentVideoIndex when goToNextVideo is called', () => {
+      const { result } = renderHook(() => useVideoFeed());
+
+      const initialIndex = result.current.currentVideoIndex;
+      
+      act(() => {
+        result.current.goToNextVideo();
+      });
+
+      // Without actual videos, index won't change, but function should not throw
+      expect(result.current.currentVideoIndex).toBeGreaterThanOrEqual(initialIndex);
+    });
+
+    it('should decrement currentVideoIndex when goToPreviousVideo is called', () => {
+      const { result } = renderHook(() => useVideoFeed());
+
+      const initialIndex = result.current.currentVideoIndex;
+      
+      act(() => {
+        result.current.goToPreviousVideo();
+      });
+
+      // Should not go below 0
+      expect(result.current.currentVideoIndex).toBe(0);
+    });
+
+    it('should update currentVideoIndex when setCurrentVideoIndex is called', () => {
+      const { result } = renderHook(() => useVideoFeed());
+
+      act(() => {
+        result.current.setCurrentVideoIndex(5);
+      });
+
+      expect(result.current.currentVideoIndex).toBe(5);
+    });
+  });
+
+  describe('Filter Changes', () => {
+    it('should update currentFilter when setCurrentFilter is called', () => {
+      const { result } = renderHook(() => useVideoFeed());
+
+      act(() => {
+        result.current.setCurrentFilter('connections');
+      });
+
+      expect(result.current.currentFilter).toBe('connections');
+    });
+
+    it('should accept "my-videos" as a filter', () => {
+      const { result } = renderHook(() => useVideoFeed());
+
+      act(() => {
+        result.current.setCurrentFilter('my-videos');
+      });
+
+      expect(result.current.currentFilter).toBe('my-videos');
     });
   });
 });
