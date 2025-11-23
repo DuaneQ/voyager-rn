@@ -162,24 +162,6 @@ describe('ChatListItem', () => {
       );
     });
 
-    it('should log connection ID when remove is confirmed', () => {
-      const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
-      const { getByText } = render(<ChatListItem {...defaultProps} />);
-
-      fireEvent.press(getByText('⊝'));
-
-      // Get the alert callbacks
-      const alertCall = (Alert.alert as jest.Mock).mock.calls[0];
-      const buttons = alertCall[2];
-      const removeButton = buttons.find((btn: any) => btn.text === 'Remove');
-
-      // Simulate pressing Remove
-      removeButton.onPress();
-
-      expect(consoleLogSpy).toHaveBeenCalledWith('Remove connection:', 'conn-123');
-
-      consoleLogSpy.mockRestore();
-    });
   });
 
   describe('Edge Cases', () => {

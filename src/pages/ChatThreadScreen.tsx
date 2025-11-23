@@ -136,7 +136,7 @@ const ChatThreadScreen: React.FC = () => {
     try {
       const chatService = getChatService();
       await chatService.sendMessage(connectionId, currentUserId, text);
-      console.log('[ChatThread] Message sent via ChatService');
+      
     } catch (error) {
       console.error('[ChatThread] Error sending message:', error);
       Alert.alert('Error', 'Failed to send message');
@@ -214,9 +214,7 @@ const ChatThreadScreen: React.FC = () => {
         const response = await fetch(preparedUri);
         blob = await response.blob();
       }
-      
-      console.log('[ChatThread] Blob size:', blob.size, 'type:', blob.type);
-      
+
       // Upload
       await uploadBytes(storageRef, blob);
       const downloadURL = await getDownloadURL(storageRef);
@@ -232,7 +230,7 @@ const ChatThreadScreen: React.FC = () => {
 
       // Clear text input after sending
       setMessageText('');
-      console.log('[ChatThread] Image message sent via ChatService');
+      
     } catch (error) {
       console.error('[ChatThread] Error uploading image:', error);
       Alert.alert('Upload Failed', 'Failed to upload image. Please try again.');

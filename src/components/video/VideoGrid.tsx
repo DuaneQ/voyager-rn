@@ -96,18 +96,12 @@ export const VideoGrid: React.FC = () => {
   };
 
   const renderVideoItem = (video: VideoType) => {
-    console.log('[VideoGrid] Rendering video item:', {
-      id: video.id,
-      hasThumbnail: !!video.thumbnailUrl,
-      thumbnailUrl: video.thumbnailUrl ? video.thumbnailUrl.substring(0, 50) + '...' : '(empty)',
-      videoUrl: video.videoUrl ? video.videoUrl.substring(0, 50) + '...' : '(empty)',
-    });
 
     return (
       <View key={video.id} style={styles.videoItem}>
         <TouchableOpacity
           onPress={() => {
-            console.log('[VideoGrid] Video clicked:', video.id);
+            
             setSelectedVideo(video);
           }}
           onLongPress={() => handleDeleteVideo(video)}
@@ -121,7 +115,7 @@ export const VideoGrid: React.FC = () => {
                 console.error('[VideoGrid] Thumbnail load error:', video.id, error.nativeEvent);
               }}
               onLoad={() => {
-                console.log('[VideoGrid] Thumbnail loaded successfully:', video.id);
+                
               }}
             />
           ) : (
@@ -212,7 +206,7 @@ export const VideoGrid: React.FC = () => {
           <TouchableOpacity
             style={styles.closeButton}
             onPress={() => {
-              console.log('[VideoGrid] Closing video player');
+              
               setSelectedVideo(null);
             }}
           >
@@ -244,7 +238,7 @@ export const VideoGrid: React.FC = () => {
                   }
                 }}
                 onLoad={() => {
-                  console.log('[VideoGrid] Video loaded successfully:', selectedVideo.id);
+                  
                 }}
               />
               {selectedVideo.title && (

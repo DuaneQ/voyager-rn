@@ -170,5 +170,5 @@ export const showShareDialog = (
  */
 export const updatePageMetaTags = (video: Video): void => {
   // No-op in React Native - meta tags are handled server-side
-  console.log('Meta tags update requested for video:', video.id);
+  
 };

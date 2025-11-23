@@ -62,11 +62,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
   React.useEffect(() => {
     if (visible) {
       // eslint-disable-next-line no-console
-      console.log('[AddItineraryModal] opened - itineraries:', {
-        typeOfItineraries: typeof itineraries,
-        isArray: Array.isArray(itineraries),
-        length: Array.isArray(itineraries) ? itineraries.length : undefined,
-      });
+      
     }
   }, [visible, itineraries]);
   // Form state
@@ -197,11 +193,6 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
 
   // Save itinerary
   const handleSave = async () => {
-    console.log('[AddItineraryModal] handleSave called', {
-      profileComplete,
-      destination: destination.trim(),
-      userProfile: !!userProfile,
-    });
 
     if (!profileComplete) {
       Alert.alert('Profile Incomplete', 'Please complete your profile (date of birth and gender) before creating an itinerary.');
@@ -226,9 +217,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
       upperRange,
     };
 
-    console.log('[AddItineraryModal] Calling createItinerary with:', formData);
     const response = await createItinerary(formData, userProfile!, editingItineraryId || undefined);
-    console.log('[AddItineraryModal] createItinerary response:', response);
 
     if (response.success) {
       // Parent will show a unified success notification. Close modal and refresh list.
@@ -399,7 +388,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
               value={destination}
               onChangeText={setDestination}
               onPlaceSelected={(description) => {
-                console.log('[AddItinerary] Selected place:', description);
+                
                 setDestination(description);
               }}
               error={!!destination && destination.length === 0}

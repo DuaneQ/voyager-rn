@@ -177,7 +177,7 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
               setSelectedPhoto(url);
               setAllPhotos([url]);
             } catch (error) {
-              console.log('No profile photo found in storage');
+              
             }
           }
         } else {

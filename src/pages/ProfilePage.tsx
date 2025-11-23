@@ -143,7 +143,6 @@ const ProfilePage: React.FC = () => {
   };
 
   // Debug logging
-  console.log('[ProfilePage] isLoading:', isLoading, 'userProfile:', userProfile?.username);
 
   // Show loading state while profile is being fetched
   if (isLoading) {

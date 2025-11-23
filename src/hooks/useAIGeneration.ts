@@ -136,29 +136,12 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
     functionName: string, 
     data: any
   ): Promise<CloudFunctionResult> => {
-    console.log(`📡 Calling cloud function: ${functionName}`, {
-      destination: data.destination,
-      departure: data.departure,
-      startDate: data.startDate,
-      endDate: data.endDate,
-      hasPreferenceProfile: !!data.preferenceProfile,
-      hasMustInclude: Array.isArray(data.mustInclude) && data.mustInclude.length > 0,
-      hasMustAvoid: Array.isArray(data.mustAvoid) && data.mustAvoid.length > 0,
-      hasSpecialRequests: !!data.specialRequests,
-      tripType: data.tripType
-    });
-    
+
     return retryWithBackoff(async () => {
       const callable = httpsCallable(functions, functionName);
       // Pass data directly - Firebase httpsCallable already handles wrapping
       const result = await callable(data);
-      
-      console.log(`✅ ${functionName} returned:`, {
-        success: (result.data as any)?.success,
-        hasData: !!(result.data as any)?.data,
-        dataKeys: Object.keys((result.data as any)?.data || {})
-      });
-      
+
       // Type assertion since Firebase callable returns unknown
       const functionResult = result.data as CloudFunctionResult;
       
@@ -213,8 +196,6 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
 
   const transportTypeRaw = profileWithDefaults?.transportation?.primaryMode || 'driving';
 
-  console.log('📋 Preference Profile (with defaults applied):', JSON.stringify(profileWithDefaults, null, 2));
-      
       // Map 'airplane' to 'flight' to match cloud function expectations
       const transportType = transportTypeRaw === 'airplane' ? 'flight' : transportTypeRaw;
   const includeFlights = transportType === 'flight' || transportTypeRaw === 'airplane';
@@ -296,9 +277,7 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
             ? (flightsResult as any).flights
             : (Array.isArray((flightsResult as any).data?.flights) ? (flightsResult as any).data.flights : []))
         : [];
-      
-      console.log(`✅ External data fetched - Accommodations: ${accommodationsData.length}, Activities: ${activitiesData.length}, Restaurants: ${restaurantsData.length}, Flights: ${flightsData.length}`);
-      
+
       // === CRITICAL WARNING if activities are empty ===
       if (activitiesData.length === 0) {
         console.error('❌ CRITICAL: No activities returned from searchActivities!');
@@ -475,9 +454,7 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
       // For flights, we return the flight search results directly without AI generation
       // Use didSearchFlights instead of includeFlights to ensure we actually have flight data
       if (!didSearchFlights) {
-        console.log('Starting AI itinerary generation for non-flight transportation...');
-        console.log('Transport type being sent to AI:', transportTypeRaw);
-        
+
         const generationId = `gen_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         const aiPayload = {
           destination: sanitizedRequest.destination,
@@ -504,23 +481,19 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
         }
         
         setProgress(PROGRESS_STAGES.SAVING);
-        
-        console.log('AI itinerary generation completed successfully');
-        console.log('AI Result:', aiResult.data);
-        
+
         // CRITICAL: Parse the assistant JSON string into structured data (matching PWA exactly)
         let parsedTransportation: any = null;
         try {
           const assistantData = JSON.parse(aiResult.data.assistant);
           parsedTransportation = assistantData?.transportation || null;
-          console.log('Parsed transportation from AI:', parsedTransportation);
+          
         } catch (parseError) {
           console.error('Failed to parse AI assistant response:', parseError);
         }
         
                 // Step 5: Save the generated itinerary to database (matching PWA pattern)
-        console.log('Saving AI-generated itinerary to database...');
-        
+
         // IMPORTANT: Use the daily plans we already generated above (lines 338-427)
         // DO NOT recreate them here - we already have them with proper fallback logic!
         
@@ -631,8 +604,6 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
           // Sanitize undefined values to null (matching PWA)
           const sanitizedPayload = JSON.parse(JSON.stringify(fullItinerary, (_k, v) => v === undefined ? null : v));
 
-          console.log('Saving AI itinerary with payload:', JSON.stringify(sanitizedPayload).substring(0, 500));
-
           // Save to database using createItinerary function
           // PWA WRAPS the payload with { itinerary: ... } - this is the correct pattern!
           const saveResult = await callCloudFunction('createItinerary', { itinerary: sanitizedPayload });
@@ -642,9 +613,7 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
           }
 
           setProgress(PROGRESS_STAGES.DONE);
-          
-          console.log('Itinerary saved successfully with ID:', generationId);
-          
+
           // Return the saved itinerary result
           return {
             id: generationId,
@@ -668,8 +637,7 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
         
       } else {
         // For flights, save flight search results without AI generation
-        console.log('Saving flight-based itinerary without AI generation...');
-        
+
         const generationId = `gen_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         
         setProgress(PROGRESS_STAGES.SAVING);
@@ -776,8 +744,6 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
           // Sanitize undefined values to null (matching PWA)
           const sanitizedPayload = JSON.parse(JSON.stringify(fullItinerary, (_k, v) => v === undefined ? null : v));
 
-          console.log('Saving flight itinerary with payload:', JSON.stringify(sanitizedPayload).substring(0, 500));
-
           // Save to database using createItinerary function
           // PWA WRAPS the payload with { itinerary: ... } - this is the correct pattern!
           const saveResult = await callCloudFunction('createItinerary', { itinerary: sanitizedPayload });
@@ -787,9 +753,7 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
           }
 
           setProgress(PROGRESS_STAGES.DONE);
-          
-          console.log('Flight-based itinerary saved successfully with ID:', generationId);
-          
+
           // Return the saved itinerary result
           return {
             id: generationId,

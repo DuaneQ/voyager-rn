@@ -80,10 +80,6 @@ export const useAllItineraries = () => {
         allItineraries = [];
       }
 
-      console.log('[useAllItineraries] Total itineraries (AI + manual):', allItineraries.length);
-      console.log('[useAllItineraries] AI itineraries:', (allItineraries || []).filter((i: Itinerary) => i.ai_status === 'completed').length);
-      console.log('[useAllItineraries] Manual itineraries:', (allItineraries || []).filter((i: Itinerary) => !i.ai_status || i.ai_status !== 'completed').length);
-
       // Sort by startDay (most recent first)
       allItineraries.sort((a: Itinerary, b: Itinerary) => {
         return (b.startDay || 0) - (a.startDay || 0);

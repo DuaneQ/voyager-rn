@@ -269,15 +269,15 @@ describe('SearchPage', () => {
   });
 
   it('should show login prompt when user not authenticated', async () => {
-    // Override getAuthInstance to return auth with no user
-    const { getAuthInstance } = require('../../../firebase-config');
-    getAuthInstance.mockReturnValueOnce({
+    // Mock auth with no user
+    const mockAuth = {
       currentUser: null,
       onAuthStateChanged: jest.fn((callback) => {
         callback(null); // No delay, synchronous
         return jest.fn();
       }),
-    });
+    };
+    (auth as any).currentUser = null;
 
     mockUseAllItineraries.mockReturnValue({
       itineraries: [],

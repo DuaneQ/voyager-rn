@@ -170,15 +170,7 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
   React.useEffect(() => {
     if (visible) {
       // eslint-disable-next-line no-console
-      console.log('[AIItineraryGenerationModal] opened - debug shapes:', {
-        preferencesType: typeof preferences,
-        preferencesProfilesIsArray: Array.isArray(preferences?.profiles),
-        preferencesProfilesLength: preferences?.profiles?.length,
-        formDataMustIncludeIsArray: Array.isArray((formData as any)?.mustInclude),
-        formDataMustAvoidIsArray: Array.isArray((formData as any)?.mustAvoid),
-        selectedProfilePresent: !!selectedProfile,
-        userProfileType: typeof userProfile,
-      });
+      
     }
   }, [visible, preferences, formData, selectedProfile, userProfile]);
 
@@ -288,13 +280,13 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
       let result;
       try {
         // eslint-disable-next-line no-console
-        console.log('[AIItineraryGenerationModal] calling generateItinerary');
+        
         result = await generateItinerary(request);
         // eslint-disable-next-line no-console
-        console.log('[AIItineraryGenerationModal] generateItinerary returned:', result);
+        
       } catch (e) {
         // eslint-disable-next-line no-console
-        console.log('[AIItineraryGenerationModal] generateItinerary threw:', e);
+        
         throw e;
       }
 
@@ -510,7 +502,7 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
                     value={formData.destination}
                     onChangeText={(text) => handleFieldChange('destination', text)}
                     onPlaceSelected={(description) => {
-                      console.log('[PlacesAutocomplete] Selected destination:', description);
+                      
                       handleFieldChange('destination', description);
                     }}
                     error={!!formErrors.destination}
@@ -549,7 +541,7 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
                     value={formData.departure}
                     onChangeText={(text) => handleFieldChange('departure', text)}
                     onPlaceSelected={(description) => {
-                      console.log('[PlacesAutocomplete] Selected departure:', description);
+                      
                       handleFieldChange('departure', description);
                     }}
                   />

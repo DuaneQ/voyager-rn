@@ -125,8 +125,7 @@ const SearchPage: React.FC = () => {
       console.error('[SearchPage] Selected itinerary not found:', id);
       return;
     }
-    
-    console.log('[SearchPage] Searching for matches for itinerary:', id);
+
     // Trigger search for matching itineraries
     await searchItineraries(selectedItinerary as any, userId);
   };
@@ -171,41 +170,32 @@ const SearchPage: React.FC = () => {
     }
 
     try {
-      console.log('[SearchPage] handleLike called for itinerary:', itinerary.id);
-      console.log('[SearchPage] Current user:', userId);
-      console.log('[SearchPage] Other user:', itinerary.userInfo?.uid);
-      
+
       // Save as viewed
       saveViewedItinerary(itinerary.id);
       
       // 1. Update the liked itinerary with current user's ID
       const existingLikes = Array.isArray(itinerary.likes) ? itinerary.likes : [];
       const newLikes = Array.from(new Set([...existingLikes, userId]));
-      
-      console.log('[SearchPage] Updating itinerary likes:', {
-        itineraryId: itinerary.id,
-        existingLikes,
-        newLikes
-      });
-      
+
       // Persist likes via RPC (this calls the cloud function)
       try {
         const updatedItinerary = await updateItinerary(itinerary.id, { likes: newLikes });
-        console.log('[SearchPage] ✅ Successfully updated itinerary likes:', updatedItinerary);
+        
       } catch (updateError) {
         console.error('[SearchPage] ❌ Failed to update itinerary likes:', updateError);
         throw new Error('Failed to save like. Please try again.');
       }
       
       // 2. Fetch fresh itineraries to check for mutual match (important!)
-      console.log('[SearchPage] Fetching fresh itineraries to check mutual match...');
+      
       const freshItineraries = await refreshItineraries();
       
       // 3. Get the current user's selected itinerary from fresh data
       const myItinerary = freshItineraries.find(itin => itin.id === selectedItineraryId);
       
       if (!myItinerary) {
-        console.log('[SearchPage] Could not find selected itinerary after refresh');
+        
         await getNextItinerary();
         return;
       }
@@ -213,33 +203,20 @@ const SearchPage: React.FC = () => {
       // 4. Check for mutual match
       const otherUserUid = itinerary.userInfo?.uid;
       if (!otherUserUid) {
-        console.log('[SearchPage] No other user UID found');
+        
         await getNextItinerary();
         return;
       }
       
       const myLikes = Array.isArray(myItinerary.likes) ? myItinerary.likes : [];
-      console.log('[SearchPage] Checking mutual match:', {
-        myItineraryId: selectedItineraryId,
-        myLikes,
-        otherUserUid,
-        isMutualMatch: myLikes.includes(otherUserUid)
-      });
-      
+
       if (myLikes.includes(otherUserUid)) {
         // MUTUAL MATCH! Create connection
-        console.log('[SearchPage] 🎉 MUTUAL MATCH detected!');
-        
+
         try {
           const myEmail = myItinerary?.userInfo?.email ?? '';
           const otherEmail = itinerary?.userInfo?.email ?? '';
-          
-          console.log('[SearchPage] Creating connection...', {
-            user1Id: userId,
-            user2Id: otherUserUid,
-            emails: [myEmail, otherEmail]
-          });
-          
+
           await connectionRepository.createConnection({
             user1Id: userId,
             user2Id: otherUserUid,
@@ -248,8 +225,7 @@ const SearchPage: React.FC = () => {
             itinerary1: myItinerary as any,
             itinerary2: itinerary as any
           });
-          
-          console.log('[SearchPage] ✅ Connection created successfully!');
+
           showAlert('success', "🎉 It's a match! You can now chat with this traveler.");
         } catch (connError: any) {
           console.error('[SearchPage] ❌ Error creating connection:', connError);
@@ -257,7 +233,7 @@ const SearchPage: React.FC = () => {
           showAlert('warning', 'Match detected but connection setup had issues. Please check Chats.');
         }
       } else {
-        console.log('[SearchPage] No mutual match yet (other user has not liked your itinerary)');
+        
       }
       
       // Advance to next itinerary

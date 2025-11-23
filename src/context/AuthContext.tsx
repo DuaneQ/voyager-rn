@@ -95,7 +95,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         iosClientId: '296095212837-iq6q8qiodt67lalsn3j5ej2s6sn1e01k.apps.googleusercontent.com', // iOS Client ID from google-services.json
         offlineAccess: true,
       });
-      console.log('✅ Google Sign-In configured');
+      
     }
   }, []);
 
@@ -129,7 +129,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signIn = async (email: string, password: string): Promise<void> => {
     try {
       setStatus('loading');
-      console.log('🔐 Signing in user:', email);
 
       if (Platform.OS === 'web') {
         // Use the firebase/web SDK on web so tests (which mock these functions) work
@@ -154,7 +153,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       const firebaseUser = await FirebaseAuthService.signInWithEmailAndPassword(email, password);
-      console.log('✅ Sign in successful:', firebaseUser.uid);
+      
       // User state will be set by onAuthStateChanged listener
       setStatus('authenticated');
     } catch (error: any) {
@@ -167,7 +166,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signUp = async (username: string, email: string, password: string): Promise<void> => {
     try {
       setStatus('loading');
-      console.log('📝 Creating new user:', email);
 
       let newUser = null as FirebaseUser | null;
       if (Platform.OS === 'web') {
@@ -181,10 +179,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           refreshToken: '',
           expiresIn: '0',
         } as FirebaseUser;
-        console.log('✅ User created (web):', newUser.uid);
+        
       } else {
         newUser = await FirebaseAuthService.createUserWithEmailAndPassword(email, password);
-        console.log('✅ User created:', newUser.uid);
+        
       }
       
       // Create user profile via Cloud Function (avoids Firestore permissions issues)
@@ -200,16 +198,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       };
       
       await UserProfileService.createUserProfile(newUser.uid, userProfile as any);
-      
-      console.log('✅ User profile created via Cloud Function');
-      
+
       // Send email verification
       if (Platform.OS === 'web') {
         await webSendEmailVerification((newUser as any));
       } else {
         await FirebaseAuthService.sendEmailVerification(newUser!.idToken);
       }
-      console.log('✅ Verification email sent');
 
       setStatus('idle');
       
@@ -222,7 +217,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signOut = async (): Promise<void> => {
     try {
-      console.log('🔓 Signing out...');
+      
       await FirebaseAuthService.signOut();
       
       // Also sign out from Firebase Auth SDK
@@ -232,15 +227,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         } else {
           await auth.signOut();
         }
-        console.log('✅ Signed out from Firebase Auth SDK');
+        
       } catch (syncError) {
         console.warn('⚠️ Could not sign out from Firebase Auth SDK:', syncError);
       }
       
       // User state will be cleared by onAuthStateChanged listener
       setStatus('idle');
-      
-      console.log('✅ Sign out successful');
+
     } catch (error: any) {
       console.error('❌ Sign out error:', error);
       throw error;
@@ -249,13 +243,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const sendPasswordReset = async (email: string): Promise<void> => {
     try {
-      console.log('📧 Sending password reset email to:', email);
+      
       if (Platform.OS === 'web') {
         await webSendPasswordResetEmail(auth, email);
       } else {
         await FirebaseAuthService.sendPasswordResetEmail(email);
       }
-      console.log('✅ Password reset email sent');
+      
     } catch (error: any) {
       console.error('❌ Password reset error:', error);
       throw error;
@@ -267,13 +261,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const currentUser = FirebaseAuthService.getCurrentUser();
       
       if (currentUser) {
-        console.log('📧 Resending verification email to:', currentUser.email);
+        
         if (Platform.OS === 'web') {
           await webSendEmailVerification((currentUser as any));
         } else {
           await FirebaseAuthService.sendEmailVerification(currentUser.idToken);
         }
-        console.log('✅ Verification email resent');
+        
         return;
       }
       
@@ -289,9 +283,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const currentUser = FirebaseAuthService.getCurrentUser();
       
       if (!currentUser) return;
-      
-      console.log('🔄 Refreshing auth state...');
-      
+
       // Force refresh the ID token
       await FirebaseAuthService.getIdToken(true);
       
@@ -301,8 +293,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (refreshedUser) {
         setUser(refreshedUser);
       }
-      
-      console.log('✅ Auth state refreshed');
+
     } catch (error: any) {
       console.error('❌ Refresh auth state error:', error);
       throw error;
@@ -340,10 +331,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Check if user profile exists in Firestore
       try {
         await UserProfileService.getUserProfile(firebaseUser.uid);
-        console.log('✅ User profile found - signing in');
+        
       } catch (profileError: any) {
         // Profile doesn't exist - this is a new user trying to sign in
-        console.log('⚠️ No profile found for user - redirecting to sign up');
+        
         await FirebaseAuthService.signOut();
         setStatus('idle');
         throw new Error('ACCOUNT_NOT_FOUND');
@@ -352,7 +343,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // SCENARIO 4: Existing user signing in successfully
       setUser(firebaseUser);
       setStatus('authenticated');
-      console.log('✅ Google sign-in successful');
+      
       return firebaseUser;
     } catch (error: any) {
       setStatus('idle');
@@ -388,14 +379,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       try {
         await UserProfileService.getUserProfile(firebaseUser.uid);
         profileExists = true;
-        console.log('✅ User profile already exists');
+        
       } catch (error) {
-        console.log('ℹ️ No existing profile found - will create new profile');
+        
       }
 
       // SCENARIO 2: Existing user trying to sign up - just sign them in
       if (profileExists) {
-        console.log('✅ Existing user signed up - logging them in');
+        
         setUser(firebaseUser);
         setStatus('authenticated');
         return firebaseUser;
@@ -426,8 +417,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       try {
         await UserProfileService.createUserProfile(firebaseUser.uid, userProfile as any);
-        console.log('✅ User profile created via Cloud Function (Google sign-up)');
-        
+
         // Wait briefly to ensure Firestore write completes before UserProfileContext tries to read
         // This prevents "User profile not found" race condition
         await new Promise(resolve => setTimeout(resolve, 500));

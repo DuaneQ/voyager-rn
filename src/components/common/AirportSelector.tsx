@@ -127,11 +127,11 @@ const AirportSelector: React.FC<AirportSelectorProps> = ({
         
         // If we have curated airports, use ONLY those (skip Google Places)
         if (curatedAirports.length > 0) {
-          console.log(`[AirportSelector] Using ${curatedAirports.length} curated airports for "${location}"`);
+          
           results = curatedAirports;
         } else {
           // No curated data, fall back to Google Places API
-          console.log(`[AirportSelector] No curated data for "${location}", using Google Places`);
+          
           const searchResult = await airportService.searchAirportsNearLocation(location, undefined, 200, 20);
           results = searchResult.airports;
         }

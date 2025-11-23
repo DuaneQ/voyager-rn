@@ -130,8 +130,7 @@ export class ReactNativeAirportService implements IAirportService {
       // STEP 1: Check curated city-to-airport mappings first
       const curatedAirportCodes = getAirportsForLocation(query);
       if (curatedAirportCodes && curatedAirportCodes.length > 0) {
-        console.log(`[searchAirportsByQuery] Found ${curatedAirportCodes.length} curated airports for "${query}": ${curatedAirportCodes.join(', ')}`);
-        
+
         // Get full airport data from OpenFlights dataset
         const major = this.getMajorAirports();
         const curatedAirports = curatedAirportCodes
@@ -166,12 +165,12 @@ export class ReactNativeAirportService implements IAirportService {
       
       // If we found airports in our dataset, return them
       if (matches.length > 0) {
-        console.log(`[searchAirportsByQuery] Found ${matches.length} airports for "${query}" in OpenFlights dataset`);
+        
         return matches;
       }
       
       // STEP 3: If no matches in our dataset, try Google Places as last resort
-      console.log(`[searchAirportsByQuery] No matches in OpenFlights for "${query}", trying Google Places`);
+      
       const result = await this.searchAirportsNearLocation(query);
       return result.airports;
     } catch (error) {

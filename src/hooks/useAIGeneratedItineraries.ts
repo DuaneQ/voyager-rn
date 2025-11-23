@@ -58,10 +58,9 @@ export const useAIGeneratedItineraries = () => {
       }
 
       const allItineraries = result.data?.data || [];
-      
-      console.log('[useAIGeneratedItineraries] Total AI itineraries:', allItineraries.length);
+
       if (allItineraries.length > 0) {
-        console.log('[useAIGeneratedItineraries] First itinerary:', JSON.stringify(allItineraries[0], null, 2));
+        
       }
 
       // Sort by startDay (most recent first) - matching PWA behavior

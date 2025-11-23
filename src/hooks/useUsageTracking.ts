@@ -90,7 +90,7 @@ export const useUsageTracking = () => {
     }
 
     if (hasReachedLimit()) {
-      console.log('Daily limit reached');
+      
       return false;
     }
 
@@ -123,7 +123,6 @@ export const useUsageTracking = () => {
         dailyUsage: updatedUsage
       }));
 
-      console.log(`View tracked: ${newViewCount}/${FREE_DAILY_LIMIT}`);
       return true;
 
     } catch (error) {
@@ -161,7 +160,7 @@ export const useUsageTracking = () => {
     }
 
     if (hasReachedAILimit()) {
-      console.log('Daily AI limit reached');
+      
       return false;
     }
 
@@ -198,7 +197,6 @@ export const useUsageTracking = () => {
         dailyUsage: updatedDailyUsage
       }));
 
-      console.log(`AI creation tracked: ${newCount}/${aiLimit}`);
       return true;
 
     } catch (error) {

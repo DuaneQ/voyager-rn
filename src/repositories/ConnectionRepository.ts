@@ -66,7 +66,7 @@ export class FirestoreConnectionRepository implements IConnectionRepository {
       // Check if connection already exists
       const existingConnection = await this.getConnectionById(connectionId);
       if (existingConnection) {
-        console.log('[ConnectionRepository] Connection already exists:', connectionId);
+        
         return existingConnection;
       }
 
@@ -87,7 +87,6 @@ export class FirestoreConnectionRepository implements IConnectionRepository {
       const connectionRef = doc(this.db, this.connectionsCollection, connectionId);
       await setDoc(connectionRef, connection);
 
-      console.log('[ConnectionRepository] Connection created:', connectionId);
       return connection;
     } catch (error: any) {
       console.error('[ConnectionRepository] createConnection error:', error);
@@ -208,7 +207,6 @@ export class FirestoreConnectionRepository implements IConnectionRepository {
         [`unreadCounts.${userId}`]: 0
       });
 
-      console.log('[ConnectionRepository] Messages marked as read for user:', userId);
     } catch (error: any) {
       console.error('[ConnectionRepository] markMessagesAsRead error:', error);
       // Don't throw - this is a non-critical operation

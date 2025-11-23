@@ -64,7 +64,6 @@ export const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
 
     try {
       setLoading(true);
-      console.log('[PlacesAutocomplete] Searching for:', searchText);
 
       const response = await axios.get(
         'https://maps.googleapis.com/maps/api/place/autocomplete/json',
@@ -77,8 +76,6 @@ export const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
           },
         }
       );
-
-      console.log('[PlacesAutocomplete] Response:', response.data.status);
 
       if (response.data.status === 'OK') {
         setSuggestions(response.data.predictions || []);

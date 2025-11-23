@@ -162,18 +162,12 @@ export const useCreateItinerary = () => {
         },
       };
 
-      console.log('[useCreateItinerary] Creating itinerary:', { 
-        destination: payload.destination,
-        isEditing: !!editingItineraryId 
-      });
-
       const result: any = await createItineraryFn({ itinerary: payload });
 
       if (!result.data?.success) {
         throw new Error(result.data?.error || 'Failed to create itinerary');
       }
 
-      console.log('[useCreateItinerary] Success:', result.data.data?.id);
       return { success: true, data: result.data.data };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create itinerary';

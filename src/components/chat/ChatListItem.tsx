@@ -83,7 +83,7 @@ export const ChatListItem: React.FC<ChatListItemProps> = ({
           style: "destructive",
           onPress: () => {
             // TODO: Implement removeConnection functionality
-            console.log("Remove connection:", conn.id);
+            
           }
         }
       ]

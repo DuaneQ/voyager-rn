@@ -66,10 +66,9 @@ export const AIItinerarySection: React.FC<AIItinerarySectionProps> = ({
     }
     
     // Refresh travel preferences to ensure we have the latest profiles
-    console.log('🔄 Refreshing travel preferences before opening AI modal...');
-    await refreshPreferences();
-    console.log('✅ Preferences refreshed, opening modal...');
     
+    await refreshPreferences();
+
     // Profile is valid, open the AI generation modal
     setModalVisible(true);
   };

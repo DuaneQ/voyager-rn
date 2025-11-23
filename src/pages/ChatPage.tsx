@@ -15,13 +15,6 @@ const ChatPage: React.FC = () => {
   // Store user profile photos
   const [userPhotos, setUserPhotos] = useState<Record<string, string>>({});
 
-  console.log('[ChatPage] Rendering with:', {
-    userId: userProfile?.uid,
-    connectionsCount: connections.length,
-    loading,
-    error: error?.message,
-  });
-
   // Fetch profile photos for all users in connections
   useEffect(() => {
     const fetchUserPhotos = async () => {
@@ -98,7 +91,7 @@ const ChatPage: React.FC = () => {
       <TouchableOpacity
         style={styles.connectionItem}
         onPress={() => {
-          console.log('[ChatPage] Opening chat:', item.id);
+          
           (navigation.navigate as any)('ChatThread', {
             connectionId: item.id,
             otherUserName: otherUserNames,
