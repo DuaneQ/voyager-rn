@@ -203,20 +203,20 @@ describe('useVideoFeed', () => {
       const { result } = renderHook(() => useVideoFeed());
 
       act(() => {
-        result.current.setCurrentFilter('connections');
+        result.current.setCurrentFilter('liked');
       });
 
-      expect(result.current.currentFilter).toBe('connections');
+      expect(result.current.currentFilter).toBe('liked');
     });
 
-    it('should accept "my-videos" as a filter', () => {
+    it('should accept "mine" as a filter', () => {
       const { result } = renderHook(() => useVideoFeed());
 
       act(() => {
-        result.current.setCurrentFilter('my-videos');
+        result.current.setCurrentFilter('mine');
       });
 
-      expect(result.current.currentFilter).toBe('my-videos');
+      expect(result.current.currentFilter).toBe('mine');
     });
   });
 });
