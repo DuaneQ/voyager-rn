@@ -261,7 +261,6 @@ export const cityAirportMappings: Record<string, string[]> = {
   "Green Bay, WI, USA": ["GRB"],
   "Green Bay": ["GRB"],
   "Jackson, WY, USA": ["JAC"],
-  "Jackson": ["JAC"],
   "Lubbock, TX, USA": ["LBB"],
   "Lubbock": ["LBB"],
   "McAllen, TX, USA": ["MFE"],
