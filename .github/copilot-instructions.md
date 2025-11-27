@@ -396,3 +396,26 @@ Keep S.O.L.I.D. principles enforced: isolate platform differences in low-level m
 
 Goal:
 Every feature (Auth, Navigation, UI, Storage, API calls) should function seamlessly on both mobile and web targets with minimal code duplication.
+
+## AI Playbook — Structured Prompts & Guardrails
+
+These short rules help get consistent, reviewable outputs from AI assistants. Follow them when using AI to generate code or design artifacts.
+
+- **Instruct the Agent:** Always begin prompts by assigning a clear role and expected output. Example: "You are: Senior React Native Engineer (TypeScript + Expo). Output: design notes, unified patch, and tests." Require the agent to produce a short plan before generating code.
+- **Provide Guardrails:** List allowed vs disallowed libraries, coding-style constraints, test strategy, performance budgets, and any data/security rules. Example: "Do not add libraries not already listed in package.json; follow existing folder and naming conventions; include unit tests where applicable."
+- **Provide Just-Enough Context:** Supply only relevant file paths, interfaces, and API contracts. Use structured context packs: description → inputs → outputs → constraints. Prefer concise summaries over full repo dumps.
+- **Optimize for Reuse:** Ask the agent to produce modular components with explicit interfaces and short usage examples. Tag generated assets with an intended scope (prototype | reusable | experimental).
+- **Plan First:** Require a brief step-by-step plan before code generation. Metric: measure reduction in post-generation rework time.
+
+### Agent Behavior & Acceptance Criteria
+
+- The agent should state assumptions and ask clarifying questions when uncertain.
+- Generated code should follow the project's coding rules and include inline tests or test hints when changing logic.
+- Always include a one-line summary of changes and list files the agent will modify.
+- Reference ADRs or existing specs for architectural decisions; if none exist, include a short proposed pattern and rationale.
+
+### Operational Rules
+
+- Do not modify production configuration or secret-management files via AI-generated code.
+- Require human review before merging any AI-generated patch. Tag PRs with `ai-generated` and paste the prompt used.
+- Record estimated prompt-to-commit rework in the PR description (short note).
