@@ -180,7 +180,7 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
         setTimeout(() => {
           if (isUnmountedRef.current) return;
           videoPlaybackManager.setActiveVideo(video.id);
-        }, Platform.OS === 'android' ? 250 : 0); // Increased from 150ms to 250ms
+        }, Platform.OS === 'android' ? 100 : 0); // Reduced delay for faster activation
       }
       // Note: deactivation happens automatically when another video becomes active
     };

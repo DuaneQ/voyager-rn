@@ -11,11 +11,11 @@ import { PersonalInfoAccordion } from './PersonalInfoAccordion';
 import { LifestyleAccordion } from './LifestyleAccordion';
 import { TravelPreferencesAccordion } from './TravelPreferencesAccordion';
 import { useUserProfile } from '../../context/UserProfileContext';
-import { signOut } from 'firebase/auth';
-import { auth } from '../../config/firebaseConfig'; // Use already-initialized auth instance
+import { useAuth } from '../../context/AuthContext';
 
 export const ProfileTab: React.FC = () => {
   const { userProfile } = useUserProfile();
+  const { signOut } = useAuth();
 
   // Calculate age from date of birth
   const calculateAge = (dob: string | undefined): number | undefined => {
@@ -69,7 +69,7 @@ export const ProfileTab: React.FC = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              await signOut(auth); // Use already-initialized auth instance
+              await signOut();
             } catch (error) {
               console.error('Sign out error:', error);
               Alert.alert('Error', 'Failed to sign out. Please try again.');

@@ -177,20 +177,16 @@ export const useVideoUpload = () => {
   const effectiveAuth2 = tentative2 && tentative2.currentUser ? tentative2 : (firebaseCfg as any).auth;
   const userId = effectiveAuth2?.currentUser?.uid;
     if (!userId) {
-      console.log('[useVideoUpload] No user ID, cannot load videos');
+      
       return [];
     }
 
     try {
-      console.log('[useVideoUpload] Loading videos for user:', userId);
+      
       const videos = await videoService.getUserVideos(userId);
-      console.log('[useVideoUpload] Loaded videos:', videos.length, 'videos');
+      
       videos.forEach((video, index) => {
-        console.log(`[useVideoUpload] Video ${index + 1}:`, {
-          id: video.id,
-          hasThumbnail: !!video.thumbnailUrl,
-          hasVideoUrl: !!video.videoUrl,
-        });
+        
       });
       return videos;
     } catch (error) {

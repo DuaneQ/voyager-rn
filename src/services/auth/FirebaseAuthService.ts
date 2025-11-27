@@ -62,7 +62,7 @@ export class FirebaseAuthService {
       const emailVerified = await AsyncStorage.getItem('FIREBASE_EMAIL_VERIFIED');
       
       if (!uid || !email) {
-        console.log('[FirebaseAuthService] No stored user found');
+        
         return null;
       }
 
@@ -113,6 +113,8 @@ export class FirebaseAuthService {
         this.notifyAuthStateChanged(user);
         return user;
       } else {
+        // Set currentUser BEFORE calling refreshToken so it has context to spread
+        this.currentUser = user;
         const refreshedUser = await this.refreshToken(user.refreshToken);
         if (refreshedUser) {
           // Sync BEFORE notifying listeners
@@ -184,7 +186,7 @@ export class FirebaseAuthService {
     // are attached to httpsCallable requests.
     try {
       await this.syncWithAuthSDK(user.idToken);
-      console.log('[FirebaseAuthService] Auth SDK sync complete after sign in');
+      
     } catch (e) {
       // syncWithAuthSDK already logs errors; ensure we still notify listeners
       console.warn('[FirebaseAuthService] syncWithAuthSDK failed, notifying listeners anyway');
@@ -211,8 +213,7 @@ export class FirebaseAuthService {
     
     while (retries > 0) {
       try {
-        console.log(`[FirebaseAuthService] Syncing with Auth SDK (attempt ${4-retries}/3)...`);
-        
+
         // Call generateCustomToken with manual Authorization header
         // We can't use httpsCallable because it requires Auth SDK to already be signed in
         const functionUrl = 'https://us-central1-mundo1-dev.cloudfunctions.net/generateCustomToken';
@@ -342,7 +343,7 @@ export class FirebaseAuthService {
 
     try {
       await this.syncWithAuthSDK(user.idToken);
-      console.log('[FirebaseAuthService] Auth SDK sync complete after Google sign in');
+      
     } catch (e) {
       console.warn('[FirebaseAuthService] syncWithAuthSDK failed for Google sign-in:', e);
     }
@@ -481,8 +482,15 @@ export class FirebaseAuthService {
 
       const data = await response.json();
       
+      // Ensure we have a currentUser before spreading
+      if (!this.currentUser) {
+        console.error('[FirebaseAuthService] No currentUser during token refresh');
+        await this.signOut();
+        return null;
+      }
+      
       const user: FirebaseUser = {
-        ...this.currentUser!,
+        ...this.currentUser,
         idToken: data.id_token,
         refreshToken: data.refresh_token,
         expiresIn: data.expires_in,
@@ -526,7 +534,14 @@ export class FirebaseAuthService {
   private static async persistUser(user: FirebaseUser): Promise<void> {
     const expiry = Date.now() + parseInt(user.expiresIn) * 1000;
     
+    // Defensive: Ensure required fields are present
+    if (!user.uid) {
+      console.error('[FirebaseAuthService] Cannot persist user without uid');
+      throw new Error('Cannot persist user without uid');
+    }
+    
     // Store non-sensitive data in AsyncStorage for quick access
+    // Only store values that are defined (never store undefined)
     await AsyncStorage.multiSet([
       ['FIREBASE_USER_UID', user.uid],
       ['FIREBASE_USER_EMAIL', user.email || ''],

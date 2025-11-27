@@ -19,11 +19,11 @@ export const FirebaseAuthService = {
   // Get current user
   getCurrentUser: jest.fn(() => mockUser),
 
-  // Auth state observer
-  onAuthStateChanged: jest.fn((callback: (user: any) => void) => {
+  // Auth state observer - NOT a jest.fn() to avoid being cleared by jest.clearAllMocks()
+  onAuthStateChanged: (callback: (user: any) => void) => {
     authStateListeners.push(callback);
-    // Immediately invoke with current user
-    setTimeout(() => callback(mockUser), 0);
+    // Immediately invoke with current user (synchronously for tests)
+    callback(mockUser);
     // Return unsubscribe function
     return jest.fn(() => {
       const index = authStateListeners.indexOf(callback);
@@ -31,7 +31,7 @@ export const FirebaseAuthService = {
         authStateListeners.splice(index, 1);
       }
     });
-  }),
+  },
 
   // Sign in
   signIn: jest.fn(async (email: string, password: string) => ({

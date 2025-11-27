@@ -44,10 +44,10 @@ export const auth = getAuth(app);
 if (Platform.OS !== 'web') {
   // For React Native, persistence is automatic via AsyncStorage
   // No need to explicitly set persistence
-  console.log('🔐 Firebase Auth configured with AsyncStorage persistence');
+  
 } else {
   // For web (if running on web), ensure local persistence
-  console.log('🔐 Firebase Auth configured with browser persistence');
+  
 }
 
 export const db = getFirestore(app);
@@ -67,6 +67,3 @@ export const getCloudFunctionUrl = (functionName: string): string => {
   return `https://${region}-${projectId}.cloudfunctions.net/${functionName}`;
 };
 
-console.log('🔥 Firebase initialized for voyager-RN');
-console.log('📱 Using project:', firebaseConfig.projectId);
-console.log('💾 Auth persistence:', Platform.OS === 'web' ? 'Browser' : 'AsyncStorage');

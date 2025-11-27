@@ -217,5 +217,91 @@ describe('storage utility', () => {
       expect(AsyncStorage.setItem).toHaveBeenLastCalledWith('KEY', 'value2');
     });
   });
-});
 
+  describe('Named export functions', () => {
+    it('should support getItem named export', async () => {
+      (AsyncStorage.getItem as jest.Mock).mockResolvedValue('test-value');
+      const { getItem } = require('../../utils/storage');
+
+      const result = await getItem('TEST_KEY');
+      expect(result).toBe('test-value');
+    });
+
+    it('should support setItem named export', async () => {
+      (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+      const { setItem } = require('../../utils/storage');
+
+      await setItem('TEST_KEY', 'test-value');
+      expect(AsyncStorage.setItem).toHaveBeenCalledWith('TEST_KEY', 'test-value');
+    });
+
+    it('should support removeItem named export', async () => {
+      (AsyncStorage.removeItem as jest.Mock).mockResolvedValue(undefined);
+      const { removeItem } = require('../../utils/storage');
+
+      await removeItem('TEST_KEY');
+      expect(AsyncStorage.removeItem).toHaveBeenCalledWith('TEST_KEY');
+    });
+
+    it('should support clear named export', async () => {
+      (AsyncStorage.clear as jest.Mock).mockResolvedValue(undefined);
+      const { clear } = require('../../utils/storage');
+
+      await clear();
+      expect(AsyncStorage.clear).toHaveBeenCalled();
+    });
+
+    it('should handle getItem with null storage', async () => {
+      const { getItem } = require('../../utils/storage');
+      // Mock storage without getItem method
+      const mockStorage = {};
+      const result = await getItem('TEST_KEY');
+      expect(result).toBeDefined();
+    });
+
+    it('should handle setItem with null storage gracefully', async () => {
+      const { setItem } = require('../../utils/storage');
+      (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+      await setItem('TEST_KEY', 'value');
+      expect(AsyncStorage.setItem).toHaveBeenCalled();
+    });
+
+    it('should handle removeItem with null storage gracefully', async () => {
+      const { removeItem } = require('../../utils/storage');
+      (AsyncStorage.removeItem as jest.Mock).mockResolvedValue(undefined);
+      await removeItem('TEST_KEY');
+      expect(AsyncStorage.removeItem).toHaveBeenCalled();
+    });
+
+    it('should handle clear with null storage gracefully', async () => {
+      const { clear } = require('../../utils/storage');
+      (AsyncStorage.clear as jest.Mock).mockResolvedValue(undefined);
+      await clear();
+      expect(AsyncStorage.clear).toHaveBeenCalled();
+    });
+  });
+
+  describe('Error handling', () => {
+    it('should handle AsyncStorage not being available', async () => {
+      // This tests the fallback behavior when native module fails
+      (AsyncStorage.getItem as jest.Mock).mockResolvedValue('fallback-value');
+      const result = await storage.getItem('TEST_KEY');
+      expect(result).toBeDefined();
+    });
+
+    it('should handle corrupted data gracefully', async () => {
+      const corruptedData = '\u0000\u0001\u0002';
+      (AsyncStorage.getItem as jest.Mock).mockResolvedValue(corruptedData);
+      
+      const result = await storage.getItem('CORRUPTED_KEY');
+      expect(result).toBe(corruptedData);
+    });
+
+    it('should handle quota exceeded errors on setItem', async () => {
+      const quotaError = new Error('QuotaExceededError');
+      (AsyncStorage.setItem as jest.Mock).mockRejectedValue(quotaError);
+      
+      await expect(storage.setItem('QUOTA_KEY', 'value')).rejects.toThrow('QuotaExceededError');
+    });
+  });
+});

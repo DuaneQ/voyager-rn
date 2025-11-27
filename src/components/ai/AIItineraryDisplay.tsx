@@ -200,8 +200,6 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
         return;
       }
 
-      console.log('📤 Sharing itinerary to Firestore:', id);
-
       // Ensure we save the full itinerary structure including all nested data
       // (response.data.recommendations, response.data.metadata, etc.)
       const payload = {
@@ -216,8 +214,6 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
       const ref = doc(db, 'itineraries', id);
       // Use merge: false to ensure we write the complete document
       await setDoc(ref, payload, { merge: false });
-      
-      console.log('✅ Itinerary saved to Firestore for sharing:', id);
 
       // Open share modal
       setShareModalOpen(true);

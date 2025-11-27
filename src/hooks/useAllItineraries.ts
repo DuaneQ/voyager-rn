@@ -41,14 +41,14 @@ export const useAllItineraries = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchItineraries = useCallback(async () => {
+  const fetchItineraries = useCallback(async (): Promise<Itinerary[]> => {
   // If legacy `auth` export is present (tests may toggle it), prefer its explicit value
   // so tests that set `auth.currentUser = null` properly simulate unauthenticated state.
   const legacyProvided = auth && Object.prototype.hasOwnProperty.call(auth, 'currentUser');
   const userId = legacyProvided ? auth.currentUser?.uid : (typeof getAuthInstance === 'function' ? getAuthInstance()?.currentUser?.uid : undefined);
     if (!userId) {
       setError('User not authenticated');
-      return;
+      return [];
     }
 
     setLoading(true);
@@ -80,19 +80,17 @@ export const useAllItineraries = () => {
         allItineraries = [];
       }
 
-      console.log('[useAllItineraries] Total itineraries (AI + manual):', allItineraries.length);
-      console.log('[useAllItineraries] AI itineraries:', (allItineraries || []).filter((i: Itinerary) => i.ai_status === 'completed').length);
-      console.log('[useAllItineraries] Manual itineraries:', (allItineraries || []).filter((i: Itinerary) => !i.ai_status || i.ai_status !== 'completed').length);
-
       // Sort by startDay (most recent first)
       allItineraries.sort((a: Itinerary, b: Itinerary) => {
         return (b.startDay || 0) - (a.startDay || 0);
       });
 
       setItineraries(allItineraries);
+      return allItineraries; // Return the fresh data
     } catch (err) {
       console.error('Error fetching all itineraries:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch itineraries');
+      return []; // Return empty array on error
     } finally {
       setLoading(false);
     }
@@ -102,14 +100,15 @@ export const useAllItineraries = () => {
     fetchItineraries();
   }, [fetchItineraries]);
 
-  const refreshItineraries = useCallback(async () => {
-    await fetchItineraries();
+  const refreshItineraries = useCallback(async (): Promise<Itinerary[]> => {
+    return await fetchItineraries();
   }, [fetchItineraries]);
 
   return {
     itineraries,
     loading,
     error,
-    refreshItineraries
+    refreshItineraries,
+    fetchItineraries // Export fetchItineraries for direct use
   };
 };

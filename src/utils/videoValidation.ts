@@ -126,12 +126,12 @@ export const generateVideoThumbnail = async (
   timeInSeconds: number = 1
 ): Promise<string> => {
   try {
-    console.log('[videoValidation] Attempting to generate thumbnail from:', uri);
+    
     const { uri: thumbnailUri } = await VideoThumbnails.getThumbnailAsync(uri, {
       time: timeInSeconds * 1000, // Convert to milliseconds
       quality: 0.7,
     });
-    console.log('[videoValidation] Thumbnail generated successfully:', thumbnailUri);
+    
     return thumbnailUri;
   } catch (error) {
     console.error('[videoValidation] Thumbnail generation failed:', error);

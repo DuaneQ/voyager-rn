@@ -552,8 +552,6 @@ export const TravelPreferencesTab: React.FC<TravelPreferencesTabProps> = ({
         </View>
       )}
 
-
-
       {/* Accessibility (Collapsible) */}
       <TouchableOpacity
         style={styles.collapsibleHeader}

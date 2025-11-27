@@ -1,5 +1,6 @@
-// Import crypto polyfill first (must be before any other imports)
+// Import polyfills first (must be before any other imports)
 import 'react-native-get-random-values';
+import './patches/react-native-fetch-polyfill'; // Fix Android sendRequest bug
 
 import React from 'react';
 import { enableScreens } from 'react-native-screens';

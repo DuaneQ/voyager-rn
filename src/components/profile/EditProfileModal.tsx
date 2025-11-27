@@ -25,6 +25,7 @@ import {
   STATUS_OPTIONS,
   SEXUAL_ORIENTATION_OPTIONS,
 } from '../../types/ManualItinerary';
+import { AndroidPickerModal } from '../common/AndroidPickerModal';
 
 // iOS Picker Modal Component
 const IOSPickerModal: React.FC<{
@@ -373,44 +374,40 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
           {/* Status */}
           <View style={styles.fieldContainer}>
             <Text style={styles.label}>Status *</Text>
+            <TouchableOpacity
+              testID="status-picker"
+              style={[styles.input, errors.status && styles.inputError]}
+              onPress={() => setStatusModalVisible(true)}
+            >
+              <Text style={[styles.inputText, !formData.status && styles.placeholderText]}>
+                {formData.status ? STATUS_OPTIONS.find(opt => opt.toLowerCase() === formData.status) || formData.status : 'Select status...'}
+              </Text>
+              <Ionicons name="chevron-down" size={20} color="#999" />
+            </TouchableOpacity>
             {Platform.OS === 'ios' ? (
-              <>
-                <TouchableOpacity
-                  testID="status-picker"
-                  style={[styles.input, errors.status && styles.inputError]}
-                  onPress={() => setStatusModalVisible(true)}
-                >
-                  <Text style={[styles.inputText, !formData.status && styles.placeholderText]}>
-                    {formData.status ? STATUS_OPTIONS.find(opt => opt.toLowerCase() === formData.status) || formData.status : 'Select status...'}
-                  </Text>
-                  <Ionicons name="chevron-down" size={20} color="#999" />
-                </TouchableOpacity>
-                <IOSPickerModal
-                  visible={statusModalVisible}
-                  onClose={() => setStatusModalVisible(false)}
-                  onSelect={(value) => handleChange('status', value)}
-                  selectedValue={formData.status}
-                  title="Select Status"
-                  options={[
-                    { label: 'Select status...', value: '' },
-                    ...STATUS_OPTIONS.map(opt => ({ label: opt, value: opt.toLowerCase() }))
-                  ]}
-                />
-              </>
+              <IOSPickerModal
+                visible={statusModalVisible}
+                onClose={() => setStatusModalVisible(false)}
+                onSelect={(value) => handleChange('status', value)}
+                selectedValue={formData.status}
+                title="Select Status"
+                options={[
+                  { label: 'Select status...', value: '' },
+                  ...STATUS_OPTIONS.map(opt => ({ label: opt, value: opt.toLowerCase() }))
+                ]}
+              />
             ) : (
-              <View style={[styles.pickerContainer, errors.status && styles.inputError]}>
-                <Picker
-                  testID="status-picker"
-                  selectedValue={formData.status}
-                  onValueChange={(value) => handleChange('status', value)}
-                  style={styles.picker}
-                >
-                  <Picker.Item label="Select status..." value="" color="#999" />
-                  {STATUS_OPTIONS.map((option) => (
-                    <Picker.Item key={option} label={option} value={option.toLowerCase()} color="#333" />
-                  ))}
-                </Picker>
-              </View>
+              <AndroidPickerModal
+                visible={statusModalVisible}
+                onClose={() => setStatusModalVisible(false)}
+                onSelect={(value) => handleChange('status', value)}
+                selectedValue={formData.status}
+                title="Select Status"
+                options={[
+                  { label: 'Select status...', value: '' },
+                  ...STATUS_OPTIONS.map(opt => ({ label: opt, value: opt.toLowerCase() }))
+                ]}
+              />
             )}
             {errors.status && (
               <Text style={styles.errorText}>{errors.status}</Text>
@@ -420,44 +417,40 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
           {/* Gender */}
           <View style={styles.fieldContainer}>
             <Text style={styles.label}>Gender *</Text>
+            <TouchableOpacity
+              testID="gender-picker"
+              style={[styles.input, errors.gender && styles.inputError]}
+              onPress={() => setGenderModalVisible(true)}
+            >
+              <Text style={[styles.inputText, !formData.gender && styles.placeholderText]}>
+                {formData.gender || 'Select gender...'}
+              </Text>
+              <Ionicons name="chevron-down" size={20} color="#999" />
+            </TouchableOpacity>
             {Platform.OS === 'ios' ? (
-              <>
-                <TouchableOpacity
-                  testID="gender-picker"
-                  style={[styles.input, errors.gender && styles.inputError]}
-                  onPress={() => setGenderModalVisible(true)}
-                >
-                  <Text style={[styles.inputText, !formData.gender && styles.placeholderText]}>
-                    {formData.gender || 'Select gender...'}
-                  </Text>
-                  <Ionicons name="chevron-down" size={20} color="#999" />
-                </TouchableOpacity>
-                <IOSPickerModal
-                  visible={genderModalVisible}
-                  onClose={() => setGenderModalVisible(false)}
-                  onSelect={(value) => handleChange('gender', value)}
-                  selectedValue={formData.gender}
-                  title="Select Gender"
-                  options={[
-                    { label: 'Select gender...', value: '' },
-                    ...GENDER_OPTIONS.map(opt => ({ label: opt, value: opt }))
-                  ]}
-                />
-              </>
+              <IOSPickerModal
+                visible={genderModalVisible}
+                onClose={() => setGenderModalVisible(false)}
+                onSelect={(value) => handleChange('gender', value)}
+                selectedValue={formData.gender}
+                title="Select Gender"
+                options={[
+                  { label: 'Select gender...', value: '' },
+                  ...GENDER_OPTIONS.map(opt => ({ label: opt, value: opt }))
+                ]}
+              />
             ) : (
-              <View style={[styles.pickerContainer, errors.gender && styles.inputError]}>
-                <Picker
-                  testID="gender-picker"
-                  selectedValue={formData.gender}
-                  onValueChange={(value) => handleChange('gender', value)}
-                  style={styles.picker}
-                >
-                  <Picker.Item label="Select gender..." value="" color="#999" />
-                  {GENDER_OPTIONS.map((option) => (
-                    <Picker.Item key={option} label={option} value={option} color="#333" />
-                  ))}
-                </Picker>
-              </View>
+              <AndroidPickerModal
+                visible={genderModalVisible}
+                onClose={() => setGenderModalVisible(false)}
+                onSelect={(value) => handleChange('gender', value)}
+                selectedValue={formData.gender}
+                title="Select Gender"
+                options={[
+                  { label: 'Select gender...', value: '' },
+                  ...GENDER_OPTIONS.map(opt => ({ label: opt, value: opt }))
+                ]}
+              />
             )}
             {errors.gender && (
               <Text style={styles.errorText}>{errors.gender}</Text>
@@ -467,44 +460,40 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
           {/* Sexual Orientation */}
           <View style={styles.fieldContainer}>
             <Text style={styles.label}>Sexual Orientation *</Text>
+            <TouchableOpacity
+              testID="orientation-picker"
+              style={[styles.input, errors.sexualOrientation && styles.inputError]}
+              onPress={() => setOrientationModalVisible(true)}
+            >
+              <Text style={[styles.inputText, !formData.sexualOrientation && styles.placeholderText]}>
+                {formData.sexualOrientation ? SEXUAL_ORIENTATION_OPTIONS.find(opt => opt.toLowerCase() === formData.sexualOrientation) || formData.sexualOrientation : 'Select orientation...'}
+              </Text>
+              <Ionicons name="chevron-down" size={20} color="#999" />
+            </TouchableOpacity>
             {Platform.OS === 'ios' ? (
-              <>
-                <TouchableOpacity
-                  testID="orientation-picker"
-                  style={[styles.input, errors.sexualOrientation && styles.inputError]}
-                  onPress={() => setOrientationModalVisible(true)}
-                >
-                  <Text style={[styles.inputText, !formData.sexualOrientation && styles.placeholderText]}>
-                    {formData.sexualOrientation ? SEXUAL_ORIENTATION_OPTIONS.find(opt => opt.toLowerCase() === formData.sexualOrientation) || formData.sexualOrientation : 'Select orientation...'}
-                  </Text>
-                  <Ionicons name="chevron-down" size={20} color="#999" />
-                </TouchableOpacity>
-                <IOSPickerModal
-                  visible={orientationModalVisible}
-                  onClose={() => setOrientationModalVisible(false)}
-                  onSelect={(value) => handleChange('sexualOrientation', value)}
-                  selectedValue={formData.sexualOrientation}
-                  title="Sexual Orientation"
-                  options={[
-                    { label: 'Select orientation...', value: '' },
-                    ...SEXUAL_ORIENTATION_OPTIONS.map(opt => ({ label: opt, value: opt.toLowerCase() }))
-                  ]}
-                />
-              </>
+              <IOSPickerModal
+                visible={orientationModalVisible}
+                onClose={() => setOrientationModalVisible(false)}
+                onSelect={(value) => handleChange('sexualOrientation', value)}
+                selectedValue={formData.sexualOrientation}
+                title="Sexual Orientation"
+                options={[
+                  { label: 'Select orientation...', value: '' },
+                  ...SEXUAL_ORIENTATION_OPTIONS.map(opt => ({ label: opt, value: opt.toLowerCase() }))
+                ]}
+              />
             ) : (
-              <View style={[styles.pickerContainer, errors.sexualOrientation && styles.inputError]}>
-                <Picker
-                  testID="orientation-picker"
-                  selectedValue={formData.sexualOrientation}
-                  onValueChange={(value) => handleChange('sexualOrientation', value)}
-                  style={styles.picker}
-                >
-                  <Picker.Item label="Select orientation..." value="" color="#999" />
-                  {SEXUAL_ORIENTATION_OPTIONS.map((option) => (
-                    <Picker.Item key={option} label={option} value={option.toLowerCase()} color="#333" />
-                  ))}
-                </Picker>
-              </View>
+              <AndroidPickerModal
+                visible={orientationModalVisible}
+                onClose={() => setOrientationModalVisible(false)}
+                onSelect={(value) => handleChange('sexualOrientation', value)}
+                selectedValue={formData.sexualOrientation}
+                title="Sexual Orientation"
+                options={[
+                  { label: 'Select orientation...', value: '' },
+                  ...SEXUAL_ORIENTATION_OPTIONS.map(opt => ({ label: opt, value: opt.toLowerCase() }))
+                ]}
+              />
             )}
             {errors.sexualOrientation && (
               <Text style={styles.errorText}>{errors.sexualOrientation}</Text>
@@ -514,132 +503,120 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
           {/* Education */}
           <View style={styles.fieldContainer}>
             <Text style={styles.label}>Education</Text>
+            <TouchableOpacity
+              testID="education-picker"
+              style={styles.input}
+              onPress={() => setEduModalVisible(true)}
+            >
+              <Text style={[styles.inputText, !formData.edu && styles.placeholderText]}>
+                {formData.edu || 'Select education...'}
+              </Text>
+              <Ionicons name="chevron-down" size={20} color="#999" />
+            </TouchableOpacity>
             {Platform.OS === 'ios' ? (
-              <>
-                <TouchableOpacity
-                  testID="education-picker"
-                  style={styles.input}
-                  onPress={() => setEduModalVisible(true)}
-                >
-                  <Text style={[styles.inputText, !formData.edu && styles.placeholderText]}>
-                    {formData.edu || 'Select education...'}
-                  </Text>
-                  <Ionicons name="chevron-down" size={20} color="#999" />
-                </TouchableOpacity>
-                <IOSPickerModal
-                  visible={eduModalVisible}
-                  onClose={() => setEduModalVisible(false)}
-                  onSelect={(value) => handleChange('edu', value)}
-                  selectedValue={formData.edu}
-                  title="Select Education"
-                  options={[
-                    { label: 'Select education...', value: '' },
-                    ...EDUCATION_OPTIONS.map(opt => ({ label: opt, value: opt }))
-                  ]}
-                />
-              </>
+              <IOSPickerModal
+                visible={eduModalVisible}
+                onClose={() => setEduModalVisible(false)}
+                onSelect={(value) => handleChange('edu', value)}
+                selectedValue={formData.edu}
+                title="Select Education"
+                options={[
+                  { label: 'Select education...', value: '' },
+                  ...EDUCATION_OPTIONS.map(opt => ({ label: opt, value: opt }))
+                ]}
+              />
             ) : (
-              <View style={styles.pickerContainer}>
-                <Picker
-                  testID="education-picker"
-                  selectedValue={formData.edu}
-                  onValueChange={(value) => handleChange('edu', value)}
-                  style={styles.picker}
-                >
-                  <Picker.Item label="Select education..." value="" color="#999" />
-                  {EDUCATION_OPTIONS.map((option) => (
-                    <Picker.Item key={option} label={option} value={option} color="#333" />
-                  ))}
-                </Picker>
-              </View>
+              <AndroidPickerModal
+                visible={eduModalVisible}
+                onClose={() => setEduModalVisible(false)}
+                onSelect={(value) => handleChange('edu', value)}
+                selectedValue={formData.edu}
+                title="Select Education"
+                options={[
+                  { label: 'Select education...', value: '' },
+                  ...EDUCATION_OPTIONS.map(opt => ({ label: opt, value: opt }))
+                ]}
+              />
             )}
           </View>
 
           {/* Drinking */}
           <View style={styles.fieldContainer}>
             <Text style={styles.label}>Drinking</Text>
+            <TouchableOpacity
+              testID="drinking-picker"
+              style={styles.input}
+              onPress={() => setDrinkingModalVisible(true)}
+            >
+              <Text style={[styles.inputText, !formData.drinking && styles.placeholderText]}>
+                {formData.drinking || 'Select frequency...'}
+              </Text>
+              <Ionicons name="chevron-down" size={20} color="#999" />
+            </TouchableOpacity>
             {Platform.OS === 'ios' ? (
-              <>
-                <TouchableOpacity
-                  testID="drinking-picker"
-                  style={styles.input}
-                  onPress={() => setDrinkingModalVisible(true)}
-                >
-                  <Text style={[styles.inputText, !formData.drinking && styles.placeholderText]}>
-                    {formData.drinking || 'Select frequency...'}
-                  </Text>
-                  <Ionicons name="chevron-down" size={20} color="#999" />
-                </TouchableOpacity>
-                <IOSPickerModal
-                  visible={drinkingModalVisible}
-                  onClose={() => setDrinkingModalVisible(false)}
-                  onSelect={(value) => handleChange('drinking', value)}
-                  selectedValue={formData.drinking}
-                  title="Drinking Frequency"
-                  options={[
-                    { label: 'Select frequency...', value: '' },
-                    ...FREQUENCY.map(opt => ({ label: opt, value: opt }))
-                  ]}
-                />
-              </>
+              <IOSPickerModal
+                visible={drinkingModalVisible}
+                onClose={() => setDrinkingModalVisible(false)}
+                onSelect={(value) => handleChange('drinking', value)}
+                selectedValue={formData.drinking}
+                title="Drinking Frequency"
+                options={[
+                  { label: 'Select frequency...', value: '' },
+                  ...FREQUENCY.map(opt => ({ label: opt, value: opt }))
+                ]}
+              />
             ) : (
-              <View style={styles.pickerContainer}>
-                <Picker
-                  testID="drinking-picker"
-                  selectedValue={formData.drinking}
-                  onValueChange={(value) => handleChange('drinking', value)}
-                  style={styles.picker}
-                >
-                  <Picker.Item label="Select frequency..." value="" color="#999" />
-                  {FREQUENCY.map((option) => (
-                    <Picker.Item key={option} label={option} value={option} color="#333" />
-                  ))}
-                </Picker>
-              </View>
+              <AndroidPickerModal
+                visible={drinkingModalVisible}
+                onClose={() => setDrinkingModalVisible(false)}
+                onSelect={(value) => handleChange('drinking', value)}
+                selectedValue={formData.drinking}
+                title="Drinking Frequency"
+                options={[
+                  { label: 'Select frequency...', value: '' },
+                  ...FREQUENCY.map(opt => ({ label: opt, value: opt }))
+                ]}
+              />
             )}
           </View>
 
           {/* Smoking */}
           <View style={styles.fieldContainer}>
             <Text style={styles.label}>Smoking</Text>
+            <TouchableOpacity
+              testID="smoking-picker"
+              style={styles.input}
+              onPress={() => setSmokingModalVisible(true)}
+            >
+              <Text style={[styles.inputText, !formData.smoking && styles.placeholderText]}>
+                {formData.smoking || 'Select frequency...'}
+              </Text>
+              <Ionicons name="chevron-down" size={20} color="#999" />
+            </TouchableOpacity>
             {Platform.OS === 'ios' ? (
-              <>
-                <TouchableOpacity
-                  testID="smoking-picker"
-                  style={styles.input}
-                  onPress={() => setSmokingModalVisible(true)}
-                >
-                  <Text style={[styles.inputText, !formData.smoking && styles.placeholderText]}>
-                    {formData.smoking || 'Select frequency...'}
-                  </Text>
-                  <Ionicons name="chevron-down" size={20} color="#999" />
-                </TouchableOpacity>
-                <IOSPickerModal
-                  visible={smokingModalVisible}
-                  onClose={() => setSmokingModalVisible(false)}
-                  onSelect={(value) => handleChange('smoking', value)}
-                  selectedValue={formData.smoking}
-                  title="Smoking Frequency"
-                  options={[
-                    { label: 'Select frequency...', value: '' },
-                    ...FREQUENCY.map(opt => ({ label: opt, value: opt }))
-                  ]}
-                />
-              </>
+              <IOSPickerModal
+                visible={smokingModalVisible}
+                onClose={() => setSmokingModalVisible(false)}
+                onSelect={(value) => handleChange('smoking', value)}
+                selectedValue={formData.smoking}
+                title="Smoking Frequency"
+                options={[
+                  { label: 'Select frequency...', value: '' },
+                  ...FREQUENCY.map(opt => ({ label: opt, value: opt }))
+                ]}
+              />
             ) : (
-              <View style={styles.pickerContainer}>
-                <Picker
-                  testID="smoking-picker"
-                  selectedValue={formData.smoking}
-                  onValueChange={(value) => handleChange('smoking', value)}
-                  style={styles.picker}
-                >
-                  <Picker.Item label="Select frequency..." value="" color="#999" />
-                  {FREQUENCY.map((option) => (
-                    <Picker.Item key={option} label={option} value={option} color="#333" />
-                  ))}
-                </Picker>
-              </View>
+              <AndroidPickerModal
+                visible={smokingModalVisible}
+                onClose={() => setSmokingModalVisible(false)}
+                onSelect={(value) => handleChange('smoking', value)}
+                selectedValue={formData.smoking}
+                title="Smoking Frequency"
+                options={[
+                  { label: 'Select frequency...', value: '' },
+                  ...FREQUENCY.map(opt => ({ label: opt, value: opt }))
+                ]}
+              />
             )}
           </View>
 
@@ -734,7 +711,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 8,
-    backgroundColor: '#fafafa',
+    backgroundColor: '#FFFFFF',
     overflow: 'hidden',
     ...(Platform.OS === 'ios' && {
       height: 50,
@@ -743,10 +720,10 @@ const styles = StyleSheet.create({
   },
   picker: {
     height: Platform.OS === 'ios' ? 50 : 50,
-    color: '#333',
+    color: '#000000',
     width: '100%',
     ...(Platform.OS === 'android' && {
-      backgroundColor: 'transparent',
+      backgroundColor: '#FFFFFF',
     }),
   },
   pickerItem: {
@@ -758,15 +735,16 @@ const styles = StyleSheet.create({
   pickerModalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   pickerModalBackdrop: {
     flex: 1,
   },
   pickerModalContent: {
-    backgroundColor: 'white',
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
+    paddingBottom: 20,
   },
   pickerModalHeader: {
     flexDirection: 'row',
@@ -775,37 +753,40 @@ const styles = StyleSheet.create({
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
+    backgroundColor: '#F8F9FA',
   },
   pickerModalCancel: {
-    fontSize: 16,
-    color: '#666',
+    fontSize: 17,
+    color: '#007AFF',
   },
   pickerModalTitle: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '600',
-    color: '#333',
+    color: '#000000',
   },
   pickerModalDone: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '600',
-    color: '#1976d2',
+    color: '#007AFF',
   },
   pickerModalPicker: {
     width: '100%',
     height: 216,
+    backgroundColor: '#FFFFFF',
   },
   pickerModalItem: {
     fontSize: 20,
     height: 216,
+    color: '#000000',
   },
   // Date Picker Modal styles (iOS)
   datePickerModalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   datePickerModalContent: {
-    backgroundColor: 'white',
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     paddingBottom: Platform.OS === 'ios' ? 20 : 0,
@@ -817,20 +798,21 @@ const styles = StyleSheet.create({
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
+    backgroundColor: '#F8F9FA',
   },
   datePickerCancelButton: {
-    fontSize: 16,
-    color: '#666',
+    fontSize: 17,
+    color: '#007AFF',
   },
   datePickerTitle: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '600',
-    color: '#333',
+    color: '#000000',
   },
   datePickerDoneButton: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '600',
-    color: '#1976d2',
+    color: '#007AFF',
   },
   errorText: {
     color: '#f44336',

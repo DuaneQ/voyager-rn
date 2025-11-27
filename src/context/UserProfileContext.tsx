@@ -34,8 +34,8 @@ const UserProfileProvider: React.FC<UserProfileProviderProps> = ({ children }) =
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Use AuthContext to get user state (prevents duplicate auth initialization)
-  const { user } = useAuth();
+  // Use AuthContext to get user state and initialization status
+  const { user, isInitializing } = useAuth();
 
   const updateUserProfile = useCallback((newProfile: UserProfile) => {
     setUserProfile(newProfile);
@@ -66,42 +66,67 @@ const UserProfileProvider: React.FC<UserProfileProviderProps> = ({ children }) =
   // Load user profile data via Cloud Function
   useEffect(() => {
     const loadUserProfile = async () => {
-      console.log('[UserProfileContext] loadUserProfile called');
+      
       setIsLoading(true);
       try {
         const userId = user?.uid;
-        console.log('[UserProfileContext] Current user ID:', userId);
 
         if (userId) {
-          // Get profile data via Cloud Function
-          console.log('[UserProfileContext] Fetching user profile via Cloud Function...');
-          const profile = await UserProfileService.getUserProfile(userId);
+          // Get profile data via Cloud Function with retry logic for new accounts
+
+          let profile;
+          let attempts = 0;
+          const maxAttempts = 3;
           
-          console.log('[UserProfileContext] Profile data fetched:', profile.email);
-          setUserProfile(profile);
-          console.log('[UserProfileContext] Profile set successfully');
+          while (attempts < maxAttempts) {
+            try {
+              profile = await UserProfileService.getUserProfile(userId);
+              break; // Success - exit retry loop
+            } catch (error: any) {
+              attempts++;
+              
+              // Special handling for "User must be authenticated" errors
+              if (error?.message?.includes('must be authenticated')) {
+                
+                await new Promise(resolve => setTimeout(resolve, 1500)); // Wait longer for auth sync
+                continue;
+              }
+              
+              // If profile not found and this is not the last attempt, wait and retry
+              if (error?.message?.includes('not found') && attempts < maxAttempts) {
+                
+                await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+              } else {
+                throw error; // Re-throw on last attempt or other errors
+              }
+            }
+          }
+
+          setUserProfile(profile!);
+          
         }
       } catch (error) {
-        console.log('[UserProfileContext] Error in loadUserProfile:', error);
-        // If profile doesn't exist, that's okay - will be created during onboarding
-        if (error && (error as any).message?.includes('not-found')) {
-          console.log('[UserProfileContext] Profile not found - will be created during onboarding');
+        
+        // If profile doesn't exist after retries, that's okay - will be created during onboarding
+        if (error && (error as any).message?.includes('not found')) {
+          
         }
       } finally {
-        console.log('[UserProfileContext] loadUserProfile finally block, setting isLoading = false');
+        
         setIsLoading(false);
       }
     };
 
-    // React to user changes from AuthContext
-    console.log('[UserProfileContext] User changed:', user?.uid);
-    if (user) {
+    // Wait for auth initialization before loading profile
+    // This prevents "User must be authenticated" errors during app startup
+    
+    if (user && !isInitializing) {
       loadUserProfile();
     } else {
       setIsLoading(false);
       setUserProfile(null);
     }
-  }, [user]);
+  }, [user, isInitializing]);
 
   return (
     <UserProfileContext.Provider 

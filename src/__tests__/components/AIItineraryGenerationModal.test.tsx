@@ -145,4 +145,66 @@ describe('AIItineraryGenerationModal', () => {
     expect(queryByText('Generating itinerary with AI...') || queryByText('Generating')).toBeTruthy();
     expect(queryByText(/45%/)).toBeTruthy();
   });
+
+  it('clears field errors when user modifies destination field', async () => {
+    (useAIGeneration as jest.Mock).mockReturnValue({
+      generateItinerary: jest.fn(),
+      isGenerating: false,
+      progress: null,
+      error: null,
+      cancelGeneration: jest.fn()
+    });
+
+    const { getByText, getByTestId, queryByText } = render(
+      <AIItineraryGenerationModal
+        visible={true}
+        onClose={jest.fn()}
+        preferences={{ profiles: [] }}
+      />
+    );
+
+    // Press generate to trigger validation errors
+    const generateBtn = getByText('🤖 Generate AI Itinerary');
+    fireEvent.press(generateBtn);
+
+    // Wait for errors to appear
+    await waitFor(() => {
+      expect(getByText('Destination is required')).toBeTruthy();
+    });
+
+    // Change destination field to trigger error clearing
+    const destInput = getByTestId('destination-input');
+    fireEvent.changeText(destInput, 'Paris');
+
+    // Error should be cleared
+    await waitFor(() => {
+      expect(queryByText('Destination is required')).toBeNull();
+    });
+  });
+
+  it('calls cancelGeneration when cancel button is pressed during generation', async () => {
+    const mockCancel = jest.fn();
+    (useAIGeneration as jest.Mock).mockReturnValue({
+      generateItinerary: jest.fn(),
+      isGenerating: true,
+      progress: { stage: 'ai_generation', percent: 50, message: 'Generating' },
+      error: null,
+      cancelGeneration: mockCancel
+    });
+
+    const { getByText } = render(
+      <AIItineraryGenerationModal
+        visible={true}
+        onClose={jest.fn()}
+        preferences={{ profiles: [] }}
+      />
+    );
+
+    const cancelBtn = getByText('Cancel Generation');
+    fireEvent.press(cancelBtn);
+
+    expect(mockCancel).toHaveBeenCalled();
+  });
 });
+
+

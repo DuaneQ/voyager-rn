@@ -129,6 +129,26 @@ describe('LoginForm', () => {
         expect(queryByText('Password must be at least 6 characters')).toBeNull();
       });
     });
+
+    it('toggles password visibility', () => {
+      const { getByPlaceholderText, getByTestId } = render(
+        <LoginForm {...defaultProps} />
+      );
+
+      const passwordInput = getByPlaceholderText('••••••••••');
+      const toggleButton = getByTestId('toggle-password-visibility');
+
+      // Initially password should be hidden
+      expect(passwordInput.props.secureTextEntry).toBe(true);
+
+      // Toggle to show password
+      fireEvent.press(toggleButton);
+      expect(passwordInput.props.secureTextEntry).toBe(false);
+
+      // Toggle back to hide
+      fireEvent.press(toggleButton);
+      expect(passwordInput.props.secureTextEntry).toBe(true);
+    });
   });
 
   describe('Form Submission', () => {

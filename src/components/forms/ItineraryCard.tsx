@@ -63,7 +63,7 @@ const ItineraryCard: React.FC<ItineraryCardProps> = ({
   useEffect(() => {
     const loadProfilePhoto = async () => {
       if (!itinerary.userInfo?.uid) {
-        console.log('[ItineraryCard] No user ID, using local default avatar');
+        
         setUseLocalAvatar(true);
         return;
       }
@@ -71,7 +71,7 @@ const ItineraryCard: React.FC<ItineraryCardProps> = ({
       try {
         const db = getFirestore();
         const userRef = doc(db, 'users', itinerary.userInfo.uid);
-        console.log('[ItineraryCard] Fetching user document for:', itinerary.userInfo.uid);
+        
         const userSnap = await getDoc(userRef);
         
         if (userSnap.exists()) {
@@ -79,19 +79,19 @@ const ItineraryCard: React.FC<ItineraryCardProps> = ({
           const photoUrl = userData?.photos?.profile;
           
           if (photoUrl) {
-            console.log('[ItineraryCard] Profile photo URL found:', photoUrl.substring(0, 50) + '...');
+            
             setProfilePhoto(photoUrl);
             setUseLocalAvatar(false);
           } else {
-            console.log('[ItineraryCard] No profile photo in user document, using local avatar');
+            
             setUseLocalAvatar(true);
           }
         } else {
-          console.log('[ItineraryCard] User document not found, using local avatar');
+          
           setUseLocalAvatar(true);
         }
       } catch (error) {
-        console.log('[ItineraryCard] Error loading profile photo:', error);
+        
         setUseLocalAvatar(true);
       }
     };
@@ -161,7 +161,7 @@ const ItineraryCard: React.FC<ItineraryCardProps> = ({
               source={useLocalAvatar || !profilePhoto ? LOCAL_DEFAULT_AVATAR : { uri: profilePhoto }}
               style={styles.avatar}
               onError={() => {
-                console.log('[ItineraryCard] Image load error, falling back to local default avatar');
+                
                 setUseLocalAvatar(true);
               }}
             />

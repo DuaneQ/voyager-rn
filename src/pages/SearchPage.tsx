@@ -14,7 +14,7 @@
  * 5. Mutual likes create connection → chat enabled
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -26,7 +26,6 @@ import {
   ScrollView,
   ImageBackground,
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
 import { getAuthInstance } from '../config/firebaseConfig';
 import { Itinerary } from '../types/Itinerary';
 import ItineraryCard from '../components/forms/ItineraryCard';
@@ -126,8 +125,7 @@ const SearchPage: React.FC = () => {
       console.error('[SearchPage] Selected itinerary not found:', id);
       return;
     }
-    
-    console.log('[SearchPage] Searching for matches for itinerary:', id);
+
     // Trigger search for matching itineraries
     await searchItineraries(selectedItinerary as any, userId);
   };
@@ -172,54 +170,78 @@ const SearchPage: React.FC = () => {
     }
 
     try {
+
       // Save as viewed
       saveViewedItinerary(itinerary.id);
       
-      // Update the liked itinerary with current user's ID
+      // 1. Update the liked itinerary with current user's ID
       const existingLikes = Array.isArray(itinerary.likes) ? itinerary.likes : [];
       const newLikes = Array.from(new Set([...existingLikes, userId]));
-      
-      // Persist likes via RPC
-      const updatedItinerary = await updateItinerary(itinerary.id, { likes: newLikes });
-      if (!updatedItinerary) {
-        throw new Error('Failed to update itinerary likes');
+
+      // Persist likes via RPC (this calls the cloud function)
+      try {
+        const updatedItinerary = await updateItinerary(itinerary.id, { likes: newLikes });
+        
+      } catch (updateError) {
+        console.error('[SearchPage] ❌ Failed to update itinerary likes:', updateError);
+        throw new Error('Failed to save like. Please try again.');
       }
       
-      // Check for mutual match
-      const selectedItinerary = itineraries.find(itin => itin.id === selectedItineraryId);
-      if (selectedItinerary) {
-        const myLikes = Array.isArray(selectedItinerary.likes) ? selectedItinerary.likes : [];
-        const otherUserUid = itinerary.userInfo?.uid;
+      // 2. Fetch fresh itineraries to check for mutual match (important!)
+      
+      const freshItineraries = await refreshItineraries();
+      
+      // 3. Get the current user's selected itinerary from fresh data
+      const myItinerary = freshItineraries.find(itin => itin.id === selectedItineraryId);
+      
+      if (!myItinerary) {
         
-        if (otherUserUid && myLikes.includes(otherUserUid)) {
-          // MUTUAL MATCH! Create connection
-          console.log('[SearchPage] 🎉 MUTUAL MATCH detected!');
-          
-          try {
-            await connectionRepository.createConnection({
-              user1Id: userId,
-              user2Id: otherUserUid,
-              itinerary1Id: selectedItineraryId,
-              itinerary2Id: itinerary.id,
-              itinerary1: selectedItinerary as any,
-              itinerary2: itinerary as any
-            });
-            
-            showAlert('success', '🎉 It\'s a match! You can now chat with this traveler.');
-          } catch (connError) {
-            console.error('[SearchPage] Error creating connection:', connError);
-            // Don't fail the like action if connection creation fails
-            showAlert('warning', 'Match detected but connection setup had issues. Please check Chats.');
-          }
+        await getNextItinerary();
+        return;
+      }
+      
+      // 4. Check for mutual match
+      const otherUserUid = itinerary.userInfo?.uid;
+      if (!otherUserUid) {
+        
+        await getNextItinerary();
+        return;
+      }
+      
+      const myLikes = Array.isArray(myItinerary.likes) ? myItinerary.likes : [];
+
+      if (myLikes.includes(otherUserUid)) {
+        // MUTUAL MATCH! Create connection
+
+        try {
+          const myEmail = myItinerary?.userInfo?.email ?? '';
+          const otherEmail = itinerary?.userInfo?.email ?? '';
+
+          await connectionRepository.createConnection({
+            user1Id: userId,
+            user2Id: otherUserUid,
+            itinerary1Id: selectedItineraryId,
+            itinerary2Id: itinerary.id,
+            itinerary1: myItinerary as any,
+            itinerary2: itinerary as any
+          });
+
+          showAlert('success', "🎉 It's a match! You can now chat with this traveler.");
+        } catch (connError: any) {
+          console.error('[SearchPage] ❌ Error creating connection:', connError);
+          // Don't fail the like action if connection creation fails
+          showAlert('warning', 'Match detected but connection setup had issues. Please check Chats.');
         }
+      } else {
+        
       }
       
       // Advance to next itinerary
       await getNextItinerary();
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('[SearchPage] Error handling like:', error);
-      showAlert('error', 'Failed to like itinerary. Please try again.');
+      showAlert('error', error?.message || 'Failed to like itinerary. Please try again.');
     }
   };
 

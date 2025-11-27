@@ -23,6 +23,8 @@ const fallbackAirports: Airport[] = [
   { iataCode: 'BWI', name: 'Baltimore/Washington International Thurgood Marshall Airport', city: 'Baltimore', country: 'United States', coordinates: { lat: 39.1754, lng: -76.6684 }, isInternational: true },
   { iataCode: 'LHR', name: 'Heathrow Airport', city: 'London', country: 'United Kingdom', coordinates: { lat: 51.4706, lng: -0.4619 }, isInternational: true },
   { iataCode: 'CDG', name: 'Charles de Gaulle Airport', city: 'Paris', country: 'France', coordinates: { lat: 49.0097, lng: 2.5479 }, isInternational: true },
+  { iataCode: 'ORY', name: 'Paris Orly Airport', city: 'Paris', country: 'France', coordinates: { lat: 48.7233, lng: 2.3794 }, isInternational: true },
+  { iataCode: 'BVA', name: 'Paris Beauvais Airport', city: 'Paris', country: 'France', coordinates: { lat: 49.4544, lng: 2.1128 }, isInternational: true },
   { iataCode: 'NRT', name: 'Narita International Airport', city: 'Tokyo', country: 'Japan', coordinates: { lat: 35.7719, lng: 140.3929 }, isInternational: true },
   { iataCode: 'HND', name: 'Haneda Airport', city: 'Tokyo', country: 'Japan', coordinates: { lat: 35.5494, lng: 139.7798 }, isInternational: true }
 ];

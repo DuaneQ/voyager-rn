@@ -34,7 +34,6 @@ module.exports = {
   testPathIgnorePatterns: [
     '/node_modules/',
     '/automation/', // Exclude WebdriverIO E2E tests from Jest
-    'SearchPage.test.tsx', // TODO: Fix dual firebase-config architecture issue
     'ViewProfileModal.test.tsx', // TODO: Fix test hanging issue - likely async/promise not resolving (functionality implemented and working)
     'integrations/', // Integration tests run separately with Firebase Emulators (see scripts/run-integration-tests.sh)
   ],

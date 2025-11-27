@@ -132,15 +132,14 @@ export const usePhotoUpload = (userId?: string): UsePhotoUploadReturn => {
 
     // Use cached result if available
     if (permissionGranted !== null) {
-      console.log('[usePhotoUpload] Using cached permission:', permissionGranted);
+      
       return permissionGranted;
     }
 
     // Check permission only once
-    console.log('[usePhotoUpload] Checking permission...');
-    const { status } = await ImagePicker.getMediaLibraryPermissionsAsync();
-    console.log('[usePhotoUpload] Permission status:', status);
     
+    const { status } = await ImagePicker.getMediaLibraryPermissionsAsync();
+
     const granted = status === 'granted';
     setPermissionGranted(granted);
     

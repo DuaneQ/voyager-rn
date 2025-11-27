@@ -17,14 +17,17 @@ import {
   KeyboardAvoidingView,
   Platform
 } from 'react-native';
-import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
-import { format, addDays } from 'date-fns';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { PlacesAutocomplete } from '../common/PlacesAutocomplete';
+import { format, addDays, parse } from 'date-fns';
 import * as firebaseCfg from '../../config/firebaseConfig';
 import { useAIGeneration } from '../../hooks/useAIGeneration';
 import { AIGenerationRequest } from '../../types/AIGeneration';
 import { getGooglePlacesApiKey } from '../../constants/apiConfig';
 import ProfileValidationService from '../../services/ProfileValidationService';
 import AirportSelector from '../common/AirportSelector';
+
+// PlacesAutocomplete doesn't use VirtualizedList, so no warnings to suppress
 
 // Input limits matching PWA exactly
 const MAX_TAGS = 10;
@@ -90,6 +93,8 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
     cancelGeneration 
   } = useAIGeneration();
 
+  // PlacesAutocomplete uses value/onChangeText props instead of refs
+
   // Form state matching PWA exactly
   const [formData, setFormData] = useState<AIGenerationRequest>({
     destination: initialDestination,
@@ -117,6 +122,8 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
   const [showPreferenceDropdown, setShowPreferenceDropdown] = useState(false);
   const [showFlightClassDropdown, setShowFlightClassDropdown] = useState(false);
   const [showStopPrefDropdown, setShowStopPrefDropdown] = useState(false);
+  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
+  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
 
   // Initialize form when modal opens (matching PWA logic)
   useEffect(() => {
@@ -163,15 +170,7 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
   React.useEffect(() => {
     if (visible) {
       // eslint-disable-next-line no-console
-      console.log('[AIItineraryGenerationModal] opened - debug shapes:', {
-        preferencesType: typeof preferences,
-        preferencesProfilesIsArray: Array.isArray(preferences?.profiles),
-        preferencesProfilesLength: preferences?.profiles?.length,
-        formDataMustIncludeIsArray: Array.isArray((formData as any)?.mustInclude),
-        formDataMustAvoidIsArray: Array.isArray((formData as any)?.mustAvoid),
-        selectedProfilePresent: !!selectedProfile,
-        userProfileType: typeof userProfile,
-      });
+      
     }
   }, [visible, preferences, formData, selectedProfile, userProfile]);
 
@@ -281,13 +280,13 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
       let result;
       try {
         // eslint-disable-next-line no-console
-        console.log('[AIItineraryGenerationModal] calling generateItinerary');
+        
         result = await generateItinerary(request);
         // eslint-disable-next-line no-console
-        console.log('[AIItineraryGenerationModal] generateItinerary returned:', result);
+        
       } catch (e) {
         // eslint-disable-next-line no-console
-        console.log('[AIItineraryGenerationModal] generateItinerary threw:', e);
+        
         throw e;
       }
 
@@ -431,6 +430,7 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={{ flexGrow: 1 }}
             onScrollBeginDrag={closeAllDropdowns}
+            nestedScrollEnabled={true}
           >
           {/* Error Display */}
           {formErrors.general && (
@@ -494,92 +494,18 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
                 </View>
 
                 {/* Destination */}
-                <View style={styles.field}>
+                <View style={[styles.field, { zIndex: 1000 }]}>
                   <Text style={styles.fieldLabel}>Destination *</Text>
-                  <GooglePlacesAutocomplete
+                  <PlacesAutocomplete
+                    testID="destination-input"
                     placeholder="Where do you want to go?"
-                    predefinedPlaces={[]}
-                    onPress={(data, details = null) => {
-                      handleFieldChange('destination', data.description);
+                    value={formData.destination}
+                    onChangeText={(text) => handleFieldChange('destination', text)}
+                    onPlaceSelected={(description) => {
+                      
+                      handleFieldChange('destination', description);
                     }}
-                    query={{
-                      key: getGooglePlacesApiKey(),
-                      language: 'en',
-                      types: '(cities)',
-                    }}
-                    styles={{
-                      container: {
-                        flex: 0,
-                        width: '100%',
-                        zIndex: 1000,
-                      },
-                      textInputContainer: {
-                        backgroundColor: 'transparent',
-                        borderTopWidth: 0,
-                        borderBottomWidth: 0,
-                        width: '100%',
-                      },
-                      textInput: {
-                        marginLeft: 0,
-                        marginRight: 0,
-                        height: 42,
-                        color: '#333',
-                        fontSize: 15,
-                        backgroundColor: '#fff',
-                        borderRadius: 8,
-                        paddingHorizontal: 10,
-                        borderWidth: 1,
-                        borderColor: formErrors.destination ? '#ff4444' : '#ddd',
-                        fontFamily: undefined,
-                      },
-                      predefinedPlacesDescription: {
-                        color: '#1faadb',
-                      },
-                      listView: {
-                        backgroundColor: 'white',
-                        borderRadius: 8,
-                        marginTop: 4,
-                        elevation: 5,
-                        shadowColor: '#000',
-                        shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.25,
-                        shadowRadius: 4,
-                        maxHeight: 200,
-                      },
-                      row: {
-                        backgroundColor: 'white',
-                        padding: 13,
-                        height: 44,
-                        flexDirection: 'row',
-                      },
-                      separator: {
-                        height: 0.5,
-                        backgroundColor: '#c8c7cc',
-                      },
-                      description: {
-                        color: '#333',
-                        fontSize: 15,
-                      },
-                      loader: {
-                        flexDirection: 'row',
-                        justifyContent: 'flex-end',
-                        height: 20,
-                      },
-                    }}
-                    textInputProps={{
-                      onChangeText: (text) => {
-                        handleFieldChange('destination', text);
-                      },
-                      placeholderTextColor: '#999',
-                      autoCorrect: false,
-                      autoCapitalize: 'none',
-                    }}
-                    enablePoweredByContainer={false}
-                    fetchDetails={false}
-                    debounce={200}
-                    minLength={2}
-                    keyboardShouldPersistTaps="handled"
-                    listUnderlayColor="transparent"
+                    error={!!formErrors.destination}
                   />
                   {formErrors.destination && (
                     <Text style={styles.fieldError}>{formErrors.destination}</Text>
@@ -607,92 +533,17 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
                 )}
 
                 {/* Departure */}
-                <View style={styles.field}>
+                <View style={[styles.field, { zIndex: 999 }]}>
                   <Text style={styles.fieldLabel}>Departing From</Text>
-                  <GooglePlacesAutocomplete
+                  <PlacesAutocomplete
+                    testID="departure-input"
                     placeholder="Where are you traveling from?"
-                    predefinedPlaces={[]}
-                    onPress={(data, details = null) => {
-                      handleFieldChange('departure', data.description);
+                    value={formData.departure}
+                    onChangeText={(text) => handleFieldChange('departure', text)}
+                    onPlaceSelected={(description) => {
+                      
+                      handleFieldChange('departure', description);
                     }}
-                    query={{
-                      key: getGooglePlacesApiKey(),
-                      language: 'en',
-                      types: '(cities)',
-                    }}
-                    styles={{
-                      container: {
-                        flex: 0,
-                        width: '100%',
-                        zIndex: 999,
-                      },
-                      textInputContainer: {
-                        backgroundColor: 'transparent',
-                        borderTopWidth: 0,
-                        borderBottomWidth: 0,
-                        width: '100%',
-                      },
-                      textInput: {
-                        marginLeft: 0,
-                        marginRight: 0,
-                        height: 42,
-                        color: '#333',
-                        fontSize: 15,
-                        backgroundColor: '#fff',
-                        borderRadius: 8,
-                        paddingHorizontal: 10,
-                        borderWidth: 1,
-                        borderColor: '#ddd',
-                        fontFamily: undefined,
-                      },
-                      predefinedPlacesDescription: {
-                        color: '#1faadb',
-                      },
-                      listView: {
-                        backgroundColor: 'white',
-                        borderRadius: 8,
-                        marginTop: 4,
-                        elevation: 5,
-                        shadowColor: '#000',
-                        shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.25,
-                        shadowRadius: 4,
-                        maxHeight: 200,
-                      },
-                      row: {
-                        backgroundColor: 'white',
-                        padding: 13,
-                        height: 44,
-                        flexDirection: 'row',
-                      },
-                      separator: {
-                        height: 0.5,
-                        backgroundColor: '#c8c7cc',
-                      },
-                      description: {
-                        color: '#333',
-                        fontSize: 15,
-                      },
-                      loader: {
-                        flexDirection: 'row',
-                        justifyContent: 'flex-end',
-                        height: 20,
-                      },
-                    }}
-                    textInputProps={{
-                      onChangeText: (text) => {
-                        handleFieldChange('departure', text);
-                      },
-                      placeholderTextColor: '#999',
-                      autoCorrect: false,
-                      autoCapitalize: 'none',
-                    }}
-                    enablePoweredByContainer={false}
-                    fetchDetails={false}
-                    debounce={200}
-                    minLength={2}
-                    keyboardShouldPersistTaps="handled"
-                    listUnderlayColor="transparent"
                   />
                 </View>
 
@@ -720,13 +571,18 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
                 <View style={styles.dateRow}>
                   <View style={styles.dateField}>
                     <Text style={styles.fieldLabel}>Start Date *</Text>
-                    <TextInput
-                      style={[styles.textInput, formErrors.startDate && styles.inputError]}
-                      value={formData.startDate}
-                      onChangeText={(text) => handleFieldChange('startDate', text)}
-                      placeholder="YYYY-MM-DD"
-                      placeholderTextColor="#999"
-                    />
+                    <TouchableOpacity
+                      style={[styles.datePickerButton, formErrors.startDate && styles.inputError]}
+                      onPress={() => {
+                        setShowEndDatePicker(false);
+                        setShowStartDatePicker(true);
+                      }}
+                    >
+                      <Text style={styles.datePickerButtonText}>
+                        {formData.startDate ? format(parse(formData.startDate, 'yyyy-MM-dd', new Date()), 'MMM d, yyyy') : 'Select date'}
+                      </Text>
+                      <Text style={styles.calendarIcon}>📅</Text>
+                    </TouchableOpacity>
                     {formErrors.startDate && (
                       <Text style={styles.fieldError}>{formErrors.startDate}</Text>
                     )}
@@ -734,18 +590,129 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
 
                   <View style={styles.dateField}>
                     <Text style={styles.fieldLabel}>End Date *</Text>
-                    <TextInput
-                      style={[styles.textInput, formErrors.endDate && styles.inputError]}
-                      value={formData.endDate}
-                      onChangeText={(text) => handleFieldChange('endDate', text)}
-                      placeholder="YYYY-MM-DD"
-                      placeholderTextColor="#999"
-                    />
+                    <TouchableOpacity
+                      style={[styles.datePickerButton, formErrors.endDate && styles.inputError]}
+                      onPress={() => {
+                        setShowStartDatePicker(false);
+                        setShowEndDatePicker(true);
+                      }}
+                    >
+                      <Text style={styles.datePickerButtonText}>
+                        {formData.endDate ? format(parse(formData.endDate, 'yyyy-MM-dd', new Date()), 'MMM d, yyyy') : 'Select date'}
+                      </Text>
+                      <Text style={styles.calendarIcon}>📅</Text>
+                    </TouchableOpacity>
                     {formErrors.endDate && (
                       <Text style={styles.fieldError}>{formErrors.endDate}</Text>
                     )}
                   </View>
                 </View>
+
+                {/* Start Date Picker Modal */}
+                {showStartDatePicker && (
+                  Platform.OS === 'ios' ? (
+                    <Modal
+                      visible={showStartDatePicker}
+                      transparent={true}
+                      animationType="slide"
+                      onRequestClose={() => setShowStartDatePicker(false)}
+                    >
+                      <View style={styles.datePickerModalOverlay}>
+                        <View style={styles.datePickerModalContent}>
+                          <View style={styles.datePickerHeader}>
+                            <TouchableOpacity onPress={() => setShowStartDatePicker(false)}>
+                              <Text style={styles.datePickerCancelText}>Cancel</Text>
+                            </TouchableOpacity>
+                            <Text style={styles.datePickerTitle}>Select Start Date</Text>
+                            <TouchableOpacity onPress={() => setShowStartDatePicker(false)}>
+                              <Text style={styles.datePickerDoneText}>Done</Text>
+                            </TouchableOpacity>
+                          </View>
+                          <DateTimePicker
+                            value={formData.startDate ? parse(formData.startDate, 'yyyy-MM-dd', new Date()) : new Date()}
+                            mode="date"
+                            display="spinner"
+                            onChange={(event, selectedDate) => {
+                              if (event.type === 'dismissed') {
+                                setShowStartDatePicker(false);
+                              } else if (selectedDate) {
+                                handleFieldChange('startDate', format(selectedDate, 'yyyy-MM-dd'));
+                              }
+                            }}
+                            minimumDate={new Date()}
+                            textColor="#000000"
+                          />
+                        </View>
+                      </View>
+                    </Modal>
+                  ) : (
+                    <DateTimePicker
+                      value={formData.startDate ? parse(formData.startDate, 'yyyy-MM-dd', new Date()) : new Date()}
+                      mode="date"
+                      display="default"
+                      onChange={(event, selectedDate) => {
+                        setShowStartDatePicker(false);
+                        if (event.type !== 'dismissed' && selectedDate) {
+                          handleFieldChange('startDate', format(selectedDate, 'yyyy-MM-dd'));
+                        }
+                      }}
+                      minimumDate={new Date()}
+                    />
+                  )
+                )}
+
+                {/* End Date Picker Modal */}
+                {showEndDatePicker && (
+                  Platform.OS === 'ios' ? (
+                    <Modal
+                      visible={showEndDatePicker}
+                      transparent={true}
+                      animationType="slide"
+                      onRequestClose={() => setShowEndDatePicker(false)}
+                    >
+                      <View style={styles.datePickerModalOverlay}>
+                        <View style={styles.datePickerModalContent}>
+                          <View style={styles.datePickerHeader}>
+                            <TouchableOpacity onPress={() => setShowEndDatePicker(false)}>
+                              <Text style={styles.datePickerCancelText}>Cancel</Text>
+                            </TouchableOpacity>
+                            <Text style={styles.datePickerTitle}>Select End Date</Text>
+                            <TouchableOpacity onPress={() => setShowEndDatePicker(false)}>
+                              <Text style={styles.datePickerDoneText}>Done</Text>
+                            </TouchableOpacity>
+                          </View>
+                          <DateTimePicker
+                            value={formData.endDate ? parse(formData.endDate, 'yyyy-MM-dd', new Date()) : addDays(new Date(), 7)}
+                            mode="date"
+                            display="spinner"
+                            onChange={(event, selectedDate) => {
+                              if (event.type === 'dismissed') {
+                                setShowEndDatePicker(false);
+                              } else if (selectedDate) {
+                                handleFieldChange('endDate', format(selectedDate, 'yyyy-MM-dd'));
+                              }
+                            }}
+                            minimumDate={formData.startDate ? parse(formData.startDate, 'yyyy-MM-dd', new Date()) : new Date()}
+                            textColor="#000000"
+                          />
+                        </View>
+                      </View>
+                    </Modal>
+                  ) : (
+                    <DateTimePicker
+                      value={formData.endDate ? parse(formData.endDate, 'yyyy-MM-dd', new Date()) : addDays(new Date(), 7)}
+                      mode="date"
+                      display="default"
+                      onChange={(event, selectedDate) => {
+                        setShowEndDatePicker(false);
+                        if (event.type !== 'dismissed' && selectedDate) {
+                          handleFieldChange('endDate', format(selectedDate, 'yyyy-MM-dd'));
+                        }
+                      }}
+                      minimumDate={formData.startDate ? parse(formData.startDate, 'yyyy-MM-dd', new Date()) : new Date()}
+                    />
+                  )
+                )}
 
                 {/* Trip Type */}
                 <View style={styles.field}>
@@ -1335,6 +1302,27 @@ const styles = StyleSheet.create({
   dateField: {
     flex: 1
   },
+  datePickerButton: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: '#ffffff',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    minHeight: 48
+  },
+  datePickerButtonText: {
+    fontSize: 15,
+    color: '#111827',
+    flex: 1
+  },
+  calendarIcon: {
+    fontSize: 18,
+    marginLeft: 8
+  },
   pickerContainer: {
     borderWidth: 1,
     borderColor: '#D1D5DB',
@@ -1601,6 +1589,42 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#6B7280',
     fontWeight: '500'
+  },
+  // Date Picker Modal Styles
+  datePickerModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end'
+  },
+  datePickerModalContent: {
+    backgroundColor: '#ffffff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 20
+  },
+  datePickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB'
+  },
+  datePickerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827'
+  },
+  datePickerCancelText: {
+    fontSize: 16,
+    color: '#6B7280',
+    fontWeight: '500'
+  },
+  datePickerDoneText: {
+    fontSize: 16,
+    color: '#3B82F6',
+    fontWeight: '600'
   },
   // Legacy dropdown menu styles (still used for flight class/stop pref)
   dropdownMenu: {

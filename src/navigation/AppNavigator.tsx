@@ -15,6 +15,7 @@ import AuthPage from '../pages/AuthPage';
 import ProfilePage from '../pages/ProfilePage';
 import SearchPage from '../pages/SearchPage';
 import ChatPage from '../pages/ChatPage';
+import ChatThreadScreen from '../pages/ChatThreadScreen';
 import VideoFeedPage from '../pages/VideoFeedPage';
 
 // Context Providers
@@ -127,7 +128,10 @@ const RootNavigator: React.FC = () => {
     >
       {user ? (
         // User is authenticated - show main app
-        <Stack.Screen name="MainApp" component={MainTabNavigator} />
+        <>
+          <Stack.Screen name="MainApp" component={MainTabNavigator} />
+          <Stack.Screen name="ChatThread" component={ChatThreadScreen} />
+        </>
       ) : (
         // User is not authenticated - show single auth page
         <Stack.Screen name="Auth" component={AuthPage} />

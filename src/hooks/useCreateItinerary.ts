@@ -51,8 +51,13 @@ export const useCreateItinerary = () => {
       const endDate = new Date(formData.endDate);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
+      
+      // Normalize startDate to midnight for fair comparison
+      const startDateNormalized = new Date(startDate);
+      startDateNormalized.setHours(0, 0, 0, 0);
 
-      if (startDate < today) {
+      // Allow today's date (startDate >= today)
+      if (startDateNormalized < today) {
         errors.push({ field: 'startDate', message: 'Start date cannot be in the past' });
       }
 
@@ -157,18 +162,12 @@ export const useCreateItinerary = () => {
         },
       };
 
-      console.log('[useCreateItinerary] Creating itinerary:', { 
-        destination: payload.destination,
-        isEditing: !!editingItineraryId 
-      });
-
       const result: any = await createItineraryFn({ itinerary: payload });
 
       if (!result.data?.success) {
         throw new Error(result.data?.error || 'Failed to create itinerary');
       }
 
-      console.log('[useCreateItinerary] Success:', result.data.data?.id);
       return { success: true, data: result.data.data };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create itinerary';

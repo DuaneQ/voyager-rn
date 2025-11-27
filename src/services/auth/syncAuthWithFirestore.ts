@@ -18,8 +18,7 @@ import { auth, signInWithCustomToken, getCloudFunctionUrl } from '../../config/f
  */
 export async function syncAuthWithFirestore(idToken: string): Promise<void> {
   try {
-    console.log('[syncAuthWithFirestore] Requesting custom token...');
-    
+
     // Call Cloud Function via direct HTTP (Firebase Functions SDK incompatible with RN)
     const functionUrl = getCloudFunctionUrl('getCustomToken');
     
@@ -38,14 +37,11 @@ export async function syncAuthWithFirestore(idToken: string): Promise<void> {
     if (!customToken) {
       throw new Error('No custom token returned from function');
     }
-    
-    console.log('[syncAuthWithFirestore] Signing in to Auth SDK with custom token...');
-    
+
     // Sign in to Firebase Auth SDK with custom token
     // This enables Firestore to attach auth tokens to requests
     await signInWithCustomToken(auth, customToken);
-    
-    console.log('[syncAuthWithFirestore] Successfully synced with Firestore');
+
   } catch (error) {
     console.error('[syncAuthWithFirestore] Error syncing auth:', error);
     throw error;
@@ -58,7 +54,7 @@ export async function syncAuthWithFirestore(idToken: string): Promise<void> {
 export async function signOutFromFirestore(): Promise<void> {
   try {
     await auth.signOut();
-    console.log('[syncAuthWithFirestore] Signed out from Auth SDK');
+    
   } catch (error) {
     console.error('[syncAuthWithFirestore] Error signing out:', error);
   }

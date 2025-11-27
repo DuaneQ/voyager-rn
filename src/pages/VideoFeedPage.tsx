@@ -91,7 +91,7 @@ const VideoFeedPage: React.FC = () => {
             allowsRecordingIOS: false,
             interruptionModeIOS: 2, // Duck other audio (standard for video apps)
           });
-          console.log('✅ iOS audio session configured: playsInSilentMode=true');
+          
         } else if (Platform.OS === 'android') {
           await Audio.setAudioModeAsync({
             allowsRecordingIOS: false,
@@ -102,7 +102,7 @@ const VideoFeedPage: React.FC = () => {
             shouldDuckAndroid: false,
             playThroughEarpieceAndroid: false,
           });
-          console.log('✅ Android audio session configured');
+          
         }
       } catch (e) {
         console.warn('⚠️ Audio.setAudioModeAsync failed:', e);

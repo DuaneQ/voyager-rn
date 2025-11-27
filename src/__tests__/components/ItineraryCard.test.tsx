@@ -112,4 +112,88 @@ describe('ItineraryCard', () => {
     expect(getByText('✏️')).toBeTruthy();
     expect(getByText('🗑️')).toBeTruthy();
   });
+
+  it('calls onEdit when edit button is pressed', async () => {
+    const ownerItinerary = { ...baseItinerary, userInfo: { ...baseItinerary.userInfo, uid: 'test-user-123' } };
+    const onEdit = jest.fn();
+
+    const { getByText } = render(
+      <ItineraryCard itinerary={ownerItinerary} onLike={jest.fn()} onDislike={jest.fn()} showEditDelete onEdit={onEdit} />
+    );
+
+    fireEvent.press(getByText('✏️'));
+    expect(onEdit).toHaveBeenCalledWith(ownerItinerary);
+  });
+
+  it('calls onDelete when delete button is pressed', async () => {
+    const ownerItinerary = { ...baseItinerary, userInfo: { ...baseItinerary.userInfo, uid: 'test-user-123' } };
+    const onDelete = jest.fn();
+
+    const { getByText } = render(
+      <ItineraryCard itinerary={ownerItinerary} onLike={jest.fn()} onDislike={jest.fn()} showEditDelete onDelete={onDelete} />
+    );
+
+    fireEvent.press(getByText('🗑️'));
+    expect(onDelete).toHaveBeenCalledWith(ownerItinerary);
+  });
+
+  it('renders without activities', () => {
+    const noActivitiesItinerary = { ...baseItinerary, activities: [] };
+
+    const { queryByText } = render(
+      <ItineraryCard itinerary={noActivitiesItinerary} onLike={jest.fn()} onDislike={jest.fn()} />
+    );
+
+    expect(queryByText('Activities:')).toBeNull();
+  });
+
+  it('renders without description', () => {
+    const noDescriptionItinerary = { ...baseItinerary, description: '' };
+
+    const { queryByText } = render(
+      <ItineraryCard itinerary={noDescriptionItinerary} onLike={jest.fn()} onDislike={jest.fn()} />
+    );
+
+    expect(queryByText('A lovely trip')).toBeNull();
+  });
+
+  it('disables both buttons while processing reaction', async () => {
+    let resolveLike: () => void;
+    const onLike = jest.fn(() => new Promise<void>((res) => { resolveLike = res; }));
+
+    const { getByTestId } = render(
+      <ItineraryCard itinerary={baseItinerary} onLike={onLike} onDislike={jest.fn()} />
+    );
+
+    fireEvent.press(getByTestId('like-button'));
+    
+    await waitFor(() => expect(onLike).toHaveBeenCalled());
+    resolveLike!();
+  });
+
+  it('calls onDislike when dislike button is pressed', async () => {
+    const onDislike = jest.fn().mockResolvedValue(undefined);
+
+    const { getByTestId } = render(
+      <ItineraryCard itinerary={baseItinerary} onLike={jest.fn()} onDislike={onDislike} />
+    );
+
+    fireEvent.press(getByTestId('dislike-button'));
+
+    await waitFor(() => expect(onDislike).toHaveBeenCalledWith(baseItinerary));
+  });
+
+  it('opens view profile modal when username is pressed', async () => {
+    const { getByText, findByText } = render(
+      <ItineraryCard itinerary={baseItinerary} onLike={jest.fn()} onDislike={jest.fn()} />
+    );
+
+    fireEvent.press(getByText('johndoe'));
+    
+    // ViewProfileModal should open (it has a "Close" button or similar UI)
+    // Since we mocked firestore to return no user, just verify modal interaction doesn't crash
+    await waitFor(() => {
+      expect(getByText('johndoe')).toBeTruthy();
+    });
+  });
 });

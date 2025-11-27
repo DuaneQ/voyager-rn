@@ -34,15 +34,12 @@ export const useDeleteItinerary = () => {
     try {
   const deleteItineraryFn = httpsCallable((firebaseCfg as any).functions, 'deleteItinerary');
 
-      console.log('[useDeleteItinerary] Deleting itinerary:', itineraryId);
-
       const result: any = await deleteItineraryFn({ id: itineraryId });
 
       if (!result.data?.success) {
         throw new Error(result.data?.error || 'Failed to delete itinerary');
       }
 
-      console.log('[useDeleteItinerary] Successfully deleted');
       return { success: true };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete itinerary';

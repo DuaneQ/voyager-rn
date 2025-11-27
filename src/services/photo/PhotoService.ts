@@ -69,17 +69,15 @@ export class PhotoService implements IPhotoService {
     userId: string,
     onProgress?: (progress: UploadProgress) => void
   ): Promise<UploadResult> {
-    console.log('[PhotoService] uploadPhoto called:', { uri, slot, userId });
+    
     try {
       // Step 1: Validate and compress image
-      console.log('[PhotoService] Step 1: Compressing image...');
+      
       const compressedUri = await this.compressImage(uri);
-      console.log('[PhotoService] Image compressed:', compressedUri);
 
       // Step 2: Convert URI to Blob
-      console.log('[PhotoService] Step 2: Converting to blob...');
+      
       const blob = await this.uriToBlob(compressedUri);
-      console.log('[PhotoService] Blob created, size:', blob.size);
 
       // Step 3: Validate file size
       if (!validateFileSize(blob.size)) {
@@ -94,25 +92,23 @@ export class PhotoService implements IPhotoService {
       const timestamp = Date.now();
       const filename = `${slot}-${timestamp}.jpg`;
       const storagePath = STORAGE_PATHS.getPath(userId, slot, filename);
-      console.log('[PhotoService] Step 4: Storage path:', storagePath);
+      
       const storageRef = ref(this.storage, storagePath);
-      console.log('[PhotoService] Storage ref created');
 
       // Step 5: Upload with progress tracking
-      console.log('[PhotoService] Step 5: Starting upload...');
+      
       const uploadTask = uploadBytesResumable(storageRef, blob, {
         contentType: 'image/jpeg',
       });
-      console.log('[PhotoService] Upload task created');
 
       // Track upload progress
       const downloadURL = await new Promise<string>((resolve, reject) => {
-        console.log('[PhotoService] Setting up upload listeners...');
+        
         uploadTask.on(
           'state_changed',
           (snapshot) => {
             const percent = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-            console.log('[PhotoService] Upload progress:', percent + '%');
+            
             if (onProgress) {
               const progress: UploadProgress = {
                 percent,
@@ -124,19 +120,19 @@ export class PhotoService implements IPhotoService {
           },
           (error) => {
             // Handle upload errors
-            console.log('[PhotoService] Upload error:', error);
+            
             const uploadError = this.handleUploadError(error);
             reject(uploadError);
           },
           async () => {
             // Upload completed successfully
-            console.log('[PhotoService] Upload complete, getting download URL...');
+            
             try {
               const url = await getDownloadURL(uploadTask.snapshot.ref);
-              console.log('[PhotoService] Download URL obtained:', url);
+              
               resolve(url);
             } catch (error) {
-              console.log('[PhotoService] Failed to get download URL:', error);
+              
               reject(
                 new PhotoUploadError(
                   PhotoUploadErrorType.UPLOAD_FAILED,
@@ -264,6 +260,23 @@ export class PhotoService implements IPhotoService {
    */
   private async uriToBlob(uri: string): Promise<Blob> {
     try {
+      // On Android, use XMLHttpRequest to avoid axios interceptor issues with file:// URIs
+      if (Platform.OS === 'android' && uri.startsWith('file://')) {
+        return await new Promise<Blob>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.onload = function() {
+            resolve(xhr.response);
+          };
+          xhr.onerror = function() {
+            reject(new Error('Failed to read file via XMLHttpRequest'));
+          };
+          xhr.responseType = 'blob';
+          xhr.open('GET', uri, true);
+          xhr.send(null);
+        });
+      }
+      
+      // On iOS or web, use fetch
       const response = await fetch(uri);
       const blob = await response.blob();
       return blob;
