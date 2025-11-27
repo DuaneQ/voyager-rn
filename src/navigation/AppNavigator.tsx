@@ -18,6 +18,9 @@ import ChatPage from '../pages/ChatPage';
 import ChatThreadScreen from '../pages/ChatThreadScreen';
 import VideoFeedPage from '../pages/VideoFeedPage';
 
+// Guards
+import { TermsGuard } from '../components/auth/TermsGuard';
+
 // Context Providers
 import { AlertProvider } from '../context/AlertContext';
 import { useUserProfile } from '../context/UserProfileContext';
@@ -108,6 +111,15 @@ const MainTabNavigator: React.FC = () => {
 // Removed: Old AuthStackNavigator with separate Login/Register screens
 // Now using single AuthScreen that handles all auth flows internally
 
+// Main Tab Navigator wrapped with TermsGuard
+const GuardedMainTabNavigator: React.FC = () => {
+  return (
+    <TermsGuard>
+      <MainTabNavigator />
+    </TermsGuard>
+  );
+};
+
 // Main Stack Navigator with conditional rendering based on auth state
 const RootNavigator: React.FC = () => {
   const { user, status } = useAuth();
@@ -127,9 +139,9 @@ const RootNavigator: React.FC = () => {
       screenOptions={{ headerShown: false }}
     >
       {user ? (
-        // User is authenticated - show main app
+        // User is authenticated - check terms acceptance before showing main app
         <>
-          <Stack.Screen name="MainApp" component={MainTabNavigator} />
+          <Stack.Screen name="MainApp" component={GuardedMainTabNavigator} />
           <Stack.Screen name="ChatThread" component={ChatThreadScreen} />
         </>
       ) : (

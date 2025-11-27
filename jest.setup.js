@@ -95,10 +95,12 @@ jest.mock('firebase/firestore', () => ({
   doc: jest.fn(() => ({})),
   setDoc: jest.fn(async () => Promise.resolve()),
   getDoc: jest.fn(async () => ({ exists: () => false, data: () => null })),
+  updateDoc: jest.fn(async () => Promise.resolve()),
   collection: jest.fn(() => ({})),
   query: jest.fn(() => ({})),
   where: jest.fn(() => ({})),
   getDocs: jest.fn(async () => ({ docs: [] })),
+  serverTimestamp: jest.fn(() => new Date()),
 }));
 
 // Mock React Navigation

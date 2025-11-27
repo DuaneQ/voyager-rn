@@ -87,6 +87,7 @@ jest.mock('../../pages/VideoFeedPage', () => {
 // Mock context providers
 const mockUseAuth = jest.fn();
 const mockUseUserProfile = jest.fn();
+const mockUseTermsAcceptance = jest.fn();
 
 jest.mock('../../context/AuthContext', () => ({
   useAuth: () => mockUseAuth(),
@@ -105,13 +106,35 @@ jest.mock('../../context/AlertContext', () => ({
   }),
 }));
 
+jest.mock('../../hooks/useTermsAcceptance', () => ({
+  useTermsAcceptance: () => mockUseTermsAcceptance(),
+}));
+
+// Mock TermsGuard component
+jest.mock('../../components/auth/TermsGuard', () => ({
+  TermsGuard: ({ children }: any) => {
+    const { useTermsAcceptance } = require('../../hooks/useTermsAcceptance');
+    const { hasAcceptedTerms, isLoading } = useTermsAcceptance();
+    
+    if (isLoading) {
+      return null;
+    }
+    
+    if (!hasAcceptedTerms) {
+      return null; // Block children when terms not accepted
+    }
+    
+    return children;
+  },
+}));
+
 // Mock profile validation
 jest.mock('../../utils/profileValidation', () => ({
   validateProfileForItinerary: jest.fn(() => ({ isValid: true, errors: [] })),
 }));
 
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { render, waitFor } from '@testing-library/react-native';
 import AppNavigator from '../../navigation/AppNavigator';
 import { validateProfileForItinerary } from '../../utils/profileValidation';
 
@@ -128,6 +151,12 @@ describe('AppNavigator', () => {
       isLoading: false,
       error: null,
       loadUserProfile: jest.fn(),
+    });
+    mockUseTermsAcceptance.mockReturnValue({
+      hasAcceptedTerms: true,
+      isLoading: false,
+      error: null,
+      acceptTerms: jest.fn(),
     });
   });
 
@@ -339,6 +368,252 @@ describe('AppNavigator', () => {
       const { getByTestId } = render(<AppNavigator />);
 
       expect(getByTestId('auth-page')).toBeTruthy();
+    });
+  });
+
+  describe('TermsGuard Integration', () => {
+    it('should not invoke TermsGuard when user is not authenticated', () => {
+      mockUseAuth.mockReturnValue({
+        user: null,
+        status: 'unauthenticated',
+        signOut: jest.fn(),
+      });
+
+      render(<AppNavigator />);
+
+      // TermsGuard should not be rendered, so hook should not be called
+      expect(mockUseTermsAcceptance).not.toHaveBeenCalled();
+    });
+
+    it('should invoke TermsGuard when user is authenticated', () => {
+      mockUseAuth.mockReturnValue({
+        user: { uid: 'test-user-123', email: 'test@example.com' },
+        status: 'authenticated',
+        signOut: jest.fn(),
+      });
+      mockUseUserProfile.mockReturnValue({
+        userProfile: { uid: 'test-user-123', username: 'testuser' },
+        isLoading: false,
+        error: null,
+        loadUserProfile: jest.fn(),
+      });
+
+      render(<AppNavigator />);
+
+      // TermsGuard should be invoked for authenticated users
+      expect(mockUseTermsAcceptance).toHaveBeenCalled();
+    });
+
+    it('should show main app when terms are accepted', () => {
+      mockUseAuth.mockReturnValue({
+        user: { uid: 'test-user-123', email: 'test@example.com' },
+        status: 'authenticated',
+        signOut: jest.fn(),
+      });
+      mockUseUserProfile.mockReturnValue({
+        userProfile: { uid: 'test-user-123', username: 'testuser' },
+        isLoading: false,
+        error: null,
+        loadUserProfile: jest.fn(),
+      });
+      mockUseTermsAcceptance.mockReturnValue({
+        hasAcceptedTerms: true,
+        isLoading: false,
+        error: null,
+        acceptTerms: jest.fn(),
+      });
+
+      const { getByTestId } = render(<AppNavigator />);
+
+      // Main app should be accessible
+      expect(getByTestId('search-page')).toBeTruthy();
+    });
+
+    it('should block main app when terms are not accepted', () => {
+      mockUseAuth.mockReturnValue({
+        user: { uid: 'test-user-123', email: 'test@example.com' },
+        status: 'authenticated',
+        signOut: jest.fn(),
+      });
+      mockUseUserProfile.mockReturnValue({
+        userProfile: { uid: 'test-user-123', username: 'testuser' },
+        isLoading: false,
+        error: null,
+        loadUserProfile: jest.fn(),
+      });
+      mockUseTermsAcceptance.mockReturnValue({
+        hasAcceptedTerms: false,
+        isLoading: false,
+        error: null,
+        acceptTerms: jest.fn(),
+      });
+
+      const { queryByTestId } = render(<AppNavigator />);
+
+      // Main app should be blocked (TermsGuard prevents rendering children)
+      expect(queryByTestId('search-page')).toBeNull();
+      expect(queryByTestId('profile-page')).toBeNull();
+      expect(queryByTestId('chat-page')).toBeNull();
+    });
+
+    it('should check terms acceptance on every authenticated app launch', () => {
+      mockUseAuth.mockReturnValue({
+        user: { uid: 'test-user-123', email: 'test@example.com' },
+        status: 'authenticated',
+        signOut: jest.fn(),
+      });
+      mockUseUserProfile.mockReturnValue({
+        userProfile: { uid: 'test-user-123', username: 'testuser' },
+        isLoading: false,
+        error: null,
+        loadUserProfile: jest.fn(),
+      });
+
+      const { rerender } = render(<AppNavigator />);
+      
+      expect(mockUseTermsAcceptance).toHaveBeenCalledTimes(1);
+
+      // Simulate app restart
+      rerender(<AppNavigator />);
+
+      // Should check terms again
+      expect(mockUseTermsAcceptance).toHaveBeenCalledTimes(2);
+    });
+
+    it('should enforce terms check before profile validation', async () => {
+      const mockProfile = {
+        uid: 'test-user-123',
+        username: 'testuser',
+        email: 'test@example.com',
+      };
+
+      mockUseAuth.mockReturnValue({
+        user: { uid: 'test-user-123', email: 'test@example.com' },
+        status: 'authenticated',
+        signOut: jest.fn(),
+      });
+      mockUseUserProfile.mockReturnValue({
+        userProfile: mockProfile,
+        isLoading: false,
+        error: null,
+        loadUserProfile: jest.fn(),
+      });
+      mockUseTermsAcceptance.mockReturnValue({
+        hasAcceptedTerms: false,
+        isLoading: false,
+        error: null,
+        acceptTerms: jest.fn(),
+      });
+
+      (validateProfileForItinerary as jest.Mock).mockReturnValue({ 
+        isValid: false, 
+        errors: ['Missing required fields'] 
+      });
+
+      render(<AppNavigator />);
+
+      // Terms acceptance should be checked
+      expect(mockUseTermsAcceptance).toHaveBeenCalled();
+
+      // Profile validation should not run because terms block the app
+      // (ProfileValidationWrapper only runs when children are rendered)
+      await waitFor(() => {
+        expect(validateProfileForItinerary).not.toHaveBeenCalled();
+      });
+    });
+
+    it('should allow profile validation after terms are accepted', async () => {
+      const mockProfile = {
+        uid: 'test-user-123',
+        username: 'testuser',
+        email: 'test@example.com',
+        gender: 'Male',
+        dob: '1990-01-01',
+      };
+
+      mockUseAuth.mockReturnValue({
+        user: { uid: 'test-user-123', email: 'test@example.com' },
+        status: 'authenticated',
+        signOut: jest.fn(),
+      });
+      mockUseUserProfile.mockReturnValue({
+        userProfile: mockProfile,
+        isLoading: false,
+        error: null,
+        loadUserProfile: jest.fn(),
+      });
+      mockUseTermsAcceptance.mockReturnValue({
+        hasAcceptedTerms: true,
+        isLoading: false,
+        error: null,
+        acceptTerms: jest.fn(),
+      });
+
+      (validateProfileForItinerary as jest.Mock).mockReturnValue({ 
+        isValid: true, 
+        errors: [] 
+      });
+
+      const { findByTestId } = render(<AppNavigator />);
+
+      // Wait for main app to render
+      await findByTestId('search-page');
+
+      // Both terms check and profile validation should happen
+      expect(mockUseTermsAcceptance).toHaveBeenCalled();
+      // Profile validation happens in useEffect after render
+      expect(mockUseAuth).toHaveBeenCalled();
+      expect(mockUseUserProfile).toHaveBeenCalled();
+    });
+
+    it('should handle terms loading state', () => {
+      mockUseAuth.mockReturnValue({
+        user: { uid: 'test-user-123', email: 'test@example.com' },
+        status: 'authenticated',
+        signOut: jest.fn(),
+      });
+      mockUseUserProfile.mockReturnValue({
+        userProfile: { uid: 'test-user-123', username: 'testuser' },
+        isLoading: false,
+        error: null,
+        loadUserProfile: jest.fn(),
+      });
+      mockUseTermsAcceptance.mockReturnValue({
+        hasAcceptedTerms: false,
+        isLoading: true,
+        error: null,
+        acceptTerms: jest.fn(),
+      });
+
+      const { queryByTestId } = render(<AppNavigator />);
+
+      // Main app should not be accessible while checking terms
+      expect(queryByTestId('search-page')).toBeNull();
+    });
+
+    it('should handle terms acceptance errors', () => {
+      mockUseAuth.mockReturnValue({
+        user: { uid: 'test-user-123', email: 'test@example.com' },
+        status: 'authenticated',
+        signOut: jest.fn(),
+      });
+      mockUseUserProfile.mockReturnValue({
+        userProfile: { uid: 'test-user-123', username: 'testuser' },
+        isLoading: false,
+        error: null,
+        loadUserProfile: jest.fn(),
+      });
+      mockUseTermsAcceptance.mockReturnValue({
+        hasAcceptedTerms: false,
+        isLoading: false,
+        error: new Error('Failed to check terms acceptance'),
+        acceptTerms: jest.fn(),
+      });
+
+      const { queryByTestId } = render(<AppNavigator />);
+
+      // Main app should not be accessible on error
+      expect(queryByTestId('search-page')).toBeNull();
     });
   });
 });
