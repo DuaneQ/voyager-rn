@@ -39,8 +39,6 @@ interface ChatConnectionItemProps {
   onDelete?: (connectionId: string) => void;
 }
 
-const DEFAULT_AVATAR = require('../../../assets/images/default-profile.png');
-
 /**
  * Get the other user's info from the connection (1:1 chat).
  */

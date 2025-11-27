@@ -58,15 +58,10 @@ function withGooglePlacesAndroid(config) {
     if (existingMetaDataIndex !== -1) {
       // Update existing entry
       application['meta-data'][existingMetaDataIndex] = metaDataEntry;
-      console.log('✅ Updated existing Google Places API key in AndroidManifest.xml');
     } else {
       // Add new entry
       application['meta-data'].push(metaDataEntry);
-      console.log('✅ Added Google Places API key to AndroidManifest.xml');
     }
-
-    console.log(`   API Key: ${apiKey.substring(0, 20)}...`);
-
     return config;
   });
 }
