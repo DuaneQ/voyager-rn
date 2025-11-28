@@ -226,3 +226,24 @@ try {
 } catch (e) {
   // ignore if react-native cannot be required in this environment
 }
+
+// Mock react-native-safe-area-context for Jest environment
+try {
+  jest.mock('react-native-safe-area-context', () => {
+    const React = require('react');
+    const { View } = require('react-native');
+
+    const SafeAreaView = ({ children, style, ...props }) => React.createElement(View, { style, ...props }, children);
+
+    return {
+      SafeAreaView,
+      useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+      initialWindowMetrics: {
+        frame: { x: 0, y: 0, width: 375, height: 667 },
+        insets: { top: 0, bottom: 0, left: 0, right: 0 },
+      },
+    };
+  }, { virtual: true });
+} catch (e) {
+  // ignore if jest.mock is not available in this environment
+}
