@@ -95,10 +95,12 @@ jest.mock('firebase/firestore', () => ({
   doc: jest.fn(() => ({})),
   setDoc: jest.fn(async () => Promise.resolve()),
   getDoc: jest.fn(async () => ({ exists: () => false, data: () => null })),
+  updateDoc: jest.fn(async () => Promise.resolve()),
   collection: jest.fn(() => ({})),
   query: jest.fn(() => ({})),
   where: jest.fn(() => ({})),
   getDocs: jest.fn(async () => ({ docs: [] })),
+  serverTimestamp: jest.fn(() => new Date()),
 }));
 
 // Mock React Navigation
@@ -223,4 +225,25 @@ try {
   // access to native TurboModules during jest startup.
 } catch (e) {
   // ignore if react-native cannot be required in this environment
+}
+
+// Mock react-native-safe-area-context for Jest environment
+try {
+  jest.mock('react-native-safe-area-context', () => {
+    const React = require('react');
+    const { View } = require('react-native');
+
+    const SafeAreaView = ({ children, style, ...props }) => React.createElement(View, { style, ...props }, children);
+
+    return {
+      SafeAreaView,
+      useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+      initialWindowMetrics: {
+        frame: { x: 0, y: 0, width: 375, height: 667 },
+        insets: { top: 0, bottom: 0, left: 0, right: 0 },
+      },
+    };
+  }, { virtual: true });
+} catch (e) {
+  // ignore if jest.mock is not available in this environment
 }

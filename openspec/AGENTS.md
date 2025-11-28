@@ -78,6 +78,18 @@ After deployment, create separate PR to:
 - Use `openspec show [spec]` to review current state
 - If request is ambiguous, ask 1–2 clarifying questions before scaffolding
 
+### Prompt Engineering Checklist
+
+When producing prompts or interacting with AI agents for proposals/changes, follow this checklist to ensure consistent, auditable outputs:
+
+- **Role:** Declare the agent role and seniority (e.g., "Senior React Native Engineer").
+- **Output:** Define the exact output format (e.g., "Return a unified patch (git diff) with tests and a 3-line summary").
+- **Constraints:** List allowed libraries, coding style rules, security/data handling rules, and any disallowed patterns.
+- **Context:** Include only necessary file paths and concise summaries of relevant files (description → inputs → outputs → constraints).
+- **Plan:** Request a short step-by-step plan and wait for plan approval before asking for code.
+- **Reuse:** Ask the agent to produce modular, reusable functions and record them in an asset registry or notes.
+- **Ask When Unsure:** If the agent is uncertain, it must list its assumptions and ask clarifying questions rather than guessing.
+
 ### Search Guidance
 - Enumerate specs: `openspec spec list --long` (or `--json` for scripts)
 - Enumerate changes: `openspec list` (or `openspec change list --json` - deprecated but available)
