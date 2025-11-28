@@ -14,6 +14,7 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface TermsOfServiceModalProps {
   visible: boolean;
@@ -28,6 +29,7 @@ export const TermsOfServiceModal: React.FC<TermsOfServiceModalProps> = ({
   onDecline,
   loading = false,
 }) => {
+  const insets = useSafeAreaInsets();
   const [hasReadTerms, setHasReadTerms] = useState(false);
   const [acknowledgments, setAcknowledgments] = useState({
     readTerms: false,
@@ -101,7 +103,13 @@ export const TermsOfServiceModal: React.FC<TermsOfServiceModalProps> = ({
           <Text style={styles.subtitle}>You must accept all terms to use TravalPass</Text>
         </View>
 
-        <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={[
+            styles.contentContainer,
+            { paddingBottom: Math.max(insets.bottom + 24, 32) },
+          ]}
+        >
           <View style={styles.warningBox}>
             <Text style={styles.warningTitle}>⚠️ IMPORTANT LEGAL NOTICE</Text>
             <Text style={styles.warningText}>
@@ -190,7 +198,13 @@ export const TermsOfServiceModal: React.FC<TermsOfServiceModalProps> = ({
           </View>
         </ScrollView>
 
-        <View style={styles.footer}>
+        <SafeAreaView
+          edges={["bottom"]}
+          style={[
+            styles.footer,
+            { paddingBottom: Math.max(insets.bottom + 12, 16) },
+          ]}
+        >
           <TouchableOpacity
             style={[styles.button, styles.declineButton]}
             onPress={onDecline}
@@ -216,7 +230,7 @@ export const TermsOfServiceModal: React.FC<TermsOfServiceModalProps> = ({
               <Text style={styles.acceptButtonText}>I Accept These Terms</Text>
             )}
           </TouchableOpacity>
-        </View>
+        </SafeAreaView>
       </View>
     </Modal>
   );
