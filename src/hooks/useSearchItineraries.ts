@@ -67,13 +67,27 @@ const useSearchItineraries = () => {
       return await searchFn(payload);
     };
 
+    // Validate dates before conversion to prevent crashes
+    if (!currentUserItinerary.startDate || !currentUserItinerary.endDate) {
+      throw new Error('Itinerary must have start and end dates');
+    }
+
+    // Convert dates to timestamps safely
+    const startTimestamp = new Date(currentUserItinerary.startDate).getTime();
+    const endTimestamp = new Date(currentUserItinerary.endDate).getTime();
+
+    // Validate timestamps are valid numbers
+    if (isNaN(startTimestamp) || isNaN(endTimestamp)) {
+      throw new Error('Invalid dates in itinerary');
+    }
+
     const res: any = await callRpc({
       destination: currentUserItinerary.destination,
       gender: currentUserItinerary.gender,
       status: currentUserItinerary.status,
       sexualOrientation: currentUserItinerary.sexualOrientation,
-      minStartDay: new Date(currentUserItinerary.startDate!).getTime(),
-      maxEndDay: new Date(currentUserItinerary.endDate!).getTime(),
+      minStartDay: startTimestamp,
+      maxEndDay: endTimestamp,
       pageSize: PAGE_SIZE,
       excludedIds: Array.from(viewedItinerariesRef.current),
       blockedUserIds: currentUserItinerary.userInfo?.blocked || [],

@@ -32,6 +32,8 @@ import { UserProfileContext } from '../context/UserProfileContext';
 import { useMessages } from '../hooks/chat/useMessages';
 import { useConnections } from '../hooks/chat/useConnections';
 import { ViewProfileModal } from '../components/modals/ViewProfileModal';
+import { ManageChatMembersModal } from '../components/modals/ManageChatMembersModal';
+import { AddUserToChatModal } from '../components/modals/AddUserToChatModal';
 import { getChatService } from '../services/chat/ChatService';
 import { connectionRepository } from '../repositories/ConnectionRepository';
 
@@ -56,6 +58,9 @@ const ChatThreadScreen: React.FC = () => {
   const [viewProfileUserId, setViewProfileUserId] = useState<string | null>(null);
   const [viewProfileVisible, setViewProfileVisible] = useState(false);
   const [isUserScrolling, setIsUserScrolling] = useState(false);
+  const [manageMembersVisible, setManageMembersVisible] = useState(false);
+  const [addUsersVisible, setAddUsersVisible] = useState(false);
+  const [removeLoading, setRemoveLoading] = useState<string | null>(null);
 
   const flatListRef = useRef<FlatList>(null);
   const currentUserId = userProfile?.uid;
@@ -71,6 +76,14 @@ const ChatThreadScreen: React.FC = () => {
   // Build userId -> username and avatar maps from connection itineraries
   const [userIdToUsername, setUserIdToUsername] = useState<Record<string, string>>({});
   const [userIdToAvatar, setUserIdToAvatar] = useState<Record<string, string>>({});
+
+  // Build chat members list for ManageChatMembersModal
+  const chatMembers = connection?.users.map(uid => ({
+    uid,
+    username: userIdToUsername[uid] || uid,
+    avatarUrl: userIdToAvatar[uid],
+    addedBy: connection.addedUsers?.find(au => au.userId === uid)?.addedBy,
+  })) || [];
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -239,6 +252,45 @@ const ChatThreadScreen: React.FC = () => {
     }
   };
 
+  // Handle adding members to chat
+  const handleAddMembers = async (userIds: string[]) => {
+    if (!currentUserId) return;
+
+    try {
+      const chatService = getChatService();
+      
+      // Add each user to the connection
+      for (const userId of userIds) {
+        await chatService.addMember(connectionId, userId, currentUserId);
+      }
+
+      Alert.alert('Success', `Added ${userIds.length} user${userIds.length !== 1 ? 's' : ''} to the chat`);
+      setAddUsersVisible(false);
+    } catch (error) {
+      console.error('[ChatThread] Error adding members:', error);
+      Alert.alert('Error', 'Failed to add members to chat');
+    }
+  };
+
+  // Handle removing a member from chat
+  const handleRemoveMember = async (userIdToRemove: string) => {
+    if (!currentUserId) return;
+
+    setRemoveLoading(userIdToRemove);
+
+    try {
+      const chatService = getChatService();
+      await chatService.removeMember(connectionId, userIdToRemove, currentUserId);
+      
+      Alert.alert('Success', 'User removed from chat');
+    } catch (error) {
+      console.error('[ChatThread] Error removing member:', error);
+      Alert.alert('Error', 'Failed to remove user from chat');
+    } finally {
+      setRemoveLoading(null);
+    }
+  };
+
   const formatMessageTime = (timestamp: any): string => {
     if (!timestamp) return '';
     
@@ -361,14 +413,16 @@ const ChatThreadScreen: React.FC = () => {
             )}
             
             {/* Image if present */}
-            {item.imageUrl && (
+            {item.imageUrl && item.imageUrl.startsWith('http') && (
               <Image
                 source={{ uri: item.imageUrl }}
                 style={styles.messageImage}
                 resizeMode="cover"
                 onError={(e) => {
-                  // Only log actual errors, suppress for old corrupted uploads
-                  if (!e.nativeEvent.error?.toString().includes('unknown image format')) {
+                  // Suppress known errors from corrupted/invalid images
+                  const errorStr = e.nativeEvent.error?.toString() || '';
+                  if (!errorStr.includes('unknown image format') && 
+                      !errorStr.includes('Error decoding image data')) {
                     console.error('[ChatThread] Image load error for message:', item.id, e.nativeEvent.error);
                   }
                 }}
@@ -452,7 +506,22 @@ const ChatThreadScreen: React.FC = () => {
             })}
           </View>
           
-          <View style={styles.headerSpacer} />
+          {/* Manage Members Button */}
+          <View style={styles.headerSpacer}>
+            <TouchableOpacity
+              onPress={() => setManageMembersVisible(true)}
+              style={styles.manageMembersButton}
+              accessibilityLabel="Manage chat members"
+              accessibilityRole="button"
+            >
+              <Text style={styles.manageMembersIcon}>👥</Text>
+              {connection?.users && connection.users.length > 2 && (
+                <View style={styles.memberCountBadge}>
+                  <Text style={styles.memberCountText}>{connection.users.length}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
 
         {loading ? (
@@ -571,6 +640,34 @@ const ChatThreadScreen: React.FC = () => {
           userId={viewProfileUserId}
         />
       )}
+
+      {/* Manage Members Modal */}
+      <ManageChatMembersModal
+        visible={manageMembersVisible}
+        onClose={() => setManageMembersVisible(false)}
+        members={chatMembers}
+        currentUserId={currentUserId || ''}
+        onRemoveMember={handleRemoveMember}
+        onAddMembers={() => {
+          setManageMembersVisible(false);
+          setAddUsersVisible(true);
+        }}
+        onViewProfile={(uid) => {
+          setManageMembersVisible(false);
+          setViewProfileUserId(uid);
+          setViewProfileVisible(true);
+        }}
+        removeLoading={removeLoading}
+      />
+
+      {/* Add Users Modal */}
+      <AddUserToChatModal
+        visible={addUsersVisible}
+        onClose={() => setAddUsersVisible(false)}
+        onAdd={handleAddMembers}
+        currentUserId={currentUserId || ''}
+        currentChatUserIds={connection?.users || []}
+      />
     </View>
   );
 };
@@ -642,6 +739,32 @@ const styles = StyleSheet.create({
   },
   headerSpacer: {
     width: 60,
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+  },
+  manageMembersButton: {
+    padding: 8,
+    position: 'relative',
+  },
+  manageMembersIcon: {
+    fontSize: 24,
+  },
+  memberCountBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: '#ff3b30',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  memberCountText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '600',
   },
   centerContent: {
     flex: 1,

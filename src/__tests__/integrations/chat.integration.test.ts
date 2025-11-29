@@ -21,9 +21,7 @@ import { describe, expect, test } from '@jest/globals';
 
 describe('ChatService integration (emulator) - DISABLED', () => {
   test('Chat integration tests are disabled - see file header for details', () => {
-    console.log('⚠️  Chat integration tests are disabled');
-    console.log('   Chat is tested via unit tests in ChatService.test.ts');
-    console.log('   Integration tests are for Cloud Functions only');
+    // informational messages removed
     expect(true).toBe(true);
   });
 });

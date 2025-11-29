@@ -4,18 +4,26 @@
  * Reads data from UserProfileContext
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { ProfileStats } from './ProfileStats';
 import { PersonalInfoAccordion } from './PersonalInfoAccordion';
 import { LifestyleAccordion } from './LifestyleAccordion';
 import { TravelPreferencesAccordion } from './TravelPreferencesAccordion';
+import { RatingsModal } from '../modals/RatingsModal';
 import { useUserProfile } from '../../context/UserProfileContext';
 import { useAuth } from '../../context/AuthContext';
+import { useConnections } from '../../hooks/chat/useConnections';
+import { useAllItineraries } from '../../hooks/useAllItineraries';
 
 export const ProfileTab: React.FC = () => {
   const { userProfile } = useUserProfile();
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
+  const [ratingsModalVisible, setRatingsModalVisible] = useState(false);
+  
+  // Fetch real data using hooks
+  const { connections: connectionsData } = useConnections(user?.uid || null);
+  const { itineraries } = useAllItineraries();
 
   // Calculate age from date of birth
   const calculateAge = (dob: string | undefined): number | undefined => {
@@ -32,23 +40,26 @@ export const ProfileTab: React.FC = () => {
 
   const age = calculateAge(userProfile?.dob);
 
-  // Placeholder values for unimplemented features
-  const connections = 0;
-  const trips = 0;
-  const rating = 0.0;
-  const ratingCount = 0;
+  // Calculate real values from fetched data
+  const connections = connectionsData?.length || 0;
+  const trips = itineraries?.length || 0;
+  const rating = userProfile?.ratings?.average || 0;
+  const ratingCount = userProfile?.ratings?.count || 0;
 
-  // Handler placeholders (future navigation)
+  // Handler placeholders (future navigation to detailed views)
   const handleConnectionsPress = () => {
-    Alert.alert('Coming Soon', 'Connections feature is not yet implemented');
+    // TODO: Navigate to Connections/Chat tab
+    Alert.alert('Connections', `You have ${connections} connection${connections !== 1 ? 's' : ''}`);
   };
 
   const handleTripsPress = () => {
-    Alert.alert('Coming Soon', 'Trips feature is not yet implemented');
+    // TODO: Navigate to Trips/Itineraries list
+    Alert.alert('Trips', `You have ${trips} trip${trips !== 1 ? 's' : ''}`);
   };
 
   const handleRatingPress = () => {
-    Alert.alert('Coming Soon', 'Ratings feature is not yet implemented');
+    // Open RatingsModal to show detailed reviews
+    setRatingsModalVisible(true);
   };
 
   const handleEditPreferences = () => {
@@ -122,6 +133,14 @@ export const ProfileTab: React.FC = () => {
       >
         <Text style={styles.signOutText}>Sign Out</Text>
       </TouchableOpacity>
+
+      {/* Ratings Modal */}
+      <RatingsModal
+        visible={ratingsModalVisible}
+        onClose={() => setRatingsModalVisible(false)}
+        ratings={userProfile?.ratings}
+        currentUserId={user?.uid}
+      />
     </ScrollView>
   );
 };

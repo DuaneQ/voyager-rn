@@ -18,6 +18,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface ProfileHeaderProps {
   displayName: string;
@@ -48,6 +49,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   uploadProgress = 0,
   isUploading = false,
 }) => {
+  const insets = useSafeAreaInsets();
   const [showPhotoMenu, setShowPhotoMenu] = useState(false);
   const [enlargedPhoto, setEnlargedPhoto] = useState(false);
   const [isPickerLoading, setIsPickerLoading] = useState(false);
@@ -125,7 +127,13 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   };
 
   return (
-    <View style={styles.container} testID="profile-header">
+    <View
+      style={[
+        styles.container,
+        { paddingTop: Math.max(insets.top + 12, 20) },
+      ]}
+      testID="profile-header"
+    >
       {/* Profile Photo */}
       <View style={styles.photoContainer}>
         <TouchableOpacity onPress={handlePhotoTap} activeOpacity={0.8} disabled={isPickerLoading || isUploading}>

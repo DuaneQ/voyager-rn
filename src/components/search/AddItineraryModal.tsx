@@ -19,6 +19,7 @@ import RangeSlider from '../common/RangeSlider';
 import { AndroidPickerModal } from '../common/AndroidPickerModal';
 import { useCreateItinerary } from '../../hooks/useCreateItinerary';
 import { useDeleteItinerary } from '../../hooks/useDeleteItinerary';
+import { formatDateLocal } from '../../utils/formatDate';
 import {
   ManualItineraryFormData,
   GENDER_OPTIONS,
@@ -206,8 +207,8 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
 
     const formData: ManualItineraryFormData = {
       destination: destination.trim(),
-      startDate: startDate.toISOString().split('T')[0],
-      endDate: endDate.toISOString().split('T')[0],
+      startDate: formatDateLocal(startDate),
+      endDate: formatDateLocal(endDate),
       description: description.trim(),
       activities,
       gender,

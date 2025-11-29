@@ -62,6 +62,9 @@ export const TermsGuard: React.FC<TermsGuardProps> = ({
   };
 
   // Show loading state while checking terms status
+  // IMPORTANT: Don't show the modal while loading - wait until we know for sure
+  // the user hasn't accepted terms. This prevents the modal from flashing on screen
+  // for users who have already accepted.
   if (isLoading) {
     if (fallback) {
       return <>{fallback}</>;
@@ -90,14 +93,15 @@ export const TermsGuard: React.FC<TermsGuardProps> = ({
     return <>{children}</>;
   }
 
-  // Show terms modal if not accepted
+  // Only show terms modal if we're NOT loading AND terms haven't been accepted
+  // This ensures the modal only appears for users who genuinely need to accept terms
   return (
     <>
       <TermsOfServiceModal
-        visible={true}
+        visible={!isLoading && !hasAcceptedTerms}
         onAccept={handleAcceptTerms}
         onDecline={handleDeclineTerms}
-        loading={isLoading}
+        loading={false}
       />
       
       <View style={styles.centerContainer}>

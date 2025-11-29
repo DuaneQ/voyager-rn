@@ -134,18 +134,21 @@ const RootNavigator: React.FC = () => {
   }
 
   // Conditionally render auth or main app based on user authentication
+  // IMPORTANT: Only show main app if user is authenticated AND email is verified
+  const isAuthenticated = user && user.emailVerified;
+  
   return (
     <Stack.Navigator
       screenOptions={{ headerShown: false }}
     >
-      {user ? (
-        // User is authenticated - check terms acceptance before showing main app
+      {isAuthenticated ? (
+        // User is authenticated and verified - check terms acceptance before showing main app
         <>
           <Stack.Screen name="MainApp" component={GuardedMainTabNavigator} />
           <Stack.Screen name="ChatThread" component={ChatThreadScreen} />
         </>
       ) : (
-        // User is not authenticated - show single auth page
+        // User is not authenticated or email not verified - show auth page
         <Stack.Screen name="Auth" component={AuthPage} />
       )}
     </Stack.Navigator>

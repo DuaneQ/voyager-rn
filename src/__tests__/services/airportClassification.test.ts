@@ -11,11 +11,7 @@ describe('ReactNativeAirportService - classification checks', () => {
       return { code: c, airport: a };
     }));
 
-    // Print out for manual inspection in test output
-    results.forEach(r => {
-      // eslint-disable-next-line no-console
-      console.log(`${r.code}:`, r.airport ? `${r.airport.name} | country=${r.airport.country} | isInternational=${r.airport.isInternational}` : 'NOT FOUND');
-    });
+    // (output logging removed)
 
     // Basic assertions: known airports should be found and flagged international
     results.forEach(r => {
