@@ -7,7 +7,7 @@ import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { AddUserToChatModal } from '../../../components/modals/AddUserToChatModal';
 import { getEligibleUsersForChat } from '../../../utils/getEligibleUsersForChat';
-import { getDoc, getFirestore, doc } from 'firebase/firestore';
+import { getDoc, getFirestore } from 'firebase/firestore';
 
 // Mock dependencies
 jest.mock('../../../utils/getEligibleUsersForChat');

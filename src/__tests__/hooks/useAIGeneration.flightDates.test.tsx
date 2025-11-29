@@ -131,7 +131,7 @@ describe('useAIGeneration - Flight Date Field Mapping', () => {
     };
 
     await waitFor(async () => {
-      const response = await result.current.generateItinerary(request);
+      await result.current.generateItinerary(request);
     }, { timeout: 10000 });
 
     // Verify searchFlights was called with correct date field names

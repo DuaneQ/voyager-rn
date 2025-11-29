@@ -19,6 +19,7 @@ import RangeSlider from '../common/RangeSlider';
 import { AndroidPickerModal } from '../common/AndroidPickerModal';
 import { useCreateItinerary } from '../../hooks/useCreateItinerary';
 import { useDeleteItinerary } from '../../hooks/useDeleteItinerary';
+import { formatDateLocal } from '../../utils/formatDate';
 import {
   ManualItineraryFormData,
   GENDER_OPTIONS,
@@ -189,14 +190,6 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
   // Remove activity
   const handleRemoveActivity = (index: number) => {
     setActivities(activities.filter((_, i) => i !== index));
-  };
-
-  // Helper function to format date in local timezone (YYYY-MM-DD)
-  const formatDateLocal = (date: Date): string => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
   };
 
   // Save itinerary

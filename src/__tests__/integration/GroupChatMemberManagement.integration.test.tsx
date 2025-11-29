@@ -8,7 +8,6 @@
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import ChatThreadScreen from '../../pages/ChatThreadScreen';
-import { useRoute, useNavigation } from '@react-navigation/native';
 import { useConnections } from '../../hooks/chat/useConnections';
 import { useMessages } from '../../hooks/chat/useMessages';
 

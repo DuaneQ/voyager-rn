@@ -65,7 +65,7 @@ describe('ChatThreadScreen UI — initial page size', () => {
     // Provide a simple userProfile via provider
     const userProfileValue = { userProfile: { uid: 'currentUser' }, setUserProfile: () => {}, updateUserProfile: () => {}, updateProfile: async () => {}, isLoading: false, loading: false } as any;
 
-    const { getAllByText, queryByText } = render(
+    const { getAllByText } = render(
       <UserProfileContext.Provider value={userProfileValue}>
         <ChatThreadScreen />
       </UserProfileContext.Provider>

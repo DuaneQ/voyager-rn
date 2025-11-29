@@ -92,7 +92,7 @@ describe('AddItineraryModal - Timezone-Safe Date Formatting', () => {
   });
 
   it('should format dates using local timezone, not UTC', async () => {
-    const { getByTestId, getByText } = render(
+    const { getByTestId } = render(
       <AddItineraryModal
         visible={true}
         onClose={mockOnClose}
