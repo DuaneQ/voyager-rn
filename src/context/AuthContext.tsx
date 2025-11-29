@@ -156,31 +156,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       // Check if user profile exists; if not, create it (for users who registered
       // manually and are signing in for the first time after email verification)
-      if (Platform.OS !== 'web') {
+      // Note: Platform.OS is always 'ios' | 'android' | 'windows' | 'macos' in React Native (never 'web')
+      try {
+        await UserProfileService.getUserProfile(firebaseUser.uid);
+        // Profile exists - continue normally
+      } catch (error: any) {
+        // Profile doesn't exist - create it now
+        // At this point the Auth SDK is signed in (via syncWithAuthSDK in signInWithEmailAndPassword),
+        // so it's safe to call the Cloud Function
+        const defaultProfile = {
+          username: firebaseUser.email?.split('@')[0] || 'user',
+          email: firebaseUser.email || '',
+          photos: [],
+          subscriptionType: 'free',
+          subscriptionStartDate: null,
+          subscriptionEndDate: null,
+          subscriptionCancelled: false,
+          stripeCustomerId: null,
+        };
+        
         try {
-          await UserProfileService.getUserProfile(firebaseUser.uid);
-          // Profile exists - continue normally
-        } catch (error: any) {
-          // Profile doesn't exist - create it now
-          // At this point the Auth SDK is signed in (via syncWithAuthSDK in signInWithEmailAndPassword),
-          // so it's safe to call the Cloud Function
-          const defaultProfile = {
-            username: firebaseUser.email?.split('@')[0] || 'user',
-            email: firebaseUser.email || '',
-            photos: [],
-            subscriptionType: 'free',
-            subscriptionStartDate: null,
-            subscriptionEndDate: null,
-            subscriptionCancelled: false,
-            stripeCustomerId: null,
-          };
-          
-          try {
-            await UserProfileService.createUserProfile(firebaseUser.uid, defaultProfile as any);
-          } catch (profileError) {
-            console.error('Failed to create user profile on first sign-in:', profileError);
-            // Don't throw - let the user sign in anyway and handle missing profile in the app
-          }
+          await UserProfileService.createUserProfile(firebaseUser.uid, defaultProfile as any);
+        } catch (profileError) {
+          console.error('Failed to create user profile on first sign-in:', profileError);
+          // Don't throw - let the user sign in anyway and handle missing profile in the app
         }
       }
       

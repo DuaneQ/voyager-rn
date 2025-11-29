@@ -121,13 +121,13 @@ const mockUseSearchItinerariesHook = jest.fn(() => ({
 // Mock useAllItineraries
 jest.mock('../../hooks/useAllItineraries', () => ({
   __esModule: true,
-  useAllItineraries: (...args: any[]) => mockUseAllItineraries(...args),
+  useAllItineraries: jest.fn(() => mockUseAllItineraries()),
 }));
 
 // Mock useSearchItineraries
 jest.mock('../../hooks/useSearchItineraries', () => ({
   __esModule: true,
-  default: (...args: any[]) => mockUseSearchItinerariesHook(...args),
+  default: jest.fn(() => mockUseSearchItinerariesHook()),
 }));
 
 describe('SearchPage - useFocusEffect Refresh', () => {
