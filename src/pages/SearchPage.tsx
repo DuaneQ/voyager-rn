@@ -26,6 +26,7 @@ import {
   ScrollView,
   ImageBackground,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { getAuthInstance } from '../config/firebaseConfig';
 import { Itinerary } from '../types/Itinerary';
 import ItineraryCard from '../components/forms/ItineraryCard';
@@ -110,6 +111,15 @@ const SearchPage: React.FC = () => {
 
     return unsubscribe;
   }, []);
+
+  // Refresh itineraries whenever user navigates to this screen
+  useFocusEffect(
+    React.useCallback(() => {
+      if (userId) {
+        refreshItineraries();
+      }
+    }, [userId, refreshItineraries])
+  );
 
   const handleItinerarySelect = async (id: string) => {
     setSelectedItineraryId(id);

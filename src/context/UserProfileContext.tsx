@@ -70,8 +70,12 @@ const UserProfileProvider: React.FC<UserProfileProviderProps> = ({ children }) =
       setIsLoading(true);
       try {
         const userId = user?.uid;
+        const emailVerified = user?.emailVerified;
 
-        if (userId) {
+        // Only load profile if user exists AND email is verified
+        // Unverified users (just after sign-up) should not trigger profile load
+        // because the Auth SDK isn't signed in yet (no syncWithAuthSDK call)
+        if (userId && emailVerified) {
           // Get profile data via Cloud Function with retry logic for new accounts
 
           let profile;

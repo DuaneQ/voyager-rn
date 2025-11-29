@@ -192,7 +192,7 @@ describe('AppNavigator', () => {
   describe('Authenticated State', () => {
     it('should render main app tabs when user is authenticated', () => {
       mockUseAuth.mockReturnValue({
-        user: { uid: 'test-user-123', email: 'test@example.com' },
+        user: { uid: 'test-user-123', email: 'test@example.com', emailVerified: true },
         status: 'authenticated',
         signOut: jest.fn(),
       });
@@ -210,7 +210,7 @@ describe('AppNavigator', () => {
 
     it('should not render AuthPage when authenticated', () => {
       mockUseAuth.mockReturnValue({
-        user: { uid: 'test-user-123', email: 'test@example.com' },
+        user: { uid: 'test-user-123', email: 'test@example.com', emailVerified: true },
         status: 'authenticated',
         signOut: jest.fn(),
       });
@@ -249,7 +249,7 @@ describe('AppNavigator', () => {
       };
 
       mockUseAuth.mockReturnValue({
-        user: { uid: 'test-user-123', email: 'test@example.com' },
+        user: { uid: 'test-user-123', email: 'test@example.com', emailVerified: true },
         status: 'authenticated',
         signOut: jest.fn(),
       });
@@ -276,7 +276,7 @@ describe('AppNavigator', () => {
 
     it('should not validate profile when profile is loading', () => {
       mockUseAuth.mockReturnValue({
-        user: { uid: 'test-user-123', email: 'test@example.com' },
+        user: { uid: 'test-user-123', email: 'test@example.com', emailVerified: true },
         status: 'authenticated',
         signOut: jest.fn(),
       });
@@ -321,7 +321,7 @@ describe('AppNavigator', () => {
       };
 
       mockUseAuth.mockReturnValue({
-        user: { uid: 'test-user-123', email: 'test@example.com' },
+        user: { uid: 'test-user-123', email: 'test@example.com', emailVerified: true },
         status: 'authenticated',
         signOut: jest.fn(),
       });
@@ -351,7 +351,7 @@ describe('AppNavigator', () => {
   describe('Navigation Structure', () => {
     it('should provide navigation container', () => {
       mockUseAuth.mockReturnValue({
-        user: { uid: 'test-user-123', email: 'test@example.com' },
+        user: { uid: 'test-user-123', email: 'test@example.com', emailVerified: true },
         status: 'authenticated',
         signOut: jest.fn(),
       });
@@ -387,7 +387,7 @@ describe('AppNavigator', () => {
 
     it('should invoke TermsGuard when user is authenticated', () => {
       mockUseAuth.mockReturnValue({
-        user: { uid: 'test-user-123', email: 'test@example.com' },
+        user: { uid: 'test-user-123', email: 'test@example.com', emailVerified: true },
         status: 'authenticated',
         signOut: jest.fn(),
       });
@@ -406,7 +406,7 @@ describe('AppNavigator', () => {
 
     it('should show main app when terms are accepted', () => {
       mockUseAuth.mockReturnValue({
-        user: { uid: 'test-user-123', email: 'test@example.com' },
+        user: { uid: 'test-user-123', email: 'test@example.com', emailVerified: true },
         status: 'authenticated',
         signOut: jest.fn(),
       });
@@ -431,7 +431,7 @@ describe('AppNavigator', () => {
 
     it('should block main app when terms are not accepted', () => {
       mockUseAuth.mockReturnValue({
-        user: { uid: 'test-user-123', email: 'test@example.com' },
+        user: { uid: 'test-user-123', email: 'test@example.com', emailVerified: true },
         status: 'authenticated',
         signOut: jest.fn(),
       });
@@ -458,7 +458,7 @@ describe('AppNavigator', () => {
 
     it('should check terms acceptance on every authenticated app launch', () => {
       mockUseAuth.mockReturnValue({
-        user: { uid: 'test-user-123', email: 'test@example.com' },
+        user: { uid: 'test-user-123', email: 'test@example.com', emailVerified: true },
         status: 'authenticated',
         signOut: jest.fn(),
       });
@@ -488,7 +488,7 @@ describe('AppNavigator', () => {
       };
 
       mockUseAuth.mockReturnValue({
-        user: { uid: 'test-user-123', email: 'test@example.com' },
+        user: { uid: 'test-user-123', email: 'test@example.com', emailVerified: true },
         status: 'authenticated',
         signOut: jest.fn(),
       });
@@ -532,7 +532,7 @@ describe('AppNavigator', () => {
       };
 
       mockUseAuth.mockReturnValue({
-        user: { uid: 'test-user-123', email: 'test@example.com' },
+        user: { uid: 'test-user-123', email: 'test@example.com', emailVerified: true },
         status: 'authenticated',
         signOut: jest.fn(),
       });
@@ -568,7 +568,7 @@ describe('AppNavigator', () => {
 
     it('should handle terms loading state', () => {
       mockUseAuth.mockReturnValue({
-        user: { uid: 'test-user-123', email: 'test@example.com' },
+        user: { uid: 'test-user-123', email: 'test@example.com', emailVerified: true },
         status: 'authenticated',
         signOut: jest.fn(),
       });
@@ -593,7 +593,7 @@ describe('AppNavigator', () => {
 
     it('should handle terms acceptance errors', () => {
       mockUseAuth.mockReturnValue({
-        user: { uid: 'test-user-123', email: 'test@example.com' },
+        user: { uid: 'test-user-123', email: 'test@example.com', emailVerified: true },
         status: 'authenticated',
         signOut: jest.fn(),
       });

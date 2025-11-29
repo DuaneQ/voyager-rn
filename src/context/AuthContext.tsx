@@ -154,6 +154,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       const firebaseUser = await FirebaseAuthService.signInWithEmailAndPassword(email, password);
       
+      // Check if user profile exists; if not, create it (for users who registered
+      // manually and are signing in for the first time after email verification)
+      if (Platform.OS !== 'web') {
+        try {
+          await UserProfileService.getUserProfile(firebaseUser.uid);
+          // Profile exists - continue normally
+        } catch (error: any) {
+          // Profile doesn't exist - create it now
+          // At this point the Auth SDK is signed in (via syncWithAuthSDK in signInWithEmailAndPassword),
+          // so it's safe to call the Cloud Function
+          const defaultProfile = {
+            username: firebaseUser.email?.split('@')[0] || 'user',
+            email: firebaseUser.email || '',
+            photos: [],
+            subscriptionType: 'free',
+            subscriptionStartDate: null,
+            subscriptionEndDate: null,
+            subscriptionCancelled: false,
+            stripeCustomerId: null,
+          };
+          
+          try {
+            await UserProfileService.createUserProfile(firebaseUser.uid, defaultProfile as any);
+          } catch (profileError) {
+            console.error('Failed to create user profile on first sign-in:', profileError);
+            // Don't throw - let the user sign in anyway and handle missing profile in the app
+          }
+        }
+      }
+      
       // User state will be set by onAuthStateChanged listener
       setStatus('authenticated');
     } catch (error: any) {
@@ -185,7 +215,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
       }
       
-      // Create user profile via Cloud Function (avoids Firestore permissions issues)
+      // Prepare a default user profile payload. NOTE: Do NOT create the
+      // profile on mobile immediately after REST sign-up because the
+      // Firebase Auth SDK is not yet signed in. Cloud Functions invoked via
+      // the Functions SDK (httpsCallable) require the Auth SDK to have a
+      // signed-in user so the request can include the auth context. Creating
+      // the profile too early results in "User must be authenticated" errors.
       const userProfile = {
         username,
         email,
@@ -196,14 +231,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         subscriptionCancelled: false,
         stripeCustomerId: null,
       };
-      
-      await UserProfileService.createUserProfile(newUser.uid, userProfile as any);
 
-      // Send email verification
       if (Platform.OS === 'web') {
+        // On web the Firebase SDK is active and the user is signed in, so
+        // it's safe to create the profile immediately and send verification.
+        await UserProfileService.createUserProfile(newUser.uid, userProfile as any);
         await webSendEmailVerification((newUser as any));
       } else {
+        // On mobile (Expo) we rely on the REST API for manual sign-up.
+        // IMPORTANT: Do NOT call the Cloud Function (which depends on the
+        // Auth SDK being signed in) yet. The profile will be created later
+        // when the user verifies their email and signs in.
+        // 
+        // Flow: Send verification email → keep user session (unverified) → user verifies
+        //       → signs in → profile created on first sign-in
         await FirebaseAuthService.sendEmailVerification(newUser!.idToken);
+        
+        // DON'T sign out - keep the user session so "Resend Verification" works
+        // The user won't be authenticated in the app because emailVerified is false
+        // and sign-in checks for email verification before allowing access
       }
 
       setStatus('idle');
@@ -261,14 +307,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const currentUser = FirebaseAuthService.getCurrentUser();
       
       if (currentUser) {
-        
+        // User session exists (from sign-up) - resend verification
         if (Platform.OS === 'web') {
           await webSendEmailVerification((currentUser as any));
         } else {
-          await FirebaseAuthService.sendEmailVerification(currentUser.idToken);
+          // Get fresh token in case it expired
+          const idToken = await FirebaseAuthService.getIdToken(true);
+          if (!idToken) {
+            throw new Error('Session expired. Please sign up again.');
+          }
+          await FirebaseAuthService.sendEmailVerification(idToken);
         }
-        
         return;
+      }
+      
+      // No current user - check if email was provided
+      if (email) {
+        // This path would require signing in the user first, which we can't do
+        // without their password. Instead, guide them to sign in.
+        throw new Error('Please sign in first to resend verification email');
       }
       
       throw new Error('No user signed in. Please sign in to resend verification email');

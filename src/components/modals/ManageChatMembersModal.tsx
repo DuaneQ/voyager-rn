@@ -28,6 +28,7 @@ import {
   Image,
   ActivityIndicator,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 interface ChatMember {
   uid: string;
@@ -46,8 +47,6 @@ interface ManageChatMembersModalProps {
   onViewProfile: (uid: string) => void;
   removeLoading?: string | null; // uid of member being removed
 }
-
-const DEFAULT_AVATAR = require('../../../assets/images/default-profile.png');
 
 /**
  * Render a single member row.
@@ -78,7 +77,6 @@ const MemberRow: React.FC<{
           <Image
             source={{ uri: member.avatarUrl }}
             style={styles.avatar}
-            defaultSource={DEFAULT_AVATAR}
           />
         ) : (
           <View style={styles.avatarFallback}>
@@ -154,7 +152,11 @@ export const ManageChatMembersModal: React.FC<ManageChatMembersModalProps> = ({
           </View>
 
           {/* Member List */}
-          <ScrollView style={styles.memberList} accessibilityLabel="Member list">
+          <ScrollView 
+            style={styles.memberList} 
+            accessibilityLabel="Member list"
+            keyboardShouldPersistTaps="handled"
+          >
             {members.length === 0 ? (
               <View style={styles.emptyState}>
                 <Text style={styles.emptyText}>No members in this chat yet.</Text>
@@ -189,8 +191,9 @@ export const ManageChatMembersModal: React.FC<ManageChatMembersModalProps> = ({
             onPress={onAddMembers}
             accessibilityLabel="Add existing connections"
             accessibilityRole="button"
+            activeOpacity={0.7}
           >
-            <Text style={styles.addIcon}>👤+</Text>
+            <Ionicons name="person-add" size={20} color="#007AFF" style={styles.addIcon} />
             <Text style={styles.addButtonText}>Add Existing Connections</Text>
           </TouchableOpacity>
         </View>
@@ -323,7 +326,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   addIcon: {
-    fontSize: 18,
     marginRight: 8,
   },
   addButtonText: {

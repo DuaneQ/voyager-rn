@@ -39,7 +39,6 @@ interface ChatHeaderAvatarsProps {
   onAvatarPress?: (participant: Participant) => void;
 }
 
-const DEFAULT_AVATAR = require('../../../assets/images/default-profile.png');
 const AVATAR_SIZE = 36;
 const OVERLAP = 10; // How much avatars overlap
 
@@ -65,7 +64,6 @@ const Avatar: React.FC<{
         <Image
           source={{ uri: participant.photoURL }}
           style={styles.avatar}
-          defaultSource={DEFAULT_AVATAR}
         />
       ) : (
         <View style={styles.avatarFallback}>

@@ -70,7 +70,7 @@ const AuthPage: React.FC = () => {
     setIsSubmitting(true);
     try {
       await signUp(username, email, password);
-      showAlert('success', 'A verification link has been sent to your email for verification.');
+      showAlert('success', 'A verification link has been sent to your email. Please check your inbox and spam folder.');
       setMode('login');
     } catch (error: any) {
       const friendly = mapAuthError(error);
@@ -104,7 +104,7 @@ const AuthPage: React.FC = () => {
     setIsSubmitting(true);
     try {
       await resendVerification();
-      showAlert('success', 'Verification email sent.');
+      showAlert('success', 'Verification email sent. Please check your inbox and spam folder.');
     } catch (error: any) {
       const friendly = mapAuthError(error);
       showAlert('error', friendly.message || 'Failed to resend verification email.');

@@ -25,6 +25,14 @@ import { auth } from '../../config/firebaseConfig';
 import * as useAllItinerariesModule from '../../hooks/useAllItineraries';
 import useSearchItineraries from '../../hooks/useSearchItineraries';
 
+jest.mock('@react-navigation/native', () => ({
+  ...jest.requireActual('@react-navigation/native'),
+  useFocusEffect: jest.fn((callback) => {
+    // Call the callback immediately in tests
+    callback();
+  }),
+}));
+
 jest.mock('../../context/AlertContext', () => ({
   useAlert: () => ({
     showAlert: jest.fn(),
