@@ -9,7 +9,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   TextInput,
-  FlatList,
+  ScrollView,
   Text,
   TouchableOpacity,
   StyleSheet,
@@ -144,21 +144,22 @@ export const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
 
       {showSuggestions && suggestions.length > 0 && (
         <View style={styles.suggestionsList}>
-          <FlatList
-            data={suggestions}
-            keyExtractor={(item) => item.place_id}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.suggestionItem}
-                onPress={() => handleSelectPlace(item)}
-              >
-                <Text style={styles.suggestionText}>{item.description}</Text>
-              </TouchableOpacity>
-            )}
-            ItemSeparatorComponent={() => <View style={styles.separator} />}
+          <ScrollView
             keyboardShouldPersistTaps="handled"
-            nestedScrollEnabled
-          />
+            nestedScrollEnabled={true}
+          >
+            {suggestions.map((item, index) => (
+              <React.Fragment key={item.place_id}>
+                {index > 0 && <View style={styles.separator} />}
+                <TouchableOpacity
+                  style={styles.suggestionItem}
+                  onPress={() => handleSelectPlace(item)}
+                >
+                  <Text style={styles.suggestionText}>{item.description}</Text>
+                </TouchableOpacity>
+              </React.Fragment>
+            ))}
+          </ScrollView>
         </View>
       )}
     </View>

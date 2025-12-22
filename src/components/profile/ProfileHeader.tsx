@@ -102,10 +102,16 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   };
 
   const handleCameraPress = async () => {
+    console.debug('[ProfileHeader] handleCameraPress invoked');
     if (onPhotoPress) {
       setIsPickerLoading(true);
       try {
+        console.debug('[ProfileHeader] calling onPhotoPress()');
         await onPhotoPress();
+        console.debug('[ProfileHeader] onPhotoPress resolved');
+      } catch (err) {
+        console.debug('[ProfileHeader] onPhotoPress threw', err);
+        throw err;
       } finally {
         setIsPickerLoading(false);
       }

@@ -144,7 +144,7 @@ describe('AuthContext (firebase-backed)', () => {
     })).rejects.toThrow('No user signed in. Please sign in to resend verification email');
   });
 
-  it('handles signIn error and resets status to idle', async () => {
+  it('handles signIn error and sets status to error', async () => {
     const error = new Error('Invalid credentials');
     (signInWithEmailAndPassword as jest.Mock).mockRejectedValueOnce(error);
 
@@ -155,7 +155,7 @@ describe('AuthContext (firebase-backed)', () => {
       await result.current.signIn('bad@example.com', 'wrongpass'); 
     })).rejects.toThrow('Invalid credentials');
     
-    expect(result.current.status).toBe('idle');
+    expect(result.current.status).toBe('error');
     expect(result.current.user).toBeNull();
   });
 
@@ -230,7 +230,7 @@ describe('AuthContext - signUp flow', () => {
       await result.current.signUp('testuser', 'existing@example.com', 'password123');
     })).rejects.toThrow('Email already exists');
 
-    expect(result.current.status).toBe('idle');
+    expect(result.current.status).toBe('error');
   });
 
   it('completes signUp without calling signOut (preserves auth for verification)', async () => {

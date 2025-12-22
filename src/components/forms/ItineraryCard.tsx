@@ -150,7 +150,7 @@ const ItineraryCard: React.FC<ItineraryCardProps> = ({
   return (
     <View style={styles.card}>
       <View style={styles.cardContent}>
-        {/* Profile photo and username - Replicating PWA layout */}
+        {/* Profile photo and username - Top and center of card */}
         <View style={styles.profileSection}>
           <TouchableOpacity 
             style={styles.avatarButton}
@@ -166,10 +166,12 @@ const ItineraryCard: React.FC<ItineraryCardProps> = ({
               }}
             />
           </TouchableOpacity>
-          <Text style={styles.username}>
-            {itinerary.userInfo?.username || "Anonymous"}
-          </Text>
         </View>
+
+        {/* Username below profile photo */}
+        <Text style={styles.username}>
+          {itinerary.userInfo?.username || "Anonymous"}
+        </Text>
 
         {/* Destination Title - Matching PWA Typography variant="h5" */}
         <Text style={styles.destination}>
@@ -312,39 +314,37 @@ const styles = StyleSheet.create({
         elevation: 8,
       },
     }),
-    paddingHorizontal: 20,
-    paddingVertical: 24,
     alignSelf: 'center',
     overflow: 'hidden',
   },
   
-  // Card content - Consistent padding
+  // Card content - Consistent padding with profile at top with profile at top
   cardContent: {
     paddingBottom: 16,
-    paddingTop: 8,
+    paddingTop: 24,
+    paddingHorizontal: 20,
     flex: 1,
   },
 
-  // Profile section - Matching PWA profile layout
+  // Profile section - Top and center of card with proper spacing
   profileSection: {
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
+    marginBottom: 12,
   },
 
   avatarButton: {
     padding: 0,
-    marginRight: 12,
   },
 
-  // Avatar - Consistent size
+  // Avatar - Larger and more prominent
   avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    borderWidth: 2,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 3,
     borderColor: '#e0e0e0',
+    backgroundColor: '#f0f0f0',
   },
 
   avatarText: {
@@ -353,11 +353,14 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 
-  // Username - Bold and readable
+  // Username - Bold and readable, centered below avatar
   username: {
     fontWeight: 'bold',
     color: '#333',
-    fontSize: 22,
+    fontSize: 20,
+    textAlign: 'center',
+    marginBottom: 12,
+    marginTop: 4,
   },
 
   // Destination - Prominent headline
@@ -365,7 +368,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: 'bold',
     color: '#000',
-    fontSize: 28,
+    fontSize: 26,
     marginBottom: 16,
     letterSpacing: 0.5,
   },

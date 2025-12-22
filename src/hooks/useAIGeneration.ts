@@ -4,7 +4,7 @@
  */
 
 import { useState, useCallback, useRef } from 'react';
-import { httpsCallable, HttpsCallableResult } from 'firebase/functions';
+import { httpsCallable } from 'firebase/functions';
 import { functions } from '../config/firebaseConfig';
 import { 
   AIGenerationRequest, 
@@ -196,11 +196,10 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
   // has sensible values but does not unexpectedly enable flights.
   const profileWithDefaults = applyProfileDefaults(selectedProfile);
 
-  const transportTypeRaw = profileWithDefaults?.transportation?.primaryMode || 'driving';
+  const transportType = profileWithDefaults?.transportation?.primaryMode || 'driving';
 
-      // Map 'airplane' to 'flight' to match cloud function expectations
-      const transportType = transportTypeRaw === 'airplane' ? 'flight' : transportTypeRaw;
-  const includeFlights = transportType === 'flight' || transportTypeRaw === 'airplane';
+      // Match PWA logic: check for airplane, flight, or air
+      const includeFlights = (transportType as string) === 'airplane' || (transportType as string) === 'flight' || (transportType as string) === 'air';
       
       setProgress(PROGRESS_STAGES.SEARCHING);
       
@@ -468,7 +467,7 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
           origin: sanitizedRequest.departure || '',
           originAirportCode: sanitizedRequest.departureAirportCode || null,
           destinationAirportCode: sanitizedRequest.destinationAirportCode || null,
-          transportType: transportTypeRaw, // Use the original transportType (NOT 'flight')
+          transportType: transportType, // Pass the actual transportType to cloud function
           preferenceProfile: profileWithDefaults || null,
           generationId: generationId,
           mustInclude: sanitizedRequest.mustInclude || [],

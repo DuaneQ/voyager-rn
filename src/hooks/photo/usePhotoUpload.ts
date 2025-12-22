@@ -6,7 +6,7 @@
 
 import { useState, useCallback, useContext } from 'react';
 import * as ImagePicker from 'expo-image-picker';
-import { Alert, Platform } from 'react-native';
+import { Alert, Platform, Linking } from 'react-native';
 
 import {
   PhotoSlot,
@@ -20,6 +20,20 @@ import { photoService } from '../../services/photo/PhotoService';
 import { IMAGE_PICKER_SETTINGS, UPLOAD_RETRY_SETTINGS } from '../../config/storage';
 import { UserProfileContext } from '../../context/UserProfileContext';
 import * as firebaseCfg from '../../config/firebaseConfig';
+
+/**
+ * Module-level permission cache (shared across all hook instances)
+ * This prevents re-requesting permissions that were already granted
+ */
+let cachedMediaLibraryPermission: boolean | null = null;
+
+/**
+ * Reset the module-level permission cache (for testing only)
+ * @internal
+ */
+export const __resetPermissionCache = () => {
+  cachedMediaLibraryPermission = null;
+};
 
 /**
  * Upload state
@@ -70,9 +84,6 @@ export const usePhotoUpload = (userId?: string): UsePhotoUploadReturn => {
   // tests can mutate the mocked auth module (setMockUser / clearMockUser)
   // and the hook will pick up the latest auth state.
 
-  // Cache permission status to avoid repeated checks
-  const [permissionGranted, setPermissionGranted] = useState<boolean | null>(null);
-
   const [uploadState, setUploadState] = useState<UploadState>({
     loading: false,
     progress: 0,
@@ -111,11 +122,15 @@ export const usePhotoUpload = (userId?: string): UsePhotoUploadReturn => {
     }
 
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    // Defensive: treat any non-granted status as denied and offer Settings
     if (status !== 'granted') {
       Alert.alert(
-        'Permission Denied',
-        'Camera permission is required to take photos.',
-        [{ text: 'OK' }]
+        'Camera Permission Required',
+        'This app needs camera access to take photos. Please enable it in Settings.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Open Settings', onPress: () => Linking.openSettings() },
+        ]
       );
       return false;
     }
@@ -123,36 +138,38 @@ export const usePhotoUpload = (userId?: string): UsePhotoUploadReturn => {
   }, []);
 
   /**
-   * Request media library permission (cached)
+   * Request media library permission (cached at module level)
    */
   const requestMediaLibraryPermission = useCallback(async (): Promise<boolean> => {
     if (Platform.OS === 'web') {
       return true; // Web doesn't need explicit permission
     }
 
-    // Use cached result if available
-    if (permissionGranted !== null) {
-      
-      return permissionGranted;
+    // Use module-level cache so permission is shared across all hook instances
+    if (cachedMediaLibraryPermission !== null) {
+      return cachedMediaLibraryPermission;
     }
 
-    // Check permission only once
-    
-    const { status } = await ImagePicker.getMediaLibraryPermissionsAsync();
+    // Request permission (ensures runtime prompt)
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-    const granted = status === 'granted';
-    setPermissionGranted(granted);
-    
+    // Treat 'limited' (iOS 14+) as allowed for selecting photos
+    const granted = status === 'granted' || (status as any) === 'limited';
+    cachedMediaLibraryPermission = granted;
+
     if (!granted) {
       Alert.alert(
-        'Permission Required',
-        'Please enable photo library access in Settings',
-        [{ text: 'OK' }]
+        'Photo Library Permission Required',
+        'This app needs access to your photo library to select photos. You can enable access in Settings.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Open Settings', onPress: () => Linking.openSettings() },
+        ]
       );
     }
-    
+
     return granted;
-  }, [permissionGranted]);
+  }, []);
 
   /**
    * Select and upload a photo with retry logic
@@ -180,9 +197,12 @@ export const usePhotoUpload = (userId?: string): UsePhotoUploadReturn => {
         // Clear previous state
         clearState();
 
+        console.debug('[usePhotoUpload] selectAndUploadPhoto start, slot=', slot);
+
         // Request permission
         const hasPermission = await requestMediaLibraryPermission();
         if (!hasPermission) {
+          console.debug('[usePhotoUpload] media library permission denied');
           return null;
         }
 
@@ -214,6 +234,8 @@ export const usePhotoUpload = (userId?: string): UsePhotoUploadReturn => {
           uploadedUrl: null,
         });
 
+        console.debug('[usePhotoUpload] launching image picker...');
+
         // Upload with retry logic
         const uploadResult = await uploadWithRetry(
           selectedAsset.uri,
@@ -229,6 +251,8 @@ export const usePhotoUpload = (userId?: string): UsePhotoUploadReturn => {
           error: null,
           uploadedUrl: uploadResult.url,
         });
+
+        console.debug('[usePhotoUpload] upload succeeded, url=', uploadResult.url);
 
         // Update user profile context
         if (userProfile) {
