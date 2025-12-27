@@ -48,7 +48,7 @@ const VideoFeedPage: React.FC = () => {
 
   const { uploadState, selectVideo, uploadVideo } = useVideoUpload();
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isMuted, setIsMuted] = useState(true); // Persistent mute state across videos
+  const [isMuted, setIsMuted] = useState(false); // Videos play with audio by default (TikTok/Reels behavior)
   const [commentsModalVisible, setCommentsModalVisible] = useState(false);
   const [selectedVideoForComments, setSelectedVideoForComments] = useState<typeof videos[0] | null>(null);
   const [isScreenFocused, setIsScreenFocused] = useState(true); // Track if screen is focused
@@ -133,39 +133,38 @@ const VideoFeedPage: React.FC = () => {
   }, [videos]);
 
   /**
-   * Handle scroll begin - pause video activation during scroll
+   * Handle scroll begin - immediately deactivate to prevent audio overlap
    */
   const handleScrollBeginDrag = useCallback(() => {
-    console.debug('[VideoFeedPage] scroll begin drag - setting isScrolling=true');
-    isScrollingRef.current = true;
-    if (scrollTimeoutRef.current) {
-      clearTimeout(scrollTimeoutRef.current);
-    }
+    console.debug('[VideoFeedPage] scroll begin - deactivating all videos');
+    
+    // Immediately deactivate current video to stop audio
+    videoPlaybackManager.deactivateAll().catch(err => {
+      console.warn('[VideoFeedPage] Error deactivating on scroll start:', err);
+    });
   }, []);
 
   /**
-   * Handle momentum scroll end - ONLY clear scrolling flag
-   * CRITICAL: Let onViewableItemsChanged handle ALL video index changes
-   * Setting index from both places causes race conditions and crashes
+   * Handle momentum scroll end
    */
   const handleMomentumScrollEnd = useCallback(() => {
-    console.debug('[VideoFeedPage] momentum end - clearing isScrolling flag');
-    
-    // Clear scrolling flag after a delay to allow viewability to settle
-    scrollTimeoutRef.current = setTimeout(() => {
-      isScrollingRef.current = false;
-      console.debug('[VideoFeedPage] isScrolling cleared - viewability can now activate videos');
-    }, 150);
+    console.debug('[VideoFeedPage] momentum end');
+    // Clear any pending timeout
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+      scrollTimeoutRef.current = null;
+    }
   }, []);
 
   /**
    * Handle scroll end (for non-momentum scrolls)
    */
   const handleScrollEndDrag = useCallback(() => {
-    // Set a timeout in case momentum scroll doesn't fire
-    scrollTimeoutRef.current = setTimeout(() => {
-      isScrollingRef.current = false;
-    }, 300);
+    // Just cleanup timeout, rapid change detection handles the rest
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+      scrollTimeoutRef.current = null;
+    }
   }, []);
 
   /**
@@ -246,8 +245,8 @@ const VideoFeedPage: React.FC = () => {
       const timeSinceLastChange = now - lastViewabilityChangeRef.current;
       const isScrolling = isScrollingRef.current;
       
-      // Detect rapid changes (< 500ms) as scroll events
-      const isRapidChange = timeSinceLastChange < 500 && lastViewabilityChangeRef.current > 0;
+      // Detect rapid changes (< 300ms) as scroll events - increase threshold
+      const isRapidChange = timeSinceLastChange < 300 && lastViewabilityChangeRef.current > 0;
       
       console.debug(
         `[VideoFeedPage] viewable index changed -> ${index}, ` +
@@ -257,10 +256,9 @@ const VideoFeedPage: React.FC = () => {
       
       lastViewabilityChangeRef.current = now;
       
-      // Block activation if:
-      // 1. Explicitly scrolling (isScrollingRef.current = true), OR
-      // 2. Rapid viewability changes (< 500ms apart)
-      if (!isScrolling && !isRapidChange && index !== null && index !== currentVideoIndex) {
+      // CRITICAL FIX: Only block during RAPID changes, not during scroll flag
+      // This allows index to update when scroll settles (even if flag hasn't cleared yet)
+      if (!isRapidChange && index !== null && index !== currentVideoIndex) {
         console.debug(`[VideoFeedPage] ✅ Allowing index change: ${currentVideoIndex} -> ${index}`);
         
         // CRITICAL for Android: Force deactivate ALL videos before activating new one
@@ -272,7 +270,7 @@ const VideoFeedPage: React.FC = () => {
         setCurrentVideoIndex(index);
       } else {
         console.debug(
-          `[VideoFeedPage] 🚫 Blocking index change (isScrolling=${isScrolling}, isRapidChange=${isRapidChange})`
+          `[VideoFeedPage] 🚫 Blocking index change (isRapidChange=${isRapidChange})`
         );
       }
     }

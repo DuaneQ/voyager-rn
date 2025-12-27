@@ -168,6 +168,7 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
   
   /**
    * Request activation when isActive changes.
+   * CRITICAL: No delay - let VideoPlaybackManager handle timing to prevent audio overlap
    */
   useEffect(() => {
     const managePlayback = async () => {
@@ -175,12 +176,10 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
       if (!videoRef.current || isUnmountedRef.current) return;
 
       // Request activation/deactivation via manager
+      // CRITICAL: No setTimeout - immediate activation prevents audio overlap
+      // VideoPlaybackManager already has 50ms wait built-in to ensure clean deactivation
       if (isActive) {
-        // Delay to ensure scroll has settled and previous video has unloaded (Android fix)
-        setTimeout(() => {
-          if (isUnmountedRef.current) return;
-          videoPlaybackManager.setActiveVideo(video.id);
-        }, Platform.OS === 'android' ? 100 : 0); // Reduced delay for faster activation
+        videoPlaybackManager.setActiveVideo(video.id);
       }
       // Note: deactivation happens automatically when another video becomes active
     };
@@ -448,7 +447,7 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
             source={{ uri: video.videoUrl }}
             style={styles.video}
             resizeMode={ResizeMode.CONTAIN}
-            shouldPlay={isActive}
+            shouldPlay={false}
             isLooping
             isMuted={isMuted}
             onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
