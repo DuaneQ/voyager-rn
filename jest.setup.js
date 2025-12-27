@@ -47,6 +47,10 @@ jest.mock('expo-secure-store', () => ({
 jest.mock('./src/config/firebaseConfig', () => ({
   auth: {
     currentUser: null,
+    onAuthStateChanged: jest.fn((callback) => {
+      // Return unsubscribe function
+      return () => {};
+    }),
   },
   db: {},
 }));

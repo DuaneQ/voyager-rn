@@ -20,7 +20,14 @@
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to upload profile and gallery photos.",
         "NSCameraUsageDescription": "This app needs access to your camera to take profile and gallery photos.",
-        "NSPhotoLibraryAddUsageDescription": "This app needs permission to save photos to your photo library."
+        "NSPhotoLibraryAddUsageDescription": "This app needs permission to save photos to your photo library.",
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "com.googleusercontent.apps.533074391000-quot684rc8kugrni3eh2c6bsq3u5rcqs"
+            ]
+          }
+        ]
       }
     },
     "android": {

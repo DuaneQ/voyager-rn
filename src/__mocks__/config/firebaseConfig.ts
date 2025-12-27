@@ -1,43 +1,26 @@
 /**
  * Manual mock for src/config/firebaseConfig.ts
- * Used by tests that import from src/config/firebaseConfig
+ * Updated to use Firebase Web SDK
  */
 
-// Import the mocked FirebaseAuthService
-jest.mock('../../services/auth/FirebaseAuthService');
-const { FirebaseAuthService } = require('../../services/auth/FirebaseAuthService');
+const mockOnAuthStateChanged = jest.fn((callback) => {
+  // Immediately invoke callback with mock user (synchronously for tests)
+  if (callback) {
+    callback({ uid: 'test-user-123', email: 'test@example.com', emailVerified: true });
+  }
+  // Return unsubscribe function
+  return jest.fn();
+});
+
+export const auth = {
+  currentUser: { uid: 'test-user-123', email: 'test@example.com', emailVerified: true },
+  onAuthStateChanged: mockOnAuthStateChanged,
+};
 
 const mockDb = {};
 const mockStorage = {};
 const mockApp = {};
 const mockFunctions = {};
-
-// Mock getAuthInstance to match production implementation
-// This creates a compatibility wrapper around FirebaseAuthService
-export const getAuthInstance = jest.fn(() => {
-  const currentUser = FirebaseAuthService.getCurrentUser();
-  
-  return {
-    currentUser: currentUser ? {
-      uid: currentUser.uid,
-      email: currentUser.email,
-      emailVerified: currentUser.emailVerified,
-      displayName: currentUser.displayName,
-      photoURL: currentUser.photoURL,
-    } : null,
-    onAuthStateChanged: (callback: (user: any) => void) => {
-      return FirebaseAuthService.onAuthStateChanged((firebaseUser: any) => {
-        callback(firebaseUser ? {
-          uid: firebaseUser.uid,
-          email: firebaseUser.email,
-          emailVerified: firebaseUser.emailVerified,
-          displayName: firebaseUser.displayName,
-          photoURL: firebaseUser.photoURL,
-        } : null);
-      });
-    },
-  };
-});
 
 // Mock Cloud Functions helpers
 export const FUNCTIONS_REGION = 'us-central1';

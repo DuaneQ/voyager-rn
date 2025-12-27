@@ -37,10 +37,24 @@ This reference lists the newly organized documentation files (created as part of
 
 ## docs/auth/
 
-- `docs/auth/AUTH_CONTEXT_EXPLAINED.md` — Beginner-friendly explanation of `AuthContext`, startup/restore behavior, platform differences (SecureStore vs AsyncStorage), and quick flow diagrams.
-- `docs/auth/AUTH_FLOW_CODE_REVIEW.md` — Comprehensive code review for signup/login/logout, token handling, Google Sign-In flow, and security recommendations for junior engineers.
-- `docs/auth/AUTH_SECURITY_ANALYSIS.md` — (existing) Detailed security analysis for authentication flows.
-- `docs/auth/README.md` — (existing) Overall auth documentation and setup notes.
+**Current Documentation (Dec 2025):**
+- `docs/auth/AUTH_GUIDE.md` — Current Firebase Web SDK implementation guide
+- `docs/auth/SIMPLE_AUTH_FLOW.md` — Migration explanation (REST API → Web SDK)
+- `docs/auth/README.md` — Architecture overview and component details
+
+**Google Sign-In:**
+- `docs/auth/TESTING_GOOGLE_SIGNIN_ON_DEVICE.md` — Testing guide for native builds
+- `docs/auth/CREATE_IOS_OAUTH_CLIENT_ID.md` — iOS OAuth configuration
+- `docs/auth/GOOGLE_SIGNIN_IMPLEMENTATION_SUMMARY.md` — Implementation details
+- `docs/auth/GOOGLE_SIGNIN_BUSINESS_LOGIC.md` — Flow scenarios
+- `docs/auth/GOOGLE_SIGNIN_FLOW_DIAGRAMS.md` — Visual diagrams
+
+**Other:**
+- `docs/auth/TERMS_GUARD_IMPLEMENTATION.md` — Terms acceptance flow
+- `docs/auth/PRODUCTION_DEPLOYMENT_CHECKLIST.md` — Pre-deployment checks
+- `docs/auth/AUTH_FIXES_SUMMARY.md` — Historical bug fixes
+
+**Note:** Many older auth docs were removed Dec 2025 after migrating from REST API to Firebase Web SDK. See `docs/OBSOLETE_DOCS_NOTE.md` for historical context.
 
 ---
 

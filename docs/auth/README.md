@@ -1,32 +1,23 @@
-# Authentication Architecture Documentation
+# Authentication Documentation
 
-## 🚀 NEW: Google Sign-In Testing Guide
+## Quick Reference
 
-### ⚠️ Cannot Test with Expo Go (QR Code)
-Google Sign-In requires native modules. You MUST build a development build.
+### Current Implementation (Dec 2025)
+- **Firebase Web SDK v12.5.0** - Direct SDK usage, no REST API
+- **AuthContext** - Manages authentication state using Web SDK
+- **UserProfileContext** - Loads profile after auth via `onAuthStateChanged`
 
-### Quick Start
-```bash
-# Use the helper script
-./scripts/test-google-signin.sh
-
-# Or manually
-npx expo run:android --device
-```
-
-**📖 Complete Testing Guide:** [TESTING_GOOGLE_SIGNIN_ON_DEVICE.md](TESTING_GOOGLE_SIGNIN_ON_DEVICE.md)
-
-**📚 Google Sign-In Docs:**
-- [Implementation Summary](GOOGLE_SIGNIN_IMPLEMENTATION_SUMMARY.md) - What was built
-- [Business Logic](GOOGLE_SIGNIN_BUSINESS_LOGIC.md) - All 4 scenarios explained
-- [Test Coverage](GOOGLE_SIGNIN_TESTS_SUMMARY.md) - Unit tests overview
-- [Flow Diagrams](GOOGLE_SIGNIN_FLOW_DIAGRAMS.md) - Visual guides
+### Key Documents
+- [AUTH_GUIDE.md](AUTH_GUIDE.md) - Current implementation guide
+- [SIMPLE_AUTH_FLOW.md](SIMPLE_AUTH_FLOW.md) - Migration from REST API to Web SDK
+- [TESTING_GOOGLE_SIGNIN_ON_DEVICE.md](TESTING_GOOGLE_SIGNIN_ON_DEVICE.md) - Google Sign-In testing
+- [CREATE_IOS_OAUTH_CLIENT_ID.md](CREATE_IOS_OAUTH_CLIENT_ID.md) - iOS OAuth setup
 
 ---
 
 ## Overview
 
-The voyager-RN authentication system implements a **clean S.O.L.I.D-based architecture** following a single-page authentication model with reusable form components. This design ensures maintainability, testability, and consistency across the application.
+The authentication system uses **Firebase Web SDK** directly (matches PWA architecture). Clean separation between authentication (AuthContext) and profile management (UserProfileContext).
 
 ---
 
@@ -58,179 +49,104 @@ The voyager-RN authentication system implements a **clean S.O.L.I.D-based archit
 
 ---
 
-## Directory Structure
+## Architecture
 
+### Code Organization
 ```
 src/
-├── pages/
-│   └── AuthPage.tsx              # Single authentication entry point
-├── components/
-│   └── auth/
-│       ├── forms/                # Reusable form components
-│       │   ├── LoginForm.tsx           # Login UI and validation
-│       │   ├── RegisterForm.tsx        # Registration UI and validation
-│       │   ├── ForgotPasswordForm.tsx  # Password reset UI
-│       │   └── ResendVerificationForm.tsx # Email resend UI
-│       └── icons/
-│           └── GoogleIcon.tsx    # Official Google logo SVG
 ├── context/
-│   ├── AuthContext.tsx           # Authentication state management
-│   └── AlertContext.tsx          # User notification system
-├── config/
-│   └── firebaseConfig.ts         # Firebase initialization
-├── navigation/
-│   └── AppNavigator.tsx          # Main navigation controller
-└── __tests__/
-    └── auth/
-        ├── AuthPage.test.tsx     # Page and form integration tests
-        ├── AuthContext.test.tsx  # Context unit tests
-        └── authUtilities.test.ts # Utility function tests
+│   ├── AuthContext.tsx           # Firebase Web SDK auth state
+│   └── UserProfileContext.tsx    # Profile management (loads after auth)
+├── pages/
+│   └── AuthPage.tsx              # Authentication UI entry point
+├── components/auth/forms/        # Reusable form components
+│   ├── LoginForm.tsx
+│   ├── RegisterForm.tsx
+│   ├── ForgotPasswordForm.tsx
+│   └── ResendVerificationForm.tsx
+└── config/
+    └── firebaseConfig.ts         # Firebase initialization
 ```
+
+### Authentication Flow
+1. User fills form (login/register)
+2. AuthContext calls Firebase Web SDK
+3. `auth.onAuthStateChanged` fires
+4. UserProfileContext loads profile from Firestore
+5. App checks `hasAcceptedTerms` → shows modal if needed
 
 ---
 
-## Authentication Flow
+## Google Sign-In Setup
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      AuthPage                                │
-│  (Single entry point - conditionally renders forms)          │
-│                                                              │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
-│  │  LoginForm   │  │RegisterForm  │  │ForgotPassword│     │
-│  │              │  │              │  │    Form      │     │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘     │
-│         │                 │                   │              │
-│         └─────────────────┴───────────────────┘              │
-│                           │                                  │
-└───────────────────────────┼──────────────────────────────────┘
-                            │
-                    ┌───────▼────────┐
-                    │  AuthContext   │
-                    │  (useAuth hook)│
-                    └───────┬────────┘
-                            │
-                    ┌───────▼────────┐
-                    │ Firebase Auth  │
-                    │   Firestore    │
-                    └────────────────┘
+Google Sign-In requires native build (won't work with Expo Go).
+
+**Testing:**
+```bash
+./scripts/test-google-signin.sh
+# or
+npx expo run:android --device
 ```
 
-### User Flow
-
-1. **App Launch**
-   - `AppNavigator` checks `AuthContext` for existing user
-   - If authenticated → Show main app tabs
-   - If not authenticated → Show `AuthPage`
-
-2. **Login Flow**
-   - User enters email/password in `LoginForm`
-   - `LoginForm` calls `onSubmit` callback (provided by `AuthPage`)
-   - `AuthPage` calls `AuthContext.signIn()`
-   - Firebase validates credentials
-   - On success: `AuthContext` updates user state → App navigates to main app
-   - On error: `AlertContext` shows error message
-
-3. **Registration Flow**
-   - User fills out `RegisterForm` (username, email, password, confirm)
-   - Form validates input locally (email format, password length, matching passwords)
-   - On submit: Creates Firebase user, sends verification email, creates Firestore user document
-   - Navigates back to login form with success message
-
-4. **Forgot Password Flow**
-   - User enters email in `ForgotPasswordForm`
-   - Sends password reset email via Firebase
-   - Navigates back to login with success message
-
-5. **Resend Verification Flow**
-   - User enters email in `ResendVerificationForm`
-   - Prompts user to sign in (Firebase requires authenticated session to resend)
+**Documentation:**
+- [TESTING_GOOGLE_SIGNIN_ON_DEVICE.md](TESTING_GOOGLE_SIGNIN_ON_DEVICE.md) - Testing guide
+- [CREATE_IOS_OAUTH_CLIENT_ID.md](CREATE_IOS_OAUTH_CLIENT_ID.md) - iOS OAuth setup
 
 ---
 
-## Component API Reference
+## Implementation Details
 
-### AuthPage
-
-**Location**: `src/pages/AuthPage.tsx`
-
-**Purpose**: Single entry point that orchestrates all authentication flows
-
-**State**:
+### Sign Up
 ```typescript
-type AuthMode = 'login' | 'register' | 'forgot' | 'resend';
-const [mode, setMode] = useState<AuthMode>('login');
+// AuthContext.signUp()
+const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+await setDoc(doc(db, 'users', userCredential.user.uid), profileData);
+await sendEmailVerification(userCredential.user);
 ```
 
-**Handlers**:
-- `handleLogin(email, password)` - Calls `AuthContext.signIn()`
-- `handleRegister(username, email, password)` - Creates new user account
-- `handleForgotPassword(email)` - Sends password reset email
-- `handleResendVerification(email)` - Prompts user to sign in
-- `handleGoogleSignIn()` - TODO: Google OAuth integration
-- `handleGoogleSignUp()` - TODO: Google OAuth integration
-
-**Features**:
-- Conditional form rendering based on `mode`
-- Shared background image (login-image.jpeg)
-- Semi-transparent card styling (95% opacity)
-- Loading state management
-- Console logging for navigation and TODO actions
-
----
-
-### LoginForm
-
-**Location**: `src/components/auth/forms/LoginForm.tsx`
-
-**Props**:
+### Sign In
 ```typescript
-interface LoginFormProps {
-  onSubmit: (email: string, password: string) => Promise<void>;
-  onGoogleSignIn: () => void;
-  onForgotPassword: () => void;
-  onResendVerification: () => void;
-  onSignUpPress: () => void;
-  isLoading?: boolean;
+// AuthContext.signIn()
+const userCredential = await signInWithEmailAndPassword(auth, email, password);
+if (!userCredential.user.emailVerified) {
+  throw new Error('Please verify your email');
 }
 ```
 
-**Features**:
-- Email validation (regex pattern)
-- Password validation (minimum 6 characters)
-- "Welcome to TravalPass" feature box with ✈️ icons
-- Google Sign-In button with official logo
-- Forgot password and resend verification links
-- Sign up navigation link
-
----
-
-### RegisterForm
-
-**Location**: `src/components/auth/forms/RegisterForm.tsx`
-
-**Props**:
+### Profile Load
 ```typescript
-interface RegisterFormProps {
-  onSubmit: (username: string, email: string, password: string) => Promise<void>;
-  onGoogleSignUp: () => void;
-  onSignInPress: () => void;
-  isLoading?: boolean;
+// UserProfileContext - after onAuthStateChanged
+const userDoc = await getDoc(doc(db, 'users', userId));
+const profile = userDoc.data();
+if (!profile.hasAcceptedTerms) {
+  // Show terms modal
 }
 ```
 
-**Features**:
-- Username validation (minimum 2 characters)
-- Email validation
-- Password validation (minimum 10 characters)
-- Confirm password matching
-- Real-time error display
-- Google Sign-Up button
-- Sign in navigation link
+---
+
+## Testing
+
+**Run tests:**
+```bash
+npm test src/context/AuthContext.test.tsx
+npm test src/pages/AuthPage.test.tsx
+```
+
+**Key test coverage:**
+- Sign up flow with email verification
+- Sign in with email verification check
+- Google Sign-In/Sign-Up flows
+- Error handling and validation
 
 ---
 
-### ForgotPasswordForm
+## Migration History
+
+**Dec 2025**: Migrated from REST API + custom tokens to Firebase Web SDK
+- See [SIMPLE_AUTH_FLOW.md](SIMPLE_AUTH_FLOW.md) for details
+- Removed 765+ lines of complex REST API code
+- Now matches PWA architecture exactly
 
 **Location**: `src/components/auth/forms/ForgotPasswordForm.tsx`
 
@@ -281,157 +197,14 @@ All forms use consistent styling:
 **Colors**:
 - Primary Blue: `#1976d2`
 - Button Background: `rgba(255, 255, 255, 0.95)` (card)
-- Error Red: `#e74c3c`
-- Text Gray: `#757575` (Google button text)
-- Neutral Gray: `#666`, `#999`, `#ccc`
-
-**Typography**:
-- Title: 20px, weight 400
-- Labels: 13px, weight 500
-- Inputs: 14px
-- Buttons: 14px, weight 600
-- Errors: 11px
-- Links: 11px-14px
-
-**Spacing**:
-- Card padding: 20px
-- Input margins: 12px bottom
-- Button margins: 4px vertical
-- Divider margins: 12px vertical
-
-**Effects**:
-- Card shadow: opacity 0.3, radius 12, elevation 8
-- Border radius: 4px (inputs/buttons), 8px (card)
-
-### Background Image
-
-**Location**: `assets/images/login-image.jpeg`
-**Usage**: Full-screen background with `resizeMode="cover"`
-**Styling**: Card overlays image with semi-transparent white
-
 ---
 
-## Testing Strategy
+## Historical Notes
 
-### Unit Tests
+This README previously documented S.O.L.I.D architecture principles and component APIs from an earlier version. The current implementation (Dec 2025) is simpler:
+- Direct Firebase Web SDK usage (no service layer abstraction)
+- Profile loading separated into UserProfileContext
+- See [SIMPLE_AUTH_FLOW.md](SIMPLE_AUTH_FLOW.md) for architecture evolution
 
-**Location**: `src/__tests__/auth/AuthPage.test.tsx`
-
-**Coverage**:
-- `AuthPage` rendering and form switching
-- `LoginForm` component isolation tests
-- Email/password validation
-- Form submission with valid/invalid data
-- Error handling
-- Loading states
-- Navigation between forms
-- Google button interaction
-
-**Test Pattern**:
-```typescript
-// Mock contexts
-jest.mock('../../context/AuthContext');
-jest.mock('../../context/AlertContext');
-
-// Test form submission
-const mockOnSubmit = jest.fn();
-const { getByTestId } = render(
-  <LoginForm onSubmit={mockOnSubmit} {...otherProps} />
-);
-fireEvent.press(getByTestId('signin-button'));
-expect(mockOnSubmit).toHaveBeenCalledWith(email, password);
-```
-
-**Test Results**: ✅ 38/38 tests passing
-
----
-
-## Console Logging
-
-All TODO actions include comprehensive logging for debugging:
-
-```typescript
-// Google Sign-In
-console.log('[AuthPage] Google Sign-In requested');
-console.log('[TODO] Implement Google Sign-In for React Native');
-console.log('[INFO] This requires @react-native-google-signin/google-signin package');
-
-// Navigation
-console.log('[AuthPage] Navigation: Login → Register');
-console.log('[AuthPage] Navigation: Register → Login');
-
-// Password Reset
-console.log('[AuthPage] Forgot Password requested for email:', email);
-console.error('[AuthPage] Forgot Password error:', error);
-```
-
----
-
-## Migration from Old Architecture
-
-### What Changed
-
-**Before** (Separate Screens):
-- Multiple screen components with duplicated logic
-- `screens/` directory
-- Navigation stack for auth screens
-- Harder to maintain consistency
-
-**After** (Single Page + Forms):
-- `src/pages/AuthPage.tsx` (single orchestrator)
-- `src/components/auth/forms/` (reusable components)
-- Shared styling through composition
-- Easy to add new forms
-
-### Benefits
-
-1. **Cleaner Architecture**: Single responsibility per component
-2. **Reusability**: Forms can be used independently or in modals
-3. **Consistency**: Shared background and card styling
-4. **Testability**: Isolated unit tests for each form
-5. **Maintainability**: Changes to one form don't affect others
-6. **Extensibility**: Add new forms without touching existing code
-
----
-
-**Last Updated**: 2025-10-23
-**Version**: 2.1 (Refactored to single-page architecture)
-
-## Running the auth flows locally
-
-1. Start Expo / Metro from the project root:
-```bash
-npm start
-# or
-npx expo start
-```
-
-2. iOS Simulator:
-   - Open Simulator (Xcode → Open Developer Tool → Simulator) and boot a device
-   - Run:
-```bash
-npm run ios
-```
-
-3. Android Emulator:
-   - Create an AVD in Android Studio Device Manager (Tools → Device Manager)
-   - Boot the emulator and verify with `adb devices`
-   - Run:
-```bash
-npm run android
-```
-
-4. Web (quick UI checks):
-```bash
-npm run web
-```
-
-## Important notes & TODOs
-
-- AsyncStorage: Firebase Auth for React Native will default to in-memory persistence unless you provide AsyncStorage. Install and configure `@react-native-async-storage/async-storage` and pass it to `initializeAuth` to persist sessions across app restarts.
-- Google Sign-In: Google OAuth for React Native is not implemented yet. We use a placeholder Google button in the UI. To enable real Google Sign-In/Sign-Up you should install and configure `@react-native-google-signin/google-signin` and wire `handleGoogleSignIn` / `handleGoogleSignUp` in `src/pages/AuthPage.tsx`.
-
-## Notes about the refactor
-- `AuthPage.tsx` is now the single orchestrator for all auth flows (login, register, forgot password, resend verification). It conditionally renders the form components in `src/components/auth/forms/`.
-- This approach reduces duplicated logic and centralizes navigation between auth states.
+**Last Updated**: Dec 27, 2025
 
