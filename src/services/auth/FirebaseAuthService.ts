@@ -21,8 +21,21 @@ import { signInWithCustomToken } from 'firebase/auth';
 import { auth } from '../../config/firebaseConfig';
 import { Platform } from 'react-native';
 
-const API_KEY = 'AIzaSyCbckV9cMuKUM4ZnvYDJZUvfukshsZfvM0'; // mundo1-dev
+// Use dev or prod API key based on environment
+const DEV_API_KEY = 'AIzaSyCbckV9cMuKUM4ZnvYDJZUvfukshsZfvM0'; // mundo1-dev
+const PROD_API_KEY = 'AIzaSyBzRHcKiuCj7vvqJxGDELs2zEXQ0QvQhbk'; // mundo1-1
+const API_KEY = __DEV__ ? DEV_API_KEY : PROD_API_KEY;
+
+const DEV_PROJECT_ID = 'mundo1-dev';
+const PROD_PROJECT_ID = 'mundo1-1';
+const PROJECT_ID = __DEV__ ? DEV_PROJECT_ID : PROD_PROJECT_ID;
+
 const AUTH_DOMAIN = 'https://identitytoolkit.googleapis.com/v1';
+
+// Debug: Log which environment is being used - MAKE IT VERY VISIBLE
+console.warn(`🔥🔥🔥 [FirebaseAuthService] __DEV__ = ${__DEV__}`);
+console.warn(`🔥🔥🔥 [FirebaseAuthService] Using ${__DEV__ ? 'DEV' : 'PROD'} - Project: ${PROJECT_ID}`);
+console.warn(`🔥🔥🔥 [FirebaseAuthService] API_KEY: ${API_KEY.substring(0, 20)}...`);
 
 export interface FirebaseUser {
   uid: string;
@@ -140,7 +153,15 @@ export class FirebaseAuthService {
    * Sign in with email and password
    */
   static async signInWithEmailAndPassword(email: string, password: string): Promise<FirebaseUser> {
+    // CRITICAL DEBUG: Log what's actually being used RIGHT NOW
+    console.error('🚨🚨🚨 SIGN IN DEBUG 🚨🚨🚨');
+    console.error(`🚨 __DEV__ = ${__DEV__}`);
+    console.error(`🚨 API_KEY = ${API_KEY.substring(0, 25)}...`);
+    console.error(`🚨 PROJECT_ID = ${PROJECT_ID}`);
+    console.error(`🚨 Email = ${email}`);
+    
     const url = `${AUTH_DOMAIN}/accounts:signInWithPassword?key=${API_KEY}`;
+    console.error(`🚨 Full URL = ${url.substring(0, 100)}...`);
     
     const response = await fetch(url, {
       method: 'POST',
@@ -206,8 +227,10 @@ export class FirebaseAuthService {
    * 
    * NOTE: We must use direct HTTP fetch because httpsCallable requires the Auth SDK
    * to already have a signed-in user (which we don't have yet - chicken and egg problem)
+   * 
+   * Made public so AuthContext can call it during signup to enable profile creation.
    */
-  private static async syncWithAuthSDK(idToken: string): Promise<void> {
+  static async syncWithAuthSDK(idToken: string): Promise<void> {
     let retries = 3;
     let lastError: Error | null = null;
     
@@ -216,15 +239,14 @@ export class FirebaseAuthService {
 
         // Call generateCustomToken with manual Authorization header
         // We can't use httpsCallable because it requires Auth SDK to already be signed in
-        const functionUrl = 'https://us-central1-mundo1-dev.cloudfunctions.net/generateCustomToken';
+        const functionUrl = `https://us-central1-${PROJECT_ID}.cloudfunctions.net/generateCustomToken`;
         
         const response = await fetch(functionUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${idToken}` // Manually attach our REST API token
           },
-          body: JSON.stringify({ data: {} }) // Cloud Functions expect { data: payload }
+          body: JSON.stringify({ data: { idToken } }) // Send idToken in body for manual verification
         });
         
         if (!response.ok) {

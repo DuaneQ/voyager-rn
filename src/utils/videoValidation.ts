@@ -144,18 +144,37 @@ export const generateVideoThumbnail = async (
 
 /**
  * Gets file size from URI
- * TEMPORARY: Disabled FileSystem due to Expo SDK 54 build issues
- * TODO: Re-enable once expo-file-system is fixed
+ * Uses multiple fallback strategies for maximum compatibility
  */
 export const getFileSize = async (uri: string): Promise<number> => {
   try {
-    // Use expo-file-system when available (tests mock this module).
-    const fileInfo = await FileSystem.getInfoAsync(uri);
-    if (fileInfo && fileInfo.exists && typeof fileInfo.size === 'number') {
-      return fileInfo.size;
+    // Strategy 1: Try expo-file-system (most reliable for local files)
+    try {
+      const fileInfo = await FileSystem.getInfoAsync(uri, { size: true });
+      if (fileInfo && 'exists' in fileInfo && fileInfo.exists && 'size' in fileInfo && typeof fileInfo.size === 'number') {
+        console.log('[videoValidation] File size from FileSystem:', fileInfo.size);
+        return fileInfo.size;
+      }
+    } catch (fsError) {
+      console.log('[videoValidation] FileSystem failed, trying fetch fallback:', fsError);
     }
-    throw new Error('Could not get file size');
+
+    // Strategy 2: Fetch as blob (works for both file:// URIs and content:// URIs)
+    try {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      if (blob && blob.size > 0) {
+        console.log('[videoValidation] File size from fetch:', blob.size);
+        return blob.size;
+      }
+    } catch (fetchError) {
+      console.log('[videoValidation] Fetch failed:', fetchError);
+    }
+
+    throw new Error('Could not determine file size using any method');
   } catch (error) {
-    throw new Error('Failed to read file size');
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[videoValidation] getFileSize failed:', errorMessage);
+    throw new Error(`Failed to read file size: ${errorMessage}`);
   }
 };

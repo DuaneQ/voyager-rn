@@ -182,7 +182,7 @@ describe('VideoPlaybackManager', () => {
       (Platform as any).OS = 'ios';
     });
 
-    it('should call unloadAsync on Android when deactivating', async () => {
+    it('should call onPlayerUnloaded callback after deactivation', async () => {
       const mockUnload = jest.fn().mockResolvedValue(undefined);
       const mockRef = {
         unloadAsync: mockUnload,
@@ -208,15 +208,16 @@ describe('VideoPlaybackManager', () => {
       // Activate video1
       await manager.setActiveVideo('video1');
 
-      // Activate video2 (should deactivate and unload video1 on Android)
+      // Activate video2 (should deactivate video1)
       await manager.setActiveVideo('video2');
 
+      // The onBecomeInactive callback is responsible for unloading
+      // VideoPlaybackManager just calls the callback and fires the event
       expect(mockReg1.onBecomeInactive).toHaveBeenCalledTimes(1);
-      expect(mockUnload).toHaveBeenCalledTimes(1);
       expect(mockOnPlayerUnloaded).toHaveBeenCalledWith('video1');
     });
 
-    it('should handle unloadAsync errors gracefully', async () => {
+    it('should call onPlayerUnloaded even if onBecomeInactive succeeds', async () => {
       const mockUnload = jest.fn().mockRejectedValue(new Error('Unload failed'));
       const mockRef = {
         unloadAsync: mockUnload,
@@ -242,9 +243,9 @@ describe('VideoPlaybackManager', () => {
       await manager.setActiveVideo('video1');
       await manager.setActiveVideo('video2');
 
-      // Should not crash
+      // The callback handles its own errors, manager still fires the event
       expect(mockReg1.onBecomeInactive).toHaveBeenCalled();
-      expect(mockOnPlayerUnloaded).not.toHaveBeenCalled(); // Not called due to error
+      expect(mockOnPlayerUnloaded).toHaveBeenCalledWith('video1');
     });
   });
 

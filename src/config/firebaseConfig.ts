@@ -33,6 +33,9 @@ const prodConfig = {
 // Use dev config for development, prod for release builds
 const firebaseConfig = __DEV__ ? devConfig : prodConfig;
 
+// Debug: Log which config is being used
+console.log(`[FirebaseConfig] Using ${__DEV__ ? 'DEV' : 'PROD'} config - Project: ${firebaseConfig.projectId}`);
+
 export const app = initializeApp(firebaseConfig);
 
 // Use getAuth for both platforms

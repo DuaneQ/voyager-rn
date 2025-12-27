@@ -3,28 +3,36 @@
  * 
  * Test Plan:
  * 1. getUserProfile - successful retrieval
- * 2. getUserProfile - handles cloud function errors
- * 3. getUserProfile - handles failed responses
+ * 2. getUserProfile - handles Firestore errors
+ * 3. getUserProfile - handles missing profile
  * 4. updateUserProfile - successful update
  * 5. updateUserProfile - handles errors
  * 6. createUserProfile - successful creation
  * 7. createUserProfile - handles errors
+ * 8. acceptTerms - successful update
  */
 
 import { UserProfileService } from '../../../services/userProfile/UserProfileService';
-import { httpsCallable } from 'firebase/functions';
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 
-// Mock Firebase Functions
-jest.mock('firebase/functions');
+// Mock Firebase Firestore
+jest.mock('firebase/firestore');
 jest.mock('../../../config/firebaseConfig', () => ({
+  db: { _type: 'mock-firestore' },
   functions: { _type: 'mock-functions' },
 }));
 
-const mockHttpsCallable = httpsCallable as jest.MockedFunction<typeof httpsCallable>;
+const mockDoc = doc as jest.MockedFunction<typeof doc>;
+const mockGetDoc = getDoc as jest.MockedFunction<typeof getDoc>;
+const mockSetDoc = setDoc as jest.MockedFunction<typeof setDoc>;
+const mockUpdateDoc = updateDoc as jest.MockedFunction<typeof updateDoc>;
+const mockServerTimestamp = serverTimestamp as jest.MockedFunction<typeof serverTimestamp>;
 
 describe('UserProfileService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockDoc.mockReturnValue({ id: 'user-123' } as any);
+    mockServerTimestamp.mockReturnValue(new Date() as any);
   });
 
   describe('getUserProfile', () => {
@@ -39,42 +47,30 @@ describe('UserProfileService', () => {
         photoURL: 'https://example.com/photo.jpg',
       };
 
-      const mockCallableFunction = jest.fn().mockResolvedValue({
-        data: {
-          success: true,
-          profile: mockProfile,
-        },
-      });
-
-      mockHttpsCallable.mockReturnValue(mockCallableFunction as any);
+      mockGetDoc.mockResolvedValue({
+        exists: () => true,
+        data: () => mockProfile,
+      } as any);
 
       const result = await UserProfileService.getUserProfile('user-123');
 
       expect(result).toEqual(mockProfile);
-      expect(mockHttpsCallable).toHaveBeenCalledWith(expect.anything(), 'getUserProfile');
-      expect(mockCallableFunction).toHaveBeenCalledWith({ userId: 'user-123' });
+      expect(mockDoc).toHaveBeenCalledWith(expect.anything(), 'users', 'user-123');
+      expect(mockGetDoc).toHaveBeenCalled();
     });
 
-    it('should handle failed response from cloud function', async () => {
-      const mockCallableFunction = jest.fn().mockResolvedValue({
-        data: {
-          success: false,
-        },
-      });
-
-      mockHttpsCallable.mockReturnValue(mockCallableFunction as any);
+    it('should handle missing profile', async () => {
+      mockGetDoc.mockResolvedValue({
+        exists: () => false,
+      } as any);
 
       await expect(
         UserProfileService.getUserProfile('user-123')
-      ).rejects.toThrow('Failed to get user profile');
+      ).rejects.toThrow('Profile not found');
     });
 
-    it('should handle cloud function errors', async () => {
-      const mockCallableFunction = jest.fn().mockRejectedValue(
-        new Error('Network error')
-      );
-
-      mockHttpsCallable.mockReturnValue(mockCallableFunction as any);
+    it('should handle Firestore errors', async () => {
+      mockGetDoc.mockRejectedValue(new Error('Network error'));
 
       await expect(
         UserProfileService.getUserProfile('user-123')
@@ -84,13 +80,7 @@ describe('UserProfileService', () => {
 
   describe('updateUserProfile', () => {
     it('should successfully update user profile', async () => {
-      const mockCallableFunction = jest.fn().mockResolvedValue({
-        data: {
-          success: true,
-        },
-      });
-
-      mockHttpsCallable.mockReturnValue(mockCallableFunction as any);
+      mockUpdateDoc.mockResolvedValue(undefined);
 
       const updates = {
         bio: 'Updated bio',
@@ -99,34 +89,15 @@ describe('UserProfileService', () => {
 
       await UserProfileService.updateUserProfile('user-123', updates);
 
-      expect(mockHttpsCallable).toHaveBeenCalledWith(expect.anything(), 'updateUserProfile');
-      expect(mockCallableFunction).toHaveBeenCalledWith({
-        userId: 'user-123',
-        updates,
-      });
-    });
-
-    it('should handle failed response from cloud function', async () => {
-      const mockCallableFunction = jest.fn().mockResolvedValue({
-        data: {
-          success: false,
-          message: 'Invalid profile data',
-        },
-      });
-
-      mockHttpsCallable.mockReturnValue(mockCallableFunction as any);
-
-      await expect(
-        UserProfileService.updateUserProfile('user-123', { bio: 'test' })
-      ).rejects.toThrow('Invalid profile data');
-    });
-
-    it('should handle cloud function errors', async () => {
-      const mockCallableFunction = jest.fn().mockRejectedValue(
-        new Error('Permission denied')
+      expect(mockDoc).toHaveBeenCalledWith(expect.anything(), 'users', 'user-123');
+      expect(mockUpdateDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining(updates)
       );
+    });
 
-      mockHttpsCallable.mockReturnValue(mockCallableFunction as any);
+    it('should handle Firestore errors', async () => {
+      mockUpdateDoc.mockRejectedValue(new Error('Permission denied'));
 
       await expect(
         UserProfileService.updateUserProfile('user-123', { bio: 'test' })
@@ -136,23 +107,7 @@ describe('UserProfileService', () => {
 
   describe('createUserProfile', () => {
     it('should successfully create user profile', async () => {
-      const mockProfile = {
-        uid: 'user-123',
-        username: 'newuser',
-        email: 'newuser@example.com',
-        bio: '',
-        dob: '1995-05-15',
-        gender: 'Female',
-      };
-
-      const mockCallableFunction = jest.fn().mockResolvedValue({
-        data: {
-          success: true,
-          profile: mockProfile,
-        },
-      });
-
-      mockHttpsCallable.mockReturnValue(mockCallableFunction as any);
+      mockSetDoc.mockResolvedValue(undefined);
 
       const profileData = {
         username: 'newuser',
@@ -163,39 +118,42 @@ describe('UserProfileService', () => {
 
       const result = await UserProfileService.createUserProfile('user-123', profileData);
 
-      expect(result).toEqual(mockProfile);
-      expect(mockHttpsCallable).toHaveBeenCalledWith(expect.anything(), 'createUserProfile');
-      expect(mockCallableFunction).toHaveBeenCalledWith({
-        userId: 'user-123',
-        profile: profileData,
-      });
+      expect(result).toMatchObject(profileData);
+      expect(result.uid).toBe('user-123');
+      expect(mockDoc).toHaveBeenCalledWith(expect.anything(), 'users', 'user-123');
+      expect(mockSetDoc).toHaveBeenCalled();
     });
 
-    it('should handle failed response from cloud function', async () => {
-      const mockCallableFunction = jest.fn().mockResolvedValue({
-        data: {
-          success: false,
-          message: 'Username already exists',
-        },
-      });
-
-      mockHttpsCallable.mockReturnValue(mockCallableFunction as any);
-
-      await expect(
-        UserProfileService.createUserProfile('user-123', { username: 'existing' })
-      ).rejects.toThrow('Username already exists');
-    });
-
-    it('should handle cloud function errors', async () => {
-      const mockCallableFunction = jest.fn().mockRejectedValue(
-        new Error('Database connection failed')
-      );
-
-      mockHttpsCallable.mockReturnValue(mockCallableFunction as any);
+    it('should handle Firestore errors', async () => {
+      mockSetDoc.mockRejectedValue(new Error('Database connection failed'));
 
       await expect(
         UserProfileService.createUserProfile('user-123', { username: 'test' })
       ).rejects.toThrow('Database connection failed');
+    });
+  });
+
+  describe('acceptTerms', () => {
+    it('should successfully update terms acceptance', async () => {
+      mockUpdateDoc.mockResolvedValue(undefined);
+
+      await UserProfileService.acceptTerms('user-123');
+
+      expect(mockDoc).toHaveBeenCalledWith(expect.anything(), 'users', 'user-123');
+      expect(mockUpdateDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          hasAcceptedTerms: true,
+        })
+      );
+    });
+
+    it('should handle Firestore errors', async () => {
+      mockUpdateDoc.mockRejectedValue(new Error('Permission denied'));
+
+      await expect(
+        UserProfileService.acceptTerms('user-123')
+      ).rejects.toThrow('Permission denied');
     });
   });
 });

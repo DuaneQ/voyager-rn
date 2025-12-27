@@ -40,11 +40,15 @@ export const TermsGuard: React.FC<TermsGuardProps> = ({
    * Handle terms acceptance
    */
   const handleAcceptTerms = async () => {
+    console.log('[TermsGuard.handleAcceptTerms] 📝 User accepting terms...');
+    console.log(`[TermsGuard.handleAcceptTerms] User ID: ${userId}`);
+    console.log(`[TermsGuard.handleAcceptTerms] User email: ${user?.email}`);
     try {
       await acceptTerms();
+      console.log('[TermsGuard.handleAcceptTerms] ✅ Terms accepted successfully');
       // Success - hook will update state automatically
     } catch (error) {
-      console.error('[TermsGuard] Failed to accept terms:', error);
+      console.error('[TermsGuard.handleAcceptTerms] ❌ Failed to accept terms:', error);
       // Error is already set in hook state
     }
   };
@@ -101,7 +105,8 @@ export const TermsGuard: React.FC<TermsGuardProps> = ({
         visible={!isLoading && !hasAcceptedTerms}
         onAccept={handleAcceptTerms}
         onDecline={handleDeclineTerms}
-        loading={false}
+        loading={isLoading}
+        error={error}
       />
       
       <View style={styles.centerContainer}>

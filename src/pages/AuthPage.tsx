@@ -98,12 +98,12 @@ const AuthPage: React.FC = () => {
   };
 
   /**
-   * Resend Verification Handler - Matches PWA's ResendEmail.tsx resendEmailVerification exactly
+   * Resend Verification Handler - Uses Admin SDK Cloud Function
    */
-  const handleResendVerification = async () => {
+  const handleResendVerification = async (email: string) => {
     setIsSubmitting(true);
     try {
-      await resendVerification();
+      await resendVerification(email);
       showAlert('success', 'Verification email sent. Please check your inbox and spam folder.');
     } catch (error: any) {
       const friendly = mapAuthError(error);

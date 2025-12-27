@@ -107,7 +107,9 @@ export class VideoPlaybackManager {
   }
 
   /**
-   * Deactivate a specific video (stop playback and optionally unload on Android).
+   * Deactivate a specific video (stop playback and unload).
+   * Note: The onBecomeInactive callback now handles unloadAsync for both iOS and Android
+   * to prevent audio leakage on iOS.
    */
   private async deactivateVideo(videoId: string): Promise<void> {
     // Prevent duplicate deactivation calls (race condition fix)
@@ -125,18 +127,11 @@ export class VideoPlaybackManager {
     try {
       this.deactivating.add(videoId); // Mark as deactivating
       console.debug(`[VideoPlaybackManager] Deactivating video: ${videoId}`);
-      await registration.onBecomeInactive();
       
-      // On Android, aggressively unload to free native resources
-      if (Platform.OS === 'android' && registration.ref) {
-        try {
-          await registration.ref.unloadAsync();
-          this.events.onPlayerUnloaded?.(videoId);
-          console.debug(`[VideoPlaybackManager] Unloaded video: ${videoId}`);
-        } catch (unloadError) {
-          console.warn(`[VideoPlaybackManager] Failed to unload video ${videoId}:`, unloadError);
-        }
-      }
+      // The callback now handles mute → pause → stop → unload for both platforms
+      await registration.onBecomeInactive();
+      this.events.onPlayerUnloaded?.(videoId);
+      
     } catch (error) {
       console.error(`[VideoPlaybackManager] Error deactivating video ${videoId}:`, error);
     } finally {

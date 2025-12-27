@@ -21,6 +21,7 @@ interface TermsOfServiceModalProps {
   onAccept: () => Promise<void>;
   onDecline: () => void;
   loading?: boolean;
+  error?: Error | null;
 }
 
 export const TermsOfServiceModal: React.FC<TermsOfServiceModalProps> = ({
@@ -28,6 +29,7 @@ export const TermsOfServiceModal: React.FC<TermsOfServiceModalProps> = ({
   onAccept,
   onDecline,
   loading = false,
+  error = null,
 }) => {
   const insets = useSafeAreaInsets();
   const [hasReadTerms, setHasReadTerms] = useState(false);
@@ -57,7 +59,8 @@ export const TermsOfServiceModal: React.FC<TermsOfServiceModalProps> = ({
     try {
       await onAccept();
     } catch (error) {
-      // Error handled by parent
+      console.error('[TermsOfServiceModal] Error accepting terms:', error);
+      // Error will be displayed via error prop from parent
     } finally {
       setIsAccepting(false);
     }
@@ -198,6 +201,13 @@ export const TermsOfServiceModal: React.FC<TermsOfServiceModalProps> = ({
           </View>
         </ScrollView>
 
+        {error && (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorTitle}>❌ Error</Text>
+            <Text style={styles.errorText}>{error.message}</Text>
+          </View>
+        )}
+
         <SafeAreaView
           edges={["bottom"]}
           style={[
@@ -330,6 +340,26 @@ const styles = StyleSheet.create({
   infoText: {
     fontSize: 13,
     color: '#0D47A1',
+    lineHeight: 18,
+  },
+  errorBox: {
+    backgroundColor: '#FFEBEE',
+    borderLeftWidth: 4,
+    borderLeftColor: '#F44336',
+    padding: 12,
+    marginHorizontal: 20,
+    marginBottom: 8,
+    borderRadius: 4,
+  },
+  errorTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#C62828',
+    marginBottom: 4,
+  },
+  errorText: {
+    fontSize: 13,
+    color: '#C62828',
     lineHeight: 18,
   },
   checkboxContainer: {

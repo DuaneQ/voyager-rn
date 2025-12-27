@@ -134,15 +134,15 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
         await ref.setPositionAsync(0);
         setIsPlaying(false);
         
-        // On Android, unload to free memory (manager will handle this)
-        if (Platform.OS === 'android') {
-          try {
-            await ref.unloadAsync();
-            isUnloadedRef.current = true;
-            console.debug(`[VideoCard] unloadAsync called - id=${video.id}`);
-          } catch (unloadErr) {
-            console.warn('[VideoCard] unloadAsync failed (ignored):', unloadErr);
-          }
+        // CRITICAL FIX: Unload on BOTH iOS and Android to prevent audio leakage
+        // iOS audio sessions persist even after stop/pause, causing audio to continue
+        // playing when scrolling or navigating away from the feed
+        try {
+          await ref.unloadAsync();
+          isUnloadedRef.current = true;
+          console.debug(`[VideoCard] unloadAsync called - id=${video.id}`);
+        } catch (unloadErr) {
+          console.warn('[VideoCard] unloadAsync failed (ignored):', unloadErr);
         }
       } catch (err) {
         const message = err?.message || String(err);

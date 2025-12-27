@@ -1,11 +1,12 @@
 import { httpsCallable } from 'firebase/functions';
-import { functions } from '../../config/firebaseConfig';
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { functions, db } from '../../config/firebaseConfig';
 
 /**
- * User Profile Service using Cloud Functions
+ * User Profile Service using Direct Firestore Access
  * 
- * Uses Cloud Functions to access Firestore with proper authentication context.
- * This solves the issue where REST API auth doesn't provide request.auth to Firestore.
+ * Uses Firestore Web SDK directly for read/write operations.
+ * User must be authenticated via Firebase Auth SDK before calling these methods.
  */
 
 export interface UserProfile {
@@ -69,75 +70,90 @@ export interface CreateUserProfileResponse {
 
 export class UserProfileService {
   /**
-   * Get user profile from Firestore via Cloud Function
+   * Get user profile directly from Firestore (no Cloud Function needed)
    */
   static async getUserProfile(userId: string): Promise<UserProfile> {
     try {
-      const getUserProfileFn = httpsCallable<{ userId: string }, GetUserProfileResponse>(
-        functions,
-        'getUserProfile'
-      );
-
-      const result = await getUserProfileFn({ userId });
+      console.log('[UserProfileService.getUserProfile] Fetching profile for:', userId);
+      const userDocRef = doc(db, 'users', userId);
+      const userDoc = await getDoc(userDocRef);
       
-      if (!result.data.success) {
-        throw new Error('Failed to get user profile');
+      if (!userDoc.exists()) {
+        console.log('[UserProfileService.getUserProfile] Profile not found');
+        throw new Error('Profile not found');
       }
 
-      return result.data.profile;
+      const data = userDoc.data();
+      console.log('[UserProfileService.getUserProfile] ✅ Profile fetched successfully');
+      return data as UserProfile;
     } catch (error: any) {
-      console.error('Error getting user profile:', error);
-      throw new Error(error.message || 'Failed to get user profile');
+      console.error('[UserProfileService.getUserProfile] ❌ Error:', error);
+      throw error;
     }
   }
 
   /**
-   * Update user profile in Firestore via Cloud Function
+   * Update user profile directly in Firestore
    */
   static async updateUserProfile(
     userId: string,
     updates: Partial<UserProfile>
   ): Promise<void> {
     try {
-      const updateUserProfileFn = httpsCallable<
-        { userId: string; updates: Partial<UserProfile> },
-        UpdateUserProfileResponse
-      >(functions, 'updateUserProfile');
-
-      const result = await updateUserProfileFn({ userId, updates });
-      
-      if (!result.data.success) {
-        throw new Error(result.data.message || 'Failed to update user profile');
-      }
+      console.log('[UserProfileService.updateUserProfile] Updating profile for:', userId);
+      const userDocRef = doc(db, 'users', userId);
+      await updateDoc(userDocRef, {
+        ...updates,
+        lastUpdated: serverTimestamp()
+      });
+      console.log('[UserProfileService.updateUserProfile] ✅ Profile updated successfully');
     } catch (error: any) {
-      console.error('Error updating user profile:', error);
-      throw new Error(error.message || 'Failed to update user profile');
+      console.error('[UserProfileService.updateUserProfile] ❌ Error:', error);
+      throw error;
     }
   }
 
   /**
-   * Create user profile in Firestore via Cloud Function
+   * Create user profile directly in Firestore
    */
   static async createUserProfile(
     userId: string,
     profile: Partial<UserProfile>
   ): Promise<UserProfile> {
     try {
-      const createUserProfileFn = httpsCallable<
-        { userId: string; profile: Partial<UserProfile> },
-        CreateUserProfileResponse
-      >(functions, 'createUserProfile');
-
-      const result = await createUserProfileFn({ userId, profile });
-      
-      if (!result.data.success) {
-        throw new Error(result.data.message || 'Failed to create user profile');
-      }
-
-      return result.data.profile;
+      console.log('[UserProfileService.createUserProfile] Creating profile for:', userId);
+      const userDocRef = doc(db, 'users', userId);
+      const newProfile = {
+        ...profile,
+        uid: userId,
+        createdAt: serverTimestamp(),
+        lastUpdated: serverTimestamp()
+      };
+      await setDoc(userDocRef, newProfile);
+      console.log('[UserProfileService.createUserProfile] ✅ Profile created successfully');
+      return newProfile as UserProfile;
     } catch (error: any) {
-      console.error('Error creating user profile:', error);
-      throw new Error(error.message || 'Failed to create user profile');
+      console.error('[UserProfileService.createUserProfile] ❌ Error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Accept terms of service - updates user profile
+   */
+  static async acceptTerms(userId: string): Promise<void> {
+    try {
+      console.log('[UserProfileService.acceptTerms] Accepting terms for:', userId);
+      const userDocRef = doc(db, 'users', userId);
+      await updateDoc(userDocRef, {
+        hasAcceptedTerms: true,
+        termsAcceptedAt: serverTimestamp(),
+        lastUpdated: serverTimestamp()
+      });
+      console.log('[UserProfileService.acceptTerms] ✅ Terms accepted successfully');
+    } catch (error: any) {
+      console.error('[UserProfileService.acceptTerms] ❌ Error:', error);
+      throw error;
     }
   }
 }

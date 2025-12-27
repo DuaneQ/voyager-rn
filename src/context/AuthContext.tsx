@@ -24,7 +24,10 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { Platform } from 'react-native';
-import { auth } from '../config/firebaseConfig';
+import { auth, db } from '../config/firebaseConfig';
+import { doc, setDoc } from 'firebase/firestore';
+import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { FirebaseAuthService, FirebaseUser } from '../services/auth/FirebaseAuthService';
 import { SafeGoogleSignin } from '../utils/SafeGoogleSignin';
 // On web (tests) we sometimes want to use the firebase/web SDK mocks
@@ -90,9 +93,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Initialize Google Sign-In configuration (one-time setup)
   useEffect(() => {
     if (Platform.OS !== 'web' && SafeGoogleSignin.isAvailable()) {
+      // Production OAuth client IDs (mundo1-1)
       SafeGoogleSignin.configure({
-        webClientId: '296095212837-tg2mm4k2d72hmcf9ncmsa2b6jn7hakhg.apps.googleusercontent.com', // Web Client ID from google-services.json
-        iosClientId: '296095212837-iq6q8qiodt67lalsn3j5ej2s6sn1e01k.apps.googleusercontent.com', // iOS Client ID from google-services.json
+        webClientId: '533074391000-uotb4gkkr75tdi2f9vvnffecj0oqbj16.apps.googleusercontent.com', // Production Web Client ID
+        iosClientId: '533074391000-quot684rc8kugrni3eh2c6bsq3u5rcqs.apps.googleusercontent.com', // Production iOS Client ID
         offlineAccess: true,
       });
       
@@ -127,13 +131,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const signIn = async (email: string, password: string): Promise<void> => {
+    console.log(`[AuthContext.signIn] 🔐 Starting sign in for: ${email}`);
     try {
       setStatus('loading');
 
       if (Platform.OS === 'web') {
+        console.log('[AuthContext.signIn] Using web SDK sign in');
         // Use the firebase/web SDK on web so tests (which mock these functions) work
         const result = await webSignInWithEmailAndPassword(auth, email, password);
         const u = result.user;
+        console.log(`[AuthContext.signIn] ✅ Web sign in successful, email verified: ${u.emailVerified}`);
         if (!u.emailVerified) {
           throw new Error('Email not verified. Please check your inbox or spam folder.');
         }
@@ -152,41 +159,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return;
       }
 
-      const firebaseUser = await FirebaseAuthService.signInWithEmailAndPassword(email, password);
+      // Use Firebase Auth SDK directly (same as PWA)
+      console.log('[AuthContext.signIn] Using Firebase Auth SDK sign in');
+      const result = await webSignInWithEmailAndPassword(auth, email, password);
+      const u = result.user;
+      console.log(`[AuthContext.signIn] ✅ Auth SDK sign in successful, email verified: ${u.emailVerified}`);
       
-      // Check if user profile exists; if not, create it (for users who registered
-      // manually and are signing in for the first time after email verification)
-      // Note: Platform.OS is always 'ios' | 'android' | 'windows' | 'macos' in React Native (never 'web')
-      try {
-        await UserProfileService.getUserProfile(firebaseUser.uid);
-        // Profile exists - continue normally
-      } catch (error: any) {
-        // Profile doesn't exist - create it now
-        // At this point the Auth SDK is signed in (via syncWithAuthSDK in signInWithEmailAndPassword),
-        // so it's safe to call the Cloud Function
-        const defaultProfile = {
-          username: firebaseUser.email?.split('@')[0] || 'user',
-          email: firebaseUser.email || '',
-          photos: [],
-          subscriptionType: 'free',
-          subscriptionStartDate: null,
-          subscriptionEndDate: null,
-          subscriptionCancelled: false,
-          stripeCustomerId: null,
-        };
-        
-        try {
-          await UserProfileService.createUserProfile(firebaseUser.uid, defaultProfile as any);
-        } catch (profileError) {
-          console.error('Failed to create user profile on first sign-in:', profileError);
-          // Don't throw - let the user sign in anyway and handle missing profile in the app
-        }
+      if (!u.emailVerified) {
+        throw new Error('Email not verified. Please check your inbox or spam folder.');
       }
       
-      // User state will be set by onAuthStateChanged listener
+      const firebaseUser: FirebaseUser = {
+        uid: u.uid,
+        email: u.email || null,
+        emailVerified: !!u.emailVerified,
+        displayName: (u as any).displayName || null,
+        photoURL: (u as any).photoURL || null,
+        idToken: '',
+        refreshToken: '',
+        expiresIn: '0',
+      };
+      setUser(firebaseUser);
       setStatus('authenticated');
+      
+      // Profile loading happens automatically via onAuthStateChanged
+      console.log('[AuthContext.signIn] ✅ Sign in complete');
     } catch (error: any) {
-      console.error('❌ Sign in error:', error);
+      console.error('[AuthContext.signIn] ❌ Sign in error:', error);
       setStatus('error');
       throw error;
     }
@@ -194,64 +193,66 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signUp = async (username: string, email: string, password: string): Promise<void> => {
     try {
+      console.log('🔥 [SignUp] Starting signup flow for:', email);
       setStatus('loading');
 
-      let newUser = null as FirebaseUser | null;
-      if (Platform.OS === 'web') {
-        const res = await webCreateUserWithEmailAndPassword(auth, email, password);
-        const u = res.user;
-        newUser = {
-          uid: u.uid,
-          email: u.email || null,
-          emailVerified: !!u.emailVerified,
-          idToken: '',
-          refreshToken: '',
-          expiresIn: '0',
-        } as FirebaseUser;
-        
-      } else {
-        newUser = await FirebaseAuthService.createUserWithEmailAndPassword(email, password);
-        
-      }
+      // Use firebase/auth SDK directly on all platforms - it works on React Native!
+      // This automatically signs the user in, so Firestore will have auth context
+      console.log('🔥 [SignUp] Calling createUserWithEmailAndPassword...');
+      const res = await webCreateUserWithEmailAndPassword(auth, email, password);
+      console.log('🔥 [SignUp] User created successfully:', res.user.uid);
       
-      // Prepare a default user profile payload. NOTE: Do NOT create the
-      // profile on mobile immediately after REST sign-up because the
-      // Firebase Auth SDK is not yet signed in. Cloud Functions invoked via
-      // the Functions SDK (httpsCallable) require the Auth SDK to have a
-      // signed-in user so the request can include the auth context. Creating
-      // the profile too early results in "User must be authenticated" errors.
-      const userProfile = {
+      const u = res.user;
+      
+      const newUser: FirebaseUser = {
+        uid: u.uid,
+        email: u.email || null,
+        emailVerified: !!u.emailVerified,
+        idToken: '',
+        refreshToken: '',
+        expiresIn: '0',
+      };
+
+      // Create complete user profile data (matching PWA exactly)
+      const userDataWithSubscription = {
         username,
         email,
-        photos: [],
+        bio: '',
+        gender: '',
+        sexualOrientation: '',
+        edu: '',
+        drinking: '',
+        smoking: '',
+        dob: '',
+        photos: ['', '', '', '', ''],
         subscriptionType: 'free',
         subscriptionStartDate: null,
         subscriptionEndDate: null,
         subscriptionCancelled: false,
         stripeCustomerId: null,
+        dailyUsage: {
+          date: new Date().toISOString().split('T')[0],
+          viewCount: 0,
+        },
       };
 
-      if (Platform.OS === 'web') {
-        // On web the Firebase SDK is active and the user is signed in, so
-        // it's safe to create the profile immediately and send verification.
-        await UserProfileService.createUserProfile(newUser.uid, userProfile as any);
-        await webSendEmailVerification((newUser as any));
-      } else {
-        // On mobile (Expo) we rely on the REST API for manual sign-up.
-        // IMPORTANT: Do NOT call the Cloud Function (which depends on the
-        // Auth SDK being signed in) yet. The profile will be created later
-        // when the user verifies their email and signs in.
-        // 
-        // Flow: Send verification email → keep user session (unverified) → user verifies
-        //       → signs in → profile created on first sign-in
-        await FirebaseAuthService.sendEmailVerification(newUser!.idToken);
-        
-        // DON'T sign out - keep the user session so "Resend Verification" works
-        // The user won't be authenticated in the app because emailVerified is false
-        // and sign-in checks for email verification before allowing access
-      }
+      console.log('🔥 [SignUp] Writing profile to Firestore for uid:', newUser.uid);
+      console.log('🔥 [SignUp] Current auth.currentUser:', auth.currentUser?.uid);
+      
+      // Write directly to Firestore (same as PWA)
+      // User is already signed in via createUserWithEmailAndPassword
+      const docRef = doc(db, 'users', newUser.uid);
+      await setDoc(docRef, userDataWithSubscription, { merge: true });
+      
+      console.log('🔥 [SignUp] Profile written successfully to Firestore!');
+
+      // Send verification email
+      console.log('🔥 [SignUp] Sending verification email...');
+      await webSendEmailVerification(u);
+      console.log('🔥 [SignUp] Verification email sent!');
 
       setStatus('idle');
+      console.log('🔥 [SignUp] Signup complete!');
       
     } catch (error: any) {
       console.error('❌ Sign up error:', error);
@@ -305,12 +306,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const currentUser = FirebaseAuthService.getCurrentUser();
       
-      if (currentUser) {
-        // User session exists (from sign-up) - resend verification
+      if (currentUser && !email) {
+        // User is signed in - use client SDK
         if (Platform.OS === 'web') {
           await webSendEmailVerification((currentUser as any));
         } else {
-          // Get fresh token in case it expired
           const idToken = await FirebaseAuthService.getIdToken(true);
           if (!idToken) {
             throw new Error('Session expired. Please sign up again.');
@@ -320,14 +320,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return;
       }
       
-      // No current user - check if email was provided
-      if (email) {
-        // This path would require signing in the user first, which we can't do
-        // without their password. Instead, guide them to sign in.
-        throw new Error('Please sign in first to resend verification email');
+      // Email required if no user is signed in
+      if (!email) {
+        throw new Error('No user signed in. Please sign in to resend verification email');
       }
       
-      throw new Error('No user signed in. Please sign in to resend verification email');
+      // Email provided - use Cloud Function with Admin SDK (required for generateEmailVerificationLink)
+      const functions = getFunctions();
+      const resendVerificationEmail = httpsCallable(functions, 'resendVerificationEmail');
+      const result = await resendVerificationEmail({ email });
+      
+      if (!(result.data as any)?.success) {
+        throw new Error((result.data as any)?.message || 'Failed to send verification email');
+      }
     } catch (error: any) {
       console.error('❌ Resend verification error:', error);
       throw error;
@@ -380,23 +385,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const idToken = userInfo?.idToken;
       if (!idToken) throw new Error('Google Sign-In failed to return an idToken');
 
-      // Authenticate with Firebase using Google ID token
-      const firebaseUser = await FirebaseAuthService.signInWithGoogleIdToken(idToken);
+      // Use Firebase Auth SDK directly (like PWA and like signUpWithGoogle)
+      const credential = GoogleAuthProvider.credential(idToken);
+      const userCredential = await signInWithCredential(auth, credential);
+      const u = userCredential.user;
 
       // SCENARIO 1: New user trying to sign in (no profile exists)
       // Check if user profile exists in Firestore
       try {
-        await UserProfileService.getUserProfile(firebaseUser.uid);
+        await UserProfileService.getUserProfile(u.uid);
         
       } catch (profileError: any) {
         // Profile doesn't exist - this is a new user trying to sign in
         
-        await FirebaseAuthService.signOut();
+        await auth.signOut();
         setStatus('idle');
         throw new Error('ACCOUNT_NOT_FOUND');
       }
 
       // SCENARIO 4: Existing user signing in successfully
+      const firebaseUser: FirebaseUser = {
+        uid: u.uid,
+        email: u.email || null,
+        emailVerified: !!u.emailVerified,
+        displayName: u.displayName || null,
+        photoURL: u.photoURL || null,
+        idToken: '',
+        refreshToken: '',
+        expiresIn: '0',
+      };
+      
       setUser(firebaseUser);
       setStatus('authenticated');
       
@@ -410,6 +428,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signUpWithGoogle = async (): Promise<any> => {
     try {
+      console.log('🔥 [GoogleSignUp] Starting Google signup flow...');
       setStatus('loading');
 
       if (Platform.OS === 'web') {
@@ -422,36 +441,56 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       // Mobile: Use SafeGoogleSignin wrapper
+      console.log('🔥 [GoogleSignUp] Checking Play Services...');
       await SafeGoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      
+      console.log('🔥 [GoogleSignUp] Prompting user to sign in with Google...');
       const userInfo = await SafeGoogleSignin.signIn();
       const idToken = userInfo?.idToken;
       if (!idToken) throw new Error('Google Sign-In failed to return an idToken');
 
-      // Authenticate with Firebase using Google ID token
-      const firebaseUser = await FirebaseAuthService.signInWithGoogleIdToken(idToken);
+      console.log('🔥 [GoogleSignUp] Got Google ID token, signing in to Firebase Auth SDK...');
+      
+      // Use Firebase Auth SDK directly (like PWA) - creates GoogleAuthProvider credential
+      const credential = GoogleAuthProvider.credential(idToken);
+      const userCredential = await signInWithCredential(auth, credential);
+      const u = userCredential.user;
+      
+      console.log('🔥 [GoogleSignUp] Firebase Auth successful, user ID:', u.uid);
 
       // Check if profile already exists
       let profileExists = false;
       try {
-        await UserProfileService.getUserProfile(firebaseUser.uid);
+        console.log('🔥 [GoogleSignUp] Checking if profile exists...');
+        await UserProfileService.getUserProfile(u.uid);
         profileExists = true;
-        
+        console.log('🔥 [GoogleSignUp] Profile exists - signing in existing user');
       } catch (error) {
-        
+        console.log('🔥 [GoogleSignUp] No profile found - new user signup');
       }
 
       // SCENARIO 2: Existing user trying to sign up - just sign them in
       if (profileExists) {
+        const firebaseUser: FirebaseUser = {
+          uid: u.uid,
+          email: u.email || null,
+          emailVerified: !!u.emailVerified,
+          displayName: u.displayName || null,
+          photoURL: u.photoURL || null,
+          idToken: '',
+          refreshToken: '',
+          expiresIn: '0',
+        };
         
         setUser(firebaseUser);
         setStatus('authenticated');
         return firebaseUser;
       }
 
-      // SCENARIO 3: New user signing up - create profile and sign in
+      // SCENARIO 3: New user signing up - write directly to Firestore (same as PWA)
       const userProfile = {
-        username: firebaseUser.displayName || (firebaseUser.email ? firebaseUser.email.split('@')[0] : 'newuser'),
-        email: firebaseUser.email || '',
+        username: u.displayName || (u.email ? u.email.split('@')[0] : 'newuser'),
+        email: u.email || '',
         bio: '',
         gender: '',
         sexualOrientation: '',
@@ -471,24 +510,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         },
       };
 
-      try {
-        await UserProfileService.createUserProfile(firebaseUser.uid, userProfile as any);
+      console.log('🔥 [GoogleSignUp] Creating new profile in Firestore...');
+      console.log('🔥 [GoogleSignUp] Current auth.currentUser:', auth.currentUser?.uid);
+      
+      // Write directly to Firestore (same as PWA)
+      // User is already signed in via signInWithCredential
+      const docRef = doc(db, 'users', u.uid);
+      await setDoc(docRef, userProfile, { merge: true });
+      
+      console.log('🔥 [GoogleSignUp] Profile created successfully!');
 
-        // Wait briefly to ensure Firestore write completes before UserProfileContext tries to read
-        // This prevents "User profile not found" race condition
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Sign in the newly created user
-        setUser(firebaseUser);
-        setStatus('authenticated');
-        return firebaseUser;
-      } catch (profileErr) {
-        console.error('❌ Failed to create user profile after Google sign-up:', profileErr);
-        // Sign out if profile creation failed
-        await FirebaseAuthService.signOut();
-        setStatus('idle');
-        throw new Error('Failed to create user profile. Please try again.');
-      }
+      const firebaseUser: FirebaseUser = {
+        uid: u.uid,
+        email: u.email || null,
+        emailVerified: !!u.emailVerified,
+        displayName: u.displayName || null,
+        photoURL: u.photoURL || null,
+        idToken: '',
+        refreshToken: '',
+        expiresIn: '0',
+      };
+      
+      // Sign in the newly created user
+      setUser(firebaseUser);
+      setStatus('authenticated');
+      console.log('🔥 [GoogleSignUp] Google signup complete!');
+      return firebaseUser;
+      
     } catch (error: any) {
       setStatus('idle');
       console.error('❌ Google sign-up error:', error);
