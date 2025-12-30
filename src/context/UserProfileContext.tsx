@@ -10,32 +10,10 @@ import React, { createContext, useState, useContext, useEffect, useCallback, Rea
 import { getDoc, updateDoc, doc } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 import { db } from '../config/firebaseConfig';
+import { UserProfile } from '../types/UserProfile';
 
-// User Profile type definition
-export interface UserProfile {
-  uid?: string; // Add uid from auth
-  username?: string;
-  email?: string;
-  bio?: string;
-  gender?: string;
-  sexualOrientation?: string;
-  edu?: string;
-  drinking?: string;
-  smoking?: string;
-  dob?: string;
-  photos?: string[];
-  subscriptionType?: string;
-  subscriptionStartDate?: string | null;
-  subscriptionEndDate?: string | null;
-  subscriptionCancelled?: boolean;
-  stripeCustomerId?: string | null;
-  hasAcceptedTerms?: boolean;
-  dailyUsage?: {
-    date: string;
-    viewCount: number;
-  };
-  createdAt?: any;
-}
+// Re-export UserProfile for backwards compatibility
+export type { UserProfile } from '../types/UserProfile';
 
 interface UserProfileContextValue {
   userProfile: UserProfile | null;

@@ -60,7 +60,7 @@ describe('usePhotoUpload', () => {
     photoURL1: '',
     photoURL2: '',
     photoURL3: '',
-    createdAt: new Date(),
+    createdAt: new Date().toISOString(),
     termsAccepted: true,
   };
 

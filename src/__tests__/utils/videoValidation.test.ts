@@ -368,7 +368,7 @@ describe('videoValidation', () => {
       const size = await getFileSize(mockUri);
 
       expect(size).toBe(10485760);
-      expect(FileSystem.getInfoAsync).toHaveBeenCalledWith(mockUri, { size: true });
+      expect(FileSystem.getInfoAsync).toHaveBeenCalledWith(mockUri);
     });
 
     it('should throw error when file does not exist', async () => {

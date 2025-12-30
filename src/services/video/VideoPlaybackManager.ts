@@ -179,9 +179,9 @@ export class VideoPlaybackManager {
     this.registrations.forEach((registration, videoId) => {
       if (registration.ref) {
         mutePromises.push(
-          registration.ref.setIsMutedAsync(true).catch(err => {
+          registration.ref.setIsMutedAsync(true).catch((err): void => {
             console.warn(`[VideoPlaybackManager] Failed to mute ${videoId}:`, err);
-          })
+          }) as Promise<void>
         );
       }
     });

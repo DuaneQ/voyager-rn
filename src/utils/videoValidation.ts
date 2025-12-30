@@ -150,7 +150,7 @@ export const getFileSize = async (uri: string): Promise<number> => {
   try {
     // Strategy 1: Try expo-file-system (most reliable for local files)
     try {
-      const fileInfo = await FileSystem.getInfoAsync(uri, { size: true });
+      const fileInfo = await FileSystem.getInfoAsync(uri);
       if (fileInfo && 'exists' in fileInfo && fileInfo.exists && 'size' in fileInfo && typeof fileInfo.size === 'number') {
         console.log('[videoValidation] File size from FileSystem:', fileInfo.size);
         return fileInfo.size;
