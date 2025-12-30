@@ -1,0 +1,14 @@
+# EAS Build - Force prebuild by ignoring native directories
+# This ensures expo-build-properties plugin is applied!
+/ios
+/android
+
+# EAS Build - DO NOT ignore these files (override .gitignore)
+# These files are needed for the build even though they're in .gitignore
+
+# We need firebase-config.js for the build
+!firebase-config.js
+
+# We need platform-specific Google config files
+!google-services.json
+!GoogleService-Info.plist

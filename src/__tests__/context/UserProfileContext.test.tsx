@@ -73,6 +73,7 @@ describe('UserProfileContext', () => {
   };
   const mockUserId = 'test-user-123';
   const mockProfile = {
+    uid: 'test-user-123',
     username: 'testuser',
     email: 'test@example.com',
     bio: 'Test bio',

@@ -24,7 +24,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { prepareImageForUpload } from '../utils/imageValidation';
+import { prepareImageForUpload, isValidHttpUrl } from '../utils/imageValidation';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { getDoc, doc } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
@@ -413,7 +413,7 @@ const ChatThreadScreen: React.FC = () => {
             )}
             
             {/* Image if present */}
-            {item.imageUrl && item.imageUrl.startsWith('http') && (
+            {item.imageUrl && isValidHttpUrl(item.imageUrl) && (
               <Image
                 source={{ uri: item.imageUrl }}
                 style={styles.messageImage}

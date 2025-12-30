@@ -30,24 +30,24 @@ export const useUsageTracking = () => {
   };
 
   // Load user profile from Firestore
-  useEffect(() => {
-    const loadUserProfile = async () => {
-      const userIdNow = getCurrentUserId();
-      if (!userIdNow) return;
+  const loadUserProfile = useCallback(async () => {
+    const userIdNow = getCurrentUserId();
+    if (!userIdNow) return;
 
-      try {
-  const docRef = doc((firebaseCfg as any).db, 'users', userIdNow);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          setUserProfile(docSnap.data());
-        }
-      } catch (error) {
-        console.error('Error loading user profile:', error);
+    try {
+const docRef = doc((firebaseCfg as any).db, 'users', userIdNow);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        setUserProfile(docSnap.data());
       }
-    };
-
-    loadUserProfile();
+    } catch (error) {
+      console.error('Error loading user profile:', error);
+    }
   }, []);
+
+  useEffect(() => {
+    loadUserProfile();
+  }, [loadUserProfile]);
 
   // Check if user is premium (same logic as PWA)
   const hasPremium = useCallback(() => {
@@ -84,54 +84,80 @@ export const useUsageTracking = () => {
   // Track a view (same logic as PWA)
   const trackView = useCallback(async (): Promise<boolean> => {
     const userIdNow = getCurrentUserId();
-    if (!userIdNow || !userProfile) {
+    if (!userIdNow) {
       console.error('No user ID or profile found');
       return false;
     }
 
-    if (hasReachedLimit()) {
+    // Fetch fresh data from Firestore before checking limit
+    try {
+      const docRef = doc((firebaseCfg as any).db, 'users', userIdNow);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const freshProfile = docSnap.data();
+        
+        // Check if premium with fresh data (same logic as hasPremium())
+        const s: any = freshProfile.subscriptionEndDate;
+        let isPremium = false;
+        if (freshProfile.subscriptionType === 'premium' && s) {
+          let endDate: Date;
+          if (typeof s.toDate === 'function') {
+            endDate = s.toDate();
+          } else if (typeof s.seconds === 'number') {
+            endDate = new Date(s.seconds * 1000 + Math.floor((s.nanoseconds || 0) / 1e6));
+          } else {
+            endDate = new Date(s);
+          }
+          if (!isNaN(endDate.getTime()) && new Date() <= endDate) {
+            isPremium = true;
+          }
+        }
+        
+        if (isPremium) return true; // Premium users unlimited
+        
+        // Check limit with fresh data
+        const today = getTodayString();
+        const dailyUsage = freshProfile.dailyUsage;
+        if (dailyUsage && dailyUsage.date === today && dailyUsage.viewCount >= FREE_DAILY_LIMIT) {
+          console.log('[useUsageTracking] Daily limit reached:', dailyUsage.viewCount);
+          return false;
+        }
+        
+        // Update view count
+        let newViewCount = 1;
+        if (dailyUsage && dailyUsage.date === today) {
+          newViewCount = (dailyUsage.viewCount || 0) + 1;
+        }
+
+        const updatedUsage = {
+          date: today,
+          viewCount: newViewCount
+        };
+
+        setIsLoading(true);
+        
+        // Update Firestore (reuse docRef from above)
+        await updateDoc(docRef, {
+          dailyUsage: updatedUsage
+        });
+
+        // Update local state
+        setUserProfile(prev => ({
+          ...prev,
+          dailyUsage: updatedUsage
+        }));
+
+        return true;
+      }
       
       return false;
-    }
-
-    setIsLoading(true);
-    try {
-      const today = getTodayString();
-      const currentUsage = userProfile.dailyUsage;
-      
-      let newViewCount = 1;
-      
-      // If usage exists and is for today, increment it
-      if (currentUsage && currentUsage.date === today) {
-        newViewCount = (currentUsage.viewCount || 0) + 1;
-      }
-
-      const updatedUsage = {
-        date: today,
-        viewCount: newViewCount
-      };
-
-      // Update Firestore (same as PWA)
-  const userRef = doc((firebaseCfg as any).db, 'users', userIdNow);
-      await updateDoc(userRef, {
-        dailyUsage: updatedUsage
-      });
-
-      // Update local state
-      setUserProfile(prev => ({
-        ...prev,
-        dailyUsage: updatedUsage
-      }));
-
-      return true;
-
     } catch (error) {
       console.error('Error tracking view:', error);
       return false;
     } finally {
       setIsLoading(false);
     }
-  }, [userProfile, hasReachedLimit]);
+  }, []);
 
   // AI-specific tracking (same logic as PWA)
   const hasReachedAILimit = useCallback(() => {
@@ -213,6 +239,7 @@ export const useUsageTracking = () => {
     hasPremium,
     isLoading,
     userProfile,
+    refreshProfile: loadUserProfile, // Add refresh function
     // AI-specific methods
     hasReachedAILimit,
     getRemainingAICreations,

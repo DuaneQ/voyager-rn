@@ -182,3 +182,20 @@ export async function prepareImageForUpload(
     };
   }
 }
+
+/**
+ * Validates that a URL is a safe HTTP/HTTPS URL (not javascript:, data:, etc.)
+ * Prevents XSS attacks from malicious URLs
+ * @param url - URL to validate
+ * @returns true if URL is safe (http:// or https:// only)
+ */
+export function isValidHttpUrl(url: string | null | undefined): boolean {
+  if (!url || typeof url !== 'string') {
+    return false;
+  }
+  
+  // Must start with http:// or https:// (case-insensitive)
+  // This explicitly blocks javascript:, data:, file:, etc.
+  const trimmedUrl = url.trim().toLowerCase();
+  return trimmedUrl.startsWith('http://') || trimmedUrl.startsWith('https://');
+}

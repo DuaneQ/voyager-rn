@@ -47,6 +47,7 @@ jest.mock('../../hooks/useUsageTracking', () => ({
     hasReachedLimit: jest.fn(() => false),
     trackView: jest.fn(async () => true),
     dailyViewCount: 0,
+    refreshProfile: jest.fn(async () => {}),
   }),
 }));
 

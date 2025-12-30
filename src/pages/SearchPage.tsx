@@ -51,7 +51,7 @@ const SearchPage: React.FC = () => {
   const { userProfile } = useUserProfile();
   
   // Usage tracking hook
-  const { hasReachedLimit, trackView, dailyViewCount } = useUsageTracking();
+  const { hasReachedLimit, trackView, dailyViewCount, refreshProfile } = useUsageTracking();
   
   // Update itinerary hook (for persisting likes)
   const { updateItinerary } = useUpdateItinerary();
@@ -117,8 +117,9 @@ const SearchPage: React.FC = () => {
     React.useCallback(() => {
       if (userId) {
         refreshItineraries();
+        refreshProfile(); // Refresh usage tracking too
       }
-    }, [userId, refreshItineraries])
+    }, [userId, refreshItineraries, refreshProfile])
   );
 
   const handleItinerarySelect = async (id: string) => {
@@ -165,17 +166,11 @@ const SearchPage: React.FC = () => {
       showAlert('warning', 'Please log in to like itineraries');
       return;
     }
-    
-    // Check limit before tracking
-    if (hasReachedLimit()) {
-      showAlert('info', 'Daily limit reached! Upgrade to premium for unlimited views.');
-      return;
-    }
 
-    // Track usage
+    // Track usage (checks limit with fresh data internally)
     const success = await trackView();
     if (!success) {
-      showAlert('warning', 'Unable to track usage. Please try again.');
+      showAlert('info', 'Daily limit reached! Log into your account at https://travalpass.com/login to upgrade to premium for unlimited views.');
       return;
     }
 
@@ -261,16 +256,10 @@ const SearchPage: React.FC = () => {
       return;
     }
 
-    // Check limit before tracking
-    if (hasReachedLimit()) {
-      showAlert('info', 'Daily limit reached! Upgrade to premium for unlimited views.');
-      return;
-    }
-
-    // Track usage
+    // Track usage (checks limit with fresh data internally)
     const success = await trackView();
     if (!success) {
-      showAlert('warning', 'Unable to track usage. Please try again.');
+      showAlert('info', 'Daily limit reached! Log into your account at https://travalpass.com/login to upgrade to premium for unlimited views.');
       return;
     }
 
