@@ -299,7 +299,8 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginVertical: 20,
     width: screenWidth * 0.9, // Consistent width on both platforms
-    minHeight: 500,
+    height: 500, // Fixed height reduced by 15% for better screenshot capture
+    maxHeight: 500, // Ensure card doesn't exceed this height
     backgroundColor: '#fff',
     borderRadius: 16,
     // Platform-specific shadows
@@ -381,9 +382,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 
-  // Scrollable content - Adequate space
+  // Scrollable content - Adequate space for description and activities
   scrollContent: {
-    maxHeight: 280,
+    maxHeight: 230, // Increased to ensure description is visible
     marginTop: 16,
     paddingRight: 8,
   },

@@ -10,6 +10,10 @@ import { db } from '../config/firebaseConfig';
 const ChatPage: React.FC = () => {
   const { userProfile } = useContext(UserProfileContext);
   const navigation = useNavigation();
+  
+  console.log('[ChatPage] userProfile:', userProfile);
+  console.log('[ChatPage] userProfile?.uid:', userProfile?.uid);
+  
   const { connections, loading, error, refresh } = useConnections(userProfile?.uid || null);
   
   // Store user profile photos

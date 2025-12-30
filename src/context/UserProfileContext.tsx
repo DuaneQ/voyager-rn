@@ -13,6 +13,7 @@ import { db } from '../config/firebaseConfig';
 
 // User Profile type definition
 export interface UserProfile {
+  uid?: string; // Add uid from auth
   username?: string;
   email?: string;
   bio?: string;
@@ -98,7 +99,11 @@ const UserProfileProvider: React.FC<UserProfileProviderProps> = ({ children }) =
           const userDoc = await getDoc(doc(db, 'users', userId));
           
           if (userDoc.exists()) {
-            setUserProfile(userDoc.data() as UserProfile);
+            // Include uid from auth in the profile
+            setUserProfile({ 
+              uid: userId,
+              ...userDoc.data() as UserProfile 
+            });
           } else {
             console.log('[UserProfileContext] Profile not found for user:', userId);
           }
