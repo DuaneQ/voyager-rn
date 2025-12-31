@@ -25,6 +25,29 @@
 
 **If you violate this rule, you will break the production app. NO EXCEPTIONS.**
 
+### 🚨 NEVER CREATE DUPLICATE DIRECTORIES 🚨
+
+**ABSOLUTE RULE**: Do NOT create duplicate or similar-named directories.
+
+**Examples of violations**:
+- ❌ Creating both `src/__tests__/integration/` AND `src/__tests__/integrations/`
+- ❌ Creating both `src/components/auth/` AND `src/components/authentication/`
+- ❌ Creating both `src/utils/` AND `src/utilities/`
+
+**Before creating ANY new directory**:
+- ✅ Check if a similar directory already exists (singular/plural variations, abbreviations)
+- ✅ Use existing directory structure patterns
+- ✅ If unsure, ask the user which directory structure to use
+- ❌ **NEVER** create a new directory without checking for existing similar ones first
+
+**Canonical test directory structure**:
+- `src/__tests__/components/` - Component tests
+- `src/__tests__/integrations/` - Integration tests (plural - matches jest.integration.config.js)
+- `src/__tests__/hooks/` - Hook tests
+- `src/__mocks__/` - Mock files
+
+**If you violate this rule, you create confusion and technical debt. NO EXCEPTIONS.**
+
 ---
 
 ## Project Overview

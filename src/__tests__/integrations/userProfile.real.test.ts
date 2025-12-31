@@ -106,6 +106,9 @@ describe('userProfile RPC integration tests', () => {
     const updateBody = await updateRes.json();
     expect(updateBody?.result?.success).toBe(true);
 
+    // Small delay to allow Firestore to propagate changes
+    await new Promise(resolve => setTimeout(resolve, 500));
+
     // Read back
     const getRes = await fetch(`${FUNCTION_URL}/getUserProfile`, {
       method: 'POST',

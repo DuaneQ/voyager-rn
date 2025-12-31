@@ -15,7 +15,14 @@ const Stub = {
   Platform: { OS: 'ios', select: (o) => (o && o.ios) || o || undefined },
   NativeModules: {},
   processColor: (c) => c,
-  StyleSheet: { create: (s) => s },
+  StyleSheet: { 
+    create: (s) => s,
+    flatten: (style) => {
+      if (!style) return {};
+      if (!Array.isArray(style)) return style;
+      return style.reduce((acc, s) => ({ ...acc, ...(s || {}) }), {});
+    }
+  },
   Dimensions: {
     get: (key) => {
       const base = { width: 360, height: 640, scale: 2, fontScale: 2 };
