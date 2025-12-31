@@ -251,11 +251,8 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
       return;
     }
 
-    // Check AI usage limit before generation (matching PWA)
-    if (hasReachedAILimit && hasReachedAILimit()) {
-      setFormErrors({ general: 'Daily AI generation limit reached! Log into your account at https://travalpass.com/login to upgrade to premium for more AI itineraries.' });
-      return;
-    }
+    // Note: AI usage limit is checked before opening the modal in AIItinerarySection.tsx
+    // We only track usage after successful generation (see below after result.success)
 
     try {
       // Get user ID from Firebase Auth (not userProfile which doesn't have uid)

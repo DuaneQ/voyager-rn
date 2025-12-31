@@ -113,13 +113,9 @@ export const useTermsAcceptance = (): UseTermsAcceptanceReturn => {
    * Writes acceptance to Firestore user document
    */
   const acceptTerms = async (): Promise<void> => {
-    console.log('[useTermsAcceptance.acceptTerms] 📝 Starting terms acceptance...');
     setError(null);
     
     const currentUserId = auth.currentUser?.uid || userId;
-    console.log(`[useTermsAcceptance.acceptTerms] Current user ID: ${currentUserId}`);
-    console.log(`[useTermsAcceptance.acceptTerms] auth.currentUser: ${auth.currentUser ? 'EXISTS' : 'NULL'}`);
-    console.log(`[useTermsAcceptance.acceptTerms] userId prop: ${userId}`);
     
     if (!currentUserId) {
       const noUserError = new Error('User must be logged in to accept terms');
@@ -132,7 +128,6 @@ export const useTermsAcceptance = (): UseTermsAcceptanceReturn => {
     
     try {
       const userDocRef = doc(db, 'users', currentUserId);
-      console.log(`[useTermsAcceptance.acceptTerms] Updating Firestore doc: users/${currentUserId}`);
       
       // Write acceptance to Firestore
       await updateDoc(userDocRef, {
@@ -143,8 +138,6 @@ export const useTermsAcceptance = (): UseTermsAcceptanceReturn => {
         },
         lastUpdated: firestoreServerTimestamp(),
       });
-      
-      console.log('[useTermsAcceptance.acceptTerms] ✅ Firestore update successful');
       setHasAcceptedTerms(true);
     } catch (err) {
       const errorObj = err instanceof Error ? err : new Error(String(err));

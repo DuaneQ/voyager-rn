@@ -72,19 +72,15 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
       const ref = videoRef.current;
       if (!ref || isUnmountedRef.current) return;
       
-      console.debug(`[VideoCard] onBecomeActive - id=${video.id}, isUnloaded=${isUnloadedRef.current}`);
-      
       // Reset user pause state when video becomes active
       setUserPaused(false);
       
       try {
         // If the player was previously unloaded, reload it first (critical for Android scroll-back)
         if (isUnloadedRef.current) {
-          console.debug(`[VideoCard] reloading unloaded video - id=${video.id}`);
           try {
             await ref.loadAsync({ uri: video.videoUrl }, {}, false);
             isUnloadedRef.current = false;
-            console.debug(`[VideoCard] reload successful - id=${video.id}`);
           } catch (loadErr) {
             console.error(`[VideoCard] Error reloading video ${video.id}:`, loadErr);
             return; // Don't attempt playback if reload failed
@@ -121,8 +117,6 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
       const ref = videoRef.current;
       if (!ref || isUnmountedRef.current) return;
       
-      console.debug(`[VideoCard] onBecomeInactive - id=${video.id}`);
-      
       try {
         // 1. Mute IMMEDIATELY to prevent audio leakage
         await ref.setIsMutedAsync(true);
@@ -140,7 +134,6 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
         try {
           await ref.unloadAsync();
           isUnloadedRef.current = true;
-          console.debug(`[VideoCard] unloadAsync called - id=${video.id}`);
         } catch (unloadErr) {
           console.warn('[VideoCard] unloadAsync failed (ignored):', unloadErr);
         }
@@ -172,7 +165,6 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
    */
   useEffect(() => {
     const managePlayback = async () => {
-      console.debug(`[VideoCard] managePlayback - id=${video.id} isActive=${isActive}`);
       if (!videoRef.current || isUnmountedRef.current) return;
 
       // Request activation/deactivation via manager

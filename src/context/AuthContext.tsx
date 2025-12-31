@@ -100,9 +100,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Initialize Google Sign-In configuration (one-time setup)
   useEffect(() => {
     if (Platform.OS !== 'web' && SafeGoogleSignin.isAvailable()) {
+      // Use dev credentials in dev mode, production credentials in release builds
+      const googleConfig = __DEV__ 
+        ? {
+            webClientId: '296095212837-tg2mm4k2d72hmcf9ncmsa2b6jn7hakhg.apps.googleusercontent.com',
+            iosClientId: '296095212837-iq6q8qiodt67lalsn3j5ej2s6sn1e01k.apps.googleusercontent.com',
+          }
+        : {
+            webClientId: '533074391000-deos0eg5t1nnaeqgcacflcp10klcbe53.apps.googleusercontent.com',
+            iosClientId: '533074391000-quot684rc8kugrni3eh2c6bsq3u5rcqs.apps.googleusercontent.com',
+          };
       SafeGoogleSignin.configure({
-        webClientId: '296095212837-tg2mm4k2d72hmcf9ncmsa2b6jn7hakhg.apps.googleusercontent.com',
-        iosClientId: '296095212837-iq6q8qiodt67lalsn3j5ej2s6sn1e01k.apps.googleusercontent.com',
+        ...googleConfig,
         offlineAccess: true,
       });
     }

@@ -83,7 +83,6 @@ const UserProfileProvider: React.FC<UserProfileProviderProps> = ({ children }) =
               ...userDoc.data() as UserProfile 
             });
           } else {
-            console.log('[UserProfileContext] Profile not found for user:', userId);
           }
         }
       } catch (error) {

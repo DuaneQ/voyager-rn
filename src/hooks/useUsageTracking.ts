@@ -119,7 +119,6 @@ const docRef = doc((firebaseCfg as any).db, 'users', userIdNow);
         const today = getTodayString();
         const dailyUsage = freshProfile.dailyUsage;
         if (dailyUsage && dailyUsage.date === today && dailyUsage.viewCount >= FREE_DAILY_LIMIT) {
-          console.log('[useUsageTracking] Daily limit reached:', dailyUsage.viewCount);
           return false;
         }
         
@@ -180,58 +179,71 @@ const docRef = doc((firebaseCfg as any).db, 'users', userIdNow);
 
   const trackAICreation = useCallback(async (): Promise<boolean> => {
     const userIdNow = getCurrentUserId();
-    if (!userIdNow || !userProfile) {
+    if (!userIdNow) {
       console.error('No user ID or profile found');
       return false;
     }
 
-    if (hasReachedAILimit()) {
-      
-      return false;
+    // Determine today's date and limits
+    const today = getTodayString();
+    const aiLimit = hasPremium() ? PREMIUM_DAILY_AI_LIMIT : FREE_DAILY_AI_LIMIT;
+
+    // Start with any available authoritative usage (profile first)
+    let currentAIUsage: any = userProfile?.dailyUsage?.aiItineraries;
+    
+    // Fetch latest from Firestore to avoid race conditions
+    try {
+      const userRef = doc((firebaseCfg as any).db, 'users', userIdNow);
+      const snap = await getDoc(userRef);
+      if (snap && snap.exists()) {
+        const data = snap.data();
+        currentAIUsage = data?.dailyUsage?.aiItineraries || currentAIUsage;
+      }
+    } catch (e) {
+      // Non-fatal: fall back to any available local profile
+      console.warn('[useUsageTracking] failed to fetch latest AI usage before increment', e);
     }
+    
+    let newCount = 1;
+    if (currentAIUsage && currentAIUsage.date === today) {
+      if (currentAIUsage.count >= aiLimit) {
+        // Already reached or exceeded
+        return false;
+      }
+      newCount = currentAIUsage.count + 1;
+    }
+
+    const updatedAIUsage = {
+      date: today,
+      count: newCount,
+    };
 
     setIsLoading(true);
     try {
-      const today = getTodayString();
-      const aiLimit = hasPremium() ? PREMIUM_DAILY_AI_LIMIT : FREE_DAILY_AI_LIMIT;
-      const currentAIUsage = userProfile.dailyUsage?.aiItineraries;
-      
-      let newCount = 1;
-      
-      if (currentAIUsage && currentAIUsage.date === today) {
-        newCount = (currentAIUsage.count || 0) + 1;
-      }
-
-      const updatedAIUsage = {
-        date: today,
-        count: newCount
-      };
-
-      // Update the daily usage structure
-      const updatedDailyUsage = {
-        ...userProfile.dailyUsage,
-        aiItineraries: updatedAIUsage
-      };
-
-  const userRef = doc((firebaseCfg as any).db, 'users', userIdNow);
+      const userRef = doc((firebaseCfg as any).db, 'users', userIdNow);
+      // Use dot-path to update nested field (matching PWA)
       await updateDoc(userRef, {
-        dailyUsage: updatedDailyUsage
+        ['dailyUsage.aiItineraries']: updatedAIUsage,
       });
 
-      setUserProfile(prev => ({
-        ...prev,
-        dailyUsage: updatedDailyUsage
-      }));
+      // Update local state
+      const updatedProfile = {
+        ...userProfile,
+        dailyUsage: {
+          ...(userProfile?.dailyUsage || { date: today, viewCount: 0 }),
+          aiItineraries: updatedAIUsage,
+        },
+      };
+      setUserProfile(updatedProfile);
 
       return true;
-
     } catch (error) {
       console.error('Error tracking AI creation:', error);
       return false;
     } finally {
       setIsLoading(false);
     }
-  }, [userProfile, hasPremium, hasReachedAILimit]);
+  }, [userProfile, hasPremium]);
 
   return {
     hasReachedLimit,

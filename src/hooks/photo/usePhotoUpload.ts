@@ -197,12 +197,9 @@ export const usePhotoUpload = (userId?: string): UsePhotoUploadReturn => {
         // Clear previous state
         clearState();
 
-        console.debug('[usePhotoUpload] selectAndUploadPhoto start, slot=', slot);
-
         // Request permission
         const hasPermission = await requestMediaLibraryPermission();
         if (!hasPermission) {
-          console.debug('[usePhotoUpload] media library permission denied');
           return null;
         }
 
@@ -234,8 +231,6 @@ export const usePhotoUpload = (userId?: string): UsePhotoUploadReturn => {
           uploadedUrl: null,
         });
 
-        console.debug('[usePhotoUpload] launching image picker...');
-
         // Upload with retry logic
         const uploadResult = await uploadWithRetry(
           selectedAsset.uri,
@@ -251,8 +246,6 @@ export const usePhotoUpload = (userId?: string): UsePhotoUploadReturn => {
           error: null,
           uploadedUrl: uploadResult.url,
         });
-
-        console.debug('[usePhotoUpload] upload succeeded, url=', uploadResult.url);
 
         // Update user profile context
         if (userProfile) {

@@ -5,10 +5,10 @@
  */
 
 import React, { createContext, useContext, ReactNode } from 'react';
-import { Alert } from 'react-native';
+import { Alert, Linking } from 'react-native';
 
 interface AlertContextType {
-  showAlert: (severity: string, message: string) => void;
+  showAlert: (severity: string, message: string, actionUrl?: string, actionLabel?: string) => void;
 }
 
 const AlertContext = createContext<AlertContextType | undefined>(undefined);
@@ -18,13 +18,30 @@ interface AlertProviderProps {
 }
 
 const AlertProvider: React.FC<AlertProviderProps> = ({ children }) => {
-  const showAlert = (severity: string, message: string) => {
+  const showAlert = (severity: string, message: string, actionUrl?: string, actionLabel?: string) => {
     // Map severity to Alert types (React Native Alert is simpler)
     const title = severity === 'error' ? 'Error' : 
                   severity === 'warning' ? 'Warning' : 
                   severity === 'success' ? 'Success' : 'Info';
     
-    Alert.alert(title, message);
+    // If action URL provided, add button to open it
+    if (actionUrl) {
+      Alert.alert(
+        title, 
+        message,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: actionLabel || 'Open Link', 
+            onPress: () => Linking.openURL(actionUrl).catch(err => 
+              console.error('Failed to open URL:', err)
+            )
+          }
+        ]
+      );
+    } else {
+      Alert.alert(title, message);
+    }
   };
 
   return (

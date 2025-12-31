@@ -453,11 +453,9 @@ describe('useUsageTracking', () => {
       expect(firestore.updateDoc).toHaveBeenCalledWith(
         expect.objectContaining({ collection: 'users' }),
         {
-          dailyUsage: expect.objectContaining({
-            aiItineraries: expect.objectContaining({
+          ['dailyUsage.aiItineraries']: expect.objectContaining({
               date: getTodayString(),
               count: 3, // 2 + 1
-            }),
           }),
         }
       );
@@ -629,14 +627,12 @@ describe('useUsageTracking', () => {
       expect(success).toBe(true);
       expect(firestore.updateDoc).toHaveBeenCalledWith(
         expect.anything(),
-        expect.objectContaining({
-          dailyUsage: expect.objectContaining({
-            aiItineraries: expect.objectContaining({
+        {
+          ['dailyUsage.aiItineraries']: expect.objectContaining({
               date: getTodayString(),
               count: 1, // Reset to 1
-            }),
           }),
-        })
+        }
       );
     });
   });
@@ -1129,6 +1125,308 @@ describe('useUsageTracking', () => {
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false);
       });
+    });
+  });
+
+  describe('Date Boundary Tests - Daily Reset', () => {
+    it('should allow view tracking on new day after reaching limit on previous day', async () => {
+      // User reached limit (10 views) yesterday
+      const userYesterdayLimit = {
+        username: 'testuser',
+        email: 'test@example.com',
+        subscriptionType: 'free',
+        dailyUsage: {
+          date: getYesterdayString(),
+          viewCount: 10, // Hit the limit yesterday
+          aiItineraries: {
+            date: getYesterdayString(),
+            count: 0,
+          },
+        },
+      };
+
+      (firestore.getDoc as jest.Mock).mockResolvedValue({
+        exists: () => true,
+        data: () => userYesterdayLimit,
+      });
+      (firestore.updateDoc as jest.Mock).mockResolvedValue(undefined);
+
+      const { result } = renderHook(() => useUsageTracking());
+
+      await waitFor(() => {
+        expect(result.current.userProfile).not.toBeNull();
+      });
+
+      // Should NOT be limited because it's a new day
+      expect(result.current.hasReachedLimit()).toBe(false);
+      expect(result.current.userProfile?.dailyUsage?.viewCount).toBe(10);
+      expect(result.current.userProfile?.dailyUsage?.date).toBe(getYesterdayString());
+
+      // Should successfully track view on new day
+      let success;
+      await act(async () => {
+        success = await result.current.trackView();
+      });
+
+      expect(success).toBe(true);
+      expect(firestore.updateDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        {
+          dailyUsage: expect.objectContaining({
+            date: getTodayString(), // Reset to today
+            viewCount: 1, // Reset to 1
+          }),
+        }
+      );
+    });
+
+    it('should allow AI creation on new day after reaching limit on previous day', async () => {
+      // User reached AI limit (5 creations) yesterday
+      const userYesterdayAILimit = {
+        username: 'testuser',
+        email: 'test@example.com',
+        subscriptionType: 'free',
+        dailyUsage: {
+          date: getYesterdayString(),
+          viewCount: 3,
+          aiItineraries: {
+            date: getYesterdayString(),
+            count: 5, // Hit the AI limit yesterday
+          },
+        },
+      };
+
+      (firestore.getDoc as jest.Mock).mockResolvedValue({
+        exists: () => true,
+        data: () => userYesterdayAILimit,
+      });
+      (firestore.updateDoc as jest.Mock).mockResolvedValue(undefined);
+
+      const { result } = renderHook(() => useUsageTracking());
+
+      await waitFor(() => {
+        expect(result.current.userProfile).not.toBeNull();
+      });
+
+      // Should NOT be limited because it's a new day
+      expect(result.current.hasReachedAILimit()).toBe(false);
+      expect(result.current.getRemainingAICreations()).toBe(5); // Full limit available
+
+      // Should successfully track AI creation on new day
+      let success;
+      await act(async () => {
+        success = await result.current.trackAICreation();
+      });
+
+      expect(success).toBe(true);
+      expect(firestore.updateDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        {
+          ['dailyUsage.aiItineraries']: expect.objectContaining({
+            date: getTodayString(), // Reset to today
+            count: 1, // Reset to 1
+          }),
+        }
+      );
+    });
+
+    it('should handle multiple days with limit - user hits limit two days in a row', async () => {
+      // Day 1: User hits AI limit
+      const userDay1Limit = {
+        username: 'testuser',
+        email: 'test@example.com',
+        subscriptionType: 'free',
+        dailyUsage: {
+          date: getYesterdayString(),
+          viewCount: 8,
+          aiItineraries: {
+            date: getYesterdayString(),
+            count: 5, // Hit limit on day 1
+          },
+        },
+      };
+
+      (firestore.getDoc as jest.Mock).mockResolvedValue({
+        exists: () => true,
+        data: () => userDay1Limit,
+      });
+      (firestore.updateDoc as jest.Mock).mockResolvedValue(undefined);
+
+      const { result } = renderHook(() => useUsageTracking());
+
+      await waitFor(() => {
+        expect(result.current.userProfile).not.toBeNull();
+      });
+
+      // Day 2: Should be able to create AI itineraries again
+      expect(result.current.hasReachedAILimit()).toBe(false);
+
+      // Create 5 AI itineraries on day 2
+      for (let i = 1; i <= 5; i++) {
+        // Mock fresh data showing current count
+        const userDay2Progress = {
+          ...userDay1Limit,
+          dailyUsage: {
+            ...userDay1Limit.dailyUsage,
+            aiItineraries: {
+              date: getTodayString(),
+              count: i - 1, // Current count before this creation
+            },
+          },
+        };
+
+        (firestore.getDoc as jest.Mock).mockResolvedValue({
+          exists: () => true,
+          data: () => userDay2Progress,
+        });
+
+        let success;
+        await act(async () => {
+          success = await result.current.trackAICreation();
+        });
+
+        expect(success).toBe(true);
+      }
+
+      // After 5 creations on day 2, should now be limited
+      const userDay2Limit = {
+        ...userDay1Limit,
+        dailyUsage: {
+          ...userDay1Limit.dailyUsage,
+          aiItineraries: {
+            date: getTodayString(),
+            count: 5, // Hit limit on day 2
+          },
+        },
+      };
+
+      (firestore.getDoc as jest.Mock).mockResolvedValue({
+        exists: () => true,
+        data: () => userDay2Limit,
+      });
+
+      // Refresh profile to get latest data
+      await act(async () => {
+        await result.current.refreshProfile();
+      });
+
+      await waitFor(() => {
+        expect(result.current.hasReachedAILimit()).toBe(true);
+      });
+
+      expect(result.current.getRemainingAICreations()).toBe(0);
+    });
+
+    it('should allow both view and AI tracking on new day after hitting both limits', async () => {
+      // User hit both limits yesterday
+      const userYesterdayBothLimits = {
+        username: 'testuser',
+        email: 'test@example.com',
+        subscriptionType: 'free',
+        dailyUsage: {
+          date: getYesterdayString(),
+          viewCount: 10, // Hit view limit
+          aiItineraries: {
+            date: getYesterdayString(),
+            count: 5, // Hit AI limit
+          },
+        },
+      };
+
+      (firestore.getDoc as jest.Mock).mockResolvedValue({
+        exists: () => true,
+        data: () => userYesterdayBothLimits,
+      });
+      (firestore.updateDoc as jest.Mock).mockResolvedValue(undefined);
+
+      const { result } = renderHook(() => useUsageTracking());
+
+      await waitFor(() => {
+        expect(result.current.userProfile).not.toBeNull();
+      });
+
+      // Both limits should be reset for new day
+      expect(result.current.hasReachedLimit()).toBe(false);
+      expect(result.current.hasReachedAILimit()).toBe(false);
+      expect(result.current.getRemainingAICreations()).toBe(5);
+
+      // Should successfully track view on new day
+      let viewSuccess;
+      await act(async () => {
+        viewSuccess = await result.current.trackView();
+      });
+      expect(viewSuccess).toBe(true);
+
+      // Should successfully track AI creation on new day
+      let aiSuccess;
+      await act(async () => {
+        aiSuccess = await result.current.trackAICreation();
+      });
+      expect(aiSuccess).toBe(true);
+
+      // Verify both were reset to new day
+      expect(firestore.updateDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        {
+          dailyUsage: expect.objectContaining({
+            date: getTodayString(),
+            viewCount: 1,
+          }),
+        }
+      );
+
+      expect(firestore.updateDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        {
+          ['dailyUsage.aiItineraries']: expect.objectContaining({
+            date: getTodayString(),
+            count: 1,
+          }),
+        }
+      );
+    });
+
+    it('should handle premium user with expired limits from previous day', async () => {
+      // Premium user had limits yesterday (shouldn't happen but testing edge case)
+      const premiumUserYesterdayLimits = {
+        username: 'premiumuser',
+        email: 'premium@example.com',
+        subscriptionType: 'premium',
+        subscriptionEndDate: { toDate: () => new Date('2026-12-31') },
+        dailyUsage: {
+          date: getYesterdayString(),
+          viewCount: 10,
+          aiItineraries: {
+            date: getYesterdayString(),
+            count: 5,
+          },
+        },
+      };
+
+      (firestore.getDoc as jest.Mock).mockResolvedValue({
+        exists: () => true,
+        data: () => premiumUserYesterdayLimits,
+      });
+      (firestore.updateDoc as jest.Mock).mockResolvedValue(undefined);
+
+      const { result } = renderHook(() => useUsageTracking());
+
+      await waitFor(() => {
+        expect(result.current.userProfile).not.toBeNull();
+      });
+
+      // Premium users should never be limited regardless of date
+      expect(result.current.hasReachedLimit()).toBe(false);
+      expect(result.current.hasReachedAILimit()).toBe(false);
+      expect(result.current.hasPremium()).toBe(true);
+
+      // Premium users don't track usage (unlimited)
+      let success;
+      await act(async () => {
+        success = await result.current.trackView();
+      });
+      expect(success).toBe(true);
+      expect(firestore.updateDoc).not.toHaveBeenCalled(); // Premium users don't update Firestore
     });
   });
 });

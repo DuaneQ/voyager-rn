@@ -136,7 +136,6 @@ const VideoFeedPage: React.FC = () => {
    * Handle scroll begin - immediately deactivate to prevent audio overlap
    */
   const handleScrollBeginDrag = useCallback(() => {
-    console.debug('[VideoFeedPage] scroll begin - deactivating all videos');
     
     // Immediately deactivate current video to stop audio
     videoPlaybackManager.deactivateAll().catch(err => {
@@ -148,7 +147,6 @@ const VideoFeedPage: React.FC = () => {
    * Handle momentum scroll end
    */
   const handleMomentumScrollEnd = useCallback(() => {
-    console.debug('[VideoFeedPage] momentum end');
     // Clear any pending timeout
     if (scrollTimeoutRef.current) {
       clearTimeout(scrollTimeoutRef.current);
@@ -248,18 +246,11 @@ const VideoFeedPage: React.FC = () => {
       // Detect rapid changes (< 300ms) as scroll events - increase threshold
       const isRapidChange = timeSinceLastChange < 300 && lastViewabilityChangeRef.current > 0;
       
-      console.debug(
-        `[VideoFeedPage] viewable index changed -> ${index}, ` +
-        `isScrolling=${isScrolling}, timeSinceLastChange=${timeSinceLastChange}ms, ` +
-        `isRapidChange=${isRapidChange}`
-      );
-      
       lastViewabilityChangeRef.current = now;
       
       // CRITICAL FIX: Only block during RAPID changes, not during scroll flag
       // This allows index to update when scroll settles (even if flag hasn't cleared yet)
       if (!isRapidChange && index !== null && index !== currentVideoIndex) {
-        console.debug(`[VideoFeedPage] ✅ Allowing index change: ${currentVideoIndex} -> ${index}`);
         
         // CRITICAL for Android: Force deactivate ALL videos before activating new one
         // This prevents audio overlap during rapid scrolling
@@ -269,9 +260,6 @@ const VideoFeedPage: React.FC = () => {
         
         setCurrentVideoIndex(index);
       } else {
-        console.debug(
-          `[VideoFeedPage] 🚫 Blocking index change (isRapidChange=${isRapidChange})`
-        );
       }
     }
   }).current;

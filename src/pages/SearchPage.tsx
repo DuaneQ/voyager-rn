@@ -170,7 +170,12 @@ const SearchPage: React.FC = () => {
     // Track usage (checks limit with fresh data internally)
     const success = await trackView();
     if (!success) {
-      showAlert('info', 'Daily limit reached! Log into your account at https://travalpass.com/login to upgrade to premium for unlimited views.');
+      showAlert(
+        'info', 
+        'Daily limit reached. Sign in on the web and tap the UPGRADE button on TravalMatch for unlimited views.',
+        'https://travalpass.com/login',
+        'Sign In to Upgrade'
+      );
       return;
     }
 
@@ -259,7 +264,12 @@ const SearchPage: React.FC = () => {
     // Track usage (checks limit with fresh data internally)
     const success = await trackView();
     if (!success) {
-      showAlert('info', 'Daily limit reached! Log into your account at https://travalpass.com/login to upgrade to premium for unlimited views.');
+      showAlert(
+        'info', 
+        'Daily limit reached. Sign in on the web and tap the UPGRADE button on TravalMatch for unlimited views.',
+        'https://travalpass.com/login',
+        'Sign In to Upgrade'
+      );
       return;
     }
 

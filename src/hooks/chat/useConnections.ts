@@ -50,10 +50,8 @@ export function useConnections(userId: string | null): UseConnectionsResult {
 
   // Subscribe to initial connections
   useEffect(() => {
-    console.log('[useConnections] Hook called with userId:', userId);
     
     if (!userId) {
-      console.log('[useConnections] No userId provided, returning empty array');
       setConnections([]);
       setLoading(false);
       return;
@@ -69,12 +67,9 @@ export function useConnections(userId: string | null): UseConnectionsResult {
       limit(CONNECTIONS_PAGE_SIZE)
     );
 
-    console.log('[useConnections] Setting up snapshot listener for userId:', userId);
-
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        console.log('[useConnections] Snapshot received, docs count:', snapshot.docs.length);
         const conns: Connection[] = snapshot.docs.map((docSnap) => {
           const data = docSnap.data();
           return {
