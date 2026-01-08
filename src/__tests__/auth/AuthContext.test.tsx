@@ -88,7 +88,7 @@ describe('AuthContext (firebase-backed)', () => {
     // Verify the error was thrown. Status may be 'error' or remain 'idle' depending on async auth listeners
     expect(thrownError).toBeTruthy();
     expect(thrownError?.message).toContain('Email not verified');
-    expect(['idle', 'error']).toContain(result.current.status);
+    expect(['idle', 'error']).toContain(result.current.status as string);
     expect(result.current.user).toBeNull();
   });
 

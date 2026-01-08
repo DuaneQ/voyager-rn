@@ -3,7 +3,7 @@
  * Displays detailed AI-generated itinerary matching PWA functionality with collapsible accordions
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,13 +13,16 @@ import {
   Linking,
   Image,
   Alert,
+  TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { AIGeneratedItinerary } from '../../hooks/useAIGeneratedItineraries';
+import { AIGeneratedItinerary, useAIGeneratedItineraries } from '../../hooks/useAIGeneratedItineraries';
 import { ShareAIItineraryModal } from '../modals/ShareAIItineraryModal';
 import { db } from '../../config/firebaseConfig';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { useUpdateItinerary } from '../../hooks/useUpdateItinerary';
 
 interface AIItineraryDisplayProps {
   itinerary: AIGeneratedItinerary;
@@ -35,11 +38,39 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
     );
   }
 
+  // Hooks for data management
+  const { refreshItineraries } = useAIGeneratedItineraries();
+  const { updateItinerary } = useUpdateItinerary();
+
+  // Local itinerary state to immediately reflect saved changes
+  const [localItinerary, setLocalItinerary] = useState<AIGeneratedItinerary>(itinerary);
+
   // Accordion state management
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   
   // Share modal state
   const [shareModalOpen, setShareModalOpen] = useState(false);
+
+  // Editing state management
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingData, setEditingData] = useState<AIGeneratedItinerary | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  
+  // Selection state for batch deletion
+  const [selectedFlights, setSelectedFlights] = useState<Set<number>>(new Set());
+  const [selectedAccommodations, setSelectedAccommodations] = useState<Set<number>>(new Set());
+  const [selectedActivities, setSelectedActivities] = useState<Set<string>>(new Set());
+  
+  // Activity editing state (for inline editing of individual fields)
+  const [editingActivityId, setEditingActivityId] = useState<string | null>(null);
+  
+  // Meal editing state (for inline editing of individual meal fields)
+  const [editingMealId, setEditingMealId] = useState<string | null>(null);
+
+  // Update local itinerary when prop changes (e.g., parent refreshes list)
+  React.useEffect(() => {
+    setLocalItinerary(itinerary);
+  }, [itinerary]);
 
   const toggleSection = (sectionId: string) => {
     setExpandedSections(prev => {
@@ -55,6 +86,244 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
 
   const isSectionExpanded = (sectionId: string) => expandedSections.has(sectionId);
 
+  // Selection handlers
+  const toggleFlightSelection = (flightIndex: number) => {
+    setSelectedFlights(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(flightIndex)) {
+        newSet.delete(flightIndex);
+      } else {
+        newSet.add(flightIndex);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleAccommodationSelection = (accommodationIndex: number) => {
+    setSelectedAccommodations(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(accommodationIndex)) {
+        newSet.delete(accommodationIndex);
+      } else {
+        newSet.add(accommodationIndex);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleActivitySelection = (dayIndex: number, activityIndex: number) => {
+    const activityId = `${dayIndex}-${activityIndex}`;
+    setSelectedActivities(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(activityId)) {
+        newSet.delete(activityId);
+      } else {
+        newSet.add(activityId);
+      }
+      return newSet;
+    });
+  };
+
+  const clearAllSelections = () => {
+    setSelectedFlights(new Set());
+    setSelectedAccommodations(new Set());
+    setSelectedActivities(new Set());
+  };
+
+  // Batch delete handlers
+  const handleBatchDeleteFlights = () => {
+    if (!editingData) return;
+    
+    const updatedData = JSON.parse(JSON.stringify(editingData));
+    const sortedIndices = Array.from(selectedFlights).sort((a, b) => b - a);
+    
+    // Determine the correct flight data source that UI uses
+    const itineraryFlights = updatedData.response?.data?.itinerary?.flights;
+    const recommendationFlights = updatedData.response?.data?.recommendations?.flights;
+    
+    // Delete from the primary data source (UI uses itinerary flights first, then recommendations)
+    if (itineraryFlights && Array.isArray(itineraryFlights)) {
+      sortedIndices.forEach(index => {
+        updatedData.response.data.itinerary.flights.splice(index, 1);
+      });
+    } else if (recommendationFlights && Array.isArray(recommendationFlights)) {
+      sortedIndices.forEach(index => {
+        updatedData.response.data.recommendations.flights.splice(index, 1);
+      });
+    }
+    
+    setEditingData(updatedData);
+    setSelectedFlights(new Set());
+  };
+
+  const handleBatchDeleteAccommodations = () => {
+    if (!editingData) return;
+    
+    const updatedData = JSON.parse(JSON.stringify(editingData));
+    const sortedIndices = Array.from(selectedAccommodations).sort((a, b) => b - a);
+    
+    // Accommodations are only in recommendations, not in itinerary data
+    const accommodations = updatedData.response?.data?.recommendations?.accommodations;
+    
+    if (accommodations && Array.isArray(accommodations)) {
+      sortedIndices.forEach(index => {
+        updatedData.response.data.recommendations.accommodations.splice(index, 1);
+      });
+    }
+    
+    setEditingData(updatedData);
+    setSelectedAccommodations(new Set());
+  };
+
+  const handleBatchDeleteActivities = () => {
+    if (!editingData) return;
+    
+    const updatedData = JSON.parse(JSON.stringify(editingData));
+    const dailyData = updatedData.response?.data?.itinerary?.days || updatedData.response?.data?.itinerary?.dailyPlans;
+    
+    // Delete activities from their respective days (need to sort by activityIndex desc to avoid index shifting)
+    const sortedActivityIds = Array.from(selectedActivities).sort((a, b) => {
+      const [, aActivityIndex] = a.split('-').map(Number);
+      const [, bActivityIndex] = b.split('-').map(Number);
+      return bActivityIndex - aActivityIndex;
+    });
+    
+    sortedActivityIds.forEach(activityId => {
+      const [dayIndex, activityIndex] = activityId.split('-').map(Number);
+      if (dailyData && dailyData[dayIndex] && dailyData[dayIndex].activities) {
+        dailyData[dayIndex].activities.splice(activityIndex, 1);
+      }
+    });
+    
+    setEditingData(updatedData);
+    setSelectedActivities(new Set());
+  };
+
+  // Activity field update handlers for inline editing (matching PWA)
+  const handleActivityFieldUpdate = (
+    dayIndex: number,
+    activityIndex: number,
+    field: string,
+    value: string
+  ) => {
+    if (!editingData) return;
+    
+    const updatedData = JSON.parse(JSON.stringify(editingData));
+    const dailyData = updatedData.response?.data?.itinerary?.days || updatedData.response?.data?.itinerary?.dailyPlans;
+    
+    if (dailyData && dailyData[dayIndex] && dailyData[dayIndex].activities && dailyData[dayIndex].activities[activityIndex]) {
+      const activity = dailyData[dayIndex].activities[activityIndex];
+      
+      // Handle nested fields (e.g., 'location' might be string or object)
+      if (field === 'location' && typeof activity.location === 'object') {
+        activity.location = { ...activity.location, name: value };
+      } else {
+        activity[field] = value;
+      }
+      
+      setEditingData(updatedData);
+    }
+  };
+
+  const handleMealFieldUpdate = (
+    dayIndex: number,
+    mealIndex: number,
+    field: string,
+    value: string
+  ) => {
+    if (!editingData) return;
+    
+    const updatedData = JSON.parse(JSON.stringify(editingData));
+    const dailyData = updatedData.response?.data?.itinerary?.days || updatedData.response?.data?.itinerary?.dailyPlans;
+    
+    if (dailyData && dailyData[dayIndex] && dailyData[dayIndex].meals && dailyData[dayIndex].meals[mealIndex]) {
+      const meal = dailyData[dayIndex].meals[mealIndex];
+      
+      // Handle nested restaurant fields
+      if (field.startsWith('restaurant.')) {
+        const restaurantField = field.split('.')[1];
+        if (!meal.restaurant) {
+          meal.restaurant = {};
+        }
+        if (restaurantField === 'location' && typeof meal.restaurant.location === 'object') {
+          meal.restaurant.location = { ...meal.restaurant.location, name: value };
+        } else {
+          meal.restaurant[restaurantField] = value;
+        }
+      } else {
+        meal[field] = value;
+      }
+      
+      setEditingData(updatedData);
+    }
+  };
+
+  // Edit mode handlers
+  const handleEditStart = () => {
+    setIsEditing(true);
+    setEditingData(JSON.parse(JSON.stringify(localItinerary)));
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+    clearAllSelections();
+    setEditingData(null);
+    setEditingActivityId(null);
+    setEditingMealId(null);
+  };
+
+  const handleSave = async () => {
+    if (!editingData || isSaving) return;
+
+    setIsSaving(true);
+    try {
+      // Build the minimal updates object expected by the updateItinerary RPC
+      const updatePayload: any = {
+        response: editingData.response,
+        updatedAt: new Date().toISOString(),
+        destination: editingData.response?.data?.itinerary?.destination || editingData.destination,
+        startDate: editingData.response?.data?.itinerary?.startDate || editingData.startDate,
+        endDate: editingData.response?.data?.itinerary?.endDate || editingData.endDate
+      };
+
+      // CRITICAL FIX: Use currentItinerary (which is editingData in edit mode) for the ID
+      const itineraryId = currentItinerary?.id || localItinerary.id;
+      if (!itineraryId) {
+        throw new Error('No itinerary ID found');
+      }
+
+      // Use the RPC-based updater (matches how non-AI itineraries are updated)
+      await updateItinerary(itineraryId, updatePayload as any);
+
+      // CRITICAL: Immediately update localItinerary with saved changes so UI reflects them
+      setLocalItinerary({
+        ...editingData,
+        updatedAt: updatePayload.updatedAt
+      });
+      
+      // Clear editing state
+      setIsEditing(false);
+      clearAllSelections();
+      setEditingData(null);
+      setEditingActivityId(null);
+
+      // Refresh the list in background (doesn't affect current display)
+      refreshItineraries().catch(err => {
+        console.warn('Failed to refresh itineraries list:', err);
+      });
+
+      Alert.alert('Success', 'Changes saved successfully!');
+    } catch (error) {
+      console.error('Save error:', error);
+      Alert.alert(
+        'Error',
+        `Failed to save changes: ${error instanceof Error ? error.message : String(error)}`
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // Parse the AI assistant response (it's a JSON string)
   let parsedData: any = {};
   try {
@@ -65,10 +334,13 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
     // Silently fail - UI will handle missing data gracefully
   }
 
+  // Use editingData when in edit mode, otherwise use localItinerary
+  const currentItinerary = isEditing && editingData ? editingData : localItinerary;
+
   // Extract data from parsed response - MATCHING PWA EXACTLY
   // Transportation may be stored directly under response.data.transportation (preferred)
   // or under response.data.recommendations.transportation (older payloads). Check both.
-  const rawTransport = (itinerary?.response?.data?.transportation ?? itinerary?.response?.data?.recommendations?.transportation) as any;
+  const rawTransport = (currentItinerary?.response?.data?.transportation ?? currentItinerary?.response?.data?.recommendations?.transportation) as any;
   
   // Normalize multiple possible shapes so tests and UI can rely on a single shape
   const transportation = rawTransport ? {
@@ -88,19 +360,19 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
   } : null;
 
   // Also read any raw assumptions saved on the itinerary
-  const assumptions = (itinerary as any)?.response?.data?.assumptions as any;
+  const assumptions = (currentItinerary as any)?.response?.data?.assumptions as any;
   
   // CRITICAL FIX: Read dailyPlans from the correct location matching PWA
   // Priority: response.data.itinerary.days -> response.data.itinerary.dailyPlans -> parsedData -> top-level
-  const itineraryData = itinerary?.response?.data?.itinerary;
-  const dailyPlans = itineraryData?.days || itineraryData?.dailyPlans || parsedData?.daily_itinerary || parsedData?.dailyPlans || (itinerary as any)?.dailyPlans;
+  const itineraryData = currentItinerary?.response?.data?.itinerary;
+  const dailyPlans = itineraryData?.days || itineraryData?.dailyPlans || parsedData?.daily_itinerary || parsedData?.dailyPlans || (currentItinerary as any)?.dailyPlans;
   
   // Read recommendations from response.data.recommendations (primary) or parsedData (fallback)
-  const recommendations = (itinerary?.response?.data?.recommendations) || parsedData?.recommendations || (itinerary as any)?.recommendations;
+  const recommendations = (currentItinerary?.response?.data?.recommendations) || parsedData?.recommendations || (currentItinerary as any)?.recommendations;
   
   // CRITICAL: Flight data source - MATCHING PWA EXACTLY
   // UI prefers itineraryData.flights first, then recommendations.flights, then top-level
-  const flights = (itineraryData as any)?.flights || recommendations?.flights || (itinerary as any)?.flights || [];
+  const flights = (itineraryData as any)?.flights || recommendations?.flights || (currentItinerary as any)?.flights || [];
   
   // Check if this is a flight-based itinerary
   const hasFlights = flights && flights.length > 0;
@@ -181,16 +453,16 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
 
   // Share handler - EXACTLY matching PWA logic with direct Firestore access
   const handleShare = async () => {
-    if (!itinerary || isSharing) return;
+    if (!localItinerary || isSharing) return;
 
     setIsSharing(true);
     try {
       // Save directly to Firestore so the share page (which reads from Firestore)
       // can serve the itinerary. This matches PWA implementation exactly.
-      const id = itinerary.id;
+      const id = localItinerary.id;
       
       if (!id) {
-        console.error('❌ Cannot share itinerary: missing ID', itinerary);
+        console.error('❌ Cannot share itinerary: missing ID', localItinerary);
         Alert.alert(
           'Share Error',
           'This itinerary cannot be shared yet. Please try generating it again.',
@@ -203,12 +475,12 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
       // Ensure we save the full itinerary structure including all nested data
       // (response.data.recommendations, response.data.metadata, etc.)
       const payload = {
-        ...itinerary,
+        ...localItinerary,
         id,
-        createdAt: itinerary.createdAt || serverTimestamp(),
+        createdAt: localItinerary.createdAt || serverTimestamp(),
         updatedAt: serverTimestamp(),
         // Explicitly preserve the response object to ensure recommendations and metadata are saved
-        response: itinerary.response || {},
+        response: localItinerary.response || {},
       } as any;
 
       const ref = doc(db, 'itineraries', id);
@@ -264,28 +536,138 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View style={styles.headerLeft}>
-            <Text style={styles.destination}>{itinerary.destination}</Text>
-            {itinerary.description && (
-              <Text style={styles.description}>{itinerary.description}</Text>
+            <Text style={styles.destination}>{currentItinerary.destination}</Text>
+            {currentItinerary.description && (
+              <Text style={styles.description}>{currentItinerary.description}</Text>
             )}
           </View>
-          <TouchableOpacity 
-            onPress={handleShare} 
-            style={styles.shareButton}
-            activeOpacity={0.7}
-            disabled={isSharing}
-            testID="share-button"
-          >
-            <Ionicons name="share-outline" size={24} color={isSharing ? '#999' : '#1976d2'} />
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            {!isEditing ? (
+              <>
+                <TouchableOpacity 
+                  onPress={handleEditStart} 
+                  style={styles.editButton}
+                  activeOpacity={0.7}
+                  testID="edit-button"
+                >
+                  <Ionicons name="create-outline" size={24} color="#1976d2" />
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  onPress={handleShare} 
+                  style={styles.shareButton}
+                  activeOpacity={0.7}
+                  disabled={isSharing}
+                  testID="share-button"
+                >
+                  <Ionicons name="share-outline" size={24} color={isSharing ? '#999' : '#1976d2'} />
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <TouchableOpacity 
+                  onPress={handleSave} 
+                  style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
+                  activeOpacity={0.7}
+                  disabled={isSaving}
+                  testID="save-button"
+                >
+                  {isSaving ? (
+                    <>
+                      <Ionicons name="hourglass-outline" size={24} color="#FFF" />
+                      <Text style={styles.saveButtonText}>Saving...</Text>
+                    </>
+                  ) : (
+                    <>
+                      <Ionicons name="checkmark-outline" size={24} color="#FFF" />
+                      <Text style={styles.saveButtonText}>Save</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  onPress={handleCancel} 
+                  style={styles.cancelButton}
+                  activeOpacity={0.7}
+                  disabled={isSaving}
+                  testID="cancel-button"
+                >
+                  <Ionicons name="close-outline" size={24} color="#f44336" />
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
         </View>
         <View style={styles.dateRow}>
           <Text style={styles.dateLabel}>📅 </Text>
           <Text style={styles.dateText}>
-            {formatDate(itinerary.startDate)} - {formatDate(itinerary.endDate)}
+            {formatDate(currentItinerary.startDate)} - {formatDate(currentItinerary.endDate)}
           </Text>
         </View>
       </View>
+
+      {/* Edit Mode Instructions */}
+      {isEditing && (
+        <View style={styles.editModeInstructions}>
+          <Text style={styles.editModeText}>
+            💡 <Text style={styles.editModeBold}>Edit Mode:</Text> Tap on flights ✈️, hotels 🏨, and activities 🎯 to select them for deletion. Use batch delete buttons below to remove selected items.
+          </Text>
+        </View>
+      )}
+
+      {/* Batch Delete Controls */}
+      {isEditing && (selectedFlights.size > 0 || selectedAccommodations.size > 0 || selectedActivities.size > 0) && (
+        <View style={styles.batchDeleteContainer}>
+          <Text style={styles.batchDeleteTitle}>🗑️ Batch Delete Actions</Text>
+          <View style={styles.batchDeleteButtons}>
+            {selectedFlights.size > 0 && (
+              <TouchableOpacity
+                style={styles.deleteButton}
+                onPress={() => handleBatchDeleteFlights()}
+                activeOpacity={0.7}
+                testID="delete-flights-button"
+              >
+                <Ionicons name="trash-outline" size={16} color="#FFF" />
+                <Text style={styles.deleteButtonText}>
+                  Delete {selectedFlights.size} Flight{selectedFlights.size > 1 ? 's' : ''}
+                </Text>
+              </TouchableOpacity>
+            )}
+            {selectedAccommodations.size > 0 && (
+              <TouchableOpacity
+                style={styles.deleteButton}
+                onPress={() => handleBatchDeleteAccommodations()}
+                activeOpacity={0.7}
+                testID="delete-accommodations-button"
+              >
+                <Ionicons name="trash-outline" size={16} color="#FFF" />
+                <Text style={styles.deleteButtonText}>
+                  Delete {selectedAccommodations.size} Hotel{selectedAccommodations.size > 1 ? 's' : ''}
+                </Text>
+              </TouchableOpacity>
+            )}
+            {selectedActivities.size > 0 && (
+              <TouchableOpacity
+                style={styles.deleteButton}
+                onPress={() => handleBatchDeleteActivities()}
+                activeOpacity={0.7}
+                testID="delete-activities-button"
+              >
+                <Ionicons name="trash-outline" size={16} color="#FFF" />
+                <Text style={styles.deleteButtonText}>
+                  Delete {selectedActivities.size} Activity{selectedActivities.size > 1 ? 'ies' : 'y'}
+                </Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              style={styles.clearButton}
+              onPress={clearAllSelections}
+              activeOpacity={0.7}
+              testID="clear-selection-button"
+            >
+              <Text style={styles.clearButtonText}>Clear Selection</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       {/* Flight Options Accordion */}
       {hasFlights && (
@@ -297,55 +679,76 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
           />
           {isSectionExpanded('flights') && (
             <View style={styles.accordionContent}>
-              {flights.map((flight: any, index: number) => (
-                <View key={index} style={styles.card}>
-                  {/* Flight Header with Airline and Route */}
-                  <Text style={styles.flightAirline}>
-                    {flight.airline || 'N/A'} {flight.flightNumber || ''}
-                  </Text>
-                  <Text style={styles.flightRoute}>{flight.route || 'N/A'}</Text>
-                  
-                  {/* Departure Time */}
-                  {(flight.departure?.date && flight.departure?.time) && (
-                    <Text style={styles.flightDepartureTime}>
-                      Departure: {flight.departure.date} at {flight.departure.time}
+              {flights.map((flight: any, index: number) => {
+                const isSelected = selectedFlights.has(index);
+                return (
+                  <TouchableOpacity
+                    key={index}
+                    style={[
+                      styles.card,
+                      isEditing && styles.selectableCard,
+                      isSelected && styles.selectedCard
+                    ]}
+                    onPress={() => isEditing && toggleFlightSelection(index)}
+                    activeOpacity={isEditing ? 0.7 : 1}
+                    disabled={!isEditing}
+                  >
+                    {isEditing && (
+                      <View style={styles.selectionIndicator}>
+                        <Ionicons 
+                          name={isSelected ? "checkbox" : "square-outline"} 
+                          size={24} 
+                          color={isSelected ? "#1976d2" : "#999"} 
+                        />
+                      </View>
+                    )}
+                    {/* Flight Header with Airline and Route */}
+                    <Text style={styles.flightAirline}>
+                      {flight.airline || 'N/A'} {flight.flightNumber || ''}
                     </Text>
-                  )}
-                  
-                  {/* Flight Details Row */}
-                  <View style={styles.flightRow}>
-                    <Text style={styles.flightDuration}>{flight.duration || 'N/A'}</Text>
-                    <Text style={styles.flightStops}>
-                      {flight.stops === 0 ? 'Direct' : flight.stops === undefined ? 'N/A' : `${flight.stops} stop${flight.stops > 1 ? 's' : ''}`}
-                    </Text>
-                  </View>
-                  
-                  {/* Price */}
-                  {flight.price && (
-                    <Text style={styles.flightPrice}>
-                      ${flight.price?.amount || 'N/A'} {flight.price?.currency || 'USD'}
-                    </Text>
-                  )}
-                  
-                  {/* Cabin Class */}
-                  {(flight.cabin || flight.class) && (
-                    <Text style={styles.flightCabin}>
-                      {flight.cabin || flight.class}
-                    </Text>
-                  )}
-                  
-                  {/* Return Flight Info (if round-trip) */}
-                  {flight.return && (
-                    <View style={styles.returnFlightContainer}>
-                      <Text style={styles.returnFlightLabel}>Return Flight</Text>
-                      <Text style={styles.flightAirline}>
-                        {flight.return.airline || flight.airline} {flight.return.flightNumber || flight.flightNumber}
+                    <Text style={styles.flightRoute}>{flight.route || 'N/A'}</Text>
+                    
+                    {/* Departure Time */}
+                    {(flight.departure?.date && flight.departure?.time) && (
+                      <Text style={styles.flightDepartureTime}>
+                        Departure: {flight.departure.date} at {flight.departure.time}
                       </Text>
-                      <Text style={styles.flightRoute}>
-                        {flight.return.route || `${flight.return.departure?.iata || ''} → ${flight.return.arrival?.iata || ''}`}
+                    )}
+                    
+                    {/* Flight Details Row */}
+                    <View style={styles.flightRow}>
+                      <Text style={styles.flightDuration}>{flight.duration || 'N/A'}</Text>
+                      <Text style={styles.flightStops}>
+                        {flight.stops === 0 ? 'Direct' : flight.stops === undefined ? 'N/A' : `${flight.stops} stop${flight.stops > 1 ? 's' : ''}`}
                       </Text>
-                      {(flight.return.departure?.date && flight.return.departure?.time) && (
-                        <Text style={styles.flightDepartureTime}>
+                    </View>
+                    
+                    {/* Price */}
+                    {flight.price && (
+                      <Text style={styles.flightPrice}>
+                        ${flight.price?.amount || 'N/A'} {flight.price?.currency || 'USD'}
+                      </Text>
+                    )}
+                    
+                    {/* Cabin Class */}
+                    {(flight.cabin || flight.class) && (
+                      <Text style={styles.flightCabin}>
+                        {flight.cabin || flight.class}
+                      </Text>
+                    )}
+                    
+                    {/* Return Flight Info (if round-trip) */}
+                    {flight.return && (
+                      <View style={styles.returnFlightContainer}>
+                        <Text style={styles.returnFlightLabel}>Return Flight</Text>
+                        <Text style={styles.flightAirline}>
+                          {flight.return.airline || flight.airline} {flight.return.flightNumber || flight.flightNumber}
+                        </Text>
+                        <Text style={styles.flightRoute}>
+                          {flight.return.route || `${flight.return.departure?.iata || ''} → ${flight.return.arrival?.iata || ''}`}
+                        </Text>
+                        {(flight.return.departure?.date && flight.return.departure?.time) && (
+                          <Text style={styles.flightDepartureTime}>
                           Departure: {flight.return.departure.date} at {flight.return.departure.time}
                         </Text>
                       )}
@@ -357,8 +760,9 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                       </View>
                     </View>
                   )}
-                </View>
-              ))}
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           )}
         </View>
@@ -488,8 +892,29 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                   return null;
                 })();
                 
+                const isSelected = selectedAccommodations.has(index);
+                
                 return (
-                  <View key={index} style={styles.hotelCard}>
+                  <TouchableOpacity
+                    key={index}
+                    style={[
+                      styles.hotelCard,
+                      isEditing && styles.selectableCard,
+                      isSelected && styles.selectedCard
+                    ]}
+                    onPress={() => isEditing && toggleAccommodationSelection(index)}
+                    activeOpacity={isEditing ? 0.7 : 1}
+                    disabled={!isEditing}
+                  >
+                    {isEditing && (
+                      <View style={styles.selectionIndicator}>
+                        <Ionicons 
+                          name={isSelected ? "checkbox" : "square-outline"} 
+                          size={24} 
+                          color={isSelected ? "#1976d2" : "#999"} 
+                        />
+                      </View>
+                    )}
                     {/* Hotel Photo Background */}
                     {hotelPhoto ? (
                       <Image 
@@ -508,6 +933,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                       colors={['rgba(0, 0, 0, 0.08)', 'rgba(0, 0, 0, 0.72)']}
                       style={[styles.hotelOverlay, !hotelPhoto && styles.hotelOverlayNoImage]}
                       locations={[0, 1]}
+                      pointerEvents="box-none"
                     >
                       <Text style={styles.hotelName}>{hotel.name}</Text>
                       
@@ -538,8 +964,8 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                         )}
                       </View>
                       
-                      {/* BOOK Button */}
-                      {bookingLink && (
+                      {/* BOOK Button - only show when not editing */}
+                      {!isEditing && bookingLink && (
                         <TouchableOpacity 
                           style={styles.bookButton}
                           onPress={() => {
@@ -552,7 +978,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                         </TouchableOpacity>
                       )}
                     </LinearGradient>
-                  </View>
+                  </TouchableOpacity>
                 );
               })}
             </View>
@@ -581,52 +1007,157 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                   {day.activities && day.activities.length > 0 && (
                     <View style={styles.daySection}>
                       <Text style={styles.daySectionTitle}>🎯 Activities</Text>
-                      {day.activities.map((activity: any, actIndex: number) => (
-                        <View key={actIndex} style={styles.activityCard}>
-                          <Text style={styles.activityName}>{activity.name}</Text>
-                          {activity.startTime && activity.endTime && (
-                            <Text style={styles.activityTime}>
-                              ⏰ {activity.startTime} - {activity.endTime}
-                            </Text>
-                          )}
-                          {activity.description && (
-                            <Text style={styles.activityDescription}>{activity.description}</Text>
-                          )}
-                          {activity.location && (
-                            <Text style={styles.activityLocation}>
-                              📍 {typeof activity.location === 'string' ? activity.location : activity.location.name}
-                            </Text>
-                          )}
-                          {activity.rating && (
-                            <Text style={styles.activityRating}>
-                              ⭐ {activity.rating} ({activity.userRatingsTotal || 0} reviews)
-                            </Text>
-                          )}
-                          {activity.phone && (
-                            <TouchableOpacity onPress={() => Linking.openURL(`tel:${activity.phone}`)}>
-                              <Text style={styles.activityLink}>
-                                📞 {activity.phone}
+                      {day.activities.map((activity: any, actIndex: number) => {
+                        const activityId = `${dayIndex}-${actIndex}`;
+                        const isSelected = selectedActivities.has(activityId);
+                        
+                        const isEditingThisActivity = editingActivityId === activityId;
+                        
+                        return (
+                          <View
+                            key={actIndex}
+                            style={[
+                              styles.activityCard,
+                              isEditing && styles.selectableCard,
+                              isSelected && styles.selectedCard
+                            ]}
+                          >
+                            {isEditing && !isEditingThisActivity && (
+                              <TouchableOpacity 
+                                style={styles.selectionIndicator}
+                                onPress={() => toggleActivitySelection(dayIndex, actIndex)}
+                                activeOpacity={0.7}
+                              >
+                                <Ionicons 
+                                  name={isSelected ? "checkbox" : "square-outline"} 
+                                  size={24} 
+                                  color={isSelected ? "#1976d2" : "#999"} 
+                                />
+                              </TouchableOpacity>
+                            )}
+                            
+                            {/* Edit/Done button for inline editing */}
+                            {isEditing && (
+                              <TouchableOpacity 
+                                style={styles.editActivityButton}
+                                onPress={() => setEditingActivityId(isEditingThisActivity ? null : activityId)}
+                                activeOpacity={0.7}
+                              >
+                                <Ionicons 
+                                  name={isEditingThisActivity ? "checkmark-circle" : "create"} 
+                                  size={24} 
+                                  color={isEditingThisActivity ? "#4caf50" : "#1976d2"} 
+                                />
+                              </TouchableOpacity>
+                            )}
+                            
+                            {/* Activity Name - editable in edit mode */}
+                            {isEditingThisActivity ? (
+                              <TextInput
+                                style={styles.activityNameInput}
+                                value={activity.name}
+                                onChangeText={(text) => handleActivityFieldUpdate(dayIndex, actIndex, 'name', text)}
+                                placeholder="Activity name"
+                                placeholderTextColor="#999"
+                              />
+                            ) : (
+                              <Text style={styles.activityName}>{activity.name}</Text>
+                            )}
+                            {/* Time - editable */}
+                            {isEditingThisActivity ? (
+                              <View style={styles.timeInputRow}>
+                                <Text style={styles.timeLabel}>⏰ </Text>
+                                <TextInput
+                                  style={styles.timeInput}
+                                  value={activity.startTime || ''}
+                                  onChangeText={(text) => handleActivityFieldUpdate(dayIndex, actIndex, 'startTime', text)}
+                                  placeholder="Start time"
+                                  placeholderTextColor="#999"
+                                />
+                                <Text style={styles.timeSeparator}> - </Text>
+                                <TextInput
+                                  style={styles.timeInput}
+                                  value={activity.endTime || ''}
+                                  onChangeText={(text) => handleActivityFieldUpdate(dayIndex, actIndex, 'endTime', text)}
+                                  placeholder="End time"
+                                  placeholderTextColor="#999"
+                                />
+                              </View>
+                            ) : (
+                              (activity.startTime && activity.endTime) && (
+                                <Text style={styles.activityTime}>
+                                  ⏰ {activity.startTime} - {activity.endTime}
+                                </Text>
+                              )
+                            )}
+                            
+                            {/* Description - editable */}
+                            {isEditingThisActivity ? (
+                              <TextInput
+                                style={styles.activityDescriptionInput}
+                                value={activity.description || ''}
+                                onChangeText={(text) => handleActivityFieldUpdate(dayIndex, actIndex, 'description', text)}
+                                placeholder="Activity description"
+                                placeholderTextColor="#999"
+                                multiline
+                                numberOfLines={2}
+                              />
+                            ) : (
+                              activity.description && (
+                                <Text style={styles.activityDescription}>{activity.description}</Text>
+                              )
+                            )}
+                            
+                            {/* Location - editable */}
+                            {isEditingThisActivity ? (
+                              <View style={styles.locationInputRow}>
+                                <Text style={styles.locationLabel}>📍 </Text>
+                                <TextInput
+                                  style={styles.locationInput}
+                                  value={typeof activity.location === 'string' ? activity.location : activity.location?.name || ''}
+                                  onChangeText={(text) => handleActivityFieldUpdate(dayIndex, actIndex, 'location', text)}
+                                  placeholder="Location"
+                                  placeholderTextColor="#999"
+                                />
+                              </View>
+                            ) : (
+                              activity.location && (
+                                <Text style={styles.activityLocation}>
+                                  📍 {typeof activity.location === 'string' ? activity.location : activity.location.name}
+                                </Text>
+                              )
+                            )}
+                            {activity.rating && (
+                              <Text style={styles.activityRating}>
+                                ⭐ {activity.rating} ({activity.userRatingsTotal || 0} reviews)
                               </Text>
-                            </TouchableOpacity>
-                          )}
-                          {activity.website && (
-                            <TouchableOpacity onPress={() => Linking.openURL(activity.website)}>
-                              <Text style={styles.activityLink}>
-                                🌐 {activity.website}
+                            )}
+                            {!isEditing && activity.phone && (
+                              <TouchableOpacity onPress={() => Linking.openURL(`tel:${activity.phone}`)}>
+                                <Text style={styles.activityLink}>
+                                  📞 {activity.phone}
+                                </Text>
+                              </TouchableOpacity>
+                            )}
+                            {!isEditing && activity.website && (
+                              <TouchableOpacity onPress={() => Linking.openURL(activity.website)}>
+                                <Text style={styles.activityLink}>
+                                  🌐 {activity.website}
+                                </Text>
+                              </TouchableOpacity>
+                            )}
+                            {(activity.estimatedCost || activity.cost || activity.price) && (
+                              <Text style={styles.activityCost}>
+                                💰 {
+                                  typeof activity.estimatedCost === 'object' 
+                                    ? `$${activity.estimatedCost.amount}` 
+                                    : activity.estimatedCost || activity.cost || activity.price
+                                }
                               </Text>
-                            </TouchableOpacity>
-                          )}
-                          {(activity.estimatedCost || activity.cost || activity.price) && (
-                            <Text style={styles.activityCost}>
-                              💰 {
-                                typeof activity.estimatedCost === 'object' 
-                                  ? `$${activity.estimatedCost.amount}` 
-                                  : activity.estimatedCost || activity.cost || activity.price
-                              }
-                            </Text>
-                          )}
-                        </View>
-                      ))}
+                            )}
+                          </View>
+                        );
+                      })}
                     </View>
                   )}
                   
@@ -634,57 +1165,147 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                   {day.meals && day.meals.length > 0 && (
                     <View style={styles.daySection}>
                       <Text style={styles.daySectionTitle}>🍽️ Meals</Text>
-                      {day.meals.map((meal: any, mealIndex: number) => (
-                        <View key={mealIndex} style={styles.activityCard}>
-                          <Text style={styles.mealName}>{meal.name || meal.type}</Text>
-                          {meal.time && (
-                            <Text style={styles.mealTime}>⏰ {meal.time}</Text>
-                          )}
-                          {meal.restaurant && (
-                            <View style={{ marginTop: 8 }}>
-                              <Text style={styles.restaurantName}>{meal.restaurant.name}</Text>
-                              {meal.restaurant.description && (
-                                <Text style={styles.restaurantDescription}>{meal.restaurant.description}</Text>
-                              )}
-                              {meal.restaurant.location && (
-                                <Text style={styles.activityLocation}>
-                                  📍 {typeof meal.restaurant.location === 'string' 
-                                      ? meal.restaurant.location 
-                                      : meal.restaurant.location.address || meal.restaurant.location.name}
-                                </Text>
-                              )}
-                              {meal.restaurant.rating && (
-                                <Text style={styles.restaurantRating}>
-                                  ⭐ {meal.restaurant.rating} ({meal.restaurant.userRatingsTotal || 0} reviews)
-                                </Text>
-                              )}
-                              {meal.restaurant.phone && (
-                                <TouchableOpacity onPress={() => Linking.openURL(`tel:${meal.restaurant.phone}`)}>
-                                  <Text style={styles.activityLink}>
-                                    📞 {meal.restaurant.phone}
+                      {day.meals.map((meal: any, mealIndex: number) => {
+                        const mealId = `${dayIndex}-meal-${mealIndex}`;
+                        const isEditingThisMeal = isEditing && editingMealId === mealId;
+                        
+                        return (
+                          <View key={mealIndex} style={styles.activityCard}>
+                            {/* Edit/Done icon for inline editing in edit mode */}
+                            {isEditing && (
+                              <TouchableOpacity
+                                style={styles.inlineEditButton}
+                                onPress={() => setEditingMealId(editingMealId === mealId ? null : mealId)}
+                                testID={isEditingThisMeal ? 'checkmark-circle' : 'create'}
+                              >
+                                <Ionicons
+                                  name={isEditingThisMeal ? 'checkmark-circle' : 'create'}
+                                  size={24}
+                                  color={isEditingThisMeal ? '#4CAF50' : '#2196F3'}
+                                />
+                              </TouchableOpacity>
+                            )}
+                            
+                            {/* Meal name/type - editable */}
+                            {isEditingThisMeal ? (
+                              <TextInput
+                                style={styles.activityNameInput}
+                                value={meal.name || meal.type || ''}
+                                onChangeText={(text) => handleMealFieldUpdate(dayIndex, mealIndex, 'name', text)}
+                                placeholder="Meal name or type"
+                                placeholderTextColor="#999"
+                              />
+                            ) : (
+                              <Text style={styles.mealName}>{meal.name || meal.type}</Text>
+                            )}
+                            
+                            {/* Time - editable */}
+                            {isEditingThisMeal ? (
+                              <View style={styles.timeInputRow}>
+                                <Text style={styles.timeLabel}>⏰ </Text>
+                                <TextInput
+                                  style={styles.timeInput}
+                                  value={meal.time || ''}
+                                  onChangeText={(text) => handleMealFieldUpdate(dayIndex, mealIndex, 'time', text)}
+                                  placeholder="Time"
+                                  placeholderTextColor="#999"
+                                />
+                              </View>
+                            ) : (
+                              meal.time && (
+                                <Text style={styles.mealTime}>⏰ {meal.time}</Text>
+                              )
+                            )}
+                            
+                            {meal.restaurant && (
+                              <View style={{ marginTop: 8 }}>
+                                {/* Restaurant name - editable */}
+                                {isEditingThisMeal ? (
+                                  <TextInput
+                                    style={styles.activityNameInput}
+                                    value={meal.restaurant.name || ''}
+                                    onChangeText={(text) => handleMealFieldUpdate(dayIndex, mealIndex, 'restaurant.name', text)}
+                                    placeholder="Restaurant name"
+                                    placeholderTextColor="#999"
+                                  />
+                                ) : (
+                                  <Text style={styles.restaurantName}>{meal.restaurant.name}</Text>
+                                )}
+                                
+                                {/* Restaurant description - editable */}
+                                {isEditingThisMeal ? (
+                                  <TextInput
+                                    style={styles.activityDescriptionInput}
+                                    value={meal.restaurant.description || ''}
+                                    onChangeText={(text) => handleMealFieldUpdate(dayIndex, mealIndex, 'restaurant.description', text)}
+                                    placeholder="Restaurant description"
+                                    placeholderTextColor="#999"
+                                    multiline
+                                    numberOfLines={2}
+                                  />
+                                ) : (
+                                  meal.restaurant.description && (
+                                    <Text style={styles.restaurantDescription}>{meal.restaurant.description}</Text>
+                                  )
+                                )}
+                                
+                                {/* Restaurant location - editable */}
+                                {isEditingThisMeal ? (
+                                  <View style={styles.locationInputRow}>
+                                    <Text style={styles.locationLabel}>📍 </Text>
+                                    <TextInput
+                                      style={styles.locationInput}
+                                      value={typeof meal.restaurant.location === 'string' 
+                                        ? meal.restaurant.location 
+                                        : meal.restaurant.location?.address || meal.restaurant.location?.name || ''}
+                                      onChangeText={(text) => handleMealFieldUpdate(dayIndex, mealIndex, 'restaurant.location', text)}
+                                      placeholder="Location"
+                                      placeholderTextColor="#999"
+                                    />
+                                  </View>
+                                ) : (
+                                  meal.restaurant.location && (
+                                    <Text style={styles.activityLocation}>
+                                      📍 {typeof meal.restaurant.location === 'string' 
+                                          ? meal.restaurant.location 
+                                          : meal.restaurant.location.address || meal.restaurant.location.name}
+                                    </Text>
+                                  )
+                                )}
+                                
+                                {meal.restaurant.rating && (
+                                  <Text style={styles.restaurantRating}>
+                                    ⭐ {meal.restaurant.rating} ({meal.restaurant.userRatingsTotal || 0} reviews)
                                   </Text>
-                                </TouchableOpacity>
-                              )}
-                              {meal.restaurant.website && (
-                                <TouchableOpacity onPress={() => Linking.openURL(meal.restaurant.website)}>
-                                  <Text style={styles.activityLink}>
-                                    🌐 {meal.restaurant.website}
+                                )}
+                                {!isEditing && meal.restaurant.phone && (
+                                  <TouchableOpacity onPress={() => Linking.openURL(`tel:${meal.restaurant.phone}`)}>
+                                    <Text style={styles.activityLink}>
+                                      📞 {meal.restaurant.phone}
+                                    </Text>
+                                  </TouchableOpacity>
+                                )}
+                                {!isEditing && meal.restaurant.website && (
+                                  <TouchableOpacity onPress={() => Linking.openURL(meal.restaurant.website)}>
+                                    <Text style={styles.activityLink}>
+                                      🌐 {meal.restaurant.website}
+                                    </Text>
+                                  </TouchableOpacity>
+                                )}
+                                {(meal.cost || meal.restaurant.estimatedCost) && (
+                                  <Text style={styles.restaurantPrice}>
+                                    💰 {
+                                      typeof (meal.cost || meal.restaurant.estimatedCost) === 'object' 
+                                        ? `$${(meal.cost || meal.restaurant.estimatedCost).amount}` 
+                                        : meal.cost || meal.restaurant.estimatedCost
+                                    }
                                   </Text>
-                                </TouchableOpacity>
-                              )}
-                              {(meal.cost || meal.restaurant.estimatedCost) && (
-                                <Text style={styles.restaurantPrice}>
-                                  💰 {
-                                    typeof (meal.cost || meal.restaurant.estimatedCost) === 'object' 
-                                      ? `$${(meal.cost || meal.restaurant.estimatedCost).amount}` 
-                                      : meal.cost || meal.restaurant.estimatedCost
-                                  }
-                                </Text>
-                              )}
-                            </View>
-                          )}
-                        </View>
-                      ))}
+                                )}
+                              </View>
+                            )}
+                          </View>
+                        );
+                      })}
                     </View>
                   )}
                 </View>
@@ -750,7 +1371,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
       <ShareAIItineraryModal
         visible={shareModalOpen}
         onClose={handleShareClose}
-        itinerary={itinerary}
+        itinerary={localItinerary}
       />
     </ScrollView>
   );
@@ -778,10 +1399,38 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 12,
   },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  editButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(25, 118, 210, 0.1)',
+  },
   shareButton: {
     padding: 8,
     borderRadius: 8,
     backgroundColor: 'rgba(25, 118, 210, 0.1)',
+  },
+  saveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    padding: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: '#4caf50',
+  },
+  saveButtonText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  cancelButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(244, 67, 54, 0.1)',
   },
   destination: {
     fontSize: 28,
@@ -1263,5 +1912,168 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
     marginBottom: 8,
+  },
+  // Editing Mode Styles
+  editModeInstructions: {
+    backgroundColor: 'rgba(33, 150, 243, 0.1)',
+    padding: 16,
+    marginHorizontal: 12,
+    marginBottom: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(33, 150, 243, 0.3)',
+  },
+  editModeText: {
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 20,
+    textAlign: 'center',
+  },
+  editModeBold: {
+    fontWeight: 'bold',
+  },
+  batchDeleteContainer: {
+    backgroundColor: 'rgba(244, 67, 54, 0.1)',
+    padding: 16,
+    marginHorizontal: 12,
+    marginBottom: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(244, 67, 54, 0.3)',
+  },
+  batchDeleteTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 12,
+  },
+  batchDeleteButtons: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#d32f2f',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  deleteButtonText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  clearButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  clearButtonText: {
+    color: '#333',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  selectableCard: {
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
+  },
+  selectedCard: {
+    borderColor: '#1976d2',
+    backgroundColor: 'rgba(25, 118, 210, 0.05)',
+  },
+  selectionIndicator: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    zIndex: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 4,
+    padding: 4,
+  },
+  editActivityButton: {
+    position: 'absolute',
+    top: 8,
+    right: 48,
+    zIndex: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 4,
+    padding: 4,
+  },
+  saveButtonDisabled: {
+    opacity: 0.6,
+  },
+  // Inline editing styles
+  activityNameInput: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333',
+    marginBottom: 8,
+    backgroundColor: '#F0F0F0',
+    padding: 8,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#1976d2',
+  },
+  activityDescriptionInput: {
+    fontSize: 13,
+    color: '#666',
+    lineHeight: 18,
+    backgroundColor: '#F0F0F0',
+    padding: 8,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#1976d2',
+    marginBottom: 8,
+    minHeight: 60,
+    textAlignVertical: 'top',
+  },
+  timeInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  timeLabel: {
+    fontSize: 13,
+    color: '#666',
+  },
+  timeInput: {
+    flex: 1,
+    fontSize: 13,
+    color: '#666',
+    backgroundColor: '#F0F0F0',
+    padding: 6,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#1976d2',
+  },
+  timeSeparator: {
+    fontSize: 13,
+    color: '#666',
+    marginHorizontal: 4,
+  },
+  locationInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  locationLabel: {
+    fontSize: 13,
+    color: '#666',
+  },
+  locationInput: {
+    flex: 1,
+    fontSize: 13,
+    color: '#666',
+    backgroundColor: '#F0F0F0',
+    padding: 6,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#1976d2',
   },
 });
