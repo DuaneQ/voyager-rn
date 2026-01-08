@@ -2009,6 +2009,15 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   // Inline editing styles
+  inlineEditButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    zIndex: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 4,
+    padding: 4,
+  },
   activityNameInput: {
     fontSize: 14,
     fontWeight: '500',
