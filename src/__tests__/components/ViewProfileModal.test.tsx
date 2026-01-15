@@ -814,4 +814,126 @@ describe('ViewProfileModal', () => {
       expect(queryByTestId('enlarged-video-modal')).toBeNull();
     });
   });
+
+  describe('Video Reporting', () => {
+    const mockVideos = [
+      {
+        id: 'video1',
+        videoUrl: 'https://example.com/video1.mp4',
+        thumbnailUrl: 'https://example.com/thumb1.jpg',
+        title: 'Test Video',
+        userId: mockOtherUserId,
+      },
+    ];
+
+    beforeEach(() => {
+      const getDocs = firestore.getDocs as jest.Mock;
+      getDocs.mockResolvedValue({
+        forEach: (callback: Function) => {
+          mockVideos.forEach((video) => {
+            callback({
+              id: video.id,
+              data: () => video,
+            });
+          });
+        },
+      });
+    });
+
+    it('shows report button on other users videos', async () => {
+      const { getByText, getByTestId } = render(
+        <UserProfileContext.Provider value={createMockContext(mockCurrentUserProfile)}>
+          <ViewProfileModal
+            visible={true}
+            onClose={() => {}}
+            userId={mockOtherUserId}
+          />
+        </UserProfileContext.Provider>
+      );
+
+      await waitFor(() => {
+        expect(getByText('TestUser')).toBeTruthy();
+      });
+
+      // Switch to Videos tab
+      await act(async () => {
+        fireEvent.press(getByText('Videos'));
+      });
+
+      // Report button should be visible
+      await waitFor(() => {
+        expect(getByTestId('report-video-button-video1')).toBeTruthy();
+      });
+    });
+
+    it('does not show report button on own videos', async () => {
+      const getDocs = firestore.getDocs as jest.Mock;
+      getDocs.mockResolvedValue({
+        forEach: (callback: Function) => {
+          [{ ...mockVideos[0], userId: mockUserId }].forEach((video) => {
+            callback({
+              id: video.id,
+              data: () => video,
+            });
+          });
+        },
+      });
+
+      const { getByText, queryByTestId } = render(
+        <UserProfileContext.Provider value={createMockContext(mockCurrentUserProfile)}>
+          <ViewProfileModal
+            visible={true}
+            onClose={() => {}}
+            userId={mockUserId}
+          />
+        </UserProfileContext.Provider>
+      );
+
+      await waitFor(() => {
+        expect(getByText('TestUser')).toBeTruthy();
+      });
+
+      // Switch to Videos tab
+      await act(async () => {
+        fireEvent.press(getByText('Videos'));
+      });
+
+      // Report button should NOT be visible
+      await waitFor(() => {
+        expect(queryByTestId('report-video-button-video1')).toBeNull();
+      });
+    });
+
+    it('opens ReportVideoModal when report button is pressed', async () => {
+      const { getByText, getByTestId } = render(
+        <UserProfileContext.Provider value={createMockContext(mockCurrentUserProfile)}>
+          <ViewProfileModal
+            visible={true}
+            onClose={() => {}}
+            userId={mockOtherUserId}
+          />
+        </UserProfileContext.Provider>
+      );
+
+      await waitFor(() => {
+        expect(getByText('TestUser')).toBeTruthy();
+      });
+
+      // Switch to Videos tab
+      await act(async () => {
+        fireEvent.press(getByText('Videos'));
+      });
+
+      // Press report button
+      await act(async () => {
+        const reportButton = getByTestId('report-video-button-video1');
+        fireEvent.press(reportButton);
+      });
+
+      // ReportVideoModal should open
+      await waitFor(() => {
+        expect(getByText('Report Video')).toBeTruthy();
+      });
+    });
+  });
 });

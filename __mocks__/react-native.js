@@ -69,6 +69,14 @@ const Stub = {
     return React.createElement('Pressable', p, p.children);
   },
   Button: createHostComponent('Button'),
+  Switch: (props) => {
+    const p = { ...props };
+    if (typeof p.accessible === 'undefined') p.accessible = true;
+    if (typeof p.disabled === 'boolean') {
+      p.accessibilityState = { ...(p.accessibilityState || {}), disabled: p.disabled };
+    }
+    return React.createElement('Switch', p);
+  },
   FlatList: ((props) => {
     const React = require('react');
     const { data = [], renderItem, ListEmptyComponent, ...rest } = props || {};

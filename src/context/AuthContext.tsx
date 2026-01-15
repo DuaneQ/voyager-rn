@@ -18,6 +18,7 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth, db } from '../config/firebaseConfig';
 import { SafeGoogleSignin } from '../utils/SafeGoogleSignin';
+import * as AppleAuthentication from 'expo-apple-authentication';
 // Firebase Web SDK - static imports for Jest compatibility
 import {
   signInWithEmailAndPassword,
@@ -26,6 +27,7 @@ import {
   signOut,
   sendPasswordResetEmail,
   GoogleAuthProvider,
+  OAuthProvider,
   signInWithPopup,
   signInWithCredential,
   User as FirebaseAuthUser,
@@ -84,6 +86,8 @@ interface AuthContextValue {
   hasUnverifiedUser: () => boolean;
   signInWithGoogle: () => Promise<any>;
   signUpWithGoogle: () => Promise<any>;
+  signInWithApple: () => Promise<any>;
+  signUpWithApple: () => Promise<any>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -107,7 +111,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             iosClientId: '296095212837-iq6q8qiodt67lalsn3j5ej2s6sn1e01k.apps.googleusercontent.com',
           }
         : {
-            webClientId: '533074391000-deos0eg5t1nnaeqgcacflcp10klcbe53.apps.googleusercontent.com',
+            webClientId: '533074391000-uotb4gkkr75tdi2f9vvnffecj0oqbj16.apps.googleusercontent.com',
             iosClientId: '533074391000-quot684rc8kugrni3eh2c6bsq3u5rcqs.apps.googleusercontent.com',
           };
       SafeGoogleSignin.configure({
@@ -131,7 +135,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           photoURL: firebaseUser.photoURL || null,
         };
         setUser(user);
-        setStatus('authenticated');
+        
+        // CRITICAL: Only mark as authenticated if email is verified
+        // (unless it's a social provider like Google/Apple which auto-verifies)
+        const isSocialProvider = firebaseUser.providerData?.some(
+          (provider) => provider.providerId === 'google.com' || provider.providerId === 'apple.com'
+        ) || false;
+        
+        if (firebaseUser.emailVerified || isSocialProvider) {
+          setStatus('authenticated');
+        } else {
+          // User exists but email not verified - keep status as 'idle' or 'error'
+          setStatus('idle');
+        }
       } else {
         // User is signed out
         setUser(null);
@@ -155,6 +171,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Check email verification (PWA pattern)
       await user.reload();
       if (!user.emailVerified) {
+        // Sign out the user immediately so onAuthStateChanged doesn't authenticate them
+        await signOut(auth);
         setStatus('error');
         throw new Error('Email not verified. Please check your email and verify your account.');
       }
@@ -471,6 +489,155 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  /**
+   * Apple Sign-In
+   * Scenario 1: New user tries to sign in → redirect to sign up
+   * Scenario 4: Existing user signs in → success
+   */
+  const signInWithApple = async (): Promise<any> => {
+    // Only available on iOS
+    if (Platform.OS !== 'ios') {
+      throw new Error('Apple Sign-In is only available on iOS');
+    }
+
+    try {
+      setStatus('loading');
+
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+
+      // Create Firebase OAuth credential
+      const provider = new OAuthProvider('apple.com');
+      const oauthCredential = provider.credential({
+        idToken: credential.identityToken!,
+      });
+
+      // Sign in with Firebase
+      const result = await signInWithCredential(auth, oauthCredential);
+      const user = result.user;
+      
+      // Check if user profile exists in Firestore
+      const userRef = doc(db, 'users', user.uid);
+      const userDoc = await getDoc(userRef);
+      
+      if (!userDoc.exists()) {
+        // New user trying to sign in - need to sign up first
+        await signOut(auth);
+        setStatus('idle');
+        throw new Error('ACCOUNT_NOT_FOUND');
+      }
+      
+      // Existing user - success
+      console.log('[AuthContext] Apple sign-in successful');
+      setStatus('authenticated');
+      return user;
+      
+    } catch (error: any) {
+      if (error.code === 'ERR_REQUEST_CANCELED') {
+        // User canceled - don't throw error
+        console.log('[AuthContext] Apple sign-in canceled by user');
+        setStatus('idle');
+        return;
+      }
+      setStatus('idle');
+      console.error('[AuthContext] Apple sign-in failed:', error);
+      throw error;
+    }
+  };
+
+  /**
+   * Apple Sign-Up
+   * Scenario 2: Existing user tries to sign up → sign them in
+   * Scenario 3: New user signs up → create profile and sign in
+   */
+  const signUpWithApple = async (): Promise<any> => {
+    // Only available on iOS
+    if (Platform.OS !== 'ios') {
+      throw new Error('Apple Sign-In is only available on iOS');
+    }
+
+    try {
+      setStatus('loading');
+
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+
+      // Create Firebase OAuth credential
+      const provider = new OAuthProvider('apple.com');
+      const oauthCredential = provider.credential({
+        idToken: credential.identityToken!,
+      });
+
+      // Sign in with Firebase
+      const result = await signInWithCredential(auth, oauthCredential);
+      const user = result.user;
+      
+      // Check if user profile exists
+      const userRef = doc(db, 'users', user.uid);
+      const userDoc = await getDoc(userRef);
+      
+      if (userDoc.exists()) {
+        // Existing user trying to sign up - just sign them in
+        console.log('[AuthContext] Apple user already exists, signing in');
+        setStatus('authenticated');
+        return user;
+      }
+      
+      // New user - create profile
+      const displayName = credential.fullName 
+        ? `${credential.fullName.givenName || ''} ${credential.fullName.familyName || ''}`.trim()
+        : user.email?.split('@')[0] || 'Apple User';
+      
+      const userProfile = {
+        username: displayName,
+        email: user.email || credential.email || '',
+        bio: '',
+        gender: '',
+        sexualOrientation: '',
+        edu: '',
+        drinking: '',
+        smoking: '',
+        dob: '',
+        photos: ['', '', '', '', ''],
+        subscriptionType: 'free',
+        subscriptionStartDate: null,
+        subscriptionEndDate: null,
+        subscriptionCancelled: false,
+        stripeCustomerId: null,
+        emailVerified: true, // Apple sign-in is always verified
+        provider: 'apple',
+        dailyUsage: {
+          date: new Date().toISOString().split('T')[0],
+          viewCount: 0,
+        },
+        createdAt: serverTimestamp(),
+      };
+
+      await setDoc(userRef, userProfile);
+      console.log('[AuthContext] Apple sign-up successful, profile created');
+      setStatus('authenticated');
+      return user;
+      
+    } catch (error: any) {
+      if (error.code === 'ERR_REQUEST_CANCELED') {
+        console.log('[AuthContext] Apple sign-up canceled by user');
+        setStatus('idle');
+        return;
+      }
+      setStatus('idle');
+      console.error('[AuthContext] Apple sign-up failed:', error);
+      throw error;
+    }
+  };
+
   const value: AuthContextValue = {
     user,
     status,
@@ -484,6 +651,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     hasUnverifiedUser,
     signInWithGoogle,
     signUpWithGoogle,
+    signInWithApple,
+    signUpWithApple,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

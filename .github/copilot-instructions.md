@@ -4,6 +4,38 @@
 
 ## ⚠️ CRITICAL TESTING RULES - READ FIRST ⚠️
 
+### 🚨 EAS BUILD WARNING - COSTS MONEY 🚨
+
+**ABSOLUTE RULE**: EAS Builds count against billing quota. **Test thoroughly BEFORE building.**
+
+**Before running `eas build`**:
+- ✅ Test locally with `npx expo run:ios` or `npx expo run:android`
+- ✅ Test in **Release mode** with `npx expo run:ios --configuration Release`
+- ✅ Verify ALL features work locally (Google Sign-In, Apple Sign-In, Firebase, etc.)
+- ✅ **ALWAYS increment `buildNumber` in app.json** before building again
+- ❌ **NEVER** run `eas build` without testing locally first
+- ❌ **NEVER** forget to increment build number (causes wasted builds)
+
+**Build number management**:
+```json
+// app.json
+"ios": {
+  "buildNumber": "14"  // ← INCREMENT THIS before each build!
+},
+"android": {
+  "versionCode": 14    // ← INCREMENT THIS before each build!
+}
+```
+
+**Each successful EAS build counts against quota, even if:**
+- Submission to App Store fails
+- You find bugs after building
+- Build number wasn't incremented
+
+**If you violate this rule, you waste money and quota. NO EXCEPTIONS.**
+
+---
+
 ### 🚨 NEVER MODIFY PRODUCTION CODE FOR TESTS 🚨
 
 **ABSOLUTE RULE**: You are **STRICTLY FORBIDDEN** from modifying any production code to make tests work.

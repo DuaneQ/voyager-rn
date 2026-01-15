@@ -9,7 +9,7 @@ import { useCreateItinerary } from '../../hooks/useCreateItinerary';
 import * as firebaseFunctions from 'firebase/functions';
 import type { ManualItineraryFormData } from '../../types/ManualItinerary';
 
-import { renderHook, act } from '@testing-library/react-hooks';
+import { renderHook, act } from '@testing-library/react-native';
 import { setMockUser, clearMockUser } from '../../testUtils/mockAuth';
 jest.mock('firebase/functions', () => ({
   getFunctions: jest.fn(() => ({})),

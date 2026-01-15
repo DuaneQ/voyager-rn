@@ -52,6 +52,7 @@ export default StyleSheet.create({
     padding: 10,
     fontSize: 14,
     backgroundColor: '#fff',
+    color: '#000',
   },
   inputError: {
     borderColor: '#e74c3c',

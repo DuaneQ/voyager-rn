@@ -1,6 +1,5 @@
 import React from 'react';
-import { renderHook, act } from '@testing-library/react-hooks';
-import { waitFor } from '@testing-library/react-native';
+import { renderHook, act, waitFor } from '@testing-library/react-native';
 
 // Ensure firebase/auth and react-native are mocked before requiring AuthContext
 jest.mock('firebase/auth');
@@ -69,10 +68,19 @@ describe('AuthContext (firebase-backed)', () => {
   });
 
   it('throws when firebase returns unverified email', async () => {
-    (signInWithEmailAndPassword as jest.Mock).mockResolvedValueOnce({ user: { uid: 'uid-2', email: 'new@example.com', emailVerified: false, isAnonymous: false, providerData: [], reload: jest.fn() } });
+    const unverifiedUser = { uid: 'uid-2', email: 'new@example.com', emailVerified: false, isAnonymous: false, providerData: [], reload: jest.fn() };
+    (signInWithEmailAndPassword as jest.Mock).mockResolvedValueOnce({ user: unverifiedUser });
+    (firebaseSignOut as jest.Mock).mockResolvedValueOnce(undefined);
 
-  const wrapper = ({ children }: any) => <AuthProvider>{children}</AuthProvider>;
-  const { result } = renderHook(() => useAuth(), { wrapper });
+    // Mock onAuthStateChanged to not call callback (user gets signed out immediately)
+    const cfg = require('../../config/firebaseConfig');
+    cfg.auth.onAuthStateChanged = jest.fn((callback) => {
+      // Don't call callback - user is signed out before onAuthStateChanged fires
+      return () => {};
+    });
+
+    const wrapper = ({ children }: any) => <AuthProvider>{children}</AuthProvider>;
+    const { result } = renderHook(() => useAuth(), { wrapper });
 
     // Test that signIn throws an error for unverified email
     let thrownError: Error | null = null;
@@ -85,10 +93,11 @@ describe('AuthContext (firebase-backed)', () => {
       }
     });
     
-    // Verify the error was thrown. Status may be 'error' or remain 'idle' depending on async auth listeners
+    // Verify the error was thrown. Status should be 'error' or 'idle', not 'authenticated'
     expect(thrownError).toBeTruthy();
     expect(thrownError?.message).toContain('Email not verified');
-    expect(['idle', 'error']).toContain(result.current.status as string);
+    expect(result.current.status).not.toBe('authenticated');
+    expect(['idle', 'error']).toContain(result.current.status);
     expect(result.current.user).toBeNull();
   });
 

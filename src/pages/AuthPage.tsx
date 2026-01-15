@@ -37,7 +37,7 @@ const AuthPage: React.FC = () => {
   const [mode, setMode] = useState<AuthMode>('login');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const { signIn, signUp, sendPasswordReset, resendVerification, status, signInWithGoogle, signUpWithGoogle } = useAuth();
+  const { signIn, signUp, sendPasswordReset, resendVerification, status, signInWithGoogle, signUpWithGoogle, signInWithApple, signUpWithApple } = useAuth();
   const { showAlert } = useAlert();
   
   const isLoading = status === 'loading' || isSubmitting;
@@ -162,6 +162,52 @@ const AuthPage: React.FC = () => {
     }
   };
 
+  /**
+   * Apple Sign-In Handler
+   * Scenario 1: New user tries to sign in → redirect to sign up
+   * Scenario 4: Existing user signs in → success
+   */
+  const handleAppleSignIn = async () => {
+    setIsSubmitting(true);
+    try {
+      await signInWithApple();
+      if (Platform.OS === 'web') {
+        showAlert('success', 'Login successful! Welcome back.');
+      }
+    } catch (error: any) {
+      if (error.message === 'ACCOUNT_NOT_FOUND') {
+        showAlert(
+          'error',
+          'No account found for this Apple ID. Please sign up first.'
+        );
+        setMode('register');
+      } else {
+        const errorMessage = error instanceof Error ? error.message : 'Apple sign-in failed';
+        showAlert('error', errorMessage);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  /**
+   * Apple Sign-Up Handler
+   * Scenario 2: Existing user tries to sign up → sign them in
+   * Scenario 3: New user signs up → create profile and sign in
+   */
+  const handleAppleSignUp = async () => {
+    setIsSubmitting(true);
+    try {
+      await signUpWithApple();
+      showAlert('success', 'Successfully signed up with Apple! Welcome to TravalPass.');
+    } catch (error: any) {
+      const errorMessage = error instanceof Error ? error.message : 'Apple sign-up failed';
+      showAlert('error', errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   // Render the appropriate form based on mode
   const renderForm = () => {
     switch (mode) {
@@ -170,6 +216,7 @@ const AuthPage: React.FC = () => {
           <LoginForm
             onSubmit={handleLogin}
             onGoogleSignIn={handleGoogleSignIn}
+            onAppleSignIn={handleAppleSignIn}
             onForgotPassword={() => {
               setMode('forgot');
             }}
@@ -188,6 +235,7 @@ const AuthPage: React.FC = () => {
           <RegisterForm
             onSubmit={handleRegister}
             onGoogleSignUp={handleGoogleSignUp}
+            onAppleSignUp={handleAppleSignUp}
             onSignInPress={() => {
               setMode('login');
             }}

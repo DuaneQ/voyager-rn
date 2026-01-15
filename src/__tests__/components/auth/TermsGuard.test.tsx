@@ -42,6 +42,8 @@ describe('TermsGuard', () => {
       hasUnverifiedUser: jest.fn(),
       signInWithGoogle: jest.fn(),
       signUpWithGoogle: jest.fn(),
+      signInWithApple: jest.fn(),
+      signUpWithApple: jest.fn(),
     });
     
     // Default mock for useTermsAcceptance
@@ -244,6 +246,8 @@ describe('TermsGuard', () => {
       hasUnverifiedUser: jest.fn(),
       signInWithGoogle: jest.fn(),
       signUpWithGoogle: jest.fn(),
+      signInWithApple: jest.fn(),
+      signUpWithApple: jest.fn(),
     });
 
     mockUseTermsAcceptance.mockReturnValue({

@@ -54,12 +54,34 @@ const mockGenerateVideoThumbnail = videoValidation.generateVideoThumbnail as jes
 describe('VideoService', () => {
   let videoService: VideoService;
   let mockFetch: jest.SpyInstance;
+  let mockXHR: any;
 
   beforeEach(() => {
     videoService = new VideoService();
     jest.clearAllMocks();
 
-    // Mock fetch globally
+    // Mock XMLHttpRequest for video file reading
+    mockXHR = {
+      open: jest.fn(),
+      send: jest.fn(function() {
+        // Simulate successful load
+        setTimeout(() => {
+          this.status = 200;
+          this.response = new Blob(['video content'], { type: 'video/mp4' });
+          this.onload?.();
+        }, 0);
+      }),
+      setRequestHeader: jest.fn(),
+      status: 200,
+      response: null,
+      onload: null,
+      onerror: null,
+      responseType: '',
+    };
+    
+    global.XMLHttpRequest = jest.fn(() => mockXHR) as any;
+
+    // Mock fetch globally (for thumbnail fetch)
     mockFetch = jest.spyOn(global, 'fetch');
 
     // Default mock implementations
@@ -160,25 +182,21 @@ describe('VideoService', () => {
     });
 
     it('should handle video fetch errors', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 404,
-        statusText: 'Not Found',
-      } as Response);
+      // Mock XHR to fail
+      mockXHR.send = jest.fn(function() {
+        setTimeout(() => {
+          this.status = 404;
+          this.onerror?.();
+        }, 0);
+      });
 
       await expect(
         videoService.uploadVideo(mockVideoData, userId)
-      ).rejects.toThrow('Failed to fetch video: 404 Not Found');
+      ).rejects.toThrow('Failed to read video file');
     });
 
     it('should handle Firebase storage upload errors', async () => {
-      const mockVideoBlob = new Blob(['video content'], { type: 'video/mp4' });
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        blob: () => Promise.resolve(mockVideoBlob),
-      } as Response);
-
+      // XHR succeeds
       const mockUploadTask = {
         on: jest.fn((event, onProgress, onError, onComplete) => {
           // Simulate error
@@ -197,13 +215,7 @@ describe('VideoService', () => {
     });
 
     it('should continue upload even if thumbnail generation fails', async () => {
-      const mockVideoBlob = new Blob(['video content'], { type: 'video/mp4' });
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        blob: () => Promise.resolve(mockVideoBlob),
-      } as Response);
-
+      // XHR succeeds (uses default mock)
       const mockUploadTask = {
         on: jest.fn((event, onProgress, onError, onComplete) => {
           onComplete();
@@ -233,13 +245,7 @@ describe('VideoService', () => {
         isPublic: false,
       };
 
-      const mockVideoBlob = new Blob(['video content'], { type: 'video/mp4' });
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        blob: () => Promise.resolve(mockVideoBlob),
-      } as Response);
-
+      // XHR succeeds (uses default mock)
       const mockUploadTask = {
         on: jest.fn((event, onProgress, onError, onComplete) => {
           onComplete();

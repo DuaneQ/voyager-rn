@@ -31,6 +31,7 @@ interface VideoCardProps {
   onLike: () => void;
   onComment?: () => void;
   onShare: () => void;
+  onReport?: () => void; // Report video for content moderation
   onViewTracked?: () => void;
 }
 
@@ -42,6 +43,7 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
   onLike,
   onComment,
   onShare,
+  onReport,
   onViewTracked,
 }) => {
   const videoRef = useRef<Video>(null);
@@ -407,6 +409,19 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
         <Ionicons name="share-outline" size={32} color="#fff" />
         <Text style={styles.actionText}>Share</Text>
       </TouchableOpacity>
+
+      {/* Report button - only show for other users' videos */}
+      {onReport && (
+        <TouchableOpacity 
+          style={styles.actionButton} 
+          onPress={onReport}
+          testID="report-button"
+          accessibilityLabel="Report video"
+        >
+          <Ionicons name="flag-outline" size={32} color="#fff" />
+          <Text style={styles.actionText}>Report</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 

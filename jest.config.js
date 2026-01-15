@@ -12,7 +12,7 @@ module.exports = {
   // mock is installed before any modules import it (avoids import-time races)
   setupFiles: ['<rootDir>/jest.setup.mock-react-native.js'],
   transformIgnorePatterns: [
-    'node_modules/(?!(react-native|@react-native|@react-native-community|expo|@expo|expo-font|expo-asset|expo-constants|expo-modules-core|expo-linear-gradient|@expo/vector-icons|@react-navigation|@testing-library|react-native-gesture-handler|expo-image-picker|react-native-google-places-autocomplete|lodash.debounce)/)',
+    'node_modules/(?!(react-native|@react-native|@react-native-community|expo|@expo|expo-font|expo-asset|expo-constants|expo-modules-core|expo-linear-gradient|expo-apple-authentication|expo-file-system|expo-av|expo-video-thumbnails|@expo/vector-icons|@react-navigation|@testing-library|react-native-gesture-handler|expo-image-picker|react-native-google-places-autocomplete|lodash.debounce)/)',
   ],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
@@ -29,6 +29,7 @@ module.exports = {
     '^firebase/storage$': '<rootDir>/__mocks__/firebase/storage.js',
     '^firebase/app$': '<rootDir>/__mocks__/firebase/app.js',
     '^expo-linear-gradient$': '<rootDir>/__mocks__/expo-linear-gradient.js',
+    '^expo-file-system/legacy$': '<rootDir>/__mocks__/expo-file-system.js',
   },
   testMatch: ['**/__tests__/**/*.test.ts?(x)', '**/?(*.)+(spec|test).ts?(x)'],
   testPathIgnorePatterns: [

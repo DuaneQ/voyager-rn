@@ -207,7 +207,7 @@ export const TravelPreferencesTab: React.FC<TravelPreferencesTabProps> = ({
               <Picker.Item 
                 label="-- Select a profile to edit --" 
                 value="" 
-                color="#888888"
+                color="#FFFFFF"
                 style={{ fontWeight: '600', fontSize: 18 }}
               />
               {profiles.map(profile => (
@@ -215,7 +215,7 @@ export const TravelPreferencesTab: React.FC<TravelPreferencesTabProps> = ({
                   key={profile.id}
                   label={`${profile.name}${profile.isDefault ? ' ⭐' : ''}`}
                   value={profile.id}
-                  color="#000000"
+                  color="#FFFFFF"
                   style={{ fontWeight: '600', fontSize: 18 }}
                 />
               ))}
@@ -931,10 +931,10 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#007AFF',
     overflow: 'hidden',
-    minHeight: 50,
+    minHeight: 53,
   },
   picker: {
-    height: 50,
+    height: 53,
     width: '100%',
     color: '#000000',
     backgroundColor: '#FFFFFF',

@@ -94,25 +94,28 @@ export const ItinerarySelector: React.FC<ItinerarySelectorProps> = ({
                   <Text style={styles.iosPickerArrow}>▼</Text>
                 </TouchableOpacity>
               ) : (
-                // Android: Use standard Picker
+                // Android: Picker with explicit black text on white dropdown
                 <View style={styles.pickerWrapper}>
                   <Picker
                     selectedValue={selectedItineraryId || ''}
                     onValueChange={(value) => value && onSelect(value)}
-                    style={styles.picker}
+                    style={styles.androidPicker}
+                    dropdownIconColor="#000000"
+                    mode="dropdown"
+                    itemStyle={{ backgroundColor: '#FFFFFF', color: '#000000' }}
                     testID="itinerary-selector-picker"
                   >
                     <Picker.Item
                       label="Select itinerary..."
                       value=""
-                      color="#999999"
+                      color="#666666"
                     />
                     {itineraries.map((itinerary) => (
                       <Picker.Item
                         key={itinerary.id}
                         label={formatItineraryLabel(itinerary)}
                         value={itinerary.id}
-                        color="#000000"
+                        color="#FFFFFF"
                       />
                     ))}
                   </Picker>
@@ -195,6 +198,11 @@ const styles = StyleSheet.create({
   },
   picker: {
     height: 50,
+  },
+  androidPicker: {
+    height: 50,
+    color: '#000000',
+    backgroundColor: '#f5f5f5',
   },
   addButton: {
     backgroundColor: '#1976d2',

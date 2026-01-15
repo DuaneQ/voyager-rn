@@ -5,7 +5,7 @@
 
 import { Audio } from 'expo-av';
 import * as VideoThumbnails from 'expo-video-thumbnails';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { VideoValidationResult, VIDEO_CONSTRAINTS } from '../types/Video';
 
 /**

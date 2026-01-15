@@ -121,6 +121,7 @@ describe('AuthPage', () => {
 describe('LoginForm', () => {
   const mockOnSubmit = jest.fn();
   const mockOnGoogleSignIn = jest.fn();
+  const mockOnAppleSignIn = jest.fn();
   const mockOnForgotPassword = jest.fn();
   const mockOnResendVerification = jest.fn();
   const mockOnSignUpPress = jest.fn();
@@ -134,6 +135,7 @@ describe('LoginForm', () => {
       <LoginForm
         onSubmit={mockOnSubmit}
         onGoogleSignIn={mockOnGoogleSignIn}
+        onAppleSignIn={mockOnAppleSignIn}
         onForgotPassword={mockOnForgotPassword}
         onResendVerification={mockOnResendVerification}
         onSignUpPress={mockOnSignUpPress}
@@ -152,6 +154,7 @@ describe('LoginForm', () => {
       <LoginForm
         onSubmit={mockOnSubmit}
         onGoogleSignIn={mockOnGoogleSignIn}
+        onAppleSignIn={mockOnAppleSignIn}
         onForgotPassword={mockOnForgotPassword}
         onResendVerification={mockOnResendVerification}
         onSignUpPress={mockOnSignUpPress}
@@ -174,6 +177,7 @@ describe('LoginForm', () => {
       <LoginForm
         onSubmit={mockOnSubmit}
         onGoogleSignIn={mockOnGoogleSignIn}
+        onAppleSignIn={mockOnAppleSignIn}
         onForgotPassword={mockOnForgotPassword}
         onResendVerification={mockOnResendVerification}
         onSignUpPress={mockOnSignUpPress}
@@ -199,6 +203,7 @@ describe('LoginForm', () => {
       <LoginForm
         onSubmit={mockOnSubmit}
         onGoogleSignIn={mockOnGoogleSignIn}
+        onAppleSignIn={mockOnAppleSignIn}
         onForgotPassword={mockOnForgotPassword}
         onResendVerification={mockOnResendVerification}
         onSignUpPress={mockOnSignUpPress}
@@ -216,6 +221,7 @@ describe('LoginForm', () => {
       <LoginForm
         onSubmit={mockOnSubmit}
         onGoogleSignIn={mockOnGoogleSignIn}
+        onAppleSignIn={mockOnAppleSignIn}
         onForgotPassword={mockOnForgotPassword}
         onResendVerification={mockOnResendVerification}
         onSignUpPress={mockOnSignUpPress}
@@ -233,6 +239,7 @@ describe('LoginForm', () => {
       <LoginForm
         onSubmit={mockOnSubmit}
         onGoogleSignIn={mockOnGoogleSignIn}
+        onAppleSignIn={mockOnAppleSignIn}
         onForgotPassword={mockOnForgotPassword}
         onResendVerification={mockOnResendVerification}
         onSignUpPress={mockOnSignUpPress}
@@ -250,6 +257,7 @@ describe('LoginForm', () => {
       <LoginForm
         onSubmit={mockOnSubmit}
         onGoogleSignIn={mockOnGoogleSignIn}
+        onAppleSignIn={mockOnAppleSignIn}
         onForgotPassword={mockOnForgotPassword}
         onResendVerification={mockOnResendVerification}
         onSignUpPress={mockOnSignUpPress}

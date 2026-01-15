@@ -6,10 +6,12 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import styles from './authFormStyles';
 import GoogleIcon from '../../icons/GoogleIcon';
+import AppleSignInButton from '../buttons/AppleSignInButton';
 
 interface LoginFormProps {
   onSubmit: (email: string, password: string) => Promise<void>;
   onGoogleSignIn: () => void;
+  onAppleSignIn: () => void;
   onForgotPassword: () => void;
   onResendVerification: () => void;
   onSignUpPress: () => void;
@@ -19,6 +21,7 @@ interface LoginFormProps {
 const LoginForm: React.FC<LoginFormProps> = ({
   onSubmit,
   onGoogleSignIn,
+  onAppleSignIn,
   onForgotPassword,
   onResendVerification,
   onSignUpPress,
@@ -140,6 +143,13 @@ const LoginForm: React.FC<LoginFormProps> = ({
           <Text style={styles.googleButtonText}>Sign in with Google</Text>
         </View>
       </TouchableOpacity>
+
+      {/* Apple Sign-In Button - iOS Only */}
+      <AppleSignInButton 
+        onPress={onAppleSignIn}
+        buttonType="sign-in"
+        isLoading={isLoading}
+      />
 
       <View style={styles.dividerContainer}>
         <View style={styles.dividerLine} />

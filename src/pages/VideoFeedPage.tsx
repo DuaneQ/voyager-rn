@@ -21,6 +21,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { VideoCard } from '../components/video/VideoCard';
 import { VideoCommentsModal } from '../components/video/VideoCommentsModal';
+import { VideoUploadModal } from '../components/modals/VideoUploadModal';
+import { ReportVideoModal } from '../components/modals/ReportVideoModal';
 import { useVideoFeed, VideoFilter } from '../hooks/video/useVideoFeed';
 import { useVideoUpload } from '../hooks/video/useVideoUpload';
 import { shareVideo } from '../utils/videoSharing';
@@ -47,10 +49,19 @@ const VideoFeedPage: React.FC = () => {
   } = useVideoFeed();
 
   const { uploadState, selectVideo, uploadVideo } = useVideoUpload();
+  
+  // Get auth instance for user ID checks
+  const resolvedAuth = typeof (require('../config/firebaseConfig') as any).getAuthInstance === 'function'
+    ? (require('../config/firebaseConfig') as any).getAuthInstance()
+    : (require('../config/firebaseConfig') as any).auth;
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [uploadModalVisible, setUploadModalVisible] = useState(false);
+  const [selectedVideoUri, setSelectedVideoUri] = useState<string | null>(null);
   const [isMuted, setIsMuted] = useState(false); // Videos play with audio by default (TikTok/Reels behavior)
   const [commentsModalVisible, setCommentsModalVisible] = useState(false);
   const [selectedVideoForComments, setSelectedVideoForComments] = useState<typeof videos[0] | null>(null);
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [selectedVideoForReport, setSelectedVideoForReport] = useState<typeof videos[0] | null>(null);
   const [isScreenFocused, setIsScreenFocused] = useState(true); // Track if screen is focused
   const flatListRef = useRef<FlatList>(null);
   const isScrollingRef = useRef(false); // Use ref instead of state to prevent stale closures
@@ -198,6 +209,17 @@ const VideoFeedPage: React.FC = () => {
   }, []);
 
   /**
+   * Handle report button press
+   */
+  const handleReportPress = useCallback((videoIndex: number) => {
+    const video = videos[videoIndex];
+    if (video) {
+      setSelectedVideoForReport(video);
+      setReportModalVisible(true);
+    }
+  }, [videos]);
+
+  /**
    * Handle filter change
    */
   const handleFilterChange = useCallback(
@@ -217,17 +239,31 @@ const VideoFeedPage: React.FC = () => {
   const handleUploadPress = useCallback(async () => {
     const videoUri = await selectVideo();
     if (videoUri) {
-      // Upload video with default metadata
-      await uploadVideo({
-        uri: videoUri,
-        title: 'My Travel Video',
-        description: '',
-        isPublic: true,
-      });
-      // Refresh feed after upload
-      await refreshVideos();
+      // Show modal to configure upload
+      setSelectedVideoUri(videoUri);
+      setUploadModalVisible(true);
     }
-  }, [selectVideo, uploadVideo, refreshVideos]);
+  }, [selectVideo]);
+
+  /**
+   * Handle video upload from modal
+   */
+  const handleVideoUpload = useCallback(async (videoData: any) => {
+    await uploadVideo(videoData);
+    // Close modal
+    setUploadModalVisible(false);
+    setSelectedVideoUri(null);
+    // Refresh feed after upload
+    await refreshVideos();
+  }, [uploadVideo, refreshVideos]);
+
+  /**
+   * Handle upload modal close
+   */
+  const handleUploadModalClose = useCallback(() => {
+    setUploadModalVisible(false);
+    setSelectedVideoUri(null);
+  }, []);
 
   /**
    * Handle viewable items changed (for tracking current video)
@@ -288,6 +324,9 @@ const VideoFeedPage: React.FC = () => {
    */
   const renderVideoCard = useCallback(
     ({ item, index }: { item: any; index: number }) => {
+      const currentUserId = resolvedAuth?.currentUser?.uid;
+      const isOwnVideo = item.userId === currentUserId;
+
       return (
         <VideoCard
           video={item}
@@ -297,11 +336,12 @@ const VideoFeedPage: React.FC = () => {
           onLike={() => handleLike(item)}
           onComment={() => handleCommentPress(index)}
           onShare={() => handleShare(index)}
+          onReport={!isOwnVideo ? () => handleReportPress(index) : undefined}
           onViewTracked={() => handleViewTracked(item.id)}
         />
       );
     },
-    [currentVideoIndex, isScreenFocused, isMuted, handleLike, handleCommentPress, handleShare, handleViewTracked]
+    [currentVideoIndex, isScreenFocused, isMuted, handleLike, handleCommentPress, handleShare, handleReportPress, handleViewTracked, resolvedAuth]
   );
 
   /**
@@ -513,6 +553,32 @@ const VideoFeedPage: React.FC = () => {
           }}
           video={selectedVideoForComments}
           onCommentAdded={handleCommentAdded}
+        />
+      )}
+
+      {/* Report Video Modal */}
+      {reportModalVisible && selectedVideoForReport && (
+        <ReportVideoModal
+          visible={reportModalVisible}
+          onClose={() => {
+            setReportModalVisible(false);
+            setSelectedVideoForReport(null);
+          }}
+          video={selectedVideoForReport}
+          reporterId={resolvedAuth?.currentUser?.uid || ''}
+        />
+      )}
+
+      {/* Video Upload Modal */}
+      {selectedVideoUri && (
+        <VideoUploadModal
+          visible={uploadModalVisible}
+          onClose={handleUploadModalClose}
+          onUpload={handleVideoUpload}
+          videoUri={selectedVideoUri}
+          isUploading={uploadState.loading}
+          uploadProgress={uploadState.progress}
+          processingStatus={uploadState.processingStatus}
         />
       )}
     </SafeAreaView>

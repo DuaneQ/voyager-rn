@@ -11,12 +11,17 @@ import { useUserProfile } from '../../../context/UserProfileContext';
 import { useAuth } from '../../../context/AuthContext';
 import { useConnections } from '../../../hooks/chat/useConnections';
 import { useAllItineraries } from '../../../hooks/useAllItineraries';
+import { accountDeletionService } from '../../../services/account/AccountDeletionService';
 
 // Mock dependencies
 jest.mock('../../../context/UserProfileContext');
 jest.mock('../../../context/AuthContext');
 jest.mock('../../../hooks/chat/useConnections');
 jest.mock('../../../hooks/useAllItineraries');
+jest.mock('../../../services/account/AccountDeletionService');
+
+// Create a mock function for deleteAccount
+const mockDeleteAccount = jest.fn();
 
 describe('ProfileTab', () => {
   const mockUserProfile = {
@@ -51,6 +56,11 @@ describe('ProfileTab', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    
+    // Mock accountDeletionService.deleteAccount
+    accountDeletionService.deleteAccount = mockDeleteAccount;
+    mockDeleteAccount.mockResolvedValue(undefined);
+    
     (useUserProfile as jest.Mock).mockReturnValue({
       userProfile: mockUserProfile,
     });
@@ -315,6 +325,134 @@ describe('ProfileTab', () => {
       });
       
       mockAlert.mockRestore();
+    });
+  });
+
+  describe('Account Deletion', () => {
+
+    it('should render danger zone section', () => {
+      const { getByText } = render(<ProfileTab />);
+      
+      expect(getByText('Danger Zone')).toBeTruthy();
+      expect(getByText('Delete Account')).toBeTruthy();
+    });
+
+    it('should open delete account modal when delete button is pressed', () => {
+      const { getByTestId, getByText } = render(<ProfileTab />);
+      
+      fireEvent.press(getByTestId('delete-account-button'));
+      
+      expect(getByText('Delete Account?')).toBeTruthy();
+      expect(getByText(/This action cannot be undone/)).toBeTruthy();
+      expect(getByTestId('delete-password-input')).toBeTruthy();
+    });
+
+    it('should close modal when cancel button is pressed', () => {
+      const { getByTestId, queryByText, getByText } = render(<ProfileTab />);
+      
+      // Open modal
+      fireEvent.press(getByTestId('delete-account-button'));
+      expect(getByText('Delete Account?')).toBeTruthy();
+      
+      // Close modal
+      fireEvent.press(getByTestId('cancel-delete-button'));
+      
+      // Modal content should be removed (Modal visible=false removes content from tree)
+      expect(queryByText('Delete Account?')).toBeNull();
+    });
+
+    it('should disable button when password is empty', () => {
+      const { getByTestId } = render(<ProfileTab />);
+      
+      // Open modal
+      fireEvent.press(getByTestId('delete-account-button'));
+      
+      // Button should be disabled without password
+      const confirmButton = getByTestId('confirm-delete-button');
+      expect(confirmButton.props.accessibilityState.disabled).toBe(true);
+      
+      // deleteAccount should not be called when button is disabled
+      expect(mockDeleteAccount).not.toHaveBeenCalled();
+    });
+
+    it('should show success alert on successful deletion', async () => {
+      const mockAlert = jest.spyOn(Alert, 'alert');
+      const { getByTestId } = render(<ProfileTab />);
+      
+      // Open modal
+      fireEvent.press(getByTestId('delete-account-button'));
+      
+      // Enter password
+      fireEvent.changeText(getByTestId('delete-password-input'), 'password123');
+      
+      // Confirm deletion
+      fireEvent.press(getByTestId('confirm-delete-button'));
+      
+      await waitFor(() => {
+        expect(mockAlert).toHaveBeenCalledWith(
+          'Success',
+          'Your account has been deleted. We hope to see you again!'
+        );
+      });
+      
+      mockAlert.mockRestore();
+    });
+
+    it('should show success alert without calling signOut (auto logout)', async () => {
+      const mockAlert = jest.spyOn(Alert, 'alert');
+      
+      const { getByTestId } = render(<ProfileTab />);
+      
+      // Open modal and enter password
+      fireEvent.press(getByTestId('delete-account-button'));
+      fireEvent.changeText(getByTestId('delete-password-input'), 'password123');
+      fireEvent.press(getByTestId('confirm-delete-button'));
+      
+      await waitFor(() => {
+        expect(mockAlert).toHaveBeenCalledWith(
+          'Success',
+          'Your account has been deleted. We hope to see you again!'
+        );
+      });
+      
+      // signOut should NOT be called - user is auto-logged out by deleteAccount
+      expect(mockSignOut).not.toHaveBeenCalled();
+      
+      mockAlert.mockRestore();
+    });
+
+    it('should enable confirm button only when password is entered', () => {
+      const { getByTestId } = render(<ProfileTab />);
+      
+      // Open modal
+      fireEvent.press(getByTestId('delete-account-button'));
+      
+      // Button should be disabled initially (no password)
+      const confirmButton = getByTestId('confirm-delete-button');
+      expect(confirmButton.props.accessibilityState.disabled).toBe(true);
+      
+      // Enter password
+      fireEvent.changeText(getByTestId('delete-password-input'), 'password123');
+      
+      // Button should now be enabled
+      expect(confirmButton.props.accessibilityState.disabled).toBe(false);
+    });
+
+    it('should clear password field after closing modal', () => {
+      const { getByTestId } = render(<ProfileTab />);
+      
+      // Open modal and enter password
+      fireEvent.press(getByTestId('delete-account-button'));
+      const passwordInput = getByTestId('delete-password-input');
+      fireEvent.changeText(passwordInput, 'mypassword');
+      
+      // Close modal
+      fireEvent.press(getByTestId('cancel-delete-button'));
+      
+      // Reopen modal - password should be cleared
+      fireEvent.press(getByTestId('delete-account-button'));
+      const newPasswordInput = getByTestId('delete-password-input');
+      expect(newPasswordInput.props.value).toBe('');
     });
   });
 });

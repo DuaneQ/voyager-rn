@@ -129,12 +129,40 @@ export const TermsOfServiceModal: React.FC<TermsOfServiceModalProps> = ({
               itineraries and travel experiences. This involves meeting strangers, which carries inherent risks.
             </Text>
 
+            <View style={styles.divider} />
+
+            <Text style={styles.sectionTitle}>🚫 ZERO TOLERANCE POLICY</Text>
+            <Text style={styles.paragraph}>
+              <Text style={styles.bold}>TravalPass maintains a STRICT ZERO TOLERANCE policy for:</Text>
+            </Text>
+            <View style={styles.bulletList}>
+              <Text style={styles.bullet}>• Explicit sexual content, nudity, or pornography</Text>
+              <Text style={styles.bullet}>• Violence, graphic content, or threats</Text>
+              <Text style={styles.bullet}>• Harassment, bullying, or abusive behavior</Text>
+              <Text style={styles.bullet}>• Hate speech or discrimination</Text>
+              <Text style={styles.bullet}>• Illegal activities or fraud</Text>
+              <Text style={styles.bullet}>• Spam or misleading information</Text>
+            </View>
+
+            <Text style={styles.paragraph}>
+              <Text style={styles.bold}>Immediate Consequences:</Text>
+            </Text>
+            <View style={styles.bulletList}>
+              <Text style={styles.bullet}>• Accounts will be immediately suspended</Text>
+              <Text style={styles.bullet}>• Permanent termination and ejection from platform</Text>
+              <Text style={styles.bullet}>• Content removed within 24 hours of being reported</Text>
+              <Text style={styles.bullet}>• Severe violations reported to law enforcement</Text>
+            </View>
+
+            <View style={styles.divider} />
+
             <Text style={styles.paragraph}>
               <Text style={styles.bold}>Your Responsibilities:</Text>
             </Text>
             <View style={styles.bulletList}>
               <Text style={styles.bullet}>• Exercise caution when meeting other users</Text>
               <Text style={styles.bullet}>• Verify user information independently</Text>
+              <Text style={styles.bullet}>• Report objectionable content immediately</Text>
               <Text style={styles.bullet}>• Take responsibility for your personal safety</Text>
               <Text style={styles.bullet}>• Comply with local laws while traveling</Text>
             </View>
@@ -146,7 +174,7 @@ export const TermsOfServiceModal: React.FC<TermsOfServiceModalProps> = ({
               <Text style={styles.bullet}>• We don't conduct background checks on users</Text>
               <Text style={styles.bullet}>• We're not liable for user interactions or meetings</Text>
               <Text style={styles.bullet}>• We don't provide travel booking services</Text>
-              <Text style={styles.bullet}>• We may terminate accounts at our discretion</Text>
+              <Text style={styles.bullet}>• We review all reports within 24 hours</Text>
             </View>
 
             <Text style={styles.paragraph}>

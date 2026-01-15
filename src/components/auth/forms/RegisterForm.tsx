@@ -16,11 +16,13 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import GoogleIcon from '../../icons/GoogleIcon';
+import AppleSignInButton from '../buttons/AppleSignInButton';
 import styles from './authFormStyles';
 
 interface RegisterFormProps {
   onSubmit: (username: string, email: string, password: string) => Promise<void>;
   onGoogleSignUp: () => void;
+  onAppleSignUp: () => void;
   onSignInPress: () => void;
   isLoading?: boolean;
 }
@@ -28,6 +30,7 @@ interface RegisterFormProps {
 const RegisterForm: React.FC<RegisterFormProps> = ({
   onSubmit,
   onGoogleSignUp,
+  onAppleSignUp,
   onSignInPress,
   isLoading = false,
 }) => {
@@ -224,6 +227,13 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
           <Text style={styles.googleButtonText}>Sign up with Google</Text>
         </View>
       </TouchableOpacity>
+
+      {/* Apple Sign-Up Button - iOS Only */}
+      <AppleSignInButton 
+        onPress={onAppleSignUp}
+        buttonType="sign-up"
+        isLoading={isLoading}
+      />
 
       {/* Divider */}
       <View style={styles.dividerContainer}>
