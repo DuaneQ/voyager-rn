@@ -14,6 +14,7 @@ import { render, fireEvent } from '@testing-library/react-native';
 import { ReportVideoModal } from '../../../components/modals/ReportVideoModal';
 import { Alert } from 'react-native';
 import * as firestore from 'firebase/firestore';
+import { Video } from '../../../types/Video';
 
 // Mock Firebase
 const mockCollection = jest.fn(() => ({ _type: 'CollectionReference' }));
@@ -31,7 +32,7 @@ jest.spyOn(Alert, 'alert');
 describe('ReportVideoModal', () => {
   const mockOnClose = jest.fn();
   const mockReporterId = 'reporter-789';
-  const mockVideo = {
+  const mockVideo: Video = {
     id: 'video-123',
     userId: 'owner-456',
     title: 'Test Video',
@@ -39,7 +40,13 @@ describe('ReportVideoModal', () => {
     videoUrl: 'https://example.com/video.mp4',
     thumbnailUrl: 'https://example.com/thumb.jpg',
     duration: 60,
-    createdAt: new Date(),
+    createdAt: { seconds: Date.now() / 1000, nanoseconds: 0 } as any,
+    updatedAt: { seconds: Date.now() / 1000, nanoseconds: 0 } as any,
+    isPublic: true,
+    likes: [],
+    comments: [],
+    viewCount: 0,
+    fileSize: 1024000,
   };
 
   beforeEach(() => {
