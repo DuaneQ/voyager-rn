@@ -94,15 +94,25 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
     it('should return FLIGHT recommendations when transportation is airplane', async () => {
       const airplaneProfile = testProfiles.find(p => p.transportation.primaryMode === 'airplane')!;
       
+      // Use future dates for flight search (flight APIs don't return past dates)
+      const today = new Date();
+      const futureDate = new Date(today);
+      futureDate.setDate(today.getDate() + 30); // 30 days in future
+      const returnDate = new Date(futureDate);
+      returnDate.setDate(futureDate.getDate() + 7); // 7 day trip
+      
+      const departureDateStr = futureDate.toISOString().split('T')[0];
+      const returnDateStr = returnDate.toISOString().split('T')[0];
+      
       const payload = {
         destination: 'Paris, France',
         departure: 'New York, NY',
         departureAirportCode: 'JFK',
         destinationAirportCode: 'CDG',
-        departureDate: '2026-01-15',
-        returnDate: '2026-01-21',
-        startDate: '2026-01-15',
-        endDate: '2026-01-21',
+        departureDate: departureDateStr,
+        returnDate: returnDateStr,
+        startDate: departureDateStr,
+        endDate: returnDateStr,
         tripDays: 7,
         preferenceProfile: airplaneProfile,
       };
