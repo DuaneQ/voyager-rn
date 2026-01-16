@@ -7,7 +7,7 @@ import { renderHook, act, waitFor } from '@testing-library/react-native';
 import { Alert, Platform } from 'react-native';
 // Ensure the centralized firebaseConfig mock is applied before importing modules
 jest.mock('../../../config/firebaseConfig');
-import { usePhotoUpload } from '../../../hooks/photo/usePhotoUpload';
+import { usePhotoUpload, __resetPermissionCache } from '../../../hooks/photo/usePhotoUpload';
 import { photoService } from '../../../services/photo/PhotoService';
 import { UserProfileContext } from '../../../context/UserProfileContext';
 import { auth } from '../../../config/firebaseConfig';
@@ -15,6 +15,7 @@ import React from 'react';
 
 // Create mock functions before mocking modules
 const mockRequestCameraPermissionsAsync = jest.fn();
+const mockRequestMediaLibraryPermissionsAsync = jest.fn();
 const mockGetMediaLibraryPermissionsAsync = jest.fn();
 const mockLaunchImageLibraryAsync = jest.fn();
 
@@ -26,6 +27,7 @@ const mockValidateImage = jest.fn();
 // Mock dependencies
 jest.mock('expo-image-picker', () => ({
   requestCameraPermissionsAsync: (...args: any[]) => mockRequestCameraPermissionsAsync(...args),
+  requestMediaLibraryPermissionsAsync: (...args: any[]) => mockRequestMediaLibraryPermissionsAsync(...args),
   getMediaLibraryPermissionsAsync: (...args: any[]) => mockGetMediaLibraryPermissionsAsync(...args),
   launchImageLibraryAsync: (...args: any[]) => mockLaunchImageLibraryAsync(...args),
   MediaTypeOptions: {
@@ -58,7 +60,7 @@ describe('usePhotoUpload', () => {
     photoURL1: '',
     photoURL2: '',
     photoURL3: '',
-    createdAt: new Date(),
+    createdAt: new Date().toISOString(),
     termsAccepted: true,
   };
 
@@ -84,6 +86,9 @@ describe('usePhotoUpload', () => {
     // Ensure mocked auth reports an authenticated test user by default
     setMockUser();
     
+    // Reset the module-level permission cache before each test
+    __resetPermissionCache();
+    
     // Set up default mock implementations
     mockDeletePhoto.mockResolvedValue(undefined);
     mockUploadPhoto.mockResolvedValue({ 
@@ -93,6 +98,7 @@ describe('usePhotoUpload', () => {
     });
     mockValidateImage.mockResolvedValue({ success: true });
     mockRequestCameraPermissionsAsync.mockResolvedValue({ status: 'granted' });
+    mockRequestMediaLibraryPermissionsAsync.mockResolvedValue({ status: 'granted' });
     mockGetMediaLibraryPermissionsAsync.mockResolvedValue({ status: 'granted' });
     mockLaunchImageLibraryAsync.mockResolvedValue({
       canceled: false,
@@ -187,9 +193,12 @@ describe('usePhotoUpload', () => {
 
         expect(granted).toBe(false);
         expect(Alert.alert).toHaveBeenCalledWith(
-          'Permission Denied',
-          'Camera permission is required to take photos.',
-          [{ text: 'OK' }]
+          'Camera Permission Required',
+          'This app needs camera access to take photos. Please enable it in Settings.',
+          expect.arrayContaining([
+            { text: 'Cancel', style: 'cancel' },
+            expect.objectContaining({ text: 'Open Settings' }),
+          ])
         );
       });
     });
@@ -207,7 +216,7 @@ describe('usePhotoUpload', () => {
 
       it('should request permission when not cached', async () => {
         Platform.OS = 'ios';
-        (mockGetMediaLibraryPermissionsAsync as jest.Mock).mockResolvedValue({
+        (mockRequestMediaLibraryPermissionsAsync as jest.Mock).mockResolvedValue({
           status: 'granted',
         });
 
@@ -216,12 +225,12 @@ describe('usePhotoUpload', () => {
         const granted = await result.current.requestMediaLibraryPermission();
 
         expect(granted).toBe(true);
-        expect(mockGetMediaLibraryPermissionsAsync).toHaveBeenCalled();
+        expect(mockRequestMediaLibraryPermissionsAsync).toHaveBeenCalled();
       });
 
       it('should use cached permission on subsequent calls', async () => {
         Platform.OS = 'ios';
-        (mockGetMediaLibraryPermissionsAsync as jest.Mock).mockResolvedValue({
+        (mockRequestMediaLibraryPermissionsAsync as jest.Mock).mockResolvedValue({
           status: 'granted',
         });
 
@@ -231,18 +240,32 @@ describe('usePhotoUpload', () => {
         await act(async () => {
           await result.current.requestMediaLibraryPermission();
         });
-        expect(mockGetMediaLibraryPermissionsAsync).toHaveBeenCalledTimes(1);
+        expect(mockRequestMediaLibraryPermissionsAsync).toHaveBeenCalledTimes(1);
 
         // Second call should use cache
         await act(async () => {
           await result.current.requestMediaLibraryPermission();
         });
-        expect(mockGetMediaLibraryPermissionsAsync).toHaveBeenCalledTimes(1);
+        expect(mockRequestMediaLibraryPermissionsAsync).toHaveBeenCalledTimes(1);
       });
 
-      it('should show alert when permission denied', async () => {
+      it('should treat "limited" status as granted (iOS 14+)', async () => {
         Platform.OS = 'ios';
-        (mockGetMediaLibraryPermissionsAsync as jest.Mock).mockResolvedValue({
+        (mockRequestMediaLibraryPermissionsAsync as jest.Mock).mockResolvedValue({
+          status: 'limited',
+        });
+
+        const { result } = renderHook(() => usePhotoUpload(), { wrapper });
+
+        const granted = await result.current.requestMediaLibraryPermission();
+
+        expect(granted).toBe(true);
+        expect(Alert.alert).not.toHaveBeenCalled();
+      });
+
+      it('should show alert with settings option when permission denied', async () => {
+        Platform.OS = 'ios';
+        (mockRequestMediaLibraryPermissionsAsync as jest.Mock).mockResolvedValue({
           status: 'denied',
         });
 
@@ -252,10 +275,93 @@ describe('usePhotoUpload', () => {
 
         expect(granted).toBe(false);
         expect(Alert.alert).toHaveBeenCalledWith(
-          'Permission Required',
-          'Please enable photo library access in Settings',
-          [{ text: 'OK' }]
+          'Photo Library Permission Required',
+          'This app needs access to your photo library to select photos. You can enable access in Settings.',
+          expect.arrayContaining([
+            { text: 'Cancel', style: 'cancel' },
+            expect.objectContaining({ text: 'Open Settings' }),
+          ])
         );
+      });
+    });
+
+    describe('Module-level permission caching (shared across instances)', () => {
+      it('should share permission cache across multiple hook instances', async () => {
+        Platform.OS = 'ios';
+        (mockRequestMediaLibraryPermissionsAsync as jest.Mock).mockResolvedValue({
+          status: 'granted',
+        });
+
+        // First hook instance - grants permission
+        const { result: result1 } = renderHook(() => usePhotoUpload(), { wrapper });
+        
+        await act(async () => {
+          await result1.current.requestMediaLibraryPermission();
+        });
+        expect(mockRequestMediaLibraryPermissionsAsync).toHaveBeenCalledTimes(1);
+
+        // Second hook instance - should use cached permission
+        const { result: result2 } = renderHook(() => usePhotoUpload(), { wrapper });
+        
+        await act(async () => {
+          const granted = await result2.current.requestMediaLibraryPermission();
+          expect(granted).toBe(true);
+        });
+        
+        // Should NOT call the API again because permission is cached at module level
+        expect(mockRequestMediaLibraryPermissionsAsync).toHaveBeenCalledTimes(1);
+      });
+
+      it('should persist denied permission across hook instances', async () => {
+        Platform.OS = 'ios';
+        (mockRequestMediaLibraryPermissionsAsync as jest.Mock).mockResolvedValue({
+          status: 'denied',
+        });
+
+        // First hook instance - permission denied
+        const { result: result1 } = renderHook(() => usePhotoUpload(), { wrapper });
+        
+        await act(async () => {
+          await result1.current.requestMediaLibraryPermission();
+        });
+        expect(mockRequestMediaLibraryPermissionsAsync).toHaveBeenCalledTimes(1);
+
+        // Second hook instance - should use cached denial
+        const { result: result2 } = renderHook(() => usePhotoUpload(), { wrapper });
+        
+        await act(async () => {
+          const granted = await result2.current.requestMediaLibraryPermission();
+          expect(granted).toBe(false);
+        });
+        
+        // Should NOT call the API again
+        expect(mockRequestMediaLibraryPermissionsAsync).toHaveBeenCalledTimes(1);
+      });
+
+      it('should allow PhotoGrid and ProfileHeader to share permission state', async () => {
+        Platform.OS = 'ios';
+        (mockRequestMediaLibraryPermissionsAsync as jest.Mock).mockResolvedValue({
+          status: 'granted',
+        });
+
+        // Simulate PhotoGrid granting permission
+        const { result: photoGridHook } = renderHook(() => usePhotoUpload(), { wrapper });
+        
+        await act(async () => {
+          const granted = await photoGridHook.current.requestMediaLibraryPermission();
+          expect(granted).toBe(true);
+        });
+
+        // Simulate ProfileHeader using the same permission
+        const { result: profileHeaderHook } = renderHook(() => usePhotoUpload(), { wrapper });
+        
+        await act(async () => {
+          const granted = await profileHeaderHook.current.requestMediaLibraryPermission();
+          expect(granted).toBe(true);
+        });
+
+        // Permission should only be requested once across both components
+        expect(mockRequestMediaLibraryPermissionsAsync).toHaveBeenCalledTimes(1);
       });
     });
   });
@@ -274,7 +380,7 @@ describe('usePhotoUpload', () => {
     };
 
     beforeEach(() => {
-      (mockGetMediaLibraryPermissionsAsync as jest.Mock).mockResolvedValue({
+      (mockRequestMediaLibraryPermissionsAsync as jest.Mock).mockResolvedValue({
         status: 'granted',
       });
       (mockLaunchImageLibraryAsync as jest.Mock).mockResolvedValue(mockImageResult);
@@ -323,7 +429,7 @@ describe('usePhotoUpload', () => {
     });
 
     it('should return null when permission denied', async () => {
-      (mockGetMediaLibraryPermissionsAsync as jest.Mock).mockResolvedValue({
+      (mockRequestMediaLibraryPermissionsAsync as jest.Mock).mockResolvedValue({
         status: 'denied',
       });
 

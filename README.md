@@ -2,17 +2,18 @@
 
 A React Native Expo replica of the **voyager-pwa** project with improved architecture following S.O.L.I.D principles. This mobile app maintains exact same functionality as the PWA while implementing better code organization, reusability, and maintainability.
 
-## ✅ Recent Fix: Cloud Functions Authentication (Nov 10, 2025)
+## ✅ Recent Simplification: Firebase Web SDK Authentication (Jan 2025)
 
-**Issue Resolved:** `FirebaseError: User must be authenticated`
+**Architecture Change:** Migrated from REST API + custom tokens to Firebase Web SDK
 
-**Changes:**
-- Fixed race condition in `FirebaseAuthService.ts` (Auth SDK sync now completes before notifying listeners)
-- Granted IAM permission for custom token generation
-- All CRUD operations verified working with live API tests ✅
+**Benefits:**
+- Direct Firebase Web SDK integration (v12.5.0 works with RN 0.81.5)
+- Eliminated 765+ lines of complex REST API code
+- Removed custom token generation dependency
+- Authentication flow now matches PWA exactly
+- Profile loading properly separated from sign-in flow
 
-**Test:** `./test-live-auth-flow.sh`  
-**Docs:** See `docs/expo/AUTH_FIX_COMPLETE.md` for details
+**Documentation:** See [docs/auth/SIMPLE_AUTH_FLOW.md](docs/auth/SIMPLE_AUTH_FLOW.md) for migration details
 
 ---
 

@@ -43,12 +43,21 @@ export class VideoService {
 
       onProgress?.(10, 'Preparing video...');
 
-      // Fetch video file as blob directly from URI (works on iOS, Android, Web)
-      const videoResponse = await fetch(videoData.uri);
-      if (!videoResponse.ok) {
-        throw new Error(`Failed to fetch video: ${videoResponse.status} ${videoResponse.statusText}`);
-      }
-      const videoBlob = await videoResponse.blob();
+      // Read video file as blob using XMLHttpRequest (works reliably on both iOS and Android)
+      const videoBlob = await new Promise<Blob>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.onload = function() {
+          if (xhr.status === 200) {
+            resolve(xhr.response);
+          } else {
+            reject(new Error(`Failed to read video file: ${xhr.status}`));
+          }
+        };
+        xhr.onerror = () => reject(new Error('Failed to read video file'));
+        xhr.responseType = 'blob';
+        xhr.open('GET', videoData.uri, true);
+        xhr.send(null);
+      });
 
       onProgress?.(20, 'Uploading video...');
 
@@ -100,11 +109,21 @@ export class VideoService {
         
         const thumbnailUri = await generateVideoThumbnail(videoData.uri);
 
-        const thumbnailResponse = await fetch(thumbnailUri);
-        if (!thumbnailResponse.ok) {
-          throw new Error(`Failed to fetch thumbnail: ${thumbnailResponse.status}`);
-        }
-        const thumbnailBlob = await thumbnailResponse.blob();
+        // Read thumbnail as blob using XMLHttpRequest
+        const thumbnailBlob = await new Promise<Blob>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.onload = function() {
+            if (xhr.status === 200) {
+              resolve(xhr.response);
+            } else {
+              reject(new Error(`Failed to read thumbnail: ${xhr.status}`));
+            }
+          };
+          xhr.onerror = () => reject(new Error('Failed to read thumbnail'));
+          xhr.responseType = 'blob';
+          xhr.open('GET', thumbnailUri, true);
+          xhr.send(null);
+        });
 
         const thumbnailRef = ref(
           storage,

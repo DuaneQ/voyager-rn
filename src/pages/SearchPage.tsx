@@ -26,6 +26,7 @@ import {
   ScrollView,
   ImageBackground,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { getAuthInstance } from '../config/firebaseConfig';
 import { Itinerary } from '../types/Itinerary';
 import ItineraryCard from '../components/forms/ItineraryCard';
@@ -50,7 +51,7 @@ const SearchPage: React.FC = () => {
   const { userProfile } = useUserProfile();
   
   // Usage tracking hook
-  const { hasReachedLimit, trackView, dailyViewCount } = useUsageTracking();
+  const { hasReachedLimit, trackView, dailyViewCount, refreshProfile } = useUsageTracking();
   
   // Update itinerary hook (for persisting likes)
   const { updateItinerary } = useUpdateItinerary();
@@ -111,6 +112,16 @@ const SearchPage: React.FC = () => {
     return unsubscribe;
   }, []);
 
+  // Refresh itineraries whenever user navigates to this screen
+  useFocusEffect(
+    React.useCallback(() => {
+      if (userId) {
+        refreshItineraries();
+        refreshProfile(); // Refresh usage tracking too
+      }
+    }, [userId, refreshItineraries, refreshProfile])
+  );
+
   const handleItinerarySelect = async (id: string) => {
     setSelectedItineraryId(id);
     
@@ -155,17 +166,16 @@ const SearchPage: React.FC = () => {
       showAlert('warning', 'Please log in to like itineraries');
       return;
     }
-    
-    // Check limit before tracking
-    if (hasReachedLimit()) {
-      showAlert('info', 'Daily limit reached! Upgrade to premium for unlimited views.');
-      return;
-    }
 
-    // Track usage
+    // Track usage (checks limit with fresh data internally)
     const success = await trackView();
     if (!success) {
-      showAlert('warning', 'Unable to track usage. Please try again.');
+      showAlert(
+        'info', 
+        'Daily limit reached. Sign in on the web and tap the UPGRADE button on TravalMatch for unlimited views.',
+        'https://travalpass.com/login',
+        'Sign In to Upgrade'
+      );
       return;
     }
 
@@ -251,16 +261,15 @@ const SearchPage: React.FC = () => {
       return;
     }
 
-    // Check limit before tracking
-    if (hasReachedLimit()) {
-      showAlert('info', 'Daily limit reached! Upgrade to premium for unlimited views.');
-      return;
-    }
-
-    // Track usage
+    // Track usage (checks limit with fresh data internally)
     const success = await trackView();
     if (!success) {
-      showAlert('warning', 'Unable to track usage. Please try again.');
+      showAlert(
+        'info', 
+        'Daily limit reached. Sign in on the web and tap the UPGRADE button on TravalMatch for unlimited views.',
+        'https://travalpass.com/login',
+        'Sign In to Upgrade'
+      );
       return;
     }
 

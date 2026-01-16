@@ -28,6 +28,8 @@ module.exports = {
     '^@react-native-community/datetimepicker$': '<rootDir>/src/__mocks__/@react-native-community/datetimepicker.tsx',
     '^lodash.debounce$': '<rootDir>/src/__mocks__/lodash.debounce.js',
     '^expo-linear-gradient$': '<rootDir>/__mocks__/expo-linear-gradient.js',
+    '^expo-file-system/legacy$': '<rootDir>/__mocks__/expo-file-system.js',
+    '^expo-file-system$': '<rootDir>/__mocks__/expo-file-system.js',
     // NOTE: Firebase modules are NOT mocked for integration tests
   },
   testMatch: ['**/__tests__/integrations/**/*.test.ts?(x)'],

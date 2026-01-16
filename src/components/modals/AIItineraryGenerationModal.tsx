@@ -22,6 +22,7 @@ import { PlacesAutocomplete } from '../common/PlacesAutocomplete';
 import { format, addDays, parse } from 'date-fns';
 import * as firebaseCfg from '../../config/firebaseConfig';
 import { useAIGeneration } from '../../hooks/useAIGeneration';
+import { useUsageTracking } from '../../hooks/useUsageTracking';
 import { AIGenerationRequest } from '../../types/AIGeneration';
 import { getGooglePlacesApiKey } from '../../constants/apiConfig';
 import ProfileValidationService from '../../services/ProfileValidationService';
@@ -92,6 +93,9 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
     error,
     cancelGeneration 
   } = useAIGeneration();
+
+  // Usage tracking hook for AI creation limits
+  const { hasReachedAILimit, trackAICreation } = useUsageTracking();
 
   // PlacesAutocomplete uses value/onChangeText props instead of refs
 
@@ -247,6 +251,9 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
       return;
     }
 
+    // Note: AI usage limit is checked before opening the modal in AIItinerarySection.tsx
+    // We only track usage after successful generation (see below after result.success)
+
     try {
       // Get user ID from Firebase Auth (not userProfile which doesn't have uid)
       // Resolve at call-time from the firebase config module so tests that
@@ -291,6 +298,12 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
       }
 
       if (result.success) {
+        // Track AI creation usage (matching PWA)
+        const tracked = await trackAICreation?.();
+        if (!tracked) {
+          console.warn('[AIItineraryGenerationModal] trackAICreation failed');
+        }
+        
         setShowSuccessState(true);
         
         // Auto-close after success (matching PWA behavior)
@@ -1053,7 +1066,7 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
               <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.generateButton} onPress={handleGenerate}>
-              <Text style={styles.generateButtonText} onPress={handleGenerate}>🤖 Generate AI Itinerary</Text>
+              <Text style={styles.generateButtonText}>🤖 Generate AI Itinerary</Text>
             </TouchableOpacity>
           </View>
         )}

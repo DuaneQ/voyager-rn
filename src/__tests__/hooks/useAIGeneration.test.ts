@@ -145,6 +145,99 @@ describe('useAIGeneration Hook - Comprehensive Tests', () => {
 
       expect(itineraryResult.success).toBe(true);
     });
+
+    it('should explicitly call generateItineraryWithAI for driving mode with correct params', async () => {
+      const mockData = createMockResponses(false);
+      const aiResponse = { assistant: { content: '{"transportation": {"mode": "driving"}}' } };
+
+      mockCallable
+        .mockResolvedValueOnce({ data: { success: true, data: mockData.accommodations } })
+        .mockResolvedValueOnce({ data: { success: true, data: mockData.activities } })
+        .mockResolvedValueOnce({ data: { success: true, data: aiResponse } })
+        .mockResolvedValueOnce({ data: { success: true } });
+
+      const { result } = renderHook(() => useAIGeneration());
+
+      const request = createBaseRequest({
+        travelPreferences: {
+          transportation: { primaryMode: 'driving' }
+        }
+      });
+
+      await act(async () => {
+        await result.current.generateItinerary(request);
+      });
+
+      // Verify generateItineraryWithAI was called (3rd call after accommodations and activities)
+      expect(mockCallable).toHaveBeenCalledTimes(4);
+      const aiGenerationCall = mockCallable.mock.calls[2][0]; // 3rd call (index 2)
+      
+      // Explicitly verify this is the AI generation call with correct parameters
+      expect(aiGenerationCall).toMatchObject({
+        destination: 'Paris, France',
+        startDate: '2025-11-01',
+        endDate: '2025-11-07',
+        transportType: 'driving', // Should pass 'driving', not mapped to anything
+        origin: 'New York, NY'
+      });
+      expect(aiGenerationCall.generationId).toMatch(/^gen_/);
+    });
+
+    it('should call generateItineraryWithAI for ferry mode', async () => {
+      const mockData = createMockResponses(false);
+      const aiResponse = { assistant: { content: '{"transportation": {"mode": "ferry"}}' } };
+
+      mockCallable
+        .mockResolvedValueOnce({ data: { success: true, data: mockData.accommodations } })
+        .mockResolvedValueOnce({ data: { success: true, data: mockData.activities } })
+        .mockResolvedValueOnce({ data: { success: true, data: aiResponse } })
+        .mockResolvedValueOnce({ data: { success: true } });
+
+      const { result } = renderHook(() => useAIGeneration());
+
+      const request = createBaseRequest({
+        travelPreferences: {
+          transportation: { primaryMode: 'ferry' }
+        }
+      });
+
+      await act(async () => {
+        await result.current.generateItinerary(request);
+      });
+
+      // Verify generateItineraryWithAI was called
+      expect(mockCallable).toHaveBeenCalledTimes(4);
+      const aiCall = mockCallable.mock.calls[2][0];
+      expect(aiCall.transportType).toBe('ferry');
+    });
+
+    it('should call generateItineraryWithAI for walk mode', async () => {
+      const mockData = createMockResponses(false);
+      const aiResponse = { assistant: { content: '{"transportation": {"mode": "walk"}}' } };
+
+      mockCallable
+        .mockResolvedValueOnce({ data: { success: true, data: mockData.accommodations } })
+        .mockResolvedValueOnce({ data: { success: true, data: mockData.activities } })
+        .mockResolvedValueOnce({ data: { success: true, data: aiResponse } })
+        .mockResolvedValueOnce({ data: { success: true } });
+
+      const { result } = renderHook(() => useAIGeneration());
+
+      const request = createBaseRequest({
+        travelPreferences: {
+          transportation: { primaryMode: 'walk' }
+        }
+      });
+
+      await act(async () => {
+        await result.current.generateItinerary(request);
+      });
+
+      // Verify generateItineraryWithAI was called
+      expect(mockCallable).toHaveBeenCalledTimes(4);
+      const aiCall = mockCallable.mock.calls[2][0];
+      expect(aiCall.transportType).toBe('walk');
+    });
   });
 
   describe('Flight Transportation Flow (without AI Generation)', () => {
@@ -187,6 +280,14 @@ describe('useAIGeneration Hook - Comprehensive Tests', () => {
       });
 
       expect(mockCallable).toHaveBeenCalledTimes(4);
+      
+      // EXPLICITLY verify generateItineraryWithAI was NOT called for airplane mode
+      // mockCallable calls: [0] accommodations, [1] activities, [2] flights, [3] createItinerary
+      const callArgs = mockCallable.mock.calls.map(call => call[0]);
+      const hasAIGenerationCall = callArgs.some(arg => 
+        arg && typeof arg === 'object' && arg.transportType && arg.generationId
+      );
+      expect(hasAIGenerationCall).toBe(false); // Should NOT call generateItineraryWithAI for flights
     });
 
     it('should handle flight preference mapping correctly', async () => {

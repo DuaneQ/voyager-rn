@@ -1,19 +1,19 @@
 /**
- * User Profile Context - Using Cloud Functions
+ * User Profile Context - Using Firebase Web SDK
  * Provides user profile data and authentication state management
  * 
- * IMPORTANT: Uses Cloud Functions instead of direct Firestore access
- * This is because REST API auth doesn't provide request.auth context to Firestore,
- * causing "Missing or insufficient permissions" errors.
+ * Uses Firestore Web SDK directly for profile operations.
+ * Profile is loaded after authentication via onAuthStateChanged.
  */
 
 import React, { createContext, useState, useContext, useEffect, useCallback, ReactNode } from 'react';
+import { getDoc, updateDoc, doc } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
-import { UserProfileService } from '../services/userProfile/UserProfileService';
-import type { UserProfile as ServiceUserProfile } from '../services/userProfile/UserProfileService';
+import { db } from '../config/firebaseConfig';
+import { UserProfile } from '../types/UserProfile';
 
-// Type alias for consistency with existing code
-type UserProfile = ServiceUserProfile;
+// Re-export UserProfile for backwards compatibility
+export type { UserProfile } from '../types/UserProfile';
 
 interface UserProfileContextValue {
   userProfile: UserProfile | null;
@@ -41,7 +41,7 @@ const UserProfileProvider: React.FC<UserProfileProviderProps> = ({ children }) =
     setUserProfile(newProfile);
   }, []);
 
-  // Update specific profile fields and persist to Firestore via Cloud Function
+  // Update specific profile fields and persist to Firestore
   const updateProfile = useCallback(async (data: Partial<UserProfile>) => {
     const userId = user?.uid;
     if (!userId) {
@@ -49,8 +49,8 @@ const UserProfileProvider: React.FC<UserProfileProviderProps> = ({ children }) =
     }
 
     try {
-      // Use Cloud Function to update profile
-      await UserProfileService.updateUserProfile(userId, data);
+      // Use Firestore Web SDK to update profile
+      await updateDoc(doc(db, 'users', userId), data);
 
       // Update local state
       setUserProfile((prev) => {
@@ -63,63 +63,37 @@ const UserProfileProvider: React.FC<UserProfileProviderProps> = ({ children }) =
     }
   }, [user]);
 
-  // Load user profile data via Cloud Function
+  // Load user profile data from Firestore
   useEffect(() => {
     const loadUserProfile = async () => {
-      
       setIsLoading(true);
       try {
         const userId = user?.uid;
+        const emailVerified = user?.emailVerified;
 
-        if (userId) {
-          // Get profile data via Cloud Function with retry logic for new accounts
-
-          let profile;
-          let attempts = 0;
-          const maxAttempts = 3;
+        // Only load profile if user exists AND email is verified
+        if (userId && emailVerified) {
+          // Get profile data from Firestore
+          const userDoc = await getDoc(doc(db, 'users', userId));
           
-          while (attempts < maxAttempts) {
-            try {
-              profile = await UserProfileService.getUserProfile(userId);
-              break; // Success - exit retry loop
-            } catch (error: any) {
-              attempts++;
-              
-              // Special handling for "User must be authenticated" errors
-              if (error?.message?.includes('must be authenticated')) {
-                
-                await new Promise(resolve => setTimeout(resolve, 1500)); // Wait longer for auth sync
-                continue;
-              }
-              
-              // If profile not found and this is not the last attempt, wait and retry
-              if (error?.message?.includes('not found') && attempts < maxAttempts) {
-                
-                await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
-              } else {
-                throw error; // Re-throw on last attempt or other errors
-              }
-            }
+          if (userDoc.exists()) {
+            // Include uid from auth in the profile
+            setUserProfile({ 
+              uid: userId,
+              ...userDoc.data() as UserProfile 
+            });
+          } else {
           }
-
-          setUserProfile(profile!);
-          
         }
       } catch (error) {
-        
-        // If profile doesn't exist after retries, that's okay - will be created during onboarding
-        if (error && (error as any).message?.includes('not found')) {
-          
-        }
+        console.error('[UserProfileContext] Error loading profile:', error);
+        // If profile doesn't exist, that's okay - will be created during onboarding
       } finally {
-        
         setIsLoading(false);
       }
     };
 
     // Wait for auth initialization before loading profile
-    // This prevents "User must be authenticated" errors during app startup
-    
     if (user && !isInitializing) {
       loadUserProfile();
     } else {

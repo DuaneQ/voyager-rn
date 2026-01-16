@@ -250,7 +250,13 @@ const ProfilePage: React.FC = () => {
           email={userProfile.email}
           photoURL={userProfile.photoURL || userProfile.photos?.profile}
           bio={userProfile.bio}
-          location={userProfile.location}
+          location={
+            userProfile.location 
+              ? [userProfile.location.city, userProfile.location.state, userProfile.location.country]
+                  .filter(Boolean)
+                  .join(', ')
+              : undefined
+          }
           profileCompleteness={calculateCompleteness()}
           onEditPress={handleEditProfile}
           onPhotoPress={handleChangeProfilePhoto}

@@ -207,7 +207,7 @@ export const TravelPreferencesTab: React.FC<TravelPreferencesTabProps> = ({
               <Picker.Item 
                 label="-- Select a profile to edit --" 
                 value="" 
-                color="#888888"
+                color="#FFFFFF"
                 style={{ fontWeight: '600', fontSize: 18 }}
               />
               {profiles.map(profile => (
@@ -215,7 +215,7 @@ export const TravelPreferencesTab: React.FC<TravelPreferencesTabProps> = ({
                   key={profile.id}
                   label={`${profile.name}${profile.isDefault ? ' ⭐' : ''}`}
                   value={profile.id}
-                  color="#000000"
+                  color="#FFFFFF"
                   style={{ fontWeight: '600', fontSize: 18 }}
                 />
               ))}
@@ -631,6 +631,16 @@ export const TravelPreferencesTab: React.FC<TravelPreferencesTabProps> = ({
       <TouchableOpacity
         style={styles.buttonAI}
         onPress={() => {
+          // Check if user has created at least one travel preference profile
+          if (profiles.length === 0) {
+            Alert.alert(
+              'Create a Profile First',
+              'Please create a travel preference profile before generating an AI itinerary. This helps us personalize your travel recommendations.  Type the name of the profile in the Profile Name field and open the accordions to customize your preferences, then tap "Save Profile".',
+              [{ text: 'OK' }]
+            );
+            return;
+          }
+          
           if (onGenerateItinerary) {
             onGenerateItinerary();
           } else {
@@ -920,14 +930,14 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 2,
     borderColor: '#007AFF',
-    overflow: 'visible',
-    minHeight: 50,
+    overflow: 'hidden',
+    minHeight: 53,
   },
   picker: {
-    height: 50,
+    height: 53,
     width: '100%',
     color: '#000000',
-    backgroundColor: 'transparent',
+    backgroundColor: '#FFFFFF',
   },
   pickerItem: {
     fontSize: 20,

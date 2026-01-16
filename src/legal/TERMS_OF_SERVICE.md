@@ -34,16 +34,51 @@ TravalPass is a social travel platform that connects travelers to share itinerar
 - You are responsible for maintaining the confidentiality of your account credentials
 - You agree to notify us immediately of any unauthorized use of your account
 
-## 4. PROHIBITED CONDUCT
+## 4. PROHIBITED CONDUCT AND ZERO TOLERANCE POLICY
 
-You agree NOT to use the Service to:
-- Harass, abuse, or harm other users
+### 4.1 Zero Tolerance for Objectionable Content
+
+**TRAVALPASS MAINTAINS A STRICT ZERO TOLERANCE POLICY** for the following types of content and behavior:
+
+**ABSOLUTELY PROHIBITED:**
+- Explicit sexual content, nudity, or pornography
+- Violence, graphic content, or threats of harm
+- Harassment, bullying, or abusive behavior
+- Hate speech, discrimination, or targeting based on race, ethnicity, religion, gender, sexual orientation, disability, or national origin
+- Illegal activities, fraud, or criminal behavior
+- Spam, phishing, or misleading information
+- Child exploitation or endangerment of any kind
+- Sharing of private information without consent (doxxing)
+- Impersonation or fake profiles
+- Sale or solicitation of illegal substances or services
+
+**IMMEDIATE CONSEQUENCES:**
+- Accounts posting objectionable content will be **immediately suspended** pending investigation
+- Violations will result in **permanent account termination** and ejection from the platform
+- Content will be **removed within 24 hours** of being reported
+- Reported users will be **blocked from creating new accounts**
+- Severe violations may be **reported to law enforcement authorities**
+
+### 4.2 Content Moderation and Enforcement
+
+**Our Commitment:**
+- All user reports are reviewed **within 24 hours**
+- Objectionable content is removed immediately upon verification
+- Users who report violations will receive confirmation that action has been taken
+- Multiple violations result in escalating consequences, up to permanent ban
+
+**User Responsibilities:**
+- Report any objectionable content or abusive behavior immediately
+- Use blocking features to remove unwanted users from your experience
+- Do not engage with or retaliate against abusive users
+
+### 4.3 Additional Prohibited Conduct
+
+You also agree NOT to use the Service to:
 - Post false, misleading, or fraudulent information
-- Engage in illegal activities or violate local laws
-- Share inappropriate, offensive, or explicit content
 - Solicit money, goods, or services from other users
 - Use the platform for commercial purposes without authorization
-- Impersonate others or create fake profiles
+- Violate any local, state, national, or international laws
 
 ## 5. LIMITATION OF LIABILITY
 

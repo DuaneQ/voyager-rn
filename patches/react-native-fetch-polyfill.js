@@ -36,6 +36,11 @@ if (Platform.OS === 'android') {
       return originalFetch.call(this, url, options);
     }
     
+    // Skip our replacement for file:// URIs (let original fetch handle local files)
+    if (urlString.startsWith('file://')) {
+      return originalFetch.call(this, url, options);
+    }
+    
     try {
       if (__DEV__) {
         console.log('[Axios Fetch] Using axios for:', urlString.substring(0, 100));

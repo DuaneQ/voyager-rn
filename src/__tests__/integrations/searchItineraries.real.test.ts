@@ -77,7 +77,6 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
           return { success: false };
         }
       } catch (err: any) {
-        console.error(`   ✗ Error creating ${itinerary.destination}:`, err.message);
         return { success: false };
       }
     });

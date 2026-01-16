@@ -15,6 +15,7 @@ import LoginForm from '../../../components/auth/forms/LoginForm';
 describe('LoginForm', () => {
   const mockOnSubmit = jest.fn();
   const mockOnGoogleSignIn = jest.fn();
+  const mockOnAppleSignIn = jest.fn();
   const mockOnForgotPassword = jest.fn();
   const mockOnResendVerification = jest.fn();
   const mockOnSignUpPress = jest.fn();
@@ -26,6 +27,7 @@ describe('LoginForm', () => {
   const defaultProps = {
     onSubmit: mockOnSubmit,
     onGoogleSignIn: mockOnGoogleSignIn,
+    onAppleSignIn: mockOnAppleSignIn,
     onForgotPassword: mockOnForgotPassword,
     onResendVerification: mockOnResendVerification,
     onSignUpPress: mockOnSignUpPress,

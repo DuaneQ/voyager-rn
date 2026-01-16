@@ -5,6 +5,7 @@ import RegisterForm from '../../../components/auth/forms/RegisterForm';
 describe('RegisterForm', () => {
   const mockOnSubmit = jest.fn();
   const mockOnGoogleSignUp = jest.fn();
+  const mockOnAppleSignUp = jest.fn();
   const mockOnSignInPress = jest.fn();
 
   beforeEach(() => jest.clearAllMocks());
@@ -12,6 +13,7 @@ describe('RegisterForm', () => {
   const defaultProps = {
     onSubmit: mockOnSubmit,
     onGoogleSignUp: mockOnGoogleSignUp,
+    onAppleSignUp: mockOnAppleSignUp,
     onSignInPress: mockOnSignInPress,
     isLoading: false,
   };

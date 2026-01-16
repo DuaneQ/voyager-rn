@@ -209,7 +209,7 @@ describe('useVideoUpload', () => {
 
       expect(selectedUri!).toBe('file://selected-video.mp4');
       expect(mockLaunchImageLibraryAsync).toHaveBeenCalledWith({
-        mediaTypes: 'Videos',
+        mediaTypes: ['videos'],
         allowsEditing: false,
         quality: 1,
       });

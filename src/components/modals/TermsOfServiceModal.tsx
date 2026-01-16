@@ -21,6 +21,7 @@ interface TermsOfServiceModalProps {
   onAccept: () => Promise<void>;
   onDecline: () => void;
   loading?: boolean;
+  error?: Error | null;
 }
 
 export const TermsOfServiceModal: React.FC<TermsOfServiceModalProps> = ({
@@ -28,6 +29,7 @@ export const TermsOfServiceModal: React.FC<TermsOfServiceModalProps> = ({
   onAccept,
   onDecline,
   loading = false,
+  error = null,
 }) => {
   const insets = useSafeAreaInsets();
   const [hasReadTerms, setHasReadTerms] = useState(false);
@@ -57,7 +59,8 @@ export const TermsOfServiceModal: React.FC<TermsOfServiceModalProps> = ({
     try {
       await onAccept();
     } catch (error) {
-      // Error handled by parent
+      console.error('[TermsOfServiceModal] Error accepting terms:', error);
+      // Error will be displayed via error prop from parent
     } finally {
       setIsAccepting(false);
     }
@@ -126,12 +129,40 @@ export const TermsOfServiceModal: React.FC<TermsOfServiceModalProps> = ({
               itineraries and travel experiences. This involves meeting strangers, which carries inherent risks.
             </Text>
 
+            <View style={styles.divider} />
+
+            <Text style={styles.sectionTitle}>🚫 ZERO TOLERANCE POLICY</Text>
+            <Text style={styles.paragraph}>
+              <Text style={styles.bold}>TravalPass maintains a STRICT ZERO TOLERANCE policy for:</Text>
+            </Text>
+            <View style={styles.bulletList}>
+              <Text style={styles.bullet}>• Explicit sexual content, nudity, or pornography</Text>
+              <Text style={styles.bullet}>• Violence, graphic content, or threats</Text>
+              <Text style={styles.bullet}>• Harassment, bullying, or abusive behavior</Text>
+              <Text style={styles.bullet}>• Hate speech or discrimination</Text>
+              <Text style={styles.bullet}>• Illegal activities or fraud</Text>
+              <Text style={styles.bullet}>• Spam or misleading information</Text>
+            </View>
+
+            <Text style={styles.paragraph}>
+              <Text style={styles.bold}>Immediate Consequences:</Text>
+            </Text>
+            <View style={styles.bulletList}>
+              <Text style={styles.bullet}>• Accounts will be immediately suspended</Text>
+              <Text style={styles.bullet}>• Permanent termination and ejection from platform</Text>
+              <Text style={styles.bullet}>• Content removed within 24 hours of being reported</Text>
+              <Text style={styles.bullet}>• Severe violations reported to law enforcement</Text>
+            </View>
+
+            <View style={styles.divider} />
+
             <Text style={styles.paragraph}>
               <Text style={styles.bold}>Your Responsibilities:</Text>
             </Text>
             <View style={styles.bulletList}>
               <Text style={styles.bullet}>• Exercise caution when meeting other users</Text>
               <Text style={styles.bullet}>• Verify user information independently</Text>
+              <Text style={styles.bullet}>• Report objectionable content immediately</Text>
               <Text style={styles.bullet}>• Take responsibility for your personal safety</Text>
               <Text style={styles.bullet}>• Comply with local laws while traveling</Text>
             </View>
@@ -143,7 +174,7 @@ export const TermsOfServiceModal: React.FC<TermsOfServiceModalProps> = ({
               <Text style={styles.bullet}>• We don't conduct background checks on users</Text>
               <Text style={styles.bullet}>• We're not liable for user interactions or meetings</Text>
               <Text style={styles.bullet}>• We don't provide travel booking services</Text>
-              <Text style={styles.bullet}>• We may terminate accounts at our discretion</Text>
+              <Text style={styles.bullet}>• We review all reports within 24 hours</Text>
             </View>
 
             <Text style={styles.paragraph}>
@@ -197,6 +228,13 @@ export const TermsOfServiceModal: React.FC<TermsOfServiceModalProps> = ({
             </Text>
           </View>
         </ScrollView>
+
+        {error && (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorTitle}>❌ Error</Text>
+            <Text style={styles.errorText}>{error.message}</Text>
+          </View>
+        )}
 
         <SafeAreaView
           edges={["bottom"]}
@@ -330,6 +368,26 @@ const styles = StyleSheet.create({
   infoText: {
     fontSize: 13,
     color: '#0D47A1',
+    lineHeight: 18,
+  },
+  errorBox: {
+    backgroundColor: '#FFEBEE',
+    borderLeftWidth: 4,
+    borderLeftColor: '#F44336',
+    padding: 12,
+    marginHorizontal: 20,
+    marginBottom: 8,
+    borderRadius: 4,
+  },
+  errorTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#C62828',
+    marginBottom: 4,
+  },
+  errorText: {
+    fontSize: 13,
+    color: '#C62828',
     lineHeight: 18,
   },
   checkboxContainer: {

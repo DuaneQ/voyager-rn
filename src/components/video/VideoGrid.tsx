@@ -21,6 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Video as VideoType } from '../../types/Video';
 import { useVideoUpload } from '../../hooks/video/useVideoUpload';
 import { Video, ResizeMode } from 'expo-av';
+import { VideoUploadModal } from '../modals/VideoUploadModal';
 
 const { width } = Dimensions.get('window');
 const GRID_COLUMNS = 3;
@@ -39,6 +40,8 @@ export const VideoGrid: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState<VideoType | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadModalVisible, setUploadModalVisible] = useState(false);
+  const [selectedVideoUri, setSelectedVideoUri] = useState<string | null>(null);
 
   // Load videos on mount
   const refreshVideos = useCallback(async () => {
@@ -56,23 +59,31 @@ export const VideoGrid: React.FC = () => {
     const uri = await selectVideo();
     if (!uri) return;
 
-    setShowUploadModal(true);
-    
-    // Simple upload with default values
-    const result = await uploadVideo({
-      uri,
-      title: `Video ${new Date().toLocaleDateString()}`,
-      description: '',
-      isPublic: true,
-    });
-
-    setShowUploadModal(false);
-
-    if (result) {
-      Alert.alert('Success', 'Video uploaded successfully!');
-      await refreshVideos();
-    }
+    // Show modal to configure upload
+    setSelectedVideoUri(uri);
+    setUploadModalVisible(true);
   };
+
+  /**
+   * Handle video upload from modal
+   */
+  const handleVideoUpload = useCallback(async (videoData: any) => {
+    await uploadVideo(videoData);
+    // Close modal
+    setUploadModalVisible(false);
+    setSelectedVideoUri(null);
+    // Refresh videos after upload
+    Alert.alert('Success', 'Video uploaded successfully!');
+    await refreshVideos();
+  }, [uploadVideo, refreshVideos]);
+
+  /**
+   * Handle upload modal close
+   */
+  const handleUploadModalClose = useCallback(() => {
+    setUploadModalVisible(false);
+    setSelectedVideoUri(null);
+  }, []);
 
   const handleDeleteVideo = (video: VideoType) => {
     Alert.alert(
@@ -255,6 +266,19 @@ export const VideoGrid: React.FC = () => {
           )}
         </View>
       </Modal>
+
+      {/* Video Upload Modal */}
+      {selectedVideoUri && (
+        <VideoUploadModal
+          visible={uploadModalVisible}
+          onClose={handleUploadModalClose}
+          onUpload={handleVideoUpload}
+          videoUri={selectedVideoUri}
+          isUploading={uploadState.loading}
+          uploadProgress={uploadState.progress}
+          processingStatus={uploadState.processingStatus}
+        />
+      )}
     </View>
   );
 };

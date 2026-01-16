@@ -4,7 +4,7 @@
  */
 
 import { useState, useCallback, useRef } from 'react';
-import { httpsCallable, HttpsCallableResult } from 'firebase/functions';
+import { httpsCallable } from 'firebase/functions';
 import { functions } from '../config/firebaseConfig';
 import { 
   AIGenerationRequest, 
@@ -188,17 +188,18 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
       }
       
   // Step 2: Determine transport type and flight needs (matching PWA logic)
-  const selectedProfile = sanitizedRequest.travelPreferences || sanitizedRequest.preferenceProfile;
+  // NOTE: Use original request for preferenceProfile/travelPreferences since these are
+  // trusted objects added by UI code, not user input requiring sanitization
+  const selectedProfile = request.travelPreferences || request.preferenceProfile;
 
   // Apply conservative defaults for first-time/empty profiles so the AI flow
   // has sensible values but does not unexpectedly enable flights.
   const profileWithDefaults = applyProfileDefaults(selectedProfile);
 
-  const transportTypeRaw = profileWithDefaults?.transportation?.primaryMode || 'driving';
+  const transportType = profileWithDefaults?.transportation?.primaryMode || 'driving';
 
-      // Map 'airplane' to 'flight' to match cloud function expectations
-      const transportType = transportTypeRaw === 'airplane' ? 'flight' : transportTypeRaw;
-  const includeFlights = transportType === 'flight' || transportTypeRaw === 'airplane';
+      // Match PWA logic: check for airplane, flight, or air
+      const includeFlights = (transportType as string) === 'airplane' || (transportType as string) === 'flight' || (transportType as string) === 'air';
       
       setProgress(PROGRESS_STAGES.SEARCHING);
       
@@ -237,9 +238,10 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
       // Only add flights if transportation mode is flight AND airport codes are provided
       if (includeFlights && sanitizedRequest.departureAirportCode && sanitizedRequest.destinationAirportCode) {
         const flightPayload = {
-          ...basePayload,
           departureAirportCode: sanitizedRequest.departureAirportCode,
           destinationAirportCode: sanitizedRequest.destinationAirportCode,
+          departureDate: sanitizedRequest.startDate, // Cloud function expects 'departureDate' not 'startDate'
+          returnDate: sanitizedRequest.endDate, // Cloud function expects 'returnDate' not 'endDate'
           cabinClass: sanitizedRequest.flightPreferences?.class?.toUpperCase() || 'ECONOMY',
           preferredAirlines: sanitizedRequest.flightPreferences?.preferredAirlines || [],
           stops: sanitizedRequest.flightPreferences?.stopPreference === 'non-stop' ? 'NONSTOP' : 
@@ -465,7 +467,7 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
           origin: sanitizedRequest.departure || '',
           originAirportCode: sanitizedRequest.departureAirportCode || null,
           destinationAirportCode: sanitizedRequest.destinationAirportCode || null,
-          transportType: transportTypeRaw, // Use the original transportType (NOT 'flight')
+          transportType: transportType, // Pass the actual transportType to cloud function
           preferenceProfile: profileWithDefaults || null,
           generationId: generationId,
           mustInclude: sanitizedRequest.mustInclude || [],
@@ -547,9 +549,9 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
             endDay: new Date(sanitizedRequest.endDate).getTime(),
             lowerRange: 18,
             upperRange: 100,
-            gender: sanitizedRequest.userInfo?.gender || 'No Preference',
-            sexualOrientation: sanitizedRequest.userInfo?.sexualOrientation || 'No Preference',
-            status: sanitizedRequest.userInfo?.status || 'No Preference',
+            gender: 'No Preference',
+            sexualOrientation: 'No Preference',
+            status: 'No Preference',
             likes: [],
             age: userAge, // Include age for searchItineraries filtering
             activities: extractActivitiesFromDailyPlans(dailyPlans),
@@ -692,9 +694,9 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
             endDay: new Date(sanitizedRequest.endDate).getTime(),
             lowerRange: 18,
             upperRange: 100,
-            gender: sanitizedRequest.userInfo?.gender || 'No Preference',
-            sexualOrientation: sanitizedRequest.userInfo?.sexualOrientation || 'No Preference',
-            status: sanitizedRequest.userInfo?.status || 'No Preference',
+            gender: 'No Preference',
+            sexualOrientation: 'No Preference',
+            status: 'No Preference',
             likes: [],
             age: userAge, // Include age for searchItineraries filtering
             activities: extractActivitiesFromDailyPlans(dailyPlans),

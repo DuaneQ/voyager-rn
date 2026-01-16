@@ -4,8 +4,7 @@
  * Follows React hooks testing best practices
  */
 
-import { renderHook, act } from '@testing-library/react-hooks';
-import { waitFor } from '@testing-library/react-native';
+import { renderHook, act, waitFor } from '@testing-library/react-native';
 import type { Itinerary } from '../../types/Itinerary';
 
 // Mock the repository before requiring the hook so the hook loads the mocked instance

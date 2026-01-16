@@ -1,13 +1,19 @@
 // Manual Jest mock for src/config/firebaseConfig used by many unit tests.
-// Exports both the legacy `auth` object and the new `getAuthInstance()` helper
-// so tests can rely on either shape.
+// Updated to match Firebase Web SDK interface
+
+const mockOnAuthStateChanged = jest.fn((callback) => {
+  // Immediately invoke callback with mock user (synchronously for tests)
+  if (callback) {
+    callback({ uid: 'test-user-123', email: 'test@example.com', emailVerified: true });
+  }
+  // Return unsubscribe function
+  return jest.fn();
+});
 
 export const auth = {
-  currentUser: { uid: 'test-user-123', email: 'test@example.com' },
+  currentUser: { uid: 'test-user-123', email: 'test@example.com', emailVerified: true },
+  onAuthStateChanged: mockOnAuthStateChanged,
 };
-
-// Export getAuthInstance as a jest.fn so tests can spy/mock its implementation
-export const getAuthInstance = jest.fn(() => auth);
 
 export const functions = {};
 export const db = {};
@@ -15,7 +21,6 @@ export const app = {};
 
 export default {
   auth,
-  getAuthInstance,
   functions,
   db,
   app,

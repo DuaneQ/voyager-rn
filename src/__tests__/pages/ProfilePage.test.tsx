@@ -97,6 +97,28 @@ jest.mock('expo-image-picker');
 // Use centralized manual mock for firebaseConfig to provide consistent auth/getAuthInstance
 jest.mock('../../config/firebaseConfig');
 
+// Mock useConnections hook (used by ProfileTab)
+jest.mock('../../hooks/chat/useConnections', () => ({
+  useConnections: jest.fn(() => ({
+    connections: [],
+    loading: false,
+    error: null,
+    hasMore: false,
+    loadMore: jest.fn(),
+    refresh: jest.fn(),
+  })),
+}));
+
+// Mock useAllItineraries hook (used by ProfileTab)
+jest.mock('../../hooks/useAllItineraries', () => ({
+  useAllItineraries: jest.fn(() => ({
+    itineraries: [],
+    loading: false,
+    error: null,
+    fetchItineraries: jest.fn(),
+  })),
+}));
+
 // Get reference to the mocked context for testing
 const getUserProfileMock = () => (useUserProfile as jest.MockedFunction<typeof useUserProfile>)();
 const mockUserProfile = {

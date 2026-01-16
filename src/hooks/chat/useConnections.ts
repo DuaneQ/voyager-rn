@@ -50,6 +50,7 @@ export function useConnections(userId: string | null): UseConnectionsResult {
 
   // Subscribe to initial connections
   useEffect(() => {
+    
     if (!userId) {
       setConnections([]);
       setLoading(false);

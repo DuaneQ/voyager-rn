@@ -19,6 +19,7 @@ import { AIItineraryGenerationModal } from '../modals/AIItineraryGenerationModal
 import { UserProfileContext } from '../../context/UserProfileContext';
 import { useTravelPreferences } from '../../hooks/useTravelPreferences';
 import { useAlert } from '../../context/AlertContext';
+import { useUsageTracking } from '../../hooks/useUsageTracking';
 import { validateProfileForItinerary, getProfileValidationMessage } from '../../utils/profileValidation';
 
 type SubTabType = 'preferences' | 'itineraries';
@@ -37,8 +38,26 @@ export const AIItinerarySection: React.FC<AIItinerarySectionProps> = ({
   const { userProfile } = useContext(UserProfileContext);
   const { preferences, refreshPreferences } = useTravelPreferences();
   const { showAlert } = useAlert();
+  
+  // Usage tracking for AI generation limits
+  const { hasReachedAILimit, getRemainingAICreations, refreshProfile } = useUsageTracking();
 
   const handleGenerateItinerary = async () => {
+    // Refresh user profile to get latest usage data from Firestore
+    await refreshProfile();
+    
+    // Check AI usage limit BEFORE opening modal
+    if (hasReachedAILimit()) {
+      const remaining = getRemainingAICreations();
+      showAlert(
+        'error', 
+        `Daily AI limit reached (${remaining} remaining). Sign in on the web and tap the UPGRADE button on TravalMatch to get unlimited AI itineraries.`,
+        'https://travalpass.com/login',
+        'Sign In to Upgrade'
+      );
+      return;
+    }
+    
     // Validate profile before opening modal
     const validationResult = validateProfileForItinerary(userProfile);
     

@@ -14,11 +14,13 @@ import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import ChatPage from '../../pages/ChatPage';
 import { useConnections } from '../../hooks/chat/useConnections';
+import { useRemoveConnection } from '../../hooks/useRemoveConnection';
 import { useNavigation } from '@react-navigation/native';
 import { Timestamp } from 'firebase/firestore';
 
 // Mock dependencies
 jest.mock('../../hooks/chat/useConnections');
+jest.mock('../../hooks/useRemoveConnection');
 jest.mock('@react-navigation/native', () => ({
   useNavigation: jest.fn(),
 }));
@@ -34,7 +36,9 @@ jest.mock('../../config/firebaseConfig', () => ({
 }));
 
 const mockNavigate = jest.fn();
+const mockRemoveConnection = jest.fn(() => Promise.resolve({ success: true }));
 const mockUseConnections = useConnections as jest.MockedFunction<typeof useConnections>;
+const mockUseRemoveConnection = useRemoveConnection as jest.MockedFunction<typeof useRemoveConnection>;
 const mockUseNavigation = useNavigation as jest.MockedFunction<typeof useNavigation>;
 
 // Mock UserProfileContext
@@ -61,6 +65,7 @@ describe('ChatPage', () => {
     mockUseNavigation.mockReturnValue({
       navigate: mockNavigate,
     } as any);
+    mockUseRemoveConnection.mockReturnValue(mockRemoveConnection);
   });
 
   describe('Loading State', () => {

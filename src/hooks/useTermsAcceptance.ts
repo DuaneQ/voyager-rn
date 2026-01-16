@@ -116,8 +116,10 @@ export const useTermsAcceptance = (): UseTermsAcceptanceReturn => {
     setError(null);
     
     const currentUserId = auth.currentUser?.uid || userId;
+    
     if (!currentUserId) {
       const noUserError = new Error('User must be logged in to accept terms');
+      console.error('[useTermsAcceptance.acceptTerms] ❌ No user ID found');
       setError(noUserError);
       throw noUserError;
     }
@@ -136,10 +138,15 @@ export const useTermsAcceptance = (): UseTermsAcceptanceReturn => {
         },
         lastUpdated: firestoreServerTimestamp(),
       });
-      
       setHasAcceptedTerms(true);
     } catch (err) {
       const errorObj = err instanceof Error ? err : new Error(String(err));
+      console.error('[useTermsAcceptance.acceptTerms] ❌ Error accepting terms:', errorObj);
+      console.error('[useTermsAcceptance.acceptTerms] Error details:', {
+        code: (err as any)?.code,
+        message: errorObj.message,
+        stack: errorObj.stack
+      });
       setError(errorObj);
       throw errorObj;
     } finally {

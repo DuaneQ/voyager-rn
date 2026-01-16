@@ -179,14 +179,12 @@ const AirportSelector: React.FC<AirportSelectorProps> = ({
                         country: known.country || a.country,
                         isInternational: typeof known.isInternational === 'boolean' ? known.isInternational : a.isInternational
                       } as Airport;
-                      console.debug('AirportSelector: enriched by IATA', { original: a, known: known, merged });
                       return merged;
                     } else {
                       // If direct IATA lookup fails, try a name/city match against the curated fallback
                       const byName = (airportService as any).findAirportByName ? (airportService as any).findAirportByName(a.name || a.city || a.iataCode) : null;
                       if (byName) {
                         const merged = { ...a, country: byName.country || a.country, isInternational: typeof byName.isInternational === 'boolean' ? byName.isInternational : a.isInternational, iataCode: byName.iataCode || a.iataCode } as Airport;
-                        console.debug('AirportSelector: enriched by name match', { original: a, byName, merged });
                         return merged;
                       }
                       // Log missing IATA mapping so dataset gaps can be filled
@@ -201,7 +199,6 @@ const AirportSelector: React.FC<AirportSelectorProps> = ({
                 // If authoritative data not available, apply curated overrides
                 const up = (a.iataCode || '').toUpperCase();
                 if (curatedMajorInternational.has(up)) {
-                  console.debug('AirportSelector: applying curated override for', up, a.name);
                   return { ...a, isInternational: true } as Airport;
                 }
 
@@ -216,7 +213,6 @@ const AirportSelector: React.FC<AirportSelectorProps> = ({
               enriched.slice(0, 8).forEach(a => {
                 try {
                   const decis = determineInternational(a, location);
-                  console.debug('AirportSelector: post-enrich decision', { iata: a.iataCode, name: a.name, country: a.country, isInternationalField: a.isInternational, decision: decis });
                 } catch (e) {}
               });
 

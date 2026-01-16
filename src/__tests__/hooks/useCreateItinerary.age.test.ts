@@ -59,13 +59,21 @@ describe('useCreateItinerary - Age Field Payload Validation (RN)', () => {
     // Calculate expected age
     const userAge = mockUserProfile.dob ? calculateAge(mockUserProfile.dob) : 0;
 
+    // Use future dates for validation to pass
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const nextWeek = new Date();
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    const startDate = tomorrow.toISOString().split('T')[0];
+    const endDate = nextWeek.toISOString().split('T')[0];
+
     // Call createItinerary with correct signature (formData, userProfile, editingId?)
     await act(async () => {
       await result.current.createItinerary(
         {
           destination: 'Paris, France',
-          startDate: '2025-12-01',
-          endDate: '2025-12-07',
+          startDate,
+          endDate,
           lowerRange: 18,
           upperRange: 100,
           activities: [],
@@ -122,12 +130,20 @@ describe('useCreateItinerary - Age Field Payload Validation (RN)', () => {
     // calculateAge should return 0 for invalid date
     const userAge = mockUserProfileInvalidDob.dob ? calculateAge(mockUserProfileInvalidDob.dob) : 0;
 
+    // Use future dates for validation to pass
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const nextWeek = new Date();
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    const startDate = tomorrow.toISOString().split('T')[0];
+    const endDate = nextWeek.toISOString().split('T')[0];
+
     await act(async () => {
       await result.current.createItinerary(
         {
           destination: 'Paris, France',
-          startDate: '2025-12-01',
-          endDate: '2025-12-07',
+          startDate,
+          endDate,
           lowerRange: 18,
           upperRange: 100,
           activities: [],
@@ -154,26 +170,40 @@ describe('useCreateItinerary - Age Field Payload Validation (RN)', () => {
     // Test various ages
     const today = new Date();
     const currentYear = today.getFullYear();
-    const currentMonth = today.getMonth() + 1; // 0-indexed
+    const currentMonth = today.getMonth(); // 0-indexed (0 = January, 11 = December)
     const currentDay = today.getDate();
 
     // Someone born exactly 30 years ago today
-    const dob30YearsAgo = `${currentYear - 30}-${String(currentMonth).padStart(2, '0')}-${String(currentDay).padStart(2, '0')}`;
+    const dob30YearsAgo = `${currentYear - 30}-${String(currentMonth + 1).padStart(2, '0')}-${String(currentDay).padStart(2, '0')}`;
     expect(calculateAge(dob30YearsAgo)).toBe(30);
 
-    // Someone born 30 years ago but birthday hasn't occurred yet this year
-    let monthBeforeBirthday = currentMonth + 1;
-    if (monthBeforeBirthday > 12) monthBeforeBirthday = 1;
-    const dobBirthdayNotYet = `${currentYear - 30}-${String(monthBeforeBirthday).padStart(2, '0')}-${String(currentDay).padStart(2, '0')}`;
-    // Should be 29 if birthday hasn't occurred
+    // Someone whose birthday hasn't occurred yet this year
+    // Their birth month is AFTER the current month
+    let monthForFutureBirthday = currentMonth + 1; // Next month (0-indexed)
+    let birthYearForAge29 = currentYear - 30;
+    if (monthForFutureBirthday > 11) {
+      // Wrap to January (month 0)
+      monthForFutureBirthday = 0;
+      // If birthday is in January of next year, person was born one year later
+      birthYearForAge29 = currentYear - 29;
+    }
+    const dobBirthdayNotYet = `${birthYearForAge29}-${String(monthForFutureBirthday + 1).padStart(2, '0')}-${String(currentDay).padStart(2, '0')}`;
+    // Year diff accounts for birthday not occurring, so age = 29
     const ageBeforeBirthday = calculateAge(dobBirthdayNotYet);
     expect(ageBeforeBirthday).toBe(29);
 
-    // Someone born 30 years ago and birthday already occurred
-    let monthAfterBirthday = currentMonth - 1;
-    if (monthAfterBirthday < 1) monthAfterBirthday = 12;
-    const dobBirthdayPassed = `${currentYear - 30}-${String(monthAfterBirthday).padStart(2, '0')}-${String(currentDay).padStart(2, '0')}`;
-    // Should be 30 if birthday has occurred
+    // Someone whose birthday already occurred this year
+    // Their birth month is BEFORE the current month
+    let monthForPastBirthday = currentMonth - 1; // Previous month
+    let birthYearForAge30 = currentYear - 30;
+    if (monthForPastBirthday < 0) {
+      // Wrap to December (month 11)
+      monthForPastBirthday = 11;
+      // If birthday was in December of last year, person was born one year earlier
+      birthYearForAge30 = currentYear - 31;
+    }
+    const dobBirthdayPassed = `${birthYearForAge30}-${String(monthForPastBirthday + 1).padStart(2, '0')}-${String(currentDay).padStart(2, '0')}`;
+    // Year diff accounts for birthday occurring, so age = 30
     const ageAfterBirthday = calculateAge(dobBirthdayPassed);
     expect(ageAfterBirthday).toBe(30);
   });
@@ -198,13 +228,21 @@ describe('useCreateItinerary - Age Field Payload Validation (RN)', () => {
 
     const { result } = renderHook(() => useCreateItinerary());
 
+    // Use future dates for validation to pass
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const nextWeek = new Date();
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    const startDate = tomorrow.toISOString().split('T')[0];
+    const endDate = nextWeek.toISOString().split('T')[0];
+
     await act(async () => {
       // Third parameter is editingItineraryId
       await result.current.createItinerary(
         {
           destination: 'Tokyo, Japan',
-          startDate: '2025-12-01',
-          endDate: '2025-12-07',
+          startDate,
+          endDate,
           lowerRange: 18,
           upperRange: 100,
           activities: [],

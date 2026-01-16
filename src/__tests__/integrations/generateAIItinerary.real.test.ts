@@ -94,15 +94,25 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
     it('should return FLIGHT recommendations when transportation is airplane', async () => {
       const airplaneProfile = testProfiles.find(p => p.transportation.primaryMode === 'airplane')!;
       
+      // Use future dates for flight search (flight APIs don't return past dates)
+      const today = new Date();
+      const futureDate = new Date(today);
+      futureDate.setDate(today.getDate() + 30); // 30 days in future
+      const returnDate = new Date(futureDate);
+      returnDate.setDate(futureDate.getDate() + 7); // 7 day trip
+      
+      const departureDateStr = futureDate.toISOString().split('T')[0];
+      const returnDateStr = returnDate.toISOString().split('T')[0];
+      
       const payload = {
         destination: 'Paris, France',
         departure: 'New York, NY',
         departureAirportCode: 'JFK',
         destinationAirportCode: 'CDG',
-        departureDate: '2025-12-06',
-        returnDate: '2025-12-12',
-        startDate: '2025-12-06',
-        endDate: '2025-12-12',
+        departureDate: departureDateStr,
+        returnDate: returnDateStr,
+        startDate: departureDateStr,
+        endDate: returnDateStr,
         tripDays: 7,
         preferenceProfile: airplaneProfile,
       };
@@ -133,8 +143,8 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
       const payload = {
         destination: 'Rome, Italy',
         departure: 'Paris, France',
-        startDate: '2025-12-06',
-        endDate: '2025-12-12',
+        startDate: '2026-01-15',
+        endDate: '2026-01-21',
         tripDays: 7,
         preferenceProfile: trainProfile,
       };
@@ -171,8 +181,8 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
       const payload = {
         destination: 'Los Angeles, CA, USA',
         departure: 'San Francisco, CA, USA',
-        startDate: '2025-12-06',
-        endDate: '2025-12-12',
+        startDate: '2026-01-15',
+        endDate: '2026-01-21',
         tripDays: 7,
         preferenceProfile: rentalProfile,
       };
@@ -197,8 +207,8 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
       const payload = {
         destination: 'Tokyo, Japan',
         departure: 'Kyoto, Japan',
-        startDate: '2025-12-06',
-        endDate: '2025-12-12',
+        startDate: '2026-01-15',
+        endDate: '2026-01-21',
         tripDays: 7,
         preferenceProfile: publicProfile,
       };
@@ -223,8 +233,8 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
       const payload = {
         destination: 'Barcelona, Spain',
         departure: 'Madrid, Spain',
-        startDate: '2025-12-06',
-        endDate: '2025-12-12',
+        startDate: '2026-01-15',
+        endDate: '2026-01-21',
         tripDays: 7,
         preferenceProfile: walkingProfile,
       };
@@ -249,8 +259,8 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
       const payload = {
         destination: 'Amsterdam, Netherlands',
         departure: 'Brussels, Belgium',
-        startDate: '2025-12-06',
-        endDate: '2025-12-12',
+        startDate: '2026-01-15',
+        endDate: '2026-01-21',
         tripDays: 7,
         preferenceProfile: busProfile,
       };
@@ -277,8 +287,8 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
       const payload = {
         destination: 'Paris, France',
         departure: 'London, UK',
-        startDate: '2025-12-06',
-        endDate: '2025-12-08',
+        startDate: '2026-01-15',
+        endDate: '2026-01-17',
         tripDays: 3,
         preferenceProfile: profile,
       };
@@ -304,8 +314,8 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
       const payload = {
         destination: 'Tokyo, Japan',
         departure: 'Seoul, South Korea',
-        startDate: '2025-12-06',
-        endDate: '2025-12-12',
+        startDate: '2026-01-15',
+        endDate: '2026-01-21',
         tripDays: 7,
         preferenceProfile: profile,
       };
@@ -331,8 +341,8 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
       const payload = {
         destination: 'Barcelona, Spain',
         departure: 'Lisbon, Portugal',
-        startDate: '2025-12-06',
-        endDate: '2025-12-19',
+        startDate: '2026-01-15',
+        endDate: '2026-01-28',
         tripDays: 14,
         preferenceProfile: profile,
       };
@@ -360,8 +370,8 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
       const payload = {
         destination: 'Paris, France',
         departure: 'London, UK',
-        startDate: '2025-12-06',
-        endDate: '2025-12-12',
+        startDate: '2026-01-15',
+        endDate: '2026-01-21',
         tripDays: 7,
         preferenceProfile: profile,
       };
@@ -392,8 +402,8 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
       const payload = {
         destination: 'Rome, Italy',
         departure: 'Florence, Italy',
-        startDate: '2025-12-06',
-        endDate: '2025-12-12',
+        startDate: '2026-01-15',
+        endDate: '2026-01-21',
         tripDays: 7,
         preferenceProfile: profile,
       };
@@ -425,8 +435,8 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
       const payload = {
         destination: 'Barcelona, Spain',
         departure: 'Madrid, Spain',
-        startDate: '2025-12-06',
-        endDate: '2025-12-12',
+        startDate: '2026-01-15',
+        endDate: '2026-01-21',
         tripDays: 7,
         preferenceProfile: profile,
       };
@@ -463,8 +473,8 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
       const payload = {
         destination: 'Amsterdam, Netherlands',
         departure: 'Brussels, Belgium',
-        startDate: '2025-12-06',
-        endDate: '2025-12-12',
+        startDate: '2026-01-15',
+        endDate: '2026-01-21',
         tripDays: 7,
         preferenceProfile: profile,
       };
@@ -489,8 +499,8 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
       const payload = {
         destination: 'Bangkok, Thailand',
         departure: 'Singapore',
-        startDate: '2025-12-06',
-        endDate: '2025-12-12',
+        startDate: '2026-01-15',
+        endDate: '2026-01-21',
         tripDays: 7,
         preferenceProfile: profile,
       };
@@ -515,8 +525,8 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
       const payload = {
         destination: 'Buenos Aires, Argentina',
         departure: 'São Paulo, Brazil',
-        startDate: '2025-12-06',
-        endDate: '2025-12-12',
+        startDate: '2026-01-15',
+        endDate: '2026-01-21',
         tripDays: 7,
         preferenceProfile: profile,
       };

@@ -31,6 +31,7 @@ interface VideoCardProps {
   onLike: () => void;
   onComment?: () => void;
   onShare: () => void;
+  onReport?: () => void; // Report video for content moderation
   onViewTracked?: () => void;
 }
 
@@ -42,6 +43,7 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
   onLike,
   onComment,
   onShare,
+  onReport,
   onViewTracked,
 }) => {
   const videoRef = useRef<Video>(null);
@@ -72,19 +74,15 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
       const ref = videoRef.current;
       if (!ref || isUnmountedRef.current) return;
       
-      console.debug(`[VideoCard] onBecomeActive - id=${video.id}, isUnloaded=${isUnloadedRef.current}`);
-      
       // Reset user pause state when video becomes active
       setUserPaused(false);
       
       try {
         // If the player was previously unloaded, reload it first (critical for Android scroll-back)
         if (isUnloadedRef.current) {
-          console.debug(`[VideoCard] reloading unloaded video - id=${video.id}`);
           try {
             await ref.loadAsync({ uri: video.videoUrl }, {}, false);
             isUnloadedRef.current = false;
-            console.debug(`[VideoCard] reload successful - id=${video.id}`);
           } catch (loadErr) {
             console.error(`[VideoCard] Error reloading video ${video.id}:`, loadErr);
             return; // Don't attempt playback if reload failed
@@ -121,8 +119,6 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
       const ref = videoRef.current;
       if (!ref || isUnmountedRef.current) return;
       
-      console.debug(`[VideoCard] onBecomeInactive - id=${video.id}`);
-      
       try {
         // 1. Mute IMMEDIATELY to prevent audio leakage
         await ref.setIsMutedAsync(true);
@@ -134,15 +130,14 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
         await ref.setPositionAsync(0);
         setIsPlaying(false);
         
-        // On Android, unload to free memory (manager will handle this)
-        if (Platform.OS === 'android') {
-          try {
-            await ref.unloadAsync();
-            isUnloadedRef.current = true;
-            console.debug(`[VideoCard] unloadAsync called - id=${video.id}`);
-          } catch (unloadErr) {
-            console.warn('[VideoCard] unloadAsync failed (ignored):', unloadErr);
-          }
+        // CRITICAL FIX: Unload on BOTH iOS and Android to prevent audio leakage
+        // iOS audio sessions persist even after stop/pause, causing audio to continue
+        // playing when scrolling or navigating away from the feed
+        try {
+          await ref.unloadAsync();
+          isUnloadedRef.current = true;
+        } catch (unloadErr) {
+          console.warn('[VideoCard] unloadAsync failed (ignored):', unloadErr);
         }
       } catch (err) {
         const message = err?.message || String(err);
@@ -168,19 +163,17 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
   
   /**
    * Request activation when isActive changes.
+   * CRITICAL: No delay - let VideoPlaybackManager handle timing to prevent audio overlap
    */
   useEffect(() => {
     const managePlayback = async () => {
-      console.debug(`[VideoCard] managePlayback - id=${video.id} isActive=${isActive}`);
       if (!videoRef.current || isUnmountedRef.current) return;
 
       // Request activation/deactivation via manager
+      // CRITICAL: No setTimeout - immediate activation prevents audio overlap
+      // VideoPlaybackManager already has 50ms wait built-in to ensure clean deactivation
       if (isActive) {
-        // Delay to ensure scroll has settled and previous video has unloaded (Android fix)
-        setTimeout(() => {
-          if (isUnmountedRef.current) return;
-          videoPlaybackManager.setActiveVideo(video.id);
-        }, Platform.OS === 'android' ? 100 : 0); // Reduced delay for faster activation
+        videoPlaybackManager.setActiveVideo(video.id);
       }
       // Note: deactivation happens automatically when another video becomes active
     };
@@ -416,6 +409,19 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
         <Ionicons name="share-outline" size={32} color="#fff" />
         <Text style={styles.actionText}>Share</Text>
       </TouchableOpacity>
+
+      {/* Report button - only show for other users' videos */}
+      {onReport && (
+        <TouchableOpacity 
+          style={styles.actionButton} 
+          onPress={onReport}
+          testID="report-button"
+          accessibilityLabel="Report video"
+        >
+          <Ionicons name="flag-outline" size={32} color="#fff" />
+          <Text style={styles.actionText}>Report</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 
@@ -448,7 +454,7 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
             source={{ uri: video.videoUrl }}
             style={styles.video}
             resizeMode={ResizeMode.CONTAIN}
-            shouldPlay={isActive}
+            shouldPlay={false}
             isLooping
             isMuted={isMuted}
             onPlaybackStatusUpdate={handlePlaybackStatusUpdate}

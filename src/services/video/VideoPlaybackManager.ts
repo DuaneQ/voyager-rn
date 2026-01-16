@@ -40,6 +40,7 @@ export class VideoPlaybackManager {
   private registrations: Map<string, VideoPlaybackRegistration> = new Map();
   private events: VideoPlaybackManagerEvents;
   private deactivating: Set<string> = new Set(); // Track videos currently being deactivated
+  private isActivating: boolean = false; // Prevent concurrent activations
 
   constructor(events: VideoPlaybackManagerEvents = {}) {
     this.events = events;
@@ -50,7 +51,6 @@ export class VideoPlaybackManager {
    * Should be called when a VideoCard mounts or when ref becomes available.
    */
   register(registration: VideoPlaybackRegistration): void {
-    console.debug(`[VideoPlaybackManager] Registering video: ${registration.videoId}`);
     this.registrations.set(registration.videoId, registration);
   }
 
@@ -59,7 +59,6 @@ export class VideoPlaybackManager {
    * Should be called when a VideoCard unmounts.
    */
   unregister(videoId: string): void {
-    console.debug(`[VideoPlaybackManager] Unregistering video: ${videoId}`);
     
     // If this was the active video, clear active state
     if (this.activeVideoId === videoId) {
@@ -73,9 +72,16 @@ export class VideoPlaybackManager {
   /**
    * Request to make a video active (playing).
    * Will automatically deactivate the currently active video if different.
+   * CRITICAL: Waits for deactivation to fully complete before activating new video.
    */
   async setActiveVideo(videoId: string): Promise<void> {
-    console.debug(`[VideoPlaybackManager] setActiveVideo called for: ${videoId}`);
+    
+    // Prevent concurrent activation attempts
+    if (this.isActivating) {
+      // Wait a bit and retry
+      await new Promise(resolve => setTimeout(resolve, 50));
+      return this.setActiveVideo(videoId);
+    }
     
     const registration = this.registrations.get(videoId);
     if (!registration) {
@@ -85,58 +91,63 @@ export class VideoPlaybackManager {
 
     // If this video is already active, nothing to do
     if (this.activeVideoId === videoId) {
-      console.debug(`[VideoPlaybackManager] Video ${videoId} already active`);
       return;
     }
 
-    // Deactivate current active video
-    if (this.activeVideoId !== null) {
-      await this.deactivateVideo(this.activeVideoId);
-    }
-
-    // Activate the new video
     try {
-      console.debug(`[VideoPlaybackManager] Activating video: ${videoId}`);
+      this.isActivating = true;
+      
+      // CRITICAL: Fully deactivate current video before activating new one
+      if (this.activeVideoId !== null) {
+        await this.deactivateVideo(this.activeVideoId);
+        // Extra safety: ensure audio is fully stopped
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+
+      // Activate the new video
       await registration.onBecomeActive();
       this.activeVideoId = videoId;
       this.events.onActiveVideoChanged?.(videoId);
       this.events.onPlayerLoaded?.(videoId);
     } catch (error) {
       console.error(`[VideoPlaybackManager] Error activating video ${videoId}:`, error);
+    } finally {
+      this.isActivating = false;
     }
   }
 
   /**
-   * Deactivate a specific video (stop playback and optionally unload on Android).
+   * Deactivate a specific video (stop playback and unload).
+   * Note: The onBecomeInactive callback now handles unloadAsync for both iOS and Android
+   * to prevent audio leakage on iOS.
    */
   private async deactivateVideo(videoId: string): Promise<void> {
     // Prevent duplicate deactivation calls (race condition fix)
     if (this.deactivating.has(videoId)) {
-      console.debug(`[VideoPlaybackManager] Video ${videoId} already deactivating, skipping`);
       return;
     }
 
     const registration = this.registrations.get(videoId);
     if (!registration) {
-      console.debug(`[VideoPlaybackManager] Video ${videoId} not registered, skipping deactivate`);
       return;
     }
 
     try {
       this.deactivating.add(videoId); // Mark as deactivating
-      console.debug(`[VideoPlaybackManager] Deactivating video: ${videoId}`);
-      await registration.onBecomeInactive();
       
-      // On Android, aggressively unload to free native resources
-      if (Platform.OS === 'android' && registration.ref) {
-        try {
-          await registration.ref.unloadAsync();
-          this.events.onPlayerUnloaded?.(videoId);
-          console.debug(`[VideoPlaybackManager] Unloaded video: ${videoId}`);
-        } catch (unloadError) {
-          console.warn(`[VideoPlaybackManager] Failed to unload video ${videoId}:`, unloadError);
+      // CRITICAL: Try to mute immediately and synchronously to stop audio overlap
+      try {
+        if (registration.ref) {
+          await registration.ref.setIsMutedAsync(true);
         }
+      } catch (err) {
+        console.warn(`[VideoPlaybackManager] Could not pre-mute ${videoId}:`, err);
       }
+      
+      // The callback now handles mute → pause → stop → unload for both platforms
+      await registration.onBecomeInactive();
+      this.events.onPlayerUnloaded?.(videoId);
+      
     } catch (error) {
       console.error(`[VideoPlaybackManager] Error deactivating video ${videoId}:`, error);
     } finally {
@@ -146,9 +157,25 @@ export class VideoPlaybackManager {
 
   /**
    * Deactivate all videos (useful when navigating away from video feed).
+   * CRITICAL: Also immediately mutes all registered videos to stop audio instantly.
    */
   async deactivateAll(): Promise<void> {
-    console.debug(`[VideoPlaybackManager] Deactivating all videos`);
+    
+    // CRITICAL: Immediately mute ALL registered videos to stop audio overlap
+    // Do this synchronously before the async deactivation
+    const mutePromises: Promise<void>[] = [];
+    this.registrations.forEach((registration, videoId) => {
+      if (registration.ref) {
+        mutePromises.push(
+          registration.ref.setIsMutedAsync(true).catch((err): void => {
+            console.warn(`[VideoPlaybackManager] Failed to mute ${videoId}:`, err);
+          }) as Promise<void>
+        );
+      }
+    });
+    
+    // Wait for all mutes to complete (should be very fast)
+    await Promise.all(mutePromises);
     
     if (this.activeVideoId) {
       await this.deactivateVideo(this.activeVideoId);
@@ -182,7 +209,6 @@ export class VideoPlaybackManager {
    * Cleanup all registrations (call this when component unmounts).
    */
   cleanup(): void {
-    console.debug(`[VideoPlaybackManager] Cleaning up all registrations`);
     
     // Deactivate current video if any
     if (this.activeVideoId) {
@@ -208,12 +234,12 @@ export class VideoPlaybackManager {
  */
 export const videoPlaybackManager = new VideoPlaybackManager({
   onActiveVideoChanged: (videoId) => {
-    console.debug(`[VideoPlaybackManager] Active video changed to: ${videoId}`);
+    // Callback for active video changes
   },
   onPlayerUnloaded: (videoId) => {
-    console.debug(`[VideoPlaybackManager] Player unloaded: ${videoId}`);
+    // Callback for player unloaded
   },
   onPlayerLoaded: (videoId) => {
-    console.debug(`[VideoPlaybackManager] Player loaded: ${videoId}`);
+    // Callback for player loaded
   },
 });

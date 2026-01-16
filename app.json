@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "TravalPass",
-    "slug": "travalpass-app",
+    "slug": "voyager-rn",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
@@ -15,16 +15,33 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.travalpass.app",
-      "buildNumber": "1.0.0",
+      "buildNumber": "15",
       "googleServicesFile": "./GoogleService-Info.plist",
+      "entitlements": {
+        "com.apple.developer.applesignin": ["Default"]
+      },
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to upload profile and gallery photos.",
         "NSCameraUsageDescription": "This app needs access to your camera to take profile and gallery photos.",
-        "NSPhotoLibraryAddUsageDescription": "This app needs permission to save photos to your photo library."
+        "NSPhotoLibraryAddUsageDescription": "This app needs permission to save photos to your photo library.",
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "com.googleusercontent.apps.533074391000-quot684rc8kugrni3eh2c6bsq3u5rcqs"
+            ]
+          },
+          {
+            "CFBundleURLSchemes": [
+              "com.googleusercontent.apps.533074391000-quot684rc8kugrni3eh2c6bsq3u5rcqs"
+            ]
+          }
+        ],
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "com.travalpass.app",
+      "versionCode": 4,
       "googleServicesFile": "./google-services.json",
       "icon": "./AppIcons/playstore.png",
       "permissions": [

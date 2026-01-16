@@ -190,7 +190,7 @@ describe('VideoGrid', () => {
       mockSelectVideo.mockResolvedValue('file:///test/video.mp4');
       mockUploadVideo.mockResolvedValue(true);
 
-      const { getByText } = render(<VideoGrid />);
+      const { getByText, getByTestId } = render(<VideoGrid />);
 
       await waitFor(() => expect(getByText('Add Video')).toBeTruthy());
 
@@ -198,6 +198,15 @@ describe('VideoGrid', () => {
 
       // selectVideo should be called first
       await waitFor(() => expect(mockSelectVideo).toHaveBeenCalled());
+
+      // Modal should appear
+      await waitFor(() => {
+        expect(getByTestId('video-upload-modal')).toBeTruthy();
+      });
+
+      // Press upload button in modal
+      const uploadButton = getByTestId('upload-button');
+      fireEvent.press(uploadButton);
 
       // Then uploadVideo should be called with the selected video
       await waitFor(() => {
@@ -214,13 +223,23 @@ describe('VideoGrid', () => {
       mockSelectVideo.mockResolvedValue('file:///test/video.mp4');
       mockUploadVideo.mockResolvedValue(true);
 
-      const { getByText } = render(<VideoGrid />);
+      const { getByText, getByTestId } = render(<VideoGrid />);
 
       await waitFor(() => expect(getByText('Add Video')).toBeTruthy());
 
       fireEvent.press(getByText('Add Video'));
 
       await waitFor(() => expect(mockSelectVideo).toHaveBeenCalled());
+
+      // Modal should appear
+      await waitFor(() => {
+        expect(getByTestId('video-upload-modal')).toBeTruthy();
+      });
+
+      // Press upload button in modal
+      const uploadButton = getByTestId('upload-button');
+      fireEvent.press(uploadButton);
+
       await waitFor(() => expect(mockUploadVideo).toHaveBeenCalled());
 
       // Alert should be called after successful upload
@@ -237,7 +256,7 @@ describe('VideoGrid', () => {
       mockUploadVideo.mockResolvedValue(true);
       mockLoadUserVideos.mockResolvedValueOnce([]).mockResolvedValueOnce(mockVideos);
 
-      const { getByText } = render(<VideoGrid />);
+      const { getByText, getByTestId } = render(<VideoGrid />);
 
       await waitFor(() => expect(mockLoadUserVideos).toHaveBeenCalledTimes(1));
 
@@ -245,6 +264,15 @@ describe('VideoGrid', () => {
         const addButton = getByText('Add Video');
         fireEvent.press(addButton);
       });
+
+      // Modal should appear
+      await waitFor(() => {
+        expect(getByTestId('video-upload-modal')).toBeTruthy();
+      });
+
+      // Press upload button in modal
+      const uploadButton = getByTestId('upload-button');
+      fireEvent.press(uploadButton);
 
       await waitFor(() => {
         expect(mockLoadUserVideos).toHaveBeenCalledTimes(2);

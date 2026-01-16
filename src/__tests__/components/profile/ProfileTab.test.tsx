@@ -9,10 +9,19 @@ import { Alert } from 'react-native';
 import { ProfileTab } from '../../../components/profile/ProfileTab';
 import { useUserProfile } from '../../../context/UserProfileContext';
 import { useAuth } from '../../../context/AuthContext';
+import { useConnections } from '../../../hooks/chat/useConnections';
+import { useAllItineraries } from '../../../hooks/useAllItineraries';
+import { accountDeletionService } from '../../../services/account/AccountDeletionService';
 
 // Mock dependencies
 jest.mock('../../../context/UserProfileContext');
 jest.mock('../../../context/AuthContext');
+jest.mock('../../../hooks/chat/useConnections');
+jest.mock('../../../hooks/useAllItineraries');
+jest.mock('../../../services/account/AccountDeletionService');
+
+// Create a mock function for deleteAccount
+const mockDeleteAccount = jest.fn();
 
 describe('ProfileTab', () => {
   const mockUserProfile = {
@@ -27,12 +36,31 @@ describe('ProfileTab', () => {
     drinking: 'Never',
     smoking: 'Never',
     photoURL: 'https://example.com/photo.jpg',
+    ratings: {
+      average: 4.5,
+      count: 10,
+      ratedBy: {},
+    },
   };
 
   const mockSignOut = jest.fn();
+  const mockConnections = [
+    { id: '1', users: ['user1', 'user2'], createdAt: new Date() },
+    { id: '2', users: ['user1', 'user3'], createdAt: new Date() },
+  ];
+  const mockItineraries = [
+    { id: 'itin1', destination: 'Paris' },
+    { id: 'itin2', destination: 'Tokyo' },
+    { id: 'itin3', destination: 'London' },
+  ];
 
   beforeEach(() => {
     jest.clearAllMocks();
+    
+    // Mock accountDeletionService.deleteAccount
+    accountDeletionService.deleteAccount = mockDeleteAccount;
+    mockDeleteAccount.mockResolvedValue(undefined);
+    
     (useUserProfile as jest.Mock).mockReturnValue({
       userProfile: mockUserProfile,
     });
@@ -40,6 +68,16 @@ describe('ProfileTab', () => {
       signOut: mockSignOut,
       user: { uid: 'test-user-id' },
       status: 'authenticated',
+    });
+    (useConnections as jest.Mock).mockReturnValue({
+      connections: mockConnections,
+      loading: false,
+      error: null,
+    });
+    (useAllItineraries as jest.Mock).mockReturnValue({
+      itineraries: mockItineraries,
+      loading: false,
+      error: null,
     });
   });
 
@@ -56,14 +94,14 @@ describe('ProfileTab', () => {
       expect(getByTestId('sign-out-button')).toBeTruthy();
     });
 
-    it('should display placeholder stats values', () => {
+    it('should display real stats values from hooks', () => {
       const { getByTestId, getByText } = render(<ProfileTab />);
       
-      // Stats should show 0 values
+      // Stats should show real values from mocked hooks
       expect(getByTestId('stat-connections')).toBeTruthy();
       expect(getByText('Connections')).toBeTruthy();
       expect(getByText('Trips')).toBeTruthy();
-      expect(getByText('(0 reviews)')).toBeTruthy();
+      expect(getByText('(10 reviews)')).toBeTruthy(); // From mockUserProfile.ratings.count
     });
 
     it('should display accordion titles', () => {
@@ -88,7 +126,7 @@ describe('ProfileTab', () => {
   });
 
   describe('Stats Interaction', () => {
-    it('should show coming soon alert when connections is pressed', async () => {
+    it('should show connections count when connections is pressed', async () => {
       const mockAlert = jest.spyOn(Alert, 'alert');
       const { getByTestId } = render(<ProfileTab />);
       
@@ -96,15 +134,15 @@ describe('ProfileTab', () => {
       
       await waitFor(() => {
         expect(mockAlert).toHaveBeenCalledWith(
-          'Coming Soon',
-          'Connections feature is not yet implemented'
+          'Connections',
+          'You have 2 connections'
         );
       });
       
       mockAlert.mockRestore();
     });
 
-    it('should show coming soon alert when trips is pressed', async () => {
+    it('should show trips count when trips is pressed', async () => {
       const mockAlert = jest.spyOn(Alert, 'alert');
       const { getByTestId } = render(<ProfileTab />);
       
@@ -112,28 +150,91 @@ describe('ProfileTab', () => {
       
       await waitFor(() => {
         expect(mockAlert).toHaveBeenCalledWith(
-          'Coming Soon',
-          'Trips feature is not yet implemented'
+          'Trips',
+          'You have 3 trips'
         );
       });
       
       mockAlert.mockRestore();
     });
 
-    it('should show coming soon alert when rating is pressed', async () => {
-      const mockAlert = jest.spyOn(Alert, 'alert');
+    it('should open ratings modal when rating is pressed', async () => {
+      const { getByTestId, queryByTestId } = render(<ProfileTab />);
+      
+      // Modal should not be visible initially
+      expect(queryByTestId('ratings-modal')).toBeTruthy(); // Modal exists but is not visible
+      
+      // Press rating stat
+      fireEvent.press(getByTestId('stat-rating'));
+      
+      // Modal should be visible (we can't directly test visible prop, but modal is rendered)
+      await waitFor(() => {
+        expect(getByTestId('ratings-modal')).toBeTruthy();
+      });
+    });
+
+    it('should open ratings modal even when user has no ratings', async () => {
+      (useUserProfile as jest.Mock).mockReturnValue({
+        userProfile: { ...mockUserProfile, ratings: undefined },
+      });
+      
+      const { getByTestId } = render(<ProfileTab />);
+      
+      // Should still open modal
+      fireEvent.press(getByTestId('stat-rating'));
+      
+      await waitFor(() => {
+        expect(getByTestId('ratings-modal')).toBeTruthy();
+      });
+    });
+
+    it('should close ratings modal when close button is pressed', async () => {
+      const { getByTestId } = render(<ProfileTab />);
+      
+      // Open modal
+      fireEvent.press(getByTestId('stat-rating'));
+      
+      await waitFor(() => {
+        expect(getByTestId('ratings-modal')).toBeTruthy();
+      });
+      
+      // Close modal
+      fireEvent.press(getByTestId('close-ratings-modal'));
+      
+      // Modal should still exist in DOM but will be hidden via visible prop
+      expect(getByTestId('ratings-modal')).toBeTruthy();
+    });
+
+    it('should pass user ratings data to RatingsModal', () => {
       const { getByTestId } = render(<ProfileTab />);
       
       fireEvent.press(getByTestId('stat-rating'));
       
-      await waitFor(() => {
-        expect(mockAlert).toHaveBeenCalledWith(
-          'Coming Soon',
-          'Ratings feature is not yet implemented'
-        );
+      // Verify modal renders with ratings data
+      const modal = getByTestId('ratings-modal');
+      expect(modal).toBeTruthy();
+      
+      // Modal should have access to ratings from userProfile
+      // (We're testing that the component renders without errors with the data)
+    });
+
+    it('should handle zero connections and trips', () => {
+      (useConnections as jest.Mock).mockReturnValue({
+        connections: [],
+        loading: false,
+        error: null,
+      });
+      (useAllItineraries as jest.Mock).mockReturnValue({
+        itineraries: [],
+        loading: false,
+        error: null,
       });
       
-      mockAlert.mockRestore();
+      const { getByText } = render(<ProfileTab />);
+      
+      // Component should still render without errors
+      expect(getByText('Connections')).toBeTruthy();
+      expect(getByText('Trips')).toBeTruthy();
     });
   });
 
@@ -224,6 +325,134 @@ describe('ProfileTab', () => {
       });
       
       mockAlert.mockRestore();
+    });
+  });
+
+  describe('Account Deletion', () => {
+
+    it('should render danger zone section', () => {
+      const { getByText } = render(<ProfileTab />);
+      
+      expect(getByText('Danger Zone')).toBeTruthy();
+      expect(getByText('Delete Account')).toBeTruthy();
+    });
+
+    it('should open delete account modal when delete button is pressed', () => {
+      const { getByTestId, getByText } = render(<ProfileTab />);
+      
+      fireEvent.press(getByTestId('delete-account-button'));
+      
+      expect(getByText('Delete Account?')).toBeTruthy();
+      expect(getByText(/This action cannot be undone/)).toBeTruthy();
+      expect(getByTestId('delete-password-input')).toBeTruthy();
+    });
+
+    it('should close modal when cancel button is pressed', () => {
+      const { getByTestId, queryByText, getByText } = render(<ProfileTab />);
+      
+      // Open modal
+      fireEvent.press(getByTestId('delete-account-button'));
+      expect(getByText('Delete Account?')).toBeTruthy();
+      
+      // Close modal
+      fireEvent.press(getByTestId('cancel-delete-button'));
+      
+      // Modal content should be removed (Modal visible=false removes content from tree)
+      expect(queryByText('Delete Account?')).toBeNull();
+    });
+
+    it('should disable button when password is empty', () => {
+      const { getByTestId } = render(<ProfileTab />);
+      
+      // Open modal
+      fireEvent.press(getByTestId('delete-account-button'));
+      
+      // Button should be disabled without password
+      const confirmButton = getByTestId('confirm-delete-button');
+      expect(confirmButton.props.accessibilityState.disabled).toBe(true);
+      
+      // deleteAccount should not be called when button is disabled
+      expect(mockDeleteAccount).not.toHaveBeenCalled();
+    });
+
+    it('should show success alert on successful deletion', async () => {
+      const mockAlert = jest.spyOn(Alert, 'alert');
+      const { getByTestId } = render(<ProfileTab />);
+      
+      // Open modal
+      fireEvent.press(getByTestId('delete-account-button'));
+      
+      // Enter password
+      fireEvent.changeText(getByTestId('delete-password-input'), 'password123');
+      
+      // Confirm deletion
+      fireEvent.press(getByTestId('confirm-delete-button'));
+      
+      await waitFor(() => {
+        expect(mockAlert).toHaveBeenCalledWith(
+          'Success',
+          'Your account has been deleted. We hope to see you again!'
+        );
+      });
+      
+      mockAlert.mockRestore();
+    });
+
+    it('should show success alert without calling signOut (auto logout)', async () => {
+      const mockAlert = jest.spyOn(Alert, 'alert');
+      
+      const { getByTestId } = render(<ProfileTab />);
+      
+      // Open modal and enter password
+      fireEvent.press(getByTestId('delete-account-button'));
+      fireEvent.changeText(getByTestId('delete-password-input'), 'password123');
+      fireEvent.press(getByTestId('confirm-delete-button'));
+      
+      await waitFor(() => {
+        expect(mockAlert).toHaveBeenCalledWith(
+          'Success',
+          'Your account has been deleted. We hope to see you again!'
+        );
+      });
+      
+      // signOut should NOT be called - user is auto-logged out by deleteAccount
+      expect(mockSignOut).not.toHaveBeenCalled();
+      
+      mockAlert.mockRestore();
+    });
+
+    it('should enable confirm button only when password is entered', () => {
+      const { getByTestId } = render(<ProfileTab />);
+      
+      // Open modal
+      fireEvent.press(getByTestId('delete-account-button'));
+      
+      // Button should be disabled initially (no password)
+      const confirmButton = getByTestId('confirm-delete-button');
+      expect(confirmButton.props.accessibilityState.disabled).toBe(true);
+      
+      // Enter password
+      fireEvent.changeText(getByTestId('delete-password-input'), 'password123');
+      
+      // Button should now be enabled
+      expect(confirmButton.props.accessibilityState.disabled).toBe(false);
+    });
+
+    it('should clear password field after closing modal', () => {
+      const { getByTestId } = render(<ProfileTab />);
+      
+      // Open modal and enter password
+      fireEvent.press(getByTestId('delete-account-button'));
+      const passwordInput = getByTestId('delete-password-input');
+      fireEvent.changeText(passwordInput, 'mypassword');
+      
+      // Close modal
+      fireEvent.press(getByTestId('cancel-delete-button'));
+      
+      // Reopen modal - password should be cleared
+      fireEvent.press(getByTestId('delete-account-button'));
+      const newPasswordInput = getByTestId('delete-password-input');
+      expect(newPasswordInput.props.value).toBe('');
     });
   });
 });

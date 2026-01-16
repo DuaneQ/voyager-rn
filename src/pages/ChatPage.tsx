@@ -1,8 +1,10 @@
 import React, { useContext, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ImageBackground, FlatList, TouchableOpacity, ActivityIndicator, Platform, StatusBar, Image } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, ImageBackground, FlatList, TouchableOpacity, ActivityIndicator, Platform, StatusBar, Image, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { UserProfileContext } from '../context/UserProfileContext';
 import { useConnections } from '../hooks/chat/useConnections';
+import { useRemoveConnection } from '../hooks/useRemoveConnection';
 import { Connection } from '../types/Connection';
 import { getDoc, doc } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
@@ -10,7 +12,9 @@ import { db } from '../config/firebaseConfig';
 const ChatPage: React.FC = () => {
   const { userProfile } = useContext(UserProfileContext);
   const navigation = useNavigation();
+  
   const { connections, loading, error, refresh } = useConnections(userProfile?.uid || null);
+  const removeConnection = useRemoveConnection();
   
   // Store user profile photos
   const [userPhotos, setUserPhotos] = useState<Record<string, string>>({});
@@ -57,6 +61,32 @@ const ChatPage: React.FC = () => {
 
     fetchUserPhotos();
   }, [connections, userProfile?.uid]);
+
+  const handleRemoveConnection = async (connectionId: string, otherUserName: string) => {
+    Alert.alert(
+      'Remove Connection',
+      `Are you sure you want to remove ${otherUserName} from your connections?`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            const result = await removeConnection(connectionId);
+            if (result.success) {
+              // Refresh the connections list
+              refresh();
+            } else {
+              Alert.alert('Error', result.error || 'Failed to remove connection');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const renderConnectionItem = ({ item }: { item: Connection }) => {
     // Get other user(s) info from itineraries
@@ -130,6 +160,18 @@ const ChatPage: React.FC = () => {
             {dates}
           </Text>
         </View>
+
+        {/* Remove Connection Button */}
+        <TouchableOpacity
+          style={styles.removeButton}
+          onPress={(e) => {
+            e.stopPropagation();
+            handleRemoveConnection(item.id, otherUserNames);
+          }}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons name="close-circle-outline" size={24} color="#FF3B30" />
+        </TouchableOpacity>
       </TouchableOpacity>
     );
   };
@@ -383,6 +425,12 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: 14,
     color: 'rgba(255, 255, 255, 0.7)',
+  },
+  removeButton: {
+    padding: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
   },
 });
 

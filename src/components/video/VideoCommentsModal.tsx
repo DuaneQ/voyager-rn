@@ -18,6 +18,7 @@ import {
   Platform,
   Image,
   Alert,
+  SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -214,10 +215,11 @@ export const VideoCommentsModal: React.FC<VideoCommentsModalProps> = ({
       transparent={false}
       onRequestClose={handleClose}
     >
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
+      <SafeAreaView style={styles.container}>
+        <KeyboardAvoidingView
+          style={styles.keyboardAvoid}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>
@@ -293,7 +295,8 @@ export const VideoCommentsModal: React.FC<VideoCommentsModalProps> = ({
             </Text>
           </View>
         )}
-      </KeyboardAvoidingView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
     </Modal>
   );
 };
@@ -302,6 +305,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+  },
+  keyboardAvoid: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',

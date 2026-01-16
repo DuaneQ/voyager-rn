@@ -45,6 +45,7 @@ import { UserProfileContext } from '../../context/UserProfileContext';
 import * as firebaseCfg from '../../config/firebaseConfig';
 import { VideoService } from '../../services/video/VideoService';
 import { Ionicons } from '@expo/vector-icons';
+import { ReportVideoModal } from './ReportVideoModal';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -85,6 +86,8 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
   const [enlargedVideo, setEnlargedVideo] = useState<any | null>(null);
   const [enlargedPhoto, setEnlargedPhoto] = useState<string | null>(null);
   const [isVideoMuted, setIsVideoMuted] = useState(false); // Mute state for enlarged video
+  const [reportVideoModalVisible, setReportVideoModalVisible] = useState(false);
+  const [videoToReport, setVideoToReport] = useState<any | null>(null);
   
   // Rating submission state
   const [ratingDialogVisible, setRatingDialogVisible] = useState(false);
@@ -387,6 +390,16 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
         }
       }
     );
+  };
+
+  const handleReportVideo = (video: any) => {
+    setVideoToReport(video);
+    setReportVideoModalVisible(true);
+  };
+
+  const handleCloseReportVideoModal = () => {
+    setReportVideoModalVisible(false);
+    setVideoToReport(null);
   };
 
   const handleDeleteVideo = async (video: any) => {
@@ -699,6 +712,16 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
                               <Ionicons name="trash-outline" size={20} color="#fff" />
                             </TouchableOpacity>
                           )}
+                          {/* Report button - only show when viewing other users' videos */}
+                          {currentUserId !== userId && currentUserId && (
+                            <TouchableOpacity
+                              style={styles.reportVideoButton}
+                              onPress={() => handleReportVideo(video)}
+                              testID={`report-video-button-${video.id}`}
+                            >
+                              <Ionicons name="flag" size={20} color="#fff" />
+                            </TouchableOpacity>
+                          )}
                         </View>
                       ))}
                     </View>
@@ -873,6 +896,16 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
           </TouchableOpacity>
         </View>
       </Modal>
+
+      {/* Report Video Modal */}
+      {videoToReport && currentUserId && (
+        <ReportVideoModal
+          visible={reportVideoModalVisible}
+          onClose={handleCloseReportVideoModal}
+          video={videoToReport}
+          reporterId={currentUserId}
+        />
+      )}
 
       {/* Rating Dialog Modal */}
       <Modal
@@ -1300,6 +1333,22 @@ const styles = StyleSheet.create({
     top: 8,
     right: 8,
     backgroundColor: 'rgba(220, 53, 69, 0.9)',
+    borderRadius: 20,
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  reportVideoButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(237, 108, 2, 0.9)',
     borderRadius: 20,
     width: 36,
     height: 36,
