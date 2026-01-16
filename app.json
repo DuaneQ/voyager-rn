@@ -41,7 +41,7 @@
     },
     "android": {
       "package": "com.travalpass.app",
-      "versionCode": 3,
+      "versionCode": 4,
       "googleServicesFile": "./google-services.json",
       "icon": "./AppIcons/playstore.png",
       "permissions": [
