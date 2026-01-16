@@ -354,6 +354,14 @@ describe('AuthContext - signUp flow', () => {
   (createUserWithEmailAndPassword as jest.Mock).mockResolvedValueOnce({ user: mockUser });
   (sendEmailVerification as jest.Mock).mockResolvedValueOnce(undefined);
   (setDoc as jest.Mock).mockRejectedValueOnce(firestoreError);
+  (firebaseSignOut as jest.Mock).mockResolvedValueOnce(undefined);
+
+    // Mock onAuthStateChanged to not call callback (user gets signed out after error)
+    const cfg = require('../../config/firebaseConfig');
+    cfg.auth.onAuthStateChanged = jest.fn((callback) => {
+      // Don't call callback - user is signed out after Firestore error
+      return () => {};
+    });
 
     const wrapper = ({ children }: any) => <AuthProvider>{children}</AuthProvider>;
   const { result } = renderHook(() => useAuth(), { wrapper });
@@ -460,10 +468,20 @@ describe('AuthContext - Edge Cases: Storage & Device Scenarios', () => {
     const AsyncStorage = require('@react-native-async-storage/async-storage').default;
     (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
 
+    // Mock onAuthStateChanged to call callback with null (no user)
+    const cfg = require('../../config/firebaseConfig');
+    cfg.auth.currentUser = null;
+    cfg.auth.onAuthStateChanged = jest.fn((callback) => {
+      setTimeout(() => callback(null), 0);
+      return () => {};
+    });
+
     const wrapper = ({ children }: any) => <AuthProvider>{children}</AuthProvider>;
     const { result } = renderHook(() => useAuth(), { wrapper });
 
-    await act(async () => {});
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 10));
+    });
     
     expect(result.current.user).toBeNull();
     expect(result.current.status).toBe('idle');
