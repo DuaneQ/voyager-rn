@@ -5,6 +5,7 @@
  */
 
 import React, { useEffect, useRef } from 'react';
+import { Platform } from 'react-native';
 import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -17,6 +18,7 @@ import SearchPage from '../pages/SearchPage';
 import ChatPage from '../pages/ChatPage';
 import ChatThreadScreen from '../pages/ChatThreadScreen';
 import VideoFeedPage from '../pages/VideoFeedPage';
+import LandingPage from '../pages/LandingPage.web';
 
 // Guards
 import { TermsGuard } from '../components/auth/TermsGuard';
@@ -137,6 +139,10 @@ const RootNavigator: React.FC = () => {
   // IMPORTANT: Only show main app if user is authenticated AND email is verified
   const isAuthenticated = user && user.emailVerified;
   
+  // On web, show landing page for unauthenticated users
+  // On mobile (iOS/Android), go directly to auth page
+  const showLandingPage = Platform.OS === 'web' && !isAuthenticated;
+  
   return (
     <Stack.Navigator
       screenOptions={{ headerShown: false }}
@@ -147,8 +153,14 @@ const RootNavigator: React.FC = () => {
           <Stack.Screen name="MainApp" component={GuardedMainTabNavigator} />
           <Stack.Screen name="ChatThread" component={ChatThreadScreen} />
         </>
+      ) : showLandingPage ? (
+        // Web only: Show landing page for unauthenticated users
+        <>
+          <Stack.Screen name="Landing" component={LandingPage} />
+          <Stack.Screen name="Auth" component={AuthPage} />
+        </>
       ) : (
-        // User is not authenticated or email not verified - show auth page
+        // Mobile (iOS/Android): Show auth page directly
         <Stack.Screen name="Auth" component={AuthPage} />
       )}
     </Stack.Navigator>
@@ -159,9 +171,30 @@ const RootNavigator: React.FC = () => {
 const AppNavigator: React.FC = () => {
   const navigationRef = useRef<NavigationContainerRef<any>>(null);
 
+  // Linking configuration for web URL routing
+  const linking = {
+    prefixes: ['http://localhost:8081', 'https://travalpass.com'],
+    config: {
+      screens: {
+        Landing: '',  // Root URL shows landing page
+        Auth: 'auth', // /auth for authentication
+        MainApp: {
+          path: 'app',
+          screens: {
+            Search: 'search',
+            Videos: 'videos',
+            Chat: 'chat',
+            Profile: 'profile',
+          },
+        },
+        ChatThread: 'chat/:connectionId',
+      },
+    },
+  };
+
   return (
     <AlertProvider>
-      <NavigationContainer ref={navigationRef}>
+      <NavigationContainer ref={navigationRef} linking={linking}>
         <ProfileValidationWrapper navigationRef={navigationRef}>
           <RootNavigator />
         </ProfileValidationWrapper>

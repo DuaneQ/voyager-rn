@@ -1,0 +1,30 @@
+Subject: Re: Guideline 1.2 - Request for Re-Review of Build 14
+
+We respectfully request a re-review of the current build (Build 14, Submission ID: d0922a53-3055-4cf5-addb-7355eea0437d) without requiring a new submission.
+
+We believe there may be a misunderstanding - both required precautions are fully implemented and functional in the reviewed build:
+
+✅ TERMS WITH ZERO TOLERANCE:
+- Mandatory acceptance before app use (src/components/modals/TermsOfServiceModal.tsx)
+- Section 4 explicitly states "ZERO TOLERANCE POLICY" with immediate consequences
+- Cannot be bypassed - TermsGuard blocks navigation until accepted
+- 6 required acknowledgments including age verification and safety understanding
+
+✅ BLOCKING WITH INSTANT REMOVAL & DEVELOPER NOTIFICATION:
+- Block button (🚫) on every profile (src/components/modals/ViewProfileModal.tsx)
+- INSTANT effects: Blocked user disappears from search, video feed, and chat
+- DEVELOPER NOTIFICATION: All blocks logged in Firestore users.blocked array (visible in Firebase Console)
+- Implementation verified in lines 329-361 of ViewProfileModal.tsx
+
+HOW TO VERIFY:
+1. Terms: Fresh install → Login → Terms modal blocks access until accepted
+2. Blocking: Login → Search users → Block someone → They disappear from search results immediately
+3. Developer logs: Firebase Console → Firestore → users → blocked array contains blocked user IDs
+
+We request a re-review of Build 14 (current submission) as no code changes are needed. All required features are present and verifiable.
+
+Please let us know if you need screenshots, video demonstration, or Firebase Console access to verify these features during re-review, and testing instructions.
+
+Please let us know if you need screenshots, video demonstration, or Firebase Console access to verify these features.
+
+Thank you for your consideration.
