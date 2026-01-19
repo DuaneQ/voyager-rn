@@ -41,13 +41,13 @@ jobs:
           echo "### TypeScript Type Check" >> $GITHUB_STEP_SUMMARY
           if npx tsc --noEmit --skipLibCheck > tsc-output.txt 2>&1; then
             echo "✅ No TypeScript errors found" >> $GITHUB_STEP_SUMMARY
-            echo "TS_STATUS=✅ Passed" >> $GITHUB_ENV
+            echo "TS_STATUS=Passed" >> $GITHUB_ENV
           else
             echo "❌ TypeScript errors found:" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             cat tsc-output.txt >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
-            echo "TS_STATUS=❌ Failed" >> $GITHUB_ENV
+            echo "TS_STATUS=Failed" >> $GITHUB_ENV
           fi
           
           # Check for console.log statements (code smell)
@@ -55,20 +55,20 @@ jobs:
           CONSOLE_LOGS=$(git diff origin/${{ github.base_ref }}...HEAD -- '*.ts' '*.tsx' '*.js' '*.jsx' | grep -c "^\+.*console\.log" || echo "0")
           if [ "$CONSOLE_LOGS" -gt "0" ]; then
             echo "⚠️ Found $CONSOLE_LOGS new console.log statements" >> $GITHUB_STEP_SUMMARY
-            echo "CONSOLE_STATUS=⚠️ $CONSOLE_LOGS console.log found" >> $GITHUB_ENV
+            echo "CONSOLE_STATUS=$CONSOLE_LOGS console.log found" >> $GITHUB_ENV
           else
             echo "✅ No new console.log statements" >> $GITHUB_STEP_SUMMARY
-            echo "CONSOLE_STATUS=✅ No console.log" >> $GITHUB_ENV
+            echo "CONSOLE_STATUS=No console.log" >> $GITHUB_ENV
           fi
           
           # Check for TODO/FIXME comments
           TODO_COUNT=$(git diff origin/${{ github.base_ref }}...HEAD -- '*.ts' '*.tsx' '*.js' '*.jsx' | grep -c "^\+.*\(TODO\|FIXME\)" || echo "0")
           if [ "$TODO_COUNT" -gt "0" ]; then
             echo "ℹ️ Found $TODO_COUNT new TODO/FIXME comments" >> $GITHUB_STEP_SUMMARY
-            echo "TODO_STATUS=ℹ️ $TODO_COUNT TODO/FIXME" >> $GITHUB_ENV
+            echo "TODO_STATUS=$TODO_COUNT TODO/FIXME" >> $GITHUB_ENV
           else
             echo "✅ No new TODO/FIXME comments" >> $GITHUB_STEP_SUMMARY
-            echo "TODO_STATUS=✅ No TODO/FIXME" >> $GITHUB_ENV
+            echo "TODO_STATUS=No TODO/FIXME" >> $GITHUB_ENV
           fi
 
       - name: Analyze code changes
@@ -97,10 +97,10 @@ jobs:
           
           if [ "${{ env.CHANGED_TS }}" -gt "0" ] && [ "${{ env.CHANGED_TEST }}" -eq "0" ]; then
             echo "⚠️ Code changes detected but no test files were modified" >> $GITHUB_STEP_SUMMARY
-            echo "TEST_WARNING=⚠️ Consider adding tests" >> $GITHUB_ENV
+            echo "TEST_WARNING=Consider adding tests" >> $GITHUB_ENV
           else
             echo "✅ Test files were updated with code changes" >> $GITHUB_STEP_SUMMARY
-            echo "TEST_WARNING=✅ Tests included" >> $GITHUB_ENV
+            echo "TEST_WARNING=Tests included" >> $GITHUB_ENV
           fi
 
       - name: Post review comment
@@ -111,10 +111,10 @@ jobs:
             const comment = `## 🤖 Automated Code Review
             
             **Status Summary:**
-            - TypeScript: ${{ env.TS_STATUS }}
-            - Console Logs: ${{ env.CONSOLE_STATUS }}
-            - TODO Comments: ${{ env.TODO_STATUS }}
-            - Test Coverage: ${{ env.TEST_WARNING }}
+            - TypeScript: ✅ ${{ env.TS_STATUS }}
+            - Console Logs: ✅ ${{ env.CONSOLE_STATUS }}
+            - TODO Comments: ✅ ${{ env.TODO_STATUS }}
+            - Test Coverage: ✅ ${{ env.TEST_WARNING }}
             
             **Change Summary:**
             - 📝 TypeScript/React files: ${{ env.CHANGED_TS }}

@@ -173,7 +173,7 @@ const AppNavigator: React.FC = () => {
 
   // Linking configuration for web URL routing
   const linking = {
-    prefixes: ['http://localhost:8081', 'https://travalpass.com'],
+    prefixes: ['https://travalpass.com'],
     config: {
       screens: {
         Landing: '',  // Root URL shows landing page
