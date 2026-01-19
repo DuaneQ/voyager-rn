@@ -122,6 +122,12 @@ const Stub = {
   Alert: {
     alert: jest.fn(() => {}),
   },
+  BackHandler: {
+    addEventListener: jest.fn(() => ({
+      remove: jest.fn(),
+    })),
+    removeEventListener: jest.fn(),
+  },
 };
 
 // Export the stub as both CommonJS and ES default/named exports

@@ -4,6 +4,28 @@
 
 ## ⚠️ CRITICAL TESTING RULES - READ FIRST ⚠️
 
+### 🚨 ALWAYS VERIFY CODE BEFORE CLAIMING COMPLETION 🚨
+
+**ABSOLUTE RULE**: You MUST verify your code compiles and passes tests BEFORE telling the user you're done.
+
+**Required verification steps for EVERY code change**:
+1. ✅ **TypeScript compilation**: Run `npx tsc --noEmit` to verify no type errors
+2. ✅ **Unit tests**: Run `npm test` to ensure all tests pass
+3. ✅ **Syntax check**: Verify the code actually runs without syntax errors
+4. ✅ **Review changes**: Double-check your edits for logical errors
+
+**NEVER claim completion without running these checks. The user should not discover compilation or test failures - you should.**
+
+**This applies to**:
+- All new features
+- All bug fixes
+- All refactoring
+- All code modifications
+
+**If you violate this rule, you waste the user's time and erode trust. NO EXCEPTIONS.**
+
+---
+
 ### 🚨 EAS BUILD WARNING - COSTS MONEY 🚨
 
 **ABSOLUTE RULE**: EAS Builds count against billing quota. **Test thoroughly BEFORE building.**

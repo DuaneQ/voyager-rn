@@ -50,7 +50,10 @@
         "CAMERA"
       ]
     },
-    "web": {},
+    "web": {
+      "bundler": "metro",
+      "favicon": "./assets/icon.png"
+    },
     "scheme": "travalpass",
     "platforms": [
       "ios",
