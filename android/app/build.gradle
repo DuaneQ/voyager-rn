@@ -92,7 +92,7 @@ android {
         applicationId 'com.travalpass.app'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
+        versionCode 4
         versionName "1.0.0"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
@@ -105,10 +105,15 @@ android {
             keyPassword 'android'
         }
         release {
-            storeFile file('travalpass-local-release.keystore')
-            storePassword 'android'
-            keyAlias 'travalpass'
-            keyPassword 'android'
+            // Production keystore downloaded from EAS
+            def keystorePropertiesFile = rootProject.file("../credentials.json")
+            if (keystorePropertiesFile.exists()) {
+                def json = new groovy.json.JsonSlurper().parse(keystorePropertiesFile)
+                storeFile rootProject.file("../${json.android.keystore.keystorePath}")
+                storePassword json.android.keystore.keystorePassword
+                keyAlias json.android.keystore.keyAlias
+                keyPassword json.android.keystore.keyPassword
+            }
         }
     }
     buildTypes {
@@ -116,6 +121,7 @@ android {
             signingConfig signingConfigs.debug
         }
         release {
+            // Use production keystore for release builds
             signingConfig signingConfigs.release
             def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'
             shrinkResources enableShrinkResources.toBoolean()

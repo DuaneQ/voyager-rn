@@ -20,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Video as VideoType } from '../../types/Video';
 import * as firebaseConfig from '../../config/firebaseConfig';
 import { videoPlaybackManager } from '../../services/video/VideoPlaybackManager';
+import { AndroidVideoPlayerRNV } from './AndroidVideoPlayerRNV'; // TEST 8: react-native-video migration
 
 const { width, height } = Dimensions.get('window');
 
@@ -57,6 +58,10 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
   const isUnmountedRef = useRef(false);
   const isUnloadedRef = useRef(false);
 
+  // Handler for when video loads (used by AndroidVideoPlayerRNV)
+  const handleVideoLoad = () => {
+    // Video loaded successfully
+  };
   const resolvedAuth = typeof (firebaseConfig as any).getAuthInstance === 'function'
     ? (firebaseConfig as any).getAuthInstance()
     : (firebaseConfig as any).auth;
@@ -271,6 +276,15 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
    * Toggle play/pause
    */
   const handlePlayPause = async () => {
+    // Android: Uses isPaused prop - just toggle userPaused state
+    if (Platform.OS === 'android') {
+      const newPausedState = !userPaused;
+      setUserPaused(newPausedState);
+      setIsPlaying(!newPausedState);
+      return;
+    }
+
+    // iOS: Uses expo-av ref directly
     const ref = videoRef.current;
     if (!ref) return;
 
@@ -449,19 +463,31 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
           activeOpacity={1}
           onPress={handlePlayPause}
         >
-          <Video
-            ref={videoRef}
-            source={{ uri: video.videoUrl }}
-            style={styles.video}
-            resizeMode={ResizeMode.CONTAIN}
-            shouldPlay={false}
-            isLooping
-            isMuted={isMuted}
-            onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
-            onError={handleError}
-            usePoster
-            posterSource={{ uri: video.thumbnailUrl || '' }}
-          />
+          {Platform.OS === 'android' ? (
+            <AndroidVideoPlayerRNV
+              video={video}
+              isActive={isActive}
+              isMuted={isMuted}
+              isPaused={userPaused}
+              onLoad={handleVideoLoad}
+              onError={handleError}
+              onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
+            />
+          ) : (
+            <Video
+              ref={videoRef}
+              source={{ uri: video.videoUrl }}
+              style={styles.video}
+              resizeMode={ResizeMode.CONTAIN}
+              shouldPlay={false}
+              isLooping
+              isMuted={isMuted}
+              onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
+              onError={handleError}
+              usePoster
+              posterSource={{ uri: video.thumbnailUrl || '' }}
+            />
+          )}
 
           {/* REMOVED loading indicator - causes play button flash during scroll */}
 

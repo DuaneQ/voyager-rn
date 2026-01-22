@@ -8,30 +8,30 @@
 
 /* Begin PBXBuildFile section */
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
-		2FC43DEC00EEFA18559EA1C3 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDCDEC8E6F2AC3ED05260828 /* ExpoModulesProvider.swift */; };
+		1B1C07AA6A8272FE4D84B49F /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 8D93C9F8A00939B5462842F8 /* PrivacyInfo.xcprivacy */; };
+		355450E2B4CD4B0DB3ED0F4D /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = AB5C5BB720F74C45B52023F2 /* GoogleService-Info.plist */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		464C0152B5B17699263D9019 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 817FDCE7AE8FA047C6164B8D /* PrivacyInfo.xcprivacy */; };
-		5B75619ADC26317ACAC8FCE5 /* libPods-TravalPass.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 68F91EC3CA411FD9190A5A5F /* libPods-TravalPass.a */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
+		CC216DE39C58CE0B01EBC1F2 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0756E7DFF20C2F6504862823 /* ExpoModulesProvider.swift */; };
+		DDD9431A7B5CD8E9950F0FAF /* libPods-TravalPass.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A84FAF4187DB4AFD77BF5536 /* libPods-TravalPass.a */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
-		FC53FC79809C42509548BD9F /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = AC53555A13FE45D8962F038E /* GoogleService-Info.plist */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		0756E7DFF20C2F6504862823 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-TravalPass/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
+		10F0C95010B06EEBED3F15A4 /* Pods-TravalPass.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-TravalPass.release.xcconfig"; path = "Target Support Files/Pods-TravalPass/Pods-TravalPass.release.xcconfig"; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* TravalPass.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TravalPass.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = TravalPass/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = TravalPass/Info.plist; sourceTree = "<group>"; };
-		1CFFA1B7ECAF5379B7932826 /* Pods-TravalPass.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-TravalPass.release.xcconfig"; path = "Target Support Files/Pods-TravalPass/Pods-TravalPass.release.xcconfig"; sourceTree = "<group>"; };
-		2E7A2C3EE4A8092A54A0F53A /* Pods-TravalPass.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-TravalPass.debug.xcconfig"; path = "Target Support Files/Pods-TravalPass/Pods-TravalPass.debug.xcconfig"; sourceTree = "<group>"; };
-		68F91EC3CA411FD9190A5A5F /* libPods-TravalPass.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-TravalPass.a"; sourceTree = BUILT_PRODUCTS_DIR; };
-		817FDCE7AE8FA047C6164B8D /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = TravalPass/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		8D93C9F8A00939B5462842F8 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = TravalPass/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		A84FAF4187DB4AFD77BF5536 /* libPods-TravalPass.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-TravalPass.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = TravalPass/SplashScreen.storyboard; sourceTree = "<group>"; };
-		AC53555A13FE45D8962F038E /* GoogleService-Info.plist */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.xml; name = "GoogleService-Info.plist"; path = "TravalPass/GoogleService-Info.plist"; sourceTree = "<group>"; };
+		AB5C5BB720F74C45B52023F2 /* GoogleService-Info.plist */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.xml; name = "GoogleService-Info.plist"; path = "TravalPass/GoogleService-Info.plist"; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
+		E9D84EB0867F2A00510C2A01 /* Pods-TravalPass.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-TravalPass.debug.xcconfig"; path = "Target Support Files/Pods-TravalPass/Pods-TravalPass.debug.xcconfig"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = TravalPass/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* TravalPass-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "TravalPass-Bridging-Header.h"; path = "TravalPass/TravalPass-Bridging-Header.h"; sourceTree = "<group>"; };
-		FDCDEC8E6F2AC3ED05260828 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-TravalPass/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -39,13 +39,21 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				5B75619ADC26317ACAC8FCE5 /* libPods-TravalPass.a in Frameworks */,
+				DDD9431A7B5CD8E9950F0FAF /* libPods-TravalPass.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		0C35F46C14B2701C892CFF39 /* TravalPass */ = {
+			isa = PBXGroup;
+			children = (
+				0756E7DFF20C2F6504862823 /* ExpoModulesProvider.swift */,
+			);
+			name = TravalPass;
+			sourceTree = "<group>";
+		};
 		13B07FAE1A68108700A75B9A /* TravalPass */ = {
 			isa = PBXGroup;
 			children = (
@@ -55,8 +63,8 @@
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				AC53555A13FE45D8962F038E /* GoogleService-Info.plist */,
-				817FDCE7AE8FA047C6164B8D /* PrivacyInfo.xcprivacy */,
+				AB5C5BB720F74C45B52023F2 /* GoogleService-Info.plist */,
+				8D93C9F8A00939B5462842F8 /* PrivacyInfo.xcprivacy */,
 			);
 			name = TravalPass;
 			sourceTree = "<group>";
@@ -65,25 +73,9 @@
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				68F91EC3CA411FD9190A5A5F /* libPods-TravalPass.a */,
+				A84FAF4187DB4AFD77BF5536 /* libPods-TravalPass.a */,
 			);
 			name = Frameworks;
-			sourceTree = "<group>";
-		};
-		39359B41219694BFA1BAE3C9 /* ExpoModulesProviders */ = {
-			isa = PBXGroup;
-			children = (
-				51ADA136AB8847597E102C04 /* TravalPass */,
-			);
-			name = ExpoModulesProviders;
-			sourceTree = "<group>";
-		};
-		51ADA136AB8847597E102C04 /* TravalPass */ = {
-			isa = PBXGroup;
-			children = (
-				FDCDEC8E6F2AC3ED05260828 /* ExpoModulesProvider.swift */,
-			);
-			name = TravalPass;
 			sourceTree = "<group>";
 		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
@@ -100,8 +92,8 @@
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				A089A7851ACCCAEA0A6275F7 /* Pods */,
-				39359B41219694BFA1BAE3C9 /* ExpoModulesProviders */,
+				C3185FFAF0CE00FB183E5A54 /* Pods */,
+				E9A31CB0A165C3CC00CB181D /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -116,16 +108,6 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		A089A7851ACCCAEA0A6275F7 /* Pods */ = {
-			isa = PBXGroup;
-			children = (
-				2E7A2C3EE4A8092A54A0F53A /* Pods-TravalPass.debug.xcconfig */,
-				1CFFA1B7ECAF5379B7932826 /* Pods-TravalPass.release.xcconfig */,
-			);
-			name = Pods;
-			path = Pods;
-			sourceTree = "<group>";
-		};
 		BB2F792B24A3F905000567C9 /* Supporting */ = {
 			isa = PBXGroup;
 			children = (
@@ -133,6 +115,24 @@
 			);
 			name = Supporting;
 			path = TravalPass/Supporting;
+			sourceTree = "<group>";
+		};
+		C3185FFAF0CE00FB183E5A54 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				E9D84EB0867F2A00510C2A01 /* Pods-TravalPass.debug.xcconfig */,
+				10F0C95010B06EEBED3F15A4 /* Pods-TravalPass.release.xcconfig */,
+			);
+			name = Pods;
+			path = Pods;
+			sourceTree = "<group>";
+		};
+		E9A31CB0A165C3CC00CB181D /* ExpoModulesProviders */ = {
+			isa = PBXGroup;
+			children = (
+				0C35F46C14B2701C892CFF39 /* TravalPass */,
+			);
+			name = ExpoModulesProviders;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -143,13 +143,13 @@
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "TravalPass" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				F39F8DFDE806F4C608FCE4FA /* [Expo] Configure project */,
+				F3230AE5F3B850A48D45688C /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				DA2554B24CDEEC86AD416681 /* [CP] Embed Pods Frameworks */,
+				D17471BCBD8A6A796413EDD3 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -199,8 +199,8 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				FC53FC79809C42509548BD9F /* GoogleService-Info.plist in Resources */,
-				464C0152B5B17699263D9019 /* PrivacyInfo.xcprivacy in Resources */,
+				355450E2B4CD4B0DB3ED0F4D /* GoogleService-Info.plist in Resources */,
+				1B1C07AA6A8272FE4D84B49F /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -290,7 +290,7 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-TravalPass/Pods-TravalPass-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		DA2554B24CDEEC86AD416681 /* [CP] Embed Pods Frameworks */ = {
+		D17471BCBD8A6A796413EDD3 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -312,7 +312,7 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-TravalPass/Pods-TravalPass-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		F39F8DFDE806F4C608FCE4FA /* [Expo] Configure project */ = {
+		F3230AE5F3B850A48D45688C /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
@@ -344,7 +344,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
-				2FC43DEC00EEFA18559EA1C3 /* ExpoModulesProvider.swift in Sources */,
+				CC216DE39C58CE0B01EBC1F2 /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -353,7 +353,7 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 2E7A2C3EE4A8092A54A0F53A /* Pods-TravalPass.debug.xcconfig */;
+			baseConfigurationReference = E9D84EB0867F2A00510C2A01 /* Pods-TravalPass.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -389,7 +389,7 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 1CFFA1B7ECAF5379B7932826 /* Pods-TravalPass.release.xcconfig */;
+			baseConfigurationReference = 10F0C95010B06EEBED3F15A4 /* Pods-TravalPass.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;

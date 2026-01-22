@@ -18,7 +18,9 @@
       "buildNumber": "15",
       "googleServicesFile": "./GoogleService-Info.plist",
       "entitlements": {
-        "com.apple.developer.applesignin": ["Default"]
+        "com.apple.developer.applesignin": [
+          "Default"
+        ]
       },
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to upload profile and gallery photos.",
@@ -41,7 +43,7 @@
     },
     "android": {
       "package": "com.travalpass.app",
-      "versionCode": 4,
+      "versionCode": 5,
       "googleServicesFile": "./google-services.json",
       "icon": "./AppIcons/playstore.png",
       "permissions": [
@@ -61,7 +63,8 @@
       "web"
     ],
     "plugins": [
-      "./plugins/withGooglePlacesAndroid"
+      "./plugins/withGooglePlacesAndroid",
+      "expo-video"
     ],
     "extra": {
       "eas": {
