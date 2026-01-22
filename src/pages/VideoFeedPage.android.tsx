@@ -24,7 +24,6 @@ import {
   Text,
   ActivityIndicator,
   SafeAreaView,
-  Platform,
 } from 'react-native';
 import { RecyclerListView, DataProvider, LayoutProvider } from 'recyclerlistview';
 import { Audio } from 'expo-av';
@@ -38,6 +37,8 @@ import { useVideoFeed, VideoFilter } from '../hooks/video/useVideoFeed';
 import { useVideoUpload } from '../hooks/video/useVideoUpload';
 import { shareVideo } from '../utils/videoSharing';
 import { videoPlaybackManager } from '../services/video/VideoPlaybackManager';
+import { doc, getDocFromServer } from 'firebase/firestore';
+import { db } from '../config/firebaseConfig';
 
 const { width, height } = Dimensions.get('window');
 
@@ -56,12 +57,12 @@ const VideoFeedPage: React.FC = () => {
     hasMoreVideos,
     currentFilter,
     goToNextVideo,
-    goToPreviousVideo,
     setCurrentVideoIndex,
     handleLike,
     trackVideoView,
     setCurrentFilter,
     refreshVideos,
+    updateVideo,
   } = useVideoFeed();
 
   const { uploadState, selectVideo, uploadVideo } = useVideoUpload();
@@ -180,6 +181,27 @@ const VideoFeedPage: React.FC = () => {
       setCommentsModalVisible(true);
     }
   }, [videos]);
+
+  /**
+   * Handle comment added - refresh video data to update comment count
+   */
+  const handleCommentAdded = useCallback(async () => {
+    if (!selectedVideoForComments) return;
+    
+    try {
+      // Fetch fresh video data from server
+      const videoDoc = await getDocFromServer(doc(db, 'videos', selectedVideoForComments.id));
+      if (videoDoc.exists()) {
+        const freshVideoData = { id: videoDoc.id, ...videoDoc.data() } as typeof videos[0];
+        // Update the video in the feed's videos array
+        updateVideo(selectedVideoForComments.id, freshVideoData);
+        // Update selectedVideoForComments to show correct count in modal
+        setSelectedVideoForComments(freshVideoData);
+      }
+    } catch (error) {
+      console.error('[VideoFeedPage] Error refreshing video after comment:', error);
+    }
+  }, [selectedVideoForComments, updateVideo]);
 
   /**
    * Handle report button press
@@ -487,7 +509,7 @@ const VideoFeedPage: React.FC = () => {
             setSelectedVideoForComments(null);
           }}
           video={selectedVideoForComments}
-          onCommentAdded={() => {}}
+          onCommentAdded={handleCommentAdded}
         />
       )}
 

@@ -46,6 +46,7 @@
       "versionCode": 5,
       "googleServicesFile": "./google-services.json",
       "icon": "./AppIcons/playstore.png",
+      "softwareKeyboardLayoutMode": "resize",
       "permissions": [
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",

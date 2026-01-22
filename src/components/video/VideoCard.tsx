@@ -187,6 +187,17 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
   }, [isActive, video.id]);
   
   /**
+   * On Android, derive isPlaying from isActive and userPaused.
+   * AndroidVideoPlayerRNV auto-plays based on isActive prop, bypassing videoRef,
+   * so we must sync isPlaying state here to ensure view tracking works.
+   */
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      setIsPlaying(isActive && !userPaused);
+    }
+  }, [isActive, userPaused]);
+
+  /**
    * Update mute state when isMuted prop changes.
    */
   useEffect(() => {

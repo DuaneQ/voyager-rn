@@ -27,6 +27,8 @@ import { useVideoFeed, VideoFilter } from '../hooks/video/useVideoFeed';
 import { useVideoUpload } from '../hooks/video/useVideoUpload';
 import { shareVideo } from '../utils/videoSharing';
 import { videoPlaybackManager } from '../services/video/VideoPlaybackManager';
+import { doc, getDocFromServer } from 'firebase/firestore';
+import { db } from '../config/firebaseConfig';
 
 const { height } = Dimensions.get('window');
 
@@ -46,6 +48,7 @@ const VideoFeedPage: React.FC = () => {
     trackVideoView,
     setCurrentFilter,
     refreshVideos,
+    updateVideo,
   } = useVideoFeed();
 
   const { uploadState, selectVideo, uploadVideo } = useVideoUpload();
@@ -201,12 +204,25 @@ const VideoFeedPage: React.FC = () => {
   }, [videos]);
 
   /**
-   * Handle comment added - no need to refresh, optimistic update handles it
+   * Handle comment added - refresh video data to update comment count
    */
-  const handleCommentAdded = useCallback(() => {
-    // Optimistic update in VideoCommentsModal already updated local state
-    // No need to refresh entire feed and cause modal to close/reopen
-  }, []);
+  const handleCommentAdded = useCallback(async () => {
+    if (!selectedVideoForComments) return;
+    
+    try {
+      // Fetch fresh video data from server
+      const videoDoc = await getDocFromServer(doc(db, 'videos', selectedVideoForComments.id));
+      if (videoDoc.exists()) {
+        const freshVideoData = { id: videoDoc.id, ...videoDoc.data() } as typeof videos[0];
+        // Update the video in the feed's videos array
+        updateVideo(selectedVideoForComments.id, freshVideoData);
+        // Update selectedVideoForComments to show correct count in modal
+        setSelectedVideoForComments(freshVideoData);
+      }
+    } catch (error) {
+      console.error('[VideoFeedPage] Error refreshing video after comment:', error);
+    }
+  }, [selectedVideoForComments, updateVideo]);
 
   /**
    * Handle report button press

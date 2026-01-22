@@ -10,7 +10,7 @@ import { Video } from '../../../types/Video';
 import { Timestamp } from 'firebase/firestore';
 import * as firestore from 'firebase/firestore';
 import { getAuthInstance } from '../../../config/firebaseConfig';
-import { Alert } from 'react-native';
+import { Alert, Image } from 'react-native';
 
 // Helper to create mock Timestamp with toMillis()
 const createMockTimestamp = (seconds: number): Timestamp => ({
@@ -44,6 +44,7 @@ jest.mock('../../../config/firebaseConfig', () => ({
 jest.mock('firebase/firestore', () => ({
   doc: jest.fn(),
   getDoc: jest.fn(),
+  getDocFromServer: jest.fn(),
   updateDoc: jest.fn(),
   arrayUnion: jest.fn((value) => ({ _type: 'arrayUnion', value })),
   Timestamp: {
@@ -56,6 +57,7 @@ jest.mock('firebase/firestore', () => ({
 jest.spyOn(Alert, 'alert');
 
 const mockGetDoc = firestore.getDoc as jest.MockedFunction<typeof firestore.getDoc>;
+const mockGetDocFromServer = firestore.getDocFromServer as jest.MockedFunction<typeof firestore.getDocFromServer>;
 const mockUpdateDoc = firestore.updateDoc as jest.MockedFunction<typeof firestore.updateDoc>;
 
 describe('VideoCommentsModal', () => {
@@ -95,12 +97,21 @@ describe('VideoCommentsModal', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    // Mock successful user profile fetches
+    // Mock getDocFromServer for loading video with comments
+    mockGetDocFromServer.mockResolvedValue({
+      exists: () => true,
+      data: () => ({
+        ...mockVideo,
+        comments: mockVideo.comments,
+      }),
+    } as any);
+
+    // Mock getDoc for user profile fetches
     mockGetDoc.mockResolvedValue({
       exists: () => true,
       data: () => ({
-        displayName: 'Test User',
-        photoURL: 'https://example.com/avatar.jpg',
+        username: 'Test User',
+        profilePhotoURL: 'https://example.com/avatar.jpg',
       }),
     } as any);
   });
@@ -166,7 +177,7 @@ describe('VideoCommentsModal', () => {
       });
     });
 
-    it('should show comment count in header', () => {
+    it('should show comment count in header', async () => {
       const { getByText } = render(
         <VideoCommentsModal
           visible={true}
@@ -176,7 +187,9 @@ describe('VideoCommentsModal', () => {
         />
       );
 
-      expect(getByText('Comments (2)')).toBeTruthy();
+      await waitFor(() => {
+        expect(getByText('Comments (2)')).toBeTruthy();
+      });
     });
 
     it('should format timestamps correctly', async () => {
@@ -270,7 +283,7 @@ describe('VideoCommentsModal', () => {
     it('should handle submission errors', async () => {
       mockUpdateDoc.mockRejectedValue(new Error('Network error'));
 
-      const { getByPlaceholderText, getByTestId } = render(
+      const { getByPlaceholderText, getByTestId, getByText } = render(
         <VideoCommentsModal
           visible={true}
           video={mockVideo}
@@ -286,10 +299,8 @@ describe('VideoCommentsModal', () => {
       fireEvent.press(submitButton);
 
       await waitFor(() => {
-        expect(Alert.alert).toHaveBeenCalledWith(
-          'Error',
-          'Failed to add comment. Please try again.'
-        );
+        // Component now shows error via setError instead of Alert
+        expect(getByText('Failed to add comment. Please try again.')).toBeTruthy();
       });
     });
   });
@@ -414,7 +425,7 @@ describe('VideoCommentsModal', () => {
     });
 
     it('should display user avatars when available', async () => {
-      const { getAllByTestId } = render(
+      const { UNSAFE_getAllByType } = render(
         <VideoCommentsModal
           visible={true}
           video={mockVideo}
@@ -424,26 +435,34 @@ describe('VideoCommentsModal', () => {
       );
 
       await waitFor(() => {
-        // Avatar images should be rendered (or default icon)
-        const avatars = getAllByTestId('person');
-        expect(avatars.length).toBeGreaterThan(0);
+        // Avatar images should be rendered
+        const images = UNSAFE_getAllByType(Image);
+        expect(images.length).toBeGreaterThan(0);
       });
     });
   });
 
   describe('Time Formatting', () => {
     it('should format recent comments as "Just now"', async () => {
+      const recentComments = [
+        {
+          id: 'comment-1',
+          userId: 'user-1',
+          text: 'Recent comment',
+          createdAt: createMockTimestamp(Date.now() / 1000 - 30), // 30 seconds ago
+        },
+      ];
+
       const recentVideo: Video = {
         ...mockVideo,
-        comments: [
-          {
-            id: 'comment-1',
-            userId: 'user-1',
-            text: 'Recent comment',
-            createdAt: createMockTimestamp(Date.now() / 1000 - 30), // 30 seconds ago
-          },
-        ],
+        comments: recentComments,
       };
+
+      // Override mock for this test
+      mockGetDocFromServer.mockResolvedValueOnce({
+        exists: () => true,
+        data: () => ({ ...recentVideo, comments: recentComments }),
+      } as any);
 
       const { getByText } = render(
         <VideoCommentsModal
@@ -460,17 +479,25 @@ describe('VideoCommentsModal', () => {
     });
 
     it('should format minutes ago correctly', async () => {
+      const minutesComments = [
+        {
+          id: 'comment-1',
+          userId: 'user-1',
+          text: 'Comment from 5 minutes ago',
+          createdAt: createMockTimestamp(Date.now() / 1000 - 300), // 5 minutes ago
+        },
+      ];
+
       const minutesVideo: Video = {
         ...mockVideo,
-        comments: [
-          {
-            id: 'comment-1',
-            userId: 'user-1',
-            text: 'Comment from 5 minutes ago',
-            createdAt: createMockTimestamp(Date.now() / 1000 - 300), // 5 minutes ago
-          },
-        ],
+        comments: minutesComments,
       };
+
+      // Override mock for this test
+      mockGetDocFromServer.mockResolvedValueOnce({
+        exists: () => true,
+        data: () => ({ ...minutesVideo, comments: minutesComments }),
+      } as any);
 
       const { getByText } = render(
         <VideoCommentsModal
@@ -487,17 +514,25 @@ describe('VideoCommentsModal', () => {
     });
 
     it('should format hours ago correctly', async () => {
+      const hoursComments = [
+        {
+          id: 'comment-1',
+          userId: 'user-1',
+          text: 'Comment from 2 hours ago',
+          createdAt: createMockTimestamp(Date.now() / 1000 - 7200), // 2 hours ago
+        },
+      ];
+
       const hoursVideo: Video = {
         ...mockVideo,
-        comments: [
-          {
-            id: 'comment-1',
-            userId: 'user-1',
-            text: 'Comment from 2 hours ago',
-            createdAt: createMockTimestamp(Date.now() / 1000 - 7200), // 2 hours ago
-          },
-        ],
+        comments: hoursComments,
       };
+
+      // Override mock for this test
+      mockGetDocFromServer.mockResolvedValueOnce({
+        exists: () => true,
+        data: () => ({ ...hoursVideo, comments: hoursComments }),
+      } as any);
 
       const { getByText } = render(
         <VideoCommentsModal
@@ -514,17 +549,25 @@ describe('VideoCommentsModal', () => {
     });
 
     it('should format days ago correctly', async () => {
+      const daysComments = [
+        {
+          id: 'comment-1',
+          userId: 'user-1',
+          text: 'Comment from 2 days ago',
+          createdAt: createMockTimestamp(Date.now() / 1000 - 172800), // 2 days ago
+        },
+      ];
+
       const daysVideo: Video = {
         ...mockVideo,
-        comments: [
-          {
-            id: 'comment-1',
-            userId: 'user-1',
-            text: 'Comment from 2 days ago',
-            createdAt: createMockTimestamp(Date.now() / 1000 - 172800), // 2 days ago
-          },
-        ],
+        comments: daysComments,
       };
+
+      // Override mock for this test
+      mockGetDocFromServer.mockResolvedValueOnce({
+        exists: () => true,
+        data: () => ({ ...daysVideo, comments: daysComments }),
+      } as any);
 
       const { getByText } = render(
         <VideoCommentsModal
@@ -569,6 +612,15 @@ describe('VideoCommentsModal', () => {
         comments: manyComments,
       };
 
+      // Override mock for this test
+      mockGetDocFromServer.mockResolvedValueOnce({
+        exists: () => true,
+        data: () => ({
+          ...longVideo,
+          comments: manyComments,
+        }),
+      } as any);
+
       const { getByText } = render(
         <VideoCommentsModal
           visible={true}
@@ -605,7 +657,7 @@ describe('VideoCommentsModal', () => {
       // Component shows empty list, doesn't have "No comments yet" message
     });
 
-    it('should render modal properly', () => {
+    it('should render modal properly', async () => {
       const { getByText } = render(
         <VideoCommentsModal
           visible={true}
@@ -615,8 +667,11 @@ describe('VideoCommentsModal', () => {
         />
       );
 
-      // Modal renders properly with comment count
-      expect(getByText('Comments (2)')).toBeTruthy();
+      // Wait for comments to load from mock Firestore
+      await waitFor(() => {
+        // Modal renders properly with comment count
+        expect(getByText('Comments (2)')).toBeTruthy();
+      });
     });
 
     it('should handle comment submissions', async () => {
