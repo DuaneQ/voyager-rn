@@ -21,12 +21,21 @@
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
-import { Video, AVPlaybackStatus } from 'expo-av';
-import type { VideoCardProps } from '../../types/VideoCard';
+import { Video, AVPlaybackStatus, ResizeMode } from 'expo-av';
+import { Video as VideoType } from '../../types/Video';
 
 const CLEANUP_TIMEOUT_MS = 500;
 
-export const AndroidVideoPlayerV2: React.FC<VideoCardProps> = ({
+interface AndroidVideoPlayerProps {
+  video: VideoType;
+  isActive: boolean;
+  isMuted: boolean;
+  onLoad?: () => void;
+  onError?: (error: string) => void;
+  onPlaybackStatusUpdate?: (status: AVPlaybackStatus) => void;
+}
+
+export const AndroidVideoPlayerV2: React.FC<AndroidVideoPlayerProps> = ({
   video,
   isActive,
   isMuted,
@@ -174,7 +183,7 @@ export const AndroidVideoPlayerV2: React.FC<VideoCardProps> = ({
         ref={videoRef}
         source={{ uri: video.videoUrl }}
         style={styles.video}
-        resizeMode="cover"
+        resizeMode={ResizeMode.COVER}
         isLooping={false}
         shouldPlay={false} // Controlled by auto-play effect
         isMuted={isMuted}
