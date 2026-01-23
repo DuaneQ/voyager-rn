@@ -123,19 +123,20 @@ export const AIItineraryListTab: React.FC = () => {
             <Text style={styles.iosPickerArrow}>▼</Text>
           </TouchableOpacity>
         ) : (
-          // Android: Use standard Picker
+          // Android: Use standard Picker with mode="dialog" for better visibility
           <View style={styles.pickerWrapper}>
             <Picker
               selectedValue={selectedItineraryId}
               onValueChange={(value) => setSelectedItineraryId(value)}
               style={styles.picker}
+              dropdownIconColor="#000000"
+              mode="dialog"
             >
               {itineraries.map((itinerary) => (
                 <Picker.Item
                   key={itinerary.id}
                   label={`${itinerary.destination} - ${new Date(itinerary.startDate).toLocaleDateString()}`}
                   value={itinerary.id}
-                  color="#000000"
                 />
               ))}
             </Picker>

@@ -17,13 +17,17 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
-  Alert,
   SafeAreaView,
+  Dimensions,
+  Keyboard,
 } from 'react-native';
+
+const { height: screenHeight } = Dimensions.get('window');
 import { Ionicons } from '@expo/vector-icons';
 import {
   doc,
   getDoc,
+  getDocFromServer,
   updateDoc,
   arrayUnion,
   Timestamp,
@@ -54,9 +58,27 @@ export const VideoCommentsModal: React.FC<VideoCommentsModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   const currentUser = getAuthInstance()?.currentUser;
   const maxCommentLength = 300;
+
+  // Track keyboard height on Android
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+
+    const showSub = Keyboard.addListener('keyboardDidShow', (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   // Load comments when modal opens
   // Only reload when modal becomes visible or video ID changes
@@ -72,9 +94,23 @@ export const VideoCommentsModal: React.FC<VideoCommentsModalProps> = ({
     setError(null);
 
     try {
+      // Fetch fresh video data from Firestore to get latest comments
+      const videoRef = doc(db, 'videos', video.id);
+      // Use getDocFromServer to bypass Firestore cache and get fresh data
+      const videoDoc = await getDocFromServer(videoRef);
+      
+      if (!videoDoc.exists()) {
+        setError('Video not found');
+        setLoading(false);
+        return;
+      }
+      
+      const videoData = videoDoc.data();
+      const freshComments = videoData?.comments || [];
+
       // Enrich comments with user data
       const commentsWithUsers: CommentWithUser[] = await Promise.all(
-        (video.comments || []).map(async (comment) => {
+        freshComments.map(async (comment: VideoComment) => {
           try {
             const userDoc = await getDoc(doc(db, 'users', comment.userId));
             if (userDoc.exists()) {
@@ -108,7 +144,7 @@ export const VideoCommentsModal: React.FC<VideoCommentsModalProps> = ({
 
   const handleSubmitComment = async () => {
     if (!currentUser) {
-      Alert.alert('Error', 'You must be logged in to comment');
+      setError('You must be logged in to comment');
       return;
     }
 
@@ -117,10 +153,7 @@ export const VideoCommentsModal: React.FC<VideoCommentsModalProps> = ({
     }
 
     if (newComment.length > maxCommentLength) {
-      Alert.alert(
-        'Comment Too Long',
-        `Maximum ${maxCommentLength} characters allowed.`
-      );
+      setError(`Maximum ${maxCommentLength} characters allowed.`);
       return;
     }
 
@@ -155,9 +188,9 @@ export const VideoCommentsModal: React.FC<VideoCommentsModalProps> = ({
 
       // Notify parent component
       onCommentAdded?.();
-    } catch (error) {
-      console.error('Error adding comment:', error);
-      Alert.alert('Error', 'Failed to add comment. Please try again.');
+    } catch (error: any) {
+      console.error('[VideoCommentsModal] Error adding comment:', error);
+      setError('Failed to add comment. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -219,11 +252,12 @@ export const VideoCommentsModal: React.FC<VideoCommentsModalProps> = ({
         <KeyboardAvoidingView
           style={styles.keyboardAvoid}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
         >
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>
-            Comments ({video.comments?.length || 0})
+            Comments ({comments.length})
           </Text>
           <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
             <Ionicons name="close" size={24} color="#000" />
@@ -252,13 +286,17 @@ export const VideoCommentsModal: React.FC<VideoCommentsModalProps> = ({
               renderItem={renderComment}
               keyExtractor={(item) => item.id}
               contentContainerStyle={styles.commentsList}
+              keyboardShouldPersistTaps="handled"
             />
           )}
         </View>
 
         {/* Comment Input */}
         {currentUser && (
-          <View style={styles.inputContainer}>
+          <View style={[
+            styles.inputContainer,
+            Platform.OS === 'android' && keyboardHeight > 0 && { paddingBottom: keyboardHeight }
+          ]}>
             <TextInput
               style={styles.input}
               placeholder="Add a comment..."
@@ -305,6 +343,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+    // Add padding at bottom for Android navigation bar
+    paddingBottom: Platform.OS === 'android' ? 60 : 0,
   },
   keyboardAvoid: {
     flex: 1,

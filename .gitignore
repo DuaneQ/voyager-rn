@@ -59,3 +59,7 @@ test-live-auth-flow.sh
 
 # Tools directory (local dev utilities)
 tools/
+
+# EAS credentials (NEVER commit)
+credentials.json
+credentials/

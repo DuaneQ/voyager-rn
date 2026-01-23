@@ -46,6 +46,7 @@ interface UseVideoFeedReturn {
   trackVideoView: (videoId: string) => Promise<void>;
   setCurrentFilter: (filter: VideoFilter) => void;
   refreshVideos: () => Promise<void>;
+  updateVideo: (videoId: string, updatedVideo: Video) => void;
 }
 
 const BATCH_SIZE = 3; // Load 3-5 videos at a time (PWA uses 3)
@@ -473,6 +474,16 @@ export const useVideoFeed = (): UseVideoFeedReturn => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentVideoIndex, videos.length, hasMoreVideos, isLoadingMore]); // Intentionally excluding loadVideos to prevent infinite loop
 
+  /**
+   * Update a single video in the videos array
+   * Used to update comment count, likes, etc. without refreshing entire feed
+   */
+  const updateVideo = useCallback((videoId: string, updatedVideo: Video) => {
+    setVideos((prevVideos) =>
+      prevVideos.map((v) => (v.id === videoId ? updatedVideo : v))
+    );
+  }, []);
+
   return {
     videos,
     currentVideoIndex,
@@ -491,5 +502,6 @@ export const useVideoFeed = (): UseVideoFeedReturn => {
     trackVideoView,
     setCurrentFilter: handleFilterChange,
     refreshVideos,
+    updateVideo,
   };
 };

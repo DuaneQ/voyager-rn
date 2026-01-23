@@ -535,8 +535,8 @@ const ChatThreadScreen: React.FC = () => {
         ) : (
           <KeyboardAvoidingView
             style={styles.flex}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+            behavior="padding"
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 60}
           >
             <FlatList
               ref={flatListRef}

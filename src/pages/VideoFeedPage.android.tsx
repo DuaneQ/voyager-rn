@@ -1,21 +1,31 @@
 /**
- * VideoFeedPage - TikTok-style vertical video feed
- * Mirrors PWA VideoFeedPage functionality with mobile optimizations
+ * VideoFeedPage (Android-Specific) - RecyclerListView Implementation
+ * 
+ * WHY THIS EXISTS:
+ * - FlatList + expo-av causes render loop (50+ re-renders) + MediaCodec leak on Android
+ * - RecyclerListView has better memory management and deterministic recycling
+ * - iOS version (VideoFeedPage.tsx) works fine - unchanged
+ * 
+ * DIFFERENCES FROM iOS VERSION:
+ * 1. RecyclerListView instead of FlatList
+ * 2. DataProvider/LayoutProvider pattern (required by RecyclerListView)
+ * 3. Simplified scrolling logic (no momentum tracking needed)
+ * 4. Uses AndroidVideoPlayer with aggressive MediaCodec cleanup
+ * 
+ * Platform.select() automatically loads this file on Android.
  */
 
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import {
   View,
-  FlatList,
   StyleSheet,
   Dimensions,
   TouchableOpacity,
   Text,
   ActivityIndicator,
-  RefreshControl,
   SafeAreaView,
-  Platform,
 } from 'react-native';
+import { RecyclerListView, DataProvider, LayoutProvider } from 'recyclerlistview';
 import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -30,7 +40,12 @@ import { videoPlaybackManager } from '../services/video/VideoPlaybackManager';
 import { doc, getDocFromServer } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
 
-const { height } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
+
+// Layout types for RecyclerListView
+const ViewTypes = {
+  VIDEO_CARD: 0,
+};
 
 const VideoFeedPage: React.FC = () => {
   const {
@@ -42,7 +57,6 @@ const VideoFeedPage: React.FC = () => {
     hasMoreVideos,
     currentFilter,
     goToNextVideo,
-    goToPreviousVideo,
     setCurrentVideoIndex,
     handleLike,
     trackVideoView,
@@ -53,76 +67,75 @@ const VideoFeedPage: React.FC = () => {
 
   const { uploadState, selectVideo, uploadVideo } = useVideoUpload();
   
-  // Get auth instance for user ID checks
   const resolvedAuth = typeof (require('../config/firebaseConfig') as any).getAuthInstance === 'function'
     ? (require('../config/firebaseConfig') as any).getAuthInstance()
     : (require('../config/firebaseConfig') as any).auth;
+    
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [uploadModalVisible, setUploadModalVisible] = useState(false);
   const [selectedVideoUri, setSelectedVideoUri] = useState<string | null>(null);
-  const [isMuted, setIsMuted] = useState(false); // Videos play with audio by default (TikTok/Reels behavior)
+  const [isMuted, setIsMuted] = useState(false);
   const [commentsModalVisible, setCommentsModalVisible] = useState(false);
   const [selectedVideoForComments, setSelectedVideoForComments] = useState<typeof videos[0] | null>(null);
   const [reportModalVisible, setReportModalVisible] = useState(false);
   const [selectedVideoForReport, setSelectedVideoForReport] = useState<typeof videos[0] | null>(null);
-  const [isScreenFocused, setIsScreenFocused] = useState(true); // Track if screen is focused
-  const flatListRef = useRef<FlatList>(null);
-  const isScrollingRef = useRef(false); // Use ref instead of state to prevent stale closures
-  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastViewabilityChangeRef = useRef<number>(0); // Track last viewability change time
+  const [isScreenFocused, setIsScreenFocused] = useState(true);
+  
+  const recyclerRef = useRef<RecyclerListView<any, any>>(null);
 
-  // Stop video playback when navigating away (fixes Android audio continuing)
+  /**
+   * RecyclerListView Data Provider
+   * Tracks data changes and determines when to re-render
+   */
+  const dataProvider = useMemo(() => {
+    return new DataProvider((r1, r2) => {
+      return r1.id !== r2.id;
+    }).cloneWithRows(videos);
+  }, [videos]);
+
+  /**
+   * RecyclerListView Layout Provider
+   * Defines dimensions for each item type
+   */
+  const layoutProvider = useMemo(() => {
+    return new LayoutProvider(
+      (index) => ViewTypes.VIDEO_CARD,
+      (type, dim) => {
+        dim.width = width;
+        dim.height = height;
+      }
+    );
+  }, []);
+
+  /**
+   * Stop video playback when navigating away
+   */
   useFocusEffect(
     useCallback(() => {
-      // Screen is focused - allow playback
       setIsScreenFocused(true);
-      
       return () => {
-        // Screen is unfocused - stop playback and cleanup manager
         setIsScreenFocused(false);
         videoPlaybackManager.deactivateAll();
-        
-        // Cleanup scroll timeout
-        if (scrollTimeoutRef.current) {
-          clearTimeout(scrollTimeoutRef.current);
-        }
       };
     }, [])
   );
 
-  // Configure audio session for both iOS and Android
-  // iOS: Enable audio even when silent switch is on (critical for physical devices)
-  // Android: Proper ExoPlayer audio focus/route behavior
+  /**
+   * Configure audio session for Android
+   */
   useEffect(() => {
     const setupAudio = async () => {
       try {
-        if (Platform.OS === 'ios') {
-          // iOS: Set audio category to play even when silent switch is on
-          await Audio.setAudioModeAsync({
-            playsInSilentModeIOS: true,  // 🔑 KEY FIX for iOS physical devices!
-            staysActiveInBackground: false,
-            shouldDuckAndroid: false,
-            allowsRecordingIOS: false,
-            interruptionModeIOS: 2, // Duck other audio (standard for video apps)
-          });
-          
-        } else if (Platform.OS === 'android') {
-          await Audio.setAudioModeAsync({
-            allowsRecordingIOS: false,
-            staysActiveInBackground: false,
-            // Avoid referencing interruptionModeAndroid constants directly
-            // (SDK differences). Keep shouldDuckAndroid false to avoid
-            // silent ducking on emulator images.
-            shouldDuckAndroid: false,
-            playThroughEarpieceAndroid: false,
-          });
-          
-        }
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          staysActiveInBackground: false,
+          shouldDuckAndroid: false,
+          playThroughEarpieceAndroid: false,
+        });
       } catch (e) {
         console.warn('⚠️ Audio.setAudioModeAsync failed:', e);
       }
     };
-    
     setupAudio();
   }, []);
 
@@ -147,48 +160,14 @@ const VideoFeedPage: React.FC = () => {
   }, [videos]);
 
   /**
-   * Handle scroll begin - immediately deactivate to prevent audio overlap
-   */
-  const handleScrollBeginDrag = useCallback(() => {
-    
-    // Immediately deactivate current video to stop audio
-    videoPlaybackManager.deactivateAll().catch(err => {
-      console.warn('[VideoFeedPage] Error deactivating on scroll start:', err);
-    });
-  }, []);
-
-  /**
-   * Handle momentum scroll end
-   */
-  const handleMomentumScrollEnd = useCallback(() => {
-    // Clear any pending timeout
-    if (scrollTimeoutRef.current) {
-      clearTimeout(scrollTimeoutRef.current);
-      scrollTimeoutRef.current = null;
-    }
-  }, []);
-
-  /**
-   * Handle scroll end (for non-momentum scrolls)
-   */
-  const handleScrollEndDrag = useCallback(() => {
-    // Just cleanup timeout, rapid change detection handles the rest
-    if (scrollTimeoutRef.current) {
-      clearTimeout(scrollTimeoutRef.current);
-      scrollTimeoutRef.current = null;
-    }
-  }, []);
-
-  /**
    * Handle pull-to-refresh
    */
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
     await refreshVideos();
     setIsRefreshing(false);
-    // Scroll to top after refresh
-    if (flatListRef.current && videos.length > 0) {
-      flatListRef.current.scrollToIndex({ index: 0, animated: false });
+    if (recyclerRef.current && videos.length > 0) {
+      recyclerRef.current.scrollToIndex(0, false);
     }
   }, [refreshVideos, videos.length]);
 
@@ -241,9 +220,8 @@ const VideoFeedPage: React.FC = () => {
   const handleFilterChange = useCallback(
     (filter: VideoFilter) => {
       setCurrentFilter(filter);
-      // Scroll to top on filter change
-      if (flatListRef.current) {
-        flatListRef.current.scrollToOffset({ offset: 0, animated: false });
+      if (recyclerRef.current) {
+        recyclerRef.current.scrollToIndex(0, false);
       }
     },
     [setCurrentFilter]
@@ -255,7 +233,6 @@ const VideoFeedPage: React.FC = () => {
   const handleUploadPress = useCallback(async () => {
     const videoUri = await selectVideo();
     if (videoUri) {
-      // Show modal to configure upload
       setSelectedVideoUri(videoUri);
       setUploadModalVisible(true);
     }
@@ -266,10 +243,8 @@ const VideoFeedPage: React.FC = () => {
    */
   const handleVideoUpload = useCallback(async (videoData: any) => {
     await uploadVideo(videoData);
-    // Close modal
     setUploadModalVisible(false);
     setSelectedVideoUri(null);
-    // Refresh feed after upload
     await refreshVideos();
   }, [uploadVideo, refreshVideos]);
 
@@ -282,83 +257,111 @@ const VideoFeedPage: React.FC = () => {
   }, []);
 
   /**
-   * Handle viewable items changed (for tracking current video)
-   * Only update if not actively scrolling to prevent premature activation
-   * 
-   * CRITICAL FIX: Detect rapid viewability changes as scroll events
-   * If viewability changes faster than 500ms, treat it as scrolling
+   * Track scroll position to determine active video
+   * Uses scroll offset to calculate which video is >50% visible (centered)
    */
-  const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
-    if (viewableItems.length > 0) {
-      const index = viewableItems[0].index;
-      const now = Date.now();
-      const timeSinceLastChange = now - lastViewabilityChangeRef.current;
-      const isScrolling = isScrollingRef.current;
-      
-      // Detect rapid changes (< 300ms) as scroll events - increase threshold
-      const isRapidChange = timeSinceLastChange < 300 && lastViewabilityChangeRef.current > 0;
-      
-      lastViewabilityChangeRef.current = now;
-      
-      // CRITICAL FIX: Only block during RAPID changes, not during scroll flag
-      // This allows index to update when scroll settles (even if flag hasn't cleared yet)
-      if (!isRapidChange && index !== null && index !== currentVideoIndex) {
-        
-        // CRITICAL for Android: Force deactivate ALL videos before activating new one
-        // This prevents audio overlap during rapid scrolling
-        if (Platform.OS === 'android') {
-          videoPlaybackManager.deactivateAll();
-        }
-        
-        setCurrentVideoIndex(index);
-      } else {
-      }
+  const handleScroll = useCallback((rawEvent: any, offsetX: number, offsetY: number) => {
+    // Calculate which video is centered based on scroll offset
+    // Round to nearest index (video is active when >50% visible)
+    const centeredIndex = Math.round(offsetY / height);
+    
+    if (centeredIndex !== currentVideoIndex && centeredIndex >= 0 && centeredIndex < videos.length) {
+      // Deactivate all before activating new (prevent audio overlap)
+      videoPlaybackManager.deactivateAll();
+      setCurrentVideoIndex(centeredIndex);
     }
-  }).current;
-
-  const viewabilityConfig = useRef({
-    // CRITICAL for Android: Higher threshold prevents activation during partial views
-    itemVisiblePercentThreshold: Platform.OS === 'android' ? 95 : 80,
-    // Android needs longer view time to prevent audio overlap during rapid scrolling
-    minimumViewTime: Platform.OS === 'android' ? 200 : 100,
-  }).current;
+  }, [currentVideoIndex, setCurrentVideoIndex, videos.length]);
 
   /**
-   * Get item layout for precise scroll positioning (critical for Android)
+   * Handle visible indices changed (RecyclerListView's viewability tracking)
+   * Now only used for logging/debugging - scroll handler determines active video
    */
-  const getItemLayout = useCallback(
-    (_data: any, index: number) => ({
-      length: height,
-      offset: height * index,
-      index,
-    }),
-    []
-  );
+  const handleVisibleIndicesChanged = useCallback((all: number[], now: number[]) => {
+    // Visibility tracking callback - actual index change handled by onScroll
+  }, []);
 
   /**
-   * Render individual video card
+   * Handle end reached (load more videos)
    */
-  const renderVideoCard = useCallback(
-    ({ item, index }: { item: any; index: number }) => {
+  const handleEndReached = useCallback(() => {
+    if (hasMoreVideos && !isLoadingMore) {
+      goToNextVideo();
+    }
+  }, [hasMoreVideos, isLoadingMore, goToNextVideo]);
+
+  /**
+   * Row renderer for RecyclerListView
+   */
+  const rowRenderer = useCallback(
+    (type: string | number, data: any, index: number) => {
       const currentUserId = resolvedAuth?.currentUser?.uid;
-      const isOwnVideo = item.userId === currentUserId;
+      const isOwnVideo = data.userId === currentUserId;
 
       return (
         <VideoCard
-          video={item}
+          video={data}
           isActive={index === currentVideoIndex && isScreenFocused}
           isMuted={isMuted}
           onMuteToggle={setIsMuted}
-          onLike={() => handleLike(item)}
+          onLike={() => handleLike(data)}
           onComment={() => handleCommentPress(index)}
           onShare={() => handleShare(index)}
           onReport={!isOwnVideo ? () => handleReportPress(index) : undefined}
-          onViewTracked={() => handleViewTracked(item.id)}
+          onViewTracked={() => handleViewTracked(data.id)}
         />
       );
     },
     [currentVideoIndex, isScreenFocused, isMuted, handleLike, handleCommentPress, handleShare, handleReportPress, handleViewTracked, resolvedAuth]
   );
+
+  /**
+   * Render filter tabs
+   */
+  function renderFilterTabs() {
+    return (
+      <View style={styles.filterTabs}>
+        <TouchableOpacity
+          style={[styles.filterTab, currentFilter === 'all' && styles.filterTabActive]}
+          onPress={() => handleFilterChange('all')}
+        >
+          <Text
+            style={[
+              styles.filterTabText,
+              currentFilter === 'all' && styles.filterTabTextActive,
+            ]}
+          >
+            For You
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.filterTab, currentFilter === 'liked' && styles.filterTabActive]}
+          onPress={() => handleFilterChange('liked')}
+        >
+          <Text
+            style={[
+              styles.filterTabText,
+              currentFilter === 'liked' && styles.filterTabTextActive,
+            ]}
+          >
+            Liked
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.filterTab, currentFilter === 'mine' && styles.filterTabActive]}
+          onPress={() => handleFilterChange('mine')}
+        >
+          <Text
+            style={[
+              styles.filterTabText,
+              currentFilter === 'mine' && styles.filterTabTextActive,
+            ]}
+          >
+            My Videos
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   /**
    * Render loading state
@@ -427,55 +430,6 @@ const VideoFeedPage: React.FC = () => {
     );
   }
 
-  /**
-   * Render filter tabs
-   */
-  function renderFilterTabs() {
-    return (
-      <View style={styles.filterTabs}>
-        <TouchableOpacity
-          style={[styles.filterTab, currentFilter === 'all' && styles.filterTabActive]}
-          onPress={() => handleFilterChange('all')}
-        >
-          <Text
-            style={[
-              styles.filterTabText,
-              currentFilter === 'all' && styles.filterTabTextActive,
-            ]}
-          >
-            For You
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.filterTab, currentFilter === 'liked' && styles.filterTabActive]}
-          onPress={() => handleFilterChange('liked')}
-        >
-          <Text
-            style={[
-              styles.filterTabText,
-              currentFilter === 'liked' && styles.filterTabTextActive,
-            ]}
-          >
-            Liked
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.filterTab, currentFilter === 'mine' && styles.filterTabActive]}
-          onPress={() => handleFilterChange('mine')}
-        >
-          <Text
-            style={[
-              styles.filterTabText,
-              currentFilter === 'mine' && styles.filterTabTextActive,
-            ]}
-          >
-            My Videos
-          </Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
   return (
     <SafeAreaView style={styles.container}>
       {/* Header with filters */}
@@ -484,58 +438,45 @@ const VideoFeedPage: React.FC = () => {
         {renderFilterTabs()}
       </View>
 
-      {/* Video feed */}
-      <FlatList
-        ref={flatListRef}
-        data={videos}
-        renderItem={renderVideoCard}
-        keyExtractor={(item) => item.id}
-        showsVerticalScrollIndicator={false}
-        // REMOVED explicit height - was causing Android freeze on scroll
-        // FlatList fills available space via flex:1 in container
-        // CRITICAL for Android: pagingEnabled ensures ONLY one video visible
-        // snapToInterval can show partial views of multiple videos
-        pagingEnabled={Platform.OS === 'android'}
-        snapToInterval={Platform.OS === 'ios' ? height : undefined}
-        snapToAlignment="start"
-        decelerationRate="fast"
-        // Enable clipped subviews to release off-screen native views (Android memory)
-        removeClippedSubviews={Platform.OS === 'android'}
-        // Keep a small window to reduce memory pressure
-        windowSize={3} // Increased to 3 for smoother scroll (preload next)
-        maxToRenderPerBatch={2}
-        initialNumToRender={2}
-        // Scroll event handlers for snap behavior
-        onScrollBeginDrag={handleScrollBeginDrag}
-        onScrollEndDrag={handleScrollEndDrag}
-        onMomentumScrollEnd={handleMomentumScrollEnd}
-        // Viewability tracking
-        onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={viewabilityConfig}
-        getItemLayout={getItemLayout}
-        // Prevent scroll during rapid events
-        scrollEventThrottle={16}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={handleRefresh}
-            tintColor="#fff"
-          />
-        }
-        onEndReached={() => {
-          if (hasMoreVideos && !isLoadingMore) {
-            goToNextVideo();
-          }
-        }}
+      {/* Video feed with RecyclerListView */}
+      <RecyclerListView
+        ref={recyclerRef}
+        dataProvider={dataProvider}
+        layoutProvider={layoutProvider}
+        rowRenderer={rowRenderer}
+        // CRITICAL: Force re-render when props change (isActive updates)
+        forceNonDeterministicRendering={true}
+        // CRITICAL: Track state changes that affect rendering but aren't in data
+        // This forces re-render of visible items when currentVideoIndex changes
+        extendedState={{ currentVideoIndex, isScreenFocused, isMuted }}
+        // CRITICAL: Only preload 1 screen ahead (reduces memory pressure)
+        renderAheadOffset={height}
+        // CRITICAL: Use onScroll to determine active video (more accurate than onVisibleIndicesChanged)
+        onScroll={handleScroll}
+        // Track visible items for logging only
+        onVisibleIndicesChanged={handleVisibleIndicesChanged}
+        // Load more when reaching bottom
+        onEndReached={handleEndReached}
         onEndReachedThreshold={0.5}
-        ListFooterComponent={
-          isLoadingMore ? (
-            <View style={styles.loadingMoreContainer}>
-              <ActivityIndicator size="small" color="#fff" />
-            </View>
-          ) : null
-        }
+        // Scrolling performance
+        scrollViewProps={{
+          pagingEnabled: true,
+          snapToInterval: height, // CRITICAL: Force snap to exact screen height
+          snapToAlignment: 'start',
+          decelerationRate: 'fast',
+          showsVerticalScrollIndicator: false,
+          disableIntervalMomentum: true, // Prevent momentum scroll past snap points
+          onRefresh: isRefreshing ? undefined : handleRefresh,
+          refreshing: isRefreshing,
+        }}
       />
+
+      {/* Loading more indicator */}
+      {isLoadingMore && (
+        <View style={styles.loadingMoreContainer}>
+          <ActivityIndicator size="small" color="#fff" />
+        </View>
+      )}
 
       {/* Floating upload button */}
       <TouchableOpacity
@@ -615,7 +556,7 @@ const styles = StyleSheet.create({
     paddingTop: 50,
     paddingHorizontal: 16,
     paddingBottom: 12,
-    backgroundColor: 'transparent', // Transparent header for video feed
+    backgroundColor: 'transparent',
   },
   title: {
     fontSize: 24,
@@ -715,18 +656,22 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   loadingMoreContainer: {
-    height: height,
+    position: 'absolute',
+    bottom: 100,
+    left: 0,
+    right: 0,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
   },
   floatingUploadButton: {
     position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 330 : 480, // Android needs higher position (less bottom space)
-    right: 4, 
+    bottom: 560, // Raised 10% to avoid overlapping heart icon on Android
+    right: 4,
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#000', // Black background to match video feed aesthetic
+    backgroundColor: '#000',
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 4,
@@ -734,7 +679,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
-    zIndex: 20, // Ensure it's above video content
+    zIndex: 20,
   },
   uploadProgress: {
     position: 'absolute',

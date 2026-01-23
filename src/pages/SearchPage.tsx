@@ -40,6 +40,7 @@ import { useAllItineraries } from '../hooks/useAllItineraries';
 import { connectionRepository } from '../repositories/ConnectionRepository';
 import { saveViewedItinerary, hasViewedItinerary } from '../utils/viewedStorage';
 import AddItineraryModal from '../components/search/AddItineraryModal';
+import { FeedbackButton } from '../components/utilities/FeedbackButton';
 
 const SearchPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -442,6 +443,9 @@ const SearchPage: React.FC = () => {
         itineraries={itineraries}
         userProfile={userProfile}
       />
+
+      {/* Feedback Button - vertical along right side */}
+      <FeedbackButton />
 
     </SafeAreaView>
     </ImageBackground>

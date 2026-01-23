@@ -252,15 +252,19 @@ describe('VideoCard', () => {
     });
   });
 
-  describe('Reload Safety (Fix B)', () => {
+  describe('Reload Safety (Fix B) - iOS expo-av behavior', () => {
+    // NOTE: These tests verify expo-av reload behavior which is iOS-only.
+    // On Android, we use react-native-video via AndroidVideoPlayerRNV which has
+    // different lifecycle management (paused prop instead of unloadAsync/loadAsync).
+    // Platform.OS is set to 'ios' to test the expo-av code path in VideoCard.
     let originalPlatformOS: string;
 
     beforeEach(() => {
-      // Mock Platform.OS as 'android' for these tests (onBecomeInactive calls unloadAsync on Android)
+      // Mock Platform.OS as 'ios' for these tests (expo-av only used on iOS)
       const Platform = require('react-native').Platform;
       originalPlatformOS = Platform.OS;
       Object.defineProperty(Platform, 'OS', {
-        get: () => 'android',
+        get: () => 'ios',
         configurable: true,
       });
     });
@@ -299,12 +303,12 @@ describe('VideoCard', () => {
         expect(videoPlaybackManager.register).toHaveBeenCalled();
       });
 
-      // Activate, then deactivate (which unloads on Android)
+      // Activate, then deactivate (which unloads on iOS too for memory)
       await onBecomeActive!();
       jest.clearAllMocks();
       await onBecomeInactive!();
 
-      // On Android, video gets unloaded
+      // On iOS, video gets unloaded via cleanupVideo
       expect(mockUnloadAsync).toHaveBeenCalled();
 
       // Now reactivate - should reload first
