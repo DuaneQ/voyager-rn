@@ -118,10 +118,16 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   const [drinkingModalVisible, setDrinkingModalVisible] = useState(false);
   const [smokingModalVisible, setSmokingModalVisible] = useState(false);
   
+  // Helper to parse YYYY-MM-DD as local date (not UTC)
+  const parseLocalDate = (dateString: string): Date => {
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  };
+
   // Date state for CrossPlatformDatePicker
   const [dateValue, setDateValue] = useState<Date>(() => {
     if (initialData.dob) {
-      return new Date(initialData.dob);
+      return parseLocalDate(initialData.dob);
     }
     // Default to 25 years ago
     const defaultDate = new Date();
@@ -134,13 +140,13 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
     setErrors({});
     // Update dateValue when initialData.dob changes
     if (initialData.dob) {
-      setDateValue(new Date(initialData.dob));
+      setDateValue(parseLocalDate(initialData.dob));
     }
   }, [visible, initialData]);
 
   const isUserOver18 = (dob: string): boolean => {
     if (!dob) return false;
-    const birthDate = new Date(dob);
+    const birthDate = parseLocalDate(dob);
     const today = new Date();
     const age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();

@@ -114,8 +114,8 @@ describe('EditProfileModal', () => {
 
       expect(getByDisplayValue('testuser')).toBeTruthy();
       expect(getByDisplayValue('Test bio')).toBeTruthy();
-      // DOB is now shown in a TouchableOpacity with formatted date
-      expect(getByText('Dec 31, 1989')).toBeTruthy();
+      // DOB is now shown in a TouchableOpacity with formatted date (parsed as local time)
+      expect(getByText('Jan 1, 1990')).toBeTruthy();
     });
 
     it('should show required field indicators', () => {
