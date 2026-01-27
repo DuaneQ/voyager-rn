@@ -121,8 +121,13 @@ export const validateVideoMetadata = (
 /**
  * Generates a thumbnail from a video file
  * Uses expo-video-thumbnails for React Native (iOS/Android only)
- * On web, returns null as expo-video-thumbnails is not supported
+ * On web, generates thumbnail using HTML5 video element and canvas
  * Note: May fail with HEVC/H.265 encoded videos on Android emulator
+ * 
+ * @param uri - Video file URI
+ * @param timeInSeconds - Time position for thumbnail (default: 1 second)
+ * @returns Promise<string> - Thumbnail URI (native) or base64 data URL (web)
+ * @throws Error if thumbnail generation fails
  */
 export const generateVideoThumbnail = async (
   uri: string,

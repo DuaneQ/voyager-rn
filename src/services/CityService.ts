@@ -17,7 +17,7 @@
  */
 
 import { City as CSCCity, Country, ICity, ICountry } from 'country-state-city';
-import { InteractionManager, Platform } from 'react-native';
+import { InteractionManager } from 'react-native';
 import { City, CitySearchResult, CitySearchOptions } from '../types/City';
 import { ICityService } from './interfaces/ICityService';
 
@@ -177,7 +177,6 @@ export class CityService implements ICityService {
   private buildIndexes(): void {
     if (!this.cities) return;
     
-    const startTime = Date.now();
     this.cityPrefixIndex.clear();
     this.stateIndex.clear();
     this.countryPrefixIndex.clear();
@@ -230,7 +229,6 @@ export class CityService implements ICityService {
     if (this.loadingPromise) return;
     
     // Synchronous load as fallback (blocks UI - avoid if possible)
-    const startTime = Date.now();
     this.cities = CSCCity.getAllCities();
     this.buildIndexes();
     this.ready = true;
@@ -276,7 +274,6 @@ export class CityService implements ICityService {
           this.cities = CSCCity.getAllCities();
           this.buildIndexes();
           this.ready = true;
-          const duration = Date.now() - startTime;
         } catch (error) {
           console.error('[CityService] Preload error:', error);
         }

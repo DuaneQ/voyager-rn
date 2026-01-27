@@ -29,11 +29,20 @@ jest.mock('firebase/firestore', () => ({
 
 // Mock navigation hooks
 const mockUseRoute = jest.fn();
-const mockUseNavigation = jest.fn(() => ({ goBack: jest.fn() }));
+const mockUseNavigation = jest.fn(() => ({ 
+  goBack: jest.fn(),
+  dispatch: jest.fn(),
+}));
+const mockUseNavigationState = jest.fn(() => true); // Mock canGoBack as true
+const mockCommonActions = {
+  reset: jest.fn(),
+};
 
 jest.mock('@react-navigation/native', () => ({
   useRoute: () => mockUseRoute(),
   useNavigation: () => mockUseNavigation(),
+  useNavigationState: (selector: any) => mockUseNavigationState(selector),
+  CommonActions: mockCommonActions,
 }));
 
 // Mock hooks

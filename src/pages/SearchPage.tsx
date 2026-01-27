@@ -131,7 +131,10 @@ const SearchPage: React.FC = () => {
       window.history.replaceState({}, '', newUrl);
       
       // Auto-clear the status message after 5 seconds
-      setTimeout(() => setCheckoutStatus(null), 5000);
+      const timeoutId = setTimeout(() => setCheckoutStatus(null), 5000);
+      
+      // Cleanup timeout if component unmounts
+      return () => clearTimeout(timeoutId);
     }
   }, []);
 

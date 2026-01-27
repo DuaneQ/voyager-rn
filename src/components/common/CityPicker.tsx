@@ -25,7 +25,7 @@ import {
   Platform,
   Pressable,
 } from 'react-native';
-import { getCityService, isCitiesPreloaded, isCitiesLoading } from '../../services/CityService';
+import { getCityService, isCitiesPreloaded } from '../../services/CityService';
 import { City, CitySearchResult } from '../../types/City';
 
 interface CityPickerProps {

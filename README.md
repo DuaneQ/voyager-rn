@@ -84,19 +84,21 @@ npm run e2e:all:headless:3x  # Stability validation
 
 ## 🚀 Cloud Functions Deployment
 
-When deploying Firebase Cloud Functions, use `npx firebase-tools@latest` to avoid service identity errors with older CLI versions:
+When deploying Firebase Cloud Functions, use the pinned `firebase-tools` version from package.json to avoid supply-chain attacks:
 
 ```bash
 # Deploy specific function to dev
 cd /path/to/voyager-pwa
-npx firebase-tools@latest deploy --only functions:generateFullItinerary --project mundo1-dev
+npx firebase-tools@14.25.1 deploy --only functions:generateFullItinerary --project mundo1-dev
 
 # Deploy multiple functions
-npx firebase-tools@latest deploy --only functions:generateFullItinerary,functions:verifyPlaces --project mundo1-dev
+npx firebase-tools@14.25.1 deploy --only functions:generateFullItinerary,functions:verifyPlaces --project mundo1-dev
 
 # Deploy all functions
-npx firebase-tools@latest deploy --only functions --project mundo1-dev
+npx firebase-tools@14.25.1 deploy --only functions --project mundo1-dev
 ```
+
+**Security Note:** Always use a pinned version (not `@latest`) to prevent supply-chain attacks. Update the version in both `package.json` and this README when upgrading.
 
 **Note:** If you encounter "Error generating the service identity for pubsub/eventarc", run:
 ```bash
