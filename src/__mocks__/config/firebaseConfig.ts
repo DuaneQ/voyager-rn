@@ -17,6 +17,9 @@ export const auth = {
   onAuthStateChanged: mockOnAuthStateChanged,
 };
 
+// Export getAuthInstance for SearchPage and other components that use it
+export const getAuthInstance = jest.fn(() => auth);
+
 const mockDb = {};
 const mockStorage = {};
 const mockApp = {};

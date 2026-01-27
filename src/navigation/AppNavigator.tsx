@@ -129,6 +129,7 @@ const RootNavigator: React.FC = () => {
   // Show loading state while checking authentication
   // CRITICAL: Also check isInitializing to prevent landing page flash on web refresh
   // isInitializing is true until Firebase auth state is first resolved
+  // Also prevent flash during sign-in by keeping loading state until authenticated
   const isLoading = Boolean(status === 'loading') || isInitializing;
   
   if (isLoading) {
@@ -139,9 +140,13 @@ const RootNavigator: React.FC = () => {
   // IMPORTANT: Only show main app if user is authenticated AND email is verified
   const isAuthenticated = user && user.emailVerified;
   
-  // On web, show landing page for unauthenticated users
-  // On mobile (iOS/Android), go directly to auth page
-  const showLandingPage = Platform.OS === 'web' && !isAuthenticated;
+  // Check if user exists but is not verified (signed up but needs to verify email)
+  const hasUnverifiedUser = user && !user.emailVerified;
+  
+  // On web, show landing page for completely unauthenticated users (no user at all)
+  // If user exists but is unverified, show Auth page directly (not landing page)
+  // On mobile (iOS/Android), always go directly to auth page
+  const showLandingPage = Platform.OS === 'web' && !user;
   
   return (
     <Stack.Navigator
@@ -154,10 +159,18 @@ const RootNavigator: React.FC = () => {
           <Stack.Screen name="ChatThread" component={ChatThreadScreen} />
         </>
       ) : showLandingPage ? (
-        // Web only: Show landing page for unauthenticated users
+        // Web only: Show landing page for completely unauthenticated users (no Firebase user)
         <>
           <Stack.Screen name="Landing" component={LandingPage} />
           <Stack.Screen name="Auth" component={AuthPage} />
+        </>
+      ) : hasUnverifiedUser ? (
+        // User exists but email not verified - show Auth page directly
+        // This keeps user on Auth page after signup so they can sign in after verification
+        // Also allows resend verification to work since Firebase auth.currentUser exists
+        <>
+          <Stack.Screen name="Auth" component={AuthPage} />
+          {Platform.OS === 'web' && <Stack.Screen name="Landing" component={LandingPage} />}
         </>
       ) : (
         // Mobile (iOS/Android): Show auth page directly
@@ -210,28 +223,33 @@ const ProfileValidationWrapper: React.FC<{
 }> = ({ children, navigationRef }) => {
   const { userProfile, isLoading } = useUserProfile();
   const { user } = useAuth();
-  const hasCheckedProfile = useRef(false);
+  const hasPromptedUser = useRef(false); // Track if we've shown the prompt this session
 
   useEffect(() => {
     // Reset flag when user changes (logout/login)
     if (!user) {
-      hasCheckedProfile.current = false;
+      hasPromptedUser.current = false;
     }
   }, [user]);
 
   useEffect(() => {
-    if (!isLoading && userProfile && user && !hasCheckedProfile.current && navigationRef.current) {
-      hasCheckedProfile.current = true;
-      
+    if (!isLoading && userProfile && user && navigationRef.current) {
       const validationResult = validateProfileForItinerary(userProfile);
-      if (!validationResult.isValid) {
+      
+      // Only show prompt ONCE per session when profile is invalid
+      // Once user has been prompted (either saves or dismisses), don't prompt again
+      // This prevents modal from reopening after user clicks Save or X
+      if (!validationResult.isValid && !hasPromptedUser.current) {
+        hasPromptedUser.current = true; // Mark as prompted immediately
+        
         // Small delay to ensure navigation is ready
         setTimeout(() => {
           navigationRef.current?.navigate('MainApp', {
             screen: 'Profile',
             params: { 
               openEditModal: true,
-              incompleteProfile: true 
+              incompleteProfile: true,
+              missingFields: validationResult.missingFields
             }
           });
         }, 100);

@@ -456,5 +456,176 @@ describe('ProfileTab', () => {
       const newPasswordInput = getByTestId('delete-password-input');
       expect(newPasswordInput.props.value).toBe('');
     });
+
+    it('should handle wrong password error', async () => {
+      const wrongPasswordError = { code: 'auth/wrong-password', message: 'Wrong password' };
+      mockDeleteAccount.mockRejectedValueOnce(wrongPasswordError);
+      const mockAlert = jest.spyOn(Alert, 'alert');
+      
+      const { getByTestId } = render(<ProfileTab />);
+      
+      // Open modal and attempt deletion
+      fireEvent.press(getByTestId('delete-account-button'));
+      fireEvent.changeText(getByTestId('delete-password-input'), 'wrongpassword');
+      fireEvent.press(getByTestId('confirm-delete-button'));
+      
+      await waitFor(() => {
+        expect(mockAlert).toHaveBeenCalledWith(
+          'Error',
+          'Incorrect password. Please try again.'
+        );
+      });
+      
+      mockAlert.mockRestore();
+    });
+
+    it('should handle requires-recent-login error', async () => {
+      const recentLoginError = { code: 'auth/requires-recent-login', message: 'Recent login required' };
+      mockDeleteAccount.mockRejectedValueOnce(recentLoginError);
+      const mockAlert = jest.spyOn(Alert, 'alert');
+      
+      const { getByTestId } = render(<ProfileTab />);
+      
+      // Open modal and attempt deletion
+      fireEvent.press(getByTestId('delete-account-button'));
+      fireEvent.changeText(getByTestId('delete-password-input'), 'password123');
+      fireEvent.press(getByTestId('confirm-delete-button'));
+      
+      await waitFor(() => {
+        expect(mockAlert).toHaveBeenCalledWith(
+          'Error',
+          'For security, please log out and log back in before deleting your account.'
+        );
+      });
+      
+      mockAlert.mockRestore();
+    });
+
+    it('should handle Firestore permissions error', async () => {
+      const permissionsError = new Error('Missing or insufficient permissions.');
+      permissionsError.name = 'FirebaseError';
+      mockDeleteAccount.mockRejectedValueOnce(permissionsError);
+      const mockAlert = jest.spyOn(Alert, 'alert');
+      
+      const { getByTestId } = render(<ProfileTab />);
+      
+      // Open modal and attempt deletion
+      fireEvent.press(getByTestId('delete-account-button'));
+      fireEvent.changeText(getByTestId('delete-password-input'), 'password123');
+      fireEvent.press(getByTestId('confirm-delete-button'));
+      
+      await waitFor(() => {
+        expect(mockAlert).toHaveBeenCalledWith(
+          'Error',
+          'Failed to delete account. Please try again or contact support.'
+        );
+      });
+      
+      mockAlert.mockRestore();
+    });
+
+    it('should handle generic errors', async () => {
+      const genericError = new Error('Network error');
+      mockDeleteAccount.mockRejectedValueOnce(genericError);
+      const mockAlert = jest.spyOn(Alert, 'alert');
+      
+      const { getByTestId } = render(<ProfileTab />);
+      
+      // Open modal and attempt deletion
+      fireEvent.press(getByTestId('delete-account-button'));
+      fireEvent.changeText(getByTestId('delete-password-input'), 'password123');
+      fireEvent.press(getByTestId('confirm-delete-button'));
+      
+      await waitFor(() => {
+        expect(mockAlert).toHaveBeenCalledWith(
+          'Error',
+          'Failed to delete account. Please try again or contact support.'
+        );
+      });
+      
+      mockAlert.mockRestore();
+    });
+
+    it('should call accountDeletionService with password', async () => {
+      const { getByTestId } = render(<ProfileTab />);
+      
+      // Open modal
+      fireEvent.press(getByTestId('delete-account-button'));
+      
+      // Enter password
+      const password = 'mySecurePassword123';
+      fireEvent.changeText(getByTestId('delete-password-input'), password);
+      
+      // Confirm deletion
+      fireEvent.press(getByTestId('confirm-delete-button'));
+      
+      await waitFor(() => {
+        expect(mockDeleteAccount).toHaveBeenCalledWith(password);
+      });
+    });
+
+    it('should show alert when attempting to delete without password', async () => {
+      const mockAlert = jest.spyOn(Alert, 'alert');
+      const { getByTestId } = render(<ProfileTab />);
+      
+      // Open modal
+      fireEvent.press(getByTestId('delete-account-button'));
+      
+      // Try to confirm without entering password (button should be disabled, but test the handler directly)
+      // Note: In actual UI, button is disabled, but we can still test the validation logic
+      
+      // Button should be disabled
+      const confirmButton = getByTestId('confirm-delete-button');
+      expect(confirmButton.props.accessibilityState.disabled).toBe(true);
+      
+      mockAlert.mockRestore();
+    });
+
+    it('should display loading state during deletion', async () => {
+      // Make deleteAccount take some time
+      mockDeleteAccount.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)));
+      
+      const { getByTestId, getByText } = render(<ProfileTab />);
+      
+      // Open modal and start deletion
+      fireEvent.press(getByTestId('delete-account-button'));
+      fireEvent.changeText(getByTestId('delete-password-input'), 'password123');
+      fireEvent.press(getByTestId('confirm-delete-button'));
+      
+      // Should show loading state
+      await waitFor(() => {
+        expect(getByText('Deleting...')).toBeTruthy();
+      });
+      
+      // Wait for completion
+      await waitFor(() => {
+        expect(mockDeleteAccount).toHaveBeenCalled();
+      }, { timeout: 200 });
+    });
+
+    it('should disable all buttons during deletion', async () => {
+      // Make deleteAccount take some time
+      mockDeleteAccount.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)));
+      
+      const { getByTestId } = render(<ProfileTab />);
+      
+      // Open modal and start deletion
+      fireEvent.press(getByTestId('delete-account-button'));
+      fireEvent.changeText(getByTestId('delete-password-input'), 'password123');
+      fireEvent.press(getByTestId('confirm-delete-button'));
+      
+      // Both buttons should be disabled during deletion
+      await waitFor(() => {
+        const cancelButton = getByTestId('cancel-delete-button');
+        const confirmButton = getByTestId('confirm-delete-button');
+        expect(cancelButton.props.accessibilityState.disabled).toBe(true);
+        expect(confirmButton.props.accessibilityState.disabled).toBe(true);
+      });
+      
+      // Wait for completion
+      await waitFor(() => {
+        expect(mockDeleteAccount).toHaveBeenCalled();
+      }, { timeout: 200 });
+    });
   });
 });

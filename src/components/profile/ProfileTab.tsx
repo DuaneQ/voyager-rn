@@ -192,7 +192,10 @@ export const ProfileTab: React.FC = () => {
         visible={deleteAccountModalVisible}
         transparent
         animationType="fade"
-        onRequestClose={() => setDeleteAccountModalVisible(false)}
+        onRequestClose={() => {
+          console.log('[ProfileTab] Modal dismissed');
+          setDeleteAccountModalVisible(false);
+        }}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>

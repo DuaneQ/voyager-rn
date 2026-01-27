@@ -310,7 +310,6 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                 handleChange('dob', formattedDate);
               }}
               maximumDate={new Date()}
-              label="Date of Birth"
               error={!!errors.dob}
               errorMessage={errors.dob}
             />

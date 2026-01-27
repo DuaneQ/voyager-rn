@@ -196,12 +196,16 @@ const SearchPage: React.FC = () => {
     // Track usage (checks limit with fresh data internally)
     const success = await trackView();
     if (!success) {
-      showAlert(
-        'info', 
-        'Daily limit reached. Sign in on the web and tap the UPGRADE button on TravalMatch for unlimited views.',
-        'https://travalpass.com/login',
-        'Sign In to Upgrade'
-      );
+      if (Platform.OS === 'web') {
+        showAlert('info', 'Daily limit reached. Tap Upgrade for unlimited views and AI Itineraries');
+      } else {
+        showAlert(
+          'info', 
+          'Daily limit reached. Sign in on the web and tap the UPGRADE button on TravalMatch for unlimited views.',
+          'https://travalpass.com/login',
+          'Sign In to Upgrade'
+        );
+      }
       return;
     }
 
@@ -290,12 +294,16 @@ const SearchPage: React.FC = () => {
     // Track usage (checks limit with fresh data internally)
     const success = await trackView();
     if (!success) {
-      showAlert(
-        'info', 
-        'Daily limit reached. Sign in on the web and tap the UPGRADE button on TravalMatch for unlimited views.',
-        'https://travalpass.com/login',
-        'Sign In to Upgrade'
-      );
+      if (Platform.OS === 'web') {
+        showAlert('info', 'Daily limit reached. Tap Upgrade for unlimited views and 20 AI Itineraries per day');
+      } else {
+        showAlert(
+          'info', 
+          'Daily limit reached. Sign in on the web and tap the UPGRADE button on TravalMatch for unlimited views and 20 AI Itineraries per day.',
+          'https://travalpass.com/login',
+          'Sign In to Upgrade'
+        );
+      }
       return;
     }
 
@@ -304,7 +312,7 @@ const SearchPage: React.FC = () => {
       saveViewedItinerary(itinerary.id);
       
       // Advance to next itinerary
-      await getNextItinerary();
+      getNextItinerary();
       
     } catch (error) {
       console.error('[SearchPage] Error handling dislike:', error);

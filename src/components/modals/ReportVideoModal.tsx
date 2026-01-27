@@ -24,6 +24,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Platform,
 } from 'react-native';
 import {
   getFirestore,
@@ -66,12 +67,20 @@ export const ReportVideoModal: React.FC<ReportVideoModalProps> = ({
 
   const handleSubmit = async () => {
     if (!reason) {
-      Alert.alert('Required', 'Please select a reason for your report');
+      if (Platform.OS === 'web') {
+        alert('Please select a reason for your report');
+      } else {
+        Alert.alert('Required', 'Please select a reason for your report');
+      }
       return;
     }
 
     if (!reporterId || !video.userId) {
-      Alert.alert('Error', 'Unable to submit report: Missing user information');
+      if (Platform.OS === 'web') {
+        alert('Unable to submit report: Missing user information');
+      } else {
+        Alert.alert('Error', 'Unable to submit report: Missing user information');
+      }
       return;
     }
 
@@ -97,14 +106,23 @@ export const ReportVideoModal: React.FC<ReportVideoModalProps> = ({
 
       await addDoc(violationsRef, violationData);
 
-      Alert.alert(
-        'Report Submitted',
-        'Thank you for reporting this content. Our team will review it within 24 hours.',
-        [{ text: 'OK', onPress: handleClose }]
-      );
+      if (Platform.OS === 'web') {
+        alert('Thank you for reporting this content. Our team will review it within 24 hours.');
+        handleClose();
+      } else {
+        Alert.alert(
+          'Report Submitted',
+          'Thank you for reporting this content. Our team will review it within 24 hours.',
+          [{ text: 'OK', onPress: handleClose }]
+        );
+      }
     } catch (error) {
-      console.error('Error reporting video:', error);
-      Alert.alert('Error', 'Failed to submit report. Please try again.');
+      console.error('[ReportVideoModal] Error reporting video:', error);
+      if (Platform.OS === 'web') {
+        alert('Failed to submit report. Please try again.');
+      } else {
+        Alert.alert('Error', 'Failed to submit report. Please try again.');
+      }
       setSubmitting(false);
     }
   };

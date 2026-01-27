@@ -40,13 +40,9 @@ export const LandingPage: React.FC = () => {
   const [showSafetyModal, setShowSafetyModal] = useState(false);
   const [showCookieModal, setShowCookieModal] = useState(false);
 
-  // Redirect authenticated users to main app
-  useEffect(() => {
-    if (user) {
-      // @ts-ignore - Navigation types are complex, but this works at runtime
-      navigation.navigate('MainApp');
-    }
-  }, [user, navigation]);
+  // Note: Auth redirect is handled by AppNavigator's RootNavigator
+  // The landing page should only render when user is not authenticated
+  // No need for useEffect redirect here - let the navigator handle it
 
   // Only render on web platform
   if (Platform.OS !== 'web') {
@@ -105,7 +101,6 @@ export const LandingPage: React.FC = () => {
               console.error('[LandingPage] Video error:', e);
               setVideoError(true);
             }}
-            onLoadedData={() => console.log('[LandingPage] Video loaded successfully')}
           >
             <source src="/TravalPass.mp4" type="video/mp4" />
           </video>
@@ -191,7 +186,7 @@ export const LandingPage: React.FC = () => {
             </TouchableOpacity>
           </View>
 
-          {/* App Store Download Button */}
+          {/* App Store Download Buttons */}
           {Platform.OS === 'web' && (
             <View style={styles.appStoreContainer}>
               <a
@@ -199,12 +194,25 @@ export const LandingPage: React.FC = () => {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Download TravalPass on the App Store"
-                style={{ textDecoration: 'none' }}
+                style={{ textDecoration: 'none', marginRight: 16 }}
               >
                 <Image
                   source={{ uri: 'https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg' }}
                   style={styles.appStoreBadge}
                   accessibilityLabel="Download on the App Store"
+                />
+              </a>
+              <a
+                href="https://play.google.com/store/apps/details?id=com.travalpass.app"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Get TravalPass on Google Play"
+                style={{ textDecoration: 'none' }}
+              >
+                <Image
+                  source={{ uri: 'https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png' }}
+                  style={styles.playStoreBadge}
+                  accessibilityLabel="Get it on Google Play"
                 />
               </a>
             </View>
@@ -547,12 +555,20 @@ const styles = StyleSheet.create({
   },
   appStoreContainer: {
     marginTop: 24,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    flexWrap: 'wrap',
+    gap: 16,
   },
   appStoreBadge: {
     height: 50,
     width: 150,
+    resizeMode: 'contain',
+  },
+  playStoreBadge: {
+    height: 74,
+    width: 200,
     resizeMode: 'contain',
   },
   section: {

@@ -1,0 +1,42 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Allow authenticated users to upload/read chat images
+    match /chatImages/{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+    // Allow users to upload their own profile or slot photos, but anyone can read
+    match /photos/{userId}/{slot}/{allPaths=**} {
+      allow write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null;
+      allow delete: if request.auth != null && request.auth.uid == userId; // Allow deletion during account deletion
+    }
+      // Helper function to validate video files
+  function isValidVideoFile() {
+    return resource.size < 100 * 1024 * 1024 // 100MB limit
+      && resource.contentType.matches('video/.*')
+      && resource.contentType in ['video/mp4', 'video/mov'];
+  }
+  
+  // Helper function to validate image files
+  function isValidImageFile() {
+    return resource.size < 10 * 1024 * 1024 // 10MB limit
+      && resource.contentType.matches('image/.*')
+      && resource.contentType in ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+  }
+      // Users can upload and manage their own videos and thumbnails
+    match /users/{userId}/videos/{videoFilename} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null 
+        && request.auth.uid == userId;
+      allow delete: if request.auth != null && request.auth.uid == userId; // Allow deletion during account deletion
+    }
+    
+    match /users/{userId}/thumbnails/{thumbnailFilename} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null 
+        && request.auth.uid == userId;
+      allow delete: if request.auth != null && request.auth.uid == userId; // Allow deletion during account deletion
+    }
+  }
+}
