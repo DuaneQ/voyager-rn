@@ -82,7 +82,6 @@ export const AndroidVideoPlayerV2: React.FC<AndroidVideoPlayerProps> = ({
             new Promise((resolve) => setTimeout(resolve, CLEANUP_TIMEOUT_MS)),
           ]);
 
-          console.log(`[AndroidVideoPlayer V2] ✅ CLEANUP COMPLETE: ${video.id}`);
         } catch (err: any) {
           console.warn(`[AndroidVideoPlayer V2] Cleanup error: ${err.message || err}`);
         }
@@ -99,7 +98,6 @@ export const AndroidVideoPlayerV2: React.FC<AndroidVideoPlayerProps> = ({
       if (!ref || isUnmountedRef.current) return;
 
       try {
-        console.log(`[AndroidVideoPlayer V2] ▶️ AUTO-PLAY: ${video.id}`);
         await ref.playAsync();
       } catch (err: any) {
         console.warn(`[AndroidVideoPlayer V2] Play error: ${err.message || err}`);

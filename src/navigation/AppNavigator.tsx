@@ -124,12 +124,12 @@ const GuardedMainTabNavigator: React.FC = () => {
 
 // Main Stack Navigator with conditional rendering based on auth state
 const RootNavigator: React.FC = () => {
-  const { user, status } = useAuth();
+  const { user, status, isInitializing } = useAuth();
 
   // Show loading state while checking authentication
-  // CRITICAL: Expo SDK 54 JSI bridge requires explicit boolean conversion
-  // Direct string comparison causes: "TypeError: expected dynamic type 'boolean', but had type 'string'"
-  const isLoading = Boolean(status === 'loading');
+  // CRITICAL: Also check isInitializing to prevent landing page flash on web refresh
+  // isInitializing is true until Firebase auth state is first resolved
+  const isLoading = Boolean(status === 'loading') || isInitializing;
   
   if (isLoading) {
     return null; // Or a loading spinner component

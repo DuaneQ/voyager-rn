@@ -57,8 +57,6 @@ export class AccountDeletionService {
 
       // Step 5: Delete Firebase Auth account (must be last)
       await deleteUser(user);
-
-      console.log('[AccountDeletion] Account successfully deleted:', userId);
     } catch (error) {
       console.error('[AccountDeletion] Error deleting account:', error);
       throw error;

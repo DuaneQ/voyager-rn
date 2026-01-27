@@ -7,8 +7,12 @@
 export interface AIGenerationRequest {
   destination: string;
   destinationAirportCode?: string; // IATA code for destination airport
+  /** Destination coordinates for geographic search bias (fixes Naples disambiguation bug) */
+  destinationLatLng?: { lat: number; lng: number };
   departure?: string; // Departure location for flight pricing
   departureAirportCode?: string; // IATA code for departure airport
+  /** Departure coordinates for geographic search bias */
+  departureLatLng?: { lat: number; lng: number };
   startDate: string; // ISO date string
   endDate: string; // ISO date string
   budget?: {
@@ -16,7 +20,7 @@ export interface AIGenerationRequest {
     currency: 'USD' | 'EUR' | 'GBP';
   };
   groupSize?: number;
-  tripType: 'leisure' | 'business' | 'adventure' | 'romantic' | 'family' | 'bachelor' | 'bachelorette';
+  tripType: 'leisure' | 'business' | 'adventure' | 'romantic' | 'family' | 'bachelor' | 'bachelorette' | 'spiritual';
   preferenceProfileId: string;
   specialRequests?: string;
   mustInclude?: string[];

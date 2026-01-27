@@ -82,6 +82,28 @@ npm run e2e:all:headless     # Both platforms (CI/CD)
 npm run e2e:all:headless:3x  # Stability validation
 ```
 
+## 🚀 Cloud Functions Deployment
+
+When deploying Firebase Cloud Functions, use `npx firebase-tools@latest` to avoid service identity errors with older CLI versions:
+
+```bash
+# Deploy specific function to dev
+cd /path/to/voyager-pwa
+npx firebase-tools@latest deploy --only functions:generateFullItinerary --project mundo1-dev
+
+# Deploy multiple functions
+npx firebase-tools@latest deploy --only functions:generateFullItinerary,functions:verifyPlaces --project mundo1-dev
+
+# Deploy all functions
+npx firebase-tools@latest deploy --only functions --project mundo1-dev
+```
+
+**Note:** If you encounter "Error generating the service identity for pubsub/eventarc", run:
+```bash
+gcloud beta services identity create --service=pubsub.googleapis.com --project=mundo1-dev
+gcloud beta services identity create --service=eventarc.googleapis.com --project=mundo1-dev
+```
+
 ### Development Environment Setup
 
 1. **iOS Development:**
@@ -94,6 +116,34 @@ npm run e2e:all:headless:3x  # Stability validation
      # or
      npx expo start --ios
      ```
+   
+   **Testing Release Builds on Simulator (iPhone 17 Pro):**
+   ```bash
+   # Shutdown all simulators first
+   xcrun simctl shutdown all
+   
+   # Boot iPhone 17 Pro simulator
+   xcrun simctl boot "iPhone 17 Pro"
+   open -a Simulator
+   
+   # Build release configuration
+   cd ios
+   xcodebuild -workspace TravalPass.xcworkspace \
+     -scheme TravalPass \
+     -configuration Release \
+     -sdk iphonesimulator \
+     -destination 'name=iPhone 17 Pro' \
+     -derivedDataPath ./build
+   
+   # Install and launch
+   SIMULATOR_ID=$(xcrun simctl list devices | grep "iPhone 17 Pro" | grep "Booted" | grep -oE '\([A-F0-9-]+\)' | tr -d '()')
+   xcrun simctl install $SIMULATOR_ID ./build/Build/Products/Release-iphonesimulator/TravalPass.app
+   xcrun simctl launch $SIMULATOR_ID com.travalpass.app
+   cd ..
+   ```
+   
+   **Why xcodebuild instead of `npx expo run:ios --configuration Release`?**  
+   Expo detects physical iOS devices even when simulators are booted, causing "No code signing certificates" errors. Using xcodebuild directly targets the simulator explicitly.
 
 2. **Android Development:**
     - Install Android Studio and open SDK Manager

@@ -34,6 +34,7 @@ export interface VideoUploadData {
   description?: string;
   isPublic: boolean;
   uri: string; // Local file URI for React Native
+  pickerFileSize?: number; // Original file size from expo-image-picker (avoids iOS transcoding)
 }
 
 export interface VideoValidationResult {
@@ -43,7 +44,7 @@ export interface VideoValidationResult {
 
 // Constants for video validation - matches PWA exactly
 export const VIDEO_CONSTRAINTS = {
-  MAX_FILE_SIZE: 50 * 1024 * 1024, // 50MB
+  MAX_FILE_SIZE: 100 * 1024 * 1024, // 100MB
   MAX_DURATION: 60, // seconds
   SUPPORTED_FORMATS: [
     'video/mp4',

@@ -187,7 +187,7 @@ describe('VideoGrid', () => {
     });
 
     it('should upload video when selected', async () => {
-      mockSelectVideo.mockResolvedValue('file:///test/video.mp4');
+      mockSelectVideo.mockResolvedValue({ uri: 'file:///test/video.mp4', fileSize: 1024000 });
       mockUploadVideo.mockResolvedValue(true);
 
       const { getByText, getByTestId } = render(<VideoGrid />);
@@ -220,7 +220,7 @@ describe('VideoGrid', () => {
     });
 
     it('should show success alert after upload', async () => {
-      mockSelectVideo.mockResolvedValue('file:///test/video.mp4');
+      mockSelectVideo.mockResolvedValue({ uri: 'file:///test/video.mp4', fileSize: 1024000 });
       mockUploadVideo.mockResolvedValue(true);
 
       const { getByText, getByTestId } = render(<VideoGrid />);
@@ -251,8 +251,76 @@ describe('VideoGrid', () => {
       }, { timeout: 2000 });
     });
 
+    it('should NOT show success alert when upload fails', async () => {
+      // Simulate a failed upload (returns null)
+      mockSelectVideo.mockResolvedValue({ uri: 'file:///test/video.mp4', fileSize: 1024000 });
+      mockUploadVideo.mockResolvedValue(null); // Upload failed
+
+      const { getByText, getByTestId } = render(<VideoGrid />);
+
+      await waitFor(() => expect(getByText('Add Video')).toBeTruthy());
+
+      fireEvent.press(getByText('Add Video'));
+
+      await waitFor(() => expect(mockSelectVideo).toHaveBeenCalled());
+
+      // Modal should appear
+      await waitFor(() => {
+        expect(getByTestId('video-upload-modal')).toBeTruthy();
+      });
+
+      // Press upload button in modal
+      const uploadButton = getByTestId('upload-button');
+      fireEvent.press(uploadButton);
+
+      await waitFor(() => expect(mockUploadVideo).toHaveBeenCalled());
+
+      // Wait a bit to ensure all async operations complete
+      await waitFor(() => {
+        // Success alert should NOT be called when upload returns null
+        expect(Alert.alert).not.toHaveBeenCalledWith(
+          'Success',
+          'Video uploaded successfully!'
+        );
+      }, { timeout: 2000 });
+    });
+
+    it('should NOT show success alert when upload throws error', async () => {
+      // Simulate upload throwing an error
+      mockSelectVideo.mockResolvedValue({ uri: 'file:///test/video.mp4', fileSize: 1024000 });
+      mockUploadVideo.mockRejectedValue(new Error('File size too large'));
+
+      const { getByText, getByTestId } = render(<VideoGrid />);
+
+      await waitFor(() => expect(getByText('Add Video')).toBeTruthy());
+
+      fireEvent.press(getByText('Add Video'));
+
+      await waitFor(() => expect(mockSelectVideo).toHaveBeenCalled());
+
+      // Modal should appear
+      await waitFor(() => {
+        expect(getByTestId('video-upload-modal')).toBeTruthy();
+      });
+
+      // Press upload button in modal
+      const uploadButton = getByTestId('upload-button');
+      fireEvent.press(uploadButton);
+
+      await waitFor(() => expect(mockUploadVideo).toHaveBeenCalled());
+
+      // Wait a bit to ensure all async operations complete
+      await waitFor(() => {
+        // Success alert should NOT be called when upload throws
+        expect(Alert.alert).not.toHaveBeenCalledWith(
+          'Success',
+          'Video uploaded successfully!'
+        );
+      }, { timeout: 2000 });
+    });
+
     it('should refresh videos after successful upload', async () => {
-      mockSelectVideo.mockResolvedValue('file:///test/video.mp4');
+      mockSelectVideo.mockResolvedValue({ uri: 'file:///test/video.mp4', fileSize: 1024000 });
       mockUploadVideo.mockResolvedValue(true);
       mockLoadUserVideos.mockResolvedValueOnce([]).mockResolvedValueOnce(mockVideos);
 

@@ -1,11 +1,11 @@
 /**
  * Alert Context for React Native
  * Replicates the exact functionality of voyager-pwa AlertContext
- * Uses React Native Alert instead of Material-UI components
+ * Uses React Native Alert for mobile, window.alert for web
  */
 
 import React, { createContext, useContext, ReactNode } from 'react';
-import { Alert, Linking } from 'react-native';
+import { Alert, Linking, Platform } from 'react-native';
 
 interface AlertContextType {
   showAlert: (severity: string, message: string, actionUrl?: string, actionLabel?: string) => void;
@@ -19,28 +19,41 @@ interface AlertProviderProps {
 
 const AlertProvider: React.FC<AlertProviderProps> = ({ children }) => {
   const showAlert = (severity: string, message: string, actionUrl?: string, actionLabel?: string) => {
-    // Map severity to Alert types (React Native Alert is simpler)
+    // Map severity to Alert types
     const title = severity === 'error' ? 'Error' : 
                   severity === 'warning' ? 'Warning' : 
                   severity === 'success' ? 'Success' : 'Info';
     
-    // If action URL provided, add button to open it
-    if (actionUrl) {
-      Alert.alert(
-        title, 
-        message,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { 
-            text: actionLabel || 'Open Link', 
-            onPress: () => Linking.openURL(actionUrl).catch(err => 
-              console.error('Failed to open URL:', err)
-            )
-          }
-        ]
-      );
+    // Use window.alert for web, React Native Alert for mobile
+    if (Platform.OS === 'web') {
+      // Web: use window.alert (or could use a toast library)
+      if (actionUrl) {
+        const shouldOpen = window.confirm(`${title}: ${message}\n\nClick OK to ${actionLabel || 'open link'}.`);
+        if (shouldOpen) {
+          window.open(actionUrl, '_blank');
+        }
+      } else {
+        window.alert(`${title}: ${message}`);
+      }
     } else {
-      Alert.alert(title, message);
+      // Mobile: use React Native Alert
+      if (actionUrl) {
+        Alert.alert(
+          title, 
+          message,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { 
+              text: actionLabel || 'Open Link', 
+              onPress: () => Linking.openURL(actionUrl).catch(err => 
+                console.error('Failed to open URL:', err)
+              )
+            }
+          ]
+        );
+      } else {
+        Alert.alert(title, message);
+      }
     }
   };
 

@@ -2,7 +2,7 @@
   "expo": {
     "name": "TravalPass",
     "slug": "voyager-rn",
-    "version": "1.0.0",
+    "version": "1.0.2",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "icon": "./assets/icon.png",
@@ -15,7 +15,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.travalpass.app",
-      "buildNumber": "15",
+      "buildNumber": "18",
       "googleServicesFile": "./GoogleService-Info.plist",
       "entitlements": {
         "com.apple.developer.applesignin": [
@@ -43,7 +43,7 @@
     },
     "android": {
       "package": "com.travalpass.app",
-      "versionCode": 6,
+      "versionCode": 8,
       "googleServicesFile": "./google-services.json",
       "icon": "./AppIcons/playstore.png",
       "softwareKeyboardLayoutMode": "resize",

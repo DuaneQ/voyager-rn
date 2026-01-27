@@ -17,14 +17,14 @@ import {
   KeyboardAvoidingView,
   Platform
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { PlacesAutocomplete } from '../common/PlacesAutocomplete';
+import { CrossPlatformDatePicker } from '../common/CrossPlatformDatePicker';
+import { CityPicker } from '../common/CityPicker';
+import { City } from '../../types/City';
 import { format, addDays, parse } from 'date-fns';
 import * as firebaseCfg from '../../config/firebaseConfig';
-import { useAIGeneration } from '../../hooks/useAIGeneration';
+import { useAIGenerationV2 } from '../../hooks/useAIGenerationV2';
 import { useUsageTracking } from '../../hooks/useUsageTracking';
 import { AIGenerationRequest } from '../../types/AIGeneration';
-import { getGooglePlacesApiKey } from '../../constants/apiConfig';
 import ProfileValidationService from '../../services/ProfileValidationService';
 import AirportSelector from '../common/AirportSelector';
 
@@ -42,7 +42,8 @@ const TRIP_TYPES = [
   { value: 'adventure', label: 'Adventure' },
   { value: 'romantic', label: 'Romantic' },
   { value: 'family', label: 'Family' },
-  { value: 'bachelor', label: 'Bachelor/ette' }
+  { value: 'bachelor', label: 'Bachelor/ette' },
+  { value: 'spiritual', label: 'Spiritual' }
 ];
 
 // Flight classes matching PWA
@@ -92,7 +93,7 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
     progress, 
     error,
     cancelGeneration 
-  } = useAIGeneration();
+  } = useAIGenerationV2();
 
   // Usage tracking hook for AI creation limits
   const { hasReachedAILimit, trackAICreation } = useUsageTracking();
@@ -126,8 +127,6 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
   const [showPreferenceDropdown, setShowPreferenceDropdown] = useState(false);
   const [showFlightClassDropdown, setShowFlightClassDropdown] = useState(false);
   const [showStopPrefDropdown, setShowStopPrefDropdown] = useState(false);
-  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
-  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
 
   // Initialize form when modal opens (matching PWA logic)
   useEffect(() => {
@@ -506,17 +505,18 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
                   <Text style={styles.sectionTitle}>Trip Details</Text>
                 </View>
 
-                {/* Destination */}
-                <View style={[styles.field, { zIndex: 1000 }]}>
-                  <Text style={styles.fieldLabel}>Destination *</Text>
-                  <PlacesAutocomplete
+                {/* Destination - Uses static city database (no API calls, includes coordinates) */}
+                <View style={styles.field}>
+                  <Text style={styles.fieldLabel}>Destination City *</Text>
+                  <CityPicker
                     testID="destination-input"
-                    placeholder="Where do you want to go?"
+                    placeholder="Select destination city"
                     value={formData.destination}
                     onChangeText={(text) => handleFieldChange('destination', text)}
-                    onPlaceSelected={(description) => {
-                      
-                      handleFieldChange('destination', description);
+                    onCitySelected={(city: City, displayName: string) => {
+                      // Store both destination name AND coordinates (fixes Naples bug)
+                      handleFieldChange('destination', displayName);
+                      handleFieldChange('destinationLatLng', city.coordinates);
                     }}
                     error={!!formErrors.destination}
                   />
@@ -528,7 +528,7 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
                 {/* Destination Airport - Only shown when flights are enabled */}
                 {shouldShowFlights && (
                   <View style={styles.field}>
-                    <Text style={styles.fieldLabel}>Destination</Text>
+                    <Text style={styles.fieldLabel}>Destination Airport</Text>
                     <AirportSelector
                       placeholder="Select destination airport"
                       selectedAirportCode={formData.destinationAirportCode}
@@ -545,17 +545,17 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
                   </View>
                 )}
 
-                {/* Departure */}
-                <View style={[styles.field, { zIndex: 999 }]}>
-                  <Text style={styles.fieldLabel}>Departing From</Text>
-                  <PlacesAutocomplete
+                {/* Departure - Uses static city database (no API calls) */}
+                <View style={styles.field}>
+                  <Text style={styles.fieldLabel}>Departure City</Text>
+                  <CityPicker
                     testID="departure-input"
-                    placeholder="Where are you traveling from?"
+                    placeholder="Select departure city"
                     value={formData.departure}
                     onChangeText={(text) => handleFieldChange('departure', text)}
-                    onPlaceSelected={(description) => {
-                      
-                      handleFieldChange('departure', description);
+                    onCitySelected={(city: City, displayName: string) => {
+                      handleFieldChange('departure', displayName);
+                      handleFieldChange('departureLatLng', city.coordinates);
                     }}
                   />
                 </View>
@@ -584,148 +584,37 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
                 <View style={styles.dateRow}>
                   <View style={styles.dateField}>
                     <Text style={styles.fieldLabel}>Start Date *</Text>
-                    <TouchableOpacity
-                      style={[styles.datePickerButton, formErrors.startDate && styles.inputError]}
-                      onPress={() => {
-                        setShowEndDatePicker(false);
-                        setShowStartDatePicker(true);
+                    <CrossPlatformDatePicker
+                      testID="start-date-picker"
+                      value={formData.startDate ? parse(formData.startDate, 'yyyy-MM-dd', new Date()) : new Date()}
+                      onChange={(date) => {
+                        handleFieldChange('startDate', format(date, 'yyyy-MM-dd'));
+                        // If end date is before new start date, update it
+                        const currentEndDate = formData.endDate ? parse(formData.endDate, 'yyyy-MM-dd', new Date()) : null;
+                        if (currentEndDate && currentEndDate < date) {
+                          handleFieldChange('endDate', format(date, 'yyyy-MM-dd'));
+                        }
                       }}
-                    >
-                      <Text style={styles.datePickerButtonText}>
-                        {formData.startDate ? format(parse(formData.startDate, 'yyyy-MM-dd', new Date()), 'MMM d, yyyy') : 'Select date'}
-                      </Text>
-                      <Text style={styles.calendarIcon}>📅</Text>
-                    </TouchableOpacity>
-                    {formErrors.startDate && (
-                      <Text style={styles.fieldError}>{formErrors.startDate}</Text>
-                    )}
+                      minimumDate={new Date()}
+                      error={!!formErrors.startDate}
+                      errorMessage={formErrors.startDate}
+                    />
                   </View>
 
                   <View style={styles.dateField}>
                     <Text style={styles.fieldLabel}>End Date *</Text>
-                    <TouchableOpacity
-                      style={[styles.datePickerButton, formErrors.endDate && styles.inputError]}
-                      onPress={() => {
-                        setShowStartDatePicker(false);
-                        setShowEndDatePicker(true);
-                      }}
-                    >
-                      <Text style={styles.datePickerButtonText}>
-                        {formData.endDate ? format(parse(formData.endDate, 'yyyy-MM-dd', new Date()), 'MMM d, yyyy') : 'Select date'}
-                      </Text>
-                      <Text style={styles.calendarIcon}>📅</Text>
-                    </TouchableOpacity>
-                    {formErrors.endDate && (
-                      <Text style={styles.fieldError}>{formErrors.endDate}</Text>
-                    )}
-                  </View>
-                </View>
-
-                {/* Start Date Picker Modal */}
-                {showStartDatePicker && (
-                  Platform.OS === 'ios' ? (
-                    <Modal
-                      visible={showStartDatePicker}
-                      transparent={true}
-                      animationType="slide"
-                      onRequestClose={() => setShowStartDatePicker(false)}
-                    >
-                      <View style={styles.datePickerModalOverlay}>
-                        <View style={styles.datePickerModalContent}>
-                          <View style={styles.datePickerHeader}>
-                            <TouchableOpacity onPress={() => setShowStartDatePicker(false)}>
-                              <Text style={styles.datePickerCancelText}>Cancel</Text>
-                            </TouchableOpacity>
-                            <Text style={styles.datePickerTitle}>Select Start Date</Text>
-                            <TouchableOpacity onPress={() => setShowStartDatePicker(false)}>
-                              <Text style={styles.datePickerDoneText}>Done</Text>
-                            </TouchableOpacity>
-                          </View>
-                          <DateTimePicker
-                            value={formData.startDate ? parse(formData.startDate, 'yyyy-MM-dd', new Date()) : new Date()}
-                            mode="date"
-                            display="spinner"
-                            onChange={(event, selectedDate) => {
-                              if (event.type === 'dismissed') {
-                                setShowStartDatePicker(false);
-                              } else if (selectedDate) {
-                                handleFieldChange('startDate', format(selectedDate, 'yyyy-MM-dd'));
-                              }
-                            }}
-                            minimumDate={new Date()}
-                            textColor="#000000"
-                          />
-                        </View>
-                      </View>
-                    </Modal>
-                  ) : (
-                    <DateTimePicker
-                      value={formData.startDate ? parse(formData.startDate, 'yyyy-MM-dd', new Date()) : new Date()}
-                      mode="date"
-                      display="default"
-                      onChange={(event, selectedDate) => {
-                        setShowStartDatePicker(false);
-                        if (event.type !== 'dismissed' && selectedDate) {
-                          handleFieldChange('startDate', format(selectedDate, 'yyyy-MM-dd'));
-                        }
-                      }}
-                      minimumDate={new Date()}
-                    />
-                  )
-                )}
-
-                {/* End Date Picker Modal */}
-                {showEndDatePicker && (
-                  Platform.OS === 'ios' ? (
-                    <Modal
-                      visible={showEndDatePicker}
-                      transparent={true}
-                      animationType="slide"
-                      onRequestClose={() => setShowEndDatePicker(false)}
-                    >
-                      <View style={styles.datePickerModalOverlay}>
-                        <View style={styles.datePickerModalContent}>
-                          <View style={styles.datePickerHeader}>
-                            <TouchableOpacity onPress={() => setShowEndDatePicker(false)}>
-                              <Text style={styles.datePickerCancelText}>Cancel</Text>
-                            </TouchableOpacity>
-                            <Text style={styles.datePickerTitle}>Select End Date</Text>
-                            <TouchableOpacity onPress={() => setShowEndDatePicker(false)}>
-                              <Text style={styles.datePickerDoneText}>Done</Text>
-                            </TouchableOpacity>
-                          </View>
-                          <DateTimePicker
-                            value={formData.endDate ? parse(formData.endDate, 'yyyy-MM-dd', new Date()) : addDays(new Date(), 7)}
-                            mode="date"
-                            display="spinner"
-                            onChange={(event, selectedDate) => {
-                              if (event.type === 'dismissed') {
-                                setShowEndDatePicker(false);
-                              } else if (selectedDate) {
-                                handleFieldChange('endDate', format(selectedDate, 'yyyy-MM-dd'));
-                              }
-                            }}
-                            minimumDate={formData.startDate ? parse(formData.startDate, 'yyyy-MM-dd', new Date()) : new Date()}
-                            textColor="#000000"
-                          />
-                        </View>
-                      </View>
-                    </Modal>
-                  ) : (
-                    <DateTimePicker
+                    <CrossPlatformDatePicker
+                      testID="end-date-picker"
                       value={formData.endDate ? parse(formData.endDate, 'yyyy-MM-dd', new Date()) : addDays(new Date(), 7)}
-                      mode="date"
-                      display="default"
-                      onChange={(event, selectedDate) => {
-                        setShowEndDatePicker(false);
-                        if (event.type !== 'dismissed' && selectedDate) {
-                          handleFieldChange('endDate', format(selectedDate, 'yyyy-MM-dd'));
-                        }
+                      onChange={(date) => {
+                        handleFieldChange('endDate', format(date, 'yyyy-MM-dd'));
                       }}
                       minimumDate={formData.startDate ? parse(formData.startDate, 'yyyy-MM-dd', new Date()) : new Date()}
+                      error={!!formErrors.endDate}
+                      errorMessage={formErrors.endDate}
                     />
-                  )
-                )}
+                  </View>
+                </View>
 
                 {/* Trip Type */}
                 <View style={styles.field}>

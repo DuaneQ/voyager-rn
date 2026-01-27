@@ -136,12 +136,14 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
     functionName: string, 
     data: any
   ): Promise<CloudFunctionResult> => {
+    const callStart = Date.now();
 
     return retryWithBackoff(async () => {
-      const callable = httpsCallable(functions, functionName);
+      // 90 second timeout to match server-side function timeouts
+      const callable = httpsCallable(functions, functionName, { timeout: 90000 });
       // Pass data directly - Firebase httpsCallable already handles wrapping
       const result = await callable(data);
-
+      
       // Type assertion since Firebase callable returns unknown
       const functionResult = result.data as CloudFunctionResult;
       
@@ -165,6 +167,8 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
 
   // Main generation function - matches PWA flow exactly
   const generateItinerary = useCallback(async (request: AIGenerationRequest): Promise<ItineraryResult> => {
+    const totalStartTime = Date.now();
+    
     // Reset state
     setIsGenerating(true);
     setError(null);
@@ -254,6 +258,7 @@ export const useAIGeneration = (): UseAIGenerationReturn => {
       setProgress(PROGRESS_STAGES.ACTIVITIES);
       
       // Execute all searches in parallel
+      const parallelStartTime = Date.now();
       const results = await Promise.all(promises);
       
       // Extract results - handle both shapes returned by callCloudFunction

@@ -532,14 +532,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
       
       // Existing user - success
-      console.log('[AuthContext] Apple sign-in successful');
       setStatus('authenticated');
       return user;
       
     } catch (error: any) {
       if (error.code === 'ERR_REQUEST_CANCELED') {
         // User canceled - don't throw error
-        console.log('[AuthContext] Apple sign-in canceled by user');
         setStatus('idle');
         return;
       }
@@ -586,7 +584,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       if (userDoc.exists()) {
         // Existing user trying to sign up - just sign them in
-        console.log('[AuthContext] Apple user already exists, signing in');
         setStatus('authenticated');
         return user;
       }
@@ -622,13 +619,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       };
 
       await setDoc(userRef, userProfile);
-      console.log('[AuthContext] Apple sign-up successful, profile created');
       setStatus('authenticated');
       return user;
       
     } catch (error: any) {
       if (error.code === 'ERR_REQUEST_CANCELED') {
-        console.log('[AuthContext] Apple sign-up canceled by user');
         setStatus('idle');
         return;
       }

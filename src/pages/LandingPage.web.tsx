@@ -190,6 +190,25 @@ export const LandingPage: React.FC = () => {
               <Text style={styles.secondaryButtonText}>See How It Works</Text>
             </TouchableOpacity>
           </View>
+
+          {/* App Store Download Button */}
+          {Platform.OS === 'web' && (
+            <View style={styles.appStoreContainer}>
+              <a
+                href="https://apps.apple.com/us/app/travalpass-traval-together/id6756789856"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Download TravalPass on the App Store"
+                style={{ textDecoration: 'none' }}
+              >
+                <Image
+                  source={{ uri: 'https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg' }}
+                  style={styles.appStoreBadge}
+                  accessibilityLabel="Download on the App Store"
+                />
+              </a>
+            </View>
+          )}
         </View>
       </View>
 
@@ -525,6 +544,16 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  appStoreContainer: {
+    marginTop: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  appStoreBadge: {
+    height: 50,
+    width: 150,
+    resizeMode: 'contain',
   },
   section: {
     paddingVertical: 80,

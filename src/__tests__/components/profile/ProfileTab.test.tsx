@@ -73,6 +73,7 @@ describe('ProfileTab', () => {
       connections: mockConnections,
       loading: false,
       error: null,
+      removeConnectionOptimistic: jest.fn(),
     });
     (useAllItineraries as jest.Mock).mockReturnValue({
       itineraries: mockItineraries,
@@ -223,6 +224,7 @@ describe('ProfileTab', () => {
         connections: [],
         loading: false,
         error: null,
+        removeConnectionOptimistic: jest.fn(),
       });
       (useAllItineraries as jest.Mock).mockReturnValue({
         itineraries: [],

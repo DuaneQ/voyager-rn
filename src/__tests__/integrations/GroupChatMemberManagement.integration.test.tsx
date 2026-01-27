@@ -97,6 +97,7 @@ describe('Group Chat Member Management Integration', () => {
       error: null,
       participants: mockParticipants,
       getParticipants: jest.fn().mockReturnValue(mockParticipants),
+      removeConnectionOptimistic: jest.fn(),
     } as any);
 
     mockUseMessages.mockReturnValue({
@@ -122,6 +123,7 @@ describe('Group Chat Member Management Integration', () => {
         error: null,
         participants: mockParticipants.slice(0, 2),
         getParticipants: jest.fn().mockReturnValue(mockParticipants.slice(0, 2)),
+        removeConnectionOptimistic: jest.fn(),
       } as any);
 
       const result = renderWithContext(<ChatThreadScreen />);

@@ -15,9 +15,11 @@ import {
   ActivityIndicator,
   Alert,
   StyleSheet,
+  Platform,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import Slider from '@react-native-community/slider';
+import { CrossPlatformPicker, PickerItem } from '../common/CrossPlatformPicker';
 import { useTravelPreferences } from '../../hooks/useTravelPreferences';
 import {
   TravelPreferenceProfile,
@@ -182,44 +184,34 @@ export const TravelPreferencesTab: React.FC<TravelPreferencesTabProps> = ({
     );
   }
 
+  // Create picker items for profiles
+  const profilePickerItems: PickerItem[] = [
+    { label: '-- Select a profile to edit --', value: '' },
+    ...profiles.map(profile => ({
+      label: `${profile.name}${profile.isDefault ? ' ⭐' : ''}`,
+      value: profile.id,
+    })),
+  ];
+
   return (
     <View style={styles.container}>
       {/* Load Existing Profile Dropdown (only show if profiles exist) */}
       {profiles.length > 0 && (
         <View style={styles.section}>
           <View style={styles.pickerContainer}>
-            <Picker
-              testID="profile-picker"
+            <CrossPlatformPicker
+              items={profilePickerItems}
               selectedValue={selectedProfileId}
-              onValueChange={(itemValue) => {
-                if (itemValue) {
-                  handleLoadProfile(itemValue);
+              onValueChange={(value) => {
+                if (value) {
+                  handleLoadProfile(value);
                 } else {
-                  // User selected "-- Select a profile to edit --", clear form
                   setSelectedProfileId('');
                 }
               }}
-              style={styles.picker}
-              itemStyle={styles.pickerItem}
-              mode="dropdown"
-              dropdownIconColor="#007AFF"
-            >
-              <Picker.Item 
-                label="-- Select a profile to edit --" 
-                value="" 
-                color="#FFFFFF"
-                style={{ fontWeight: '600', fontSize: 18 }}
-              />
-              {profiles.map(profile => (
-                <Picker.Item
-                  key={profile.id}
-                  label={`${profile.name}${profile.isDefault ? ' ⭐' : ''}`}
-                  value={profile.id}
-                  color="#FFFFFF"
-                  style={{ fontWeight: '600', fontSize: 18 }}
-                />
-              ))}
-            </Picker>
+              placeholder="-- Select a profile to edit --"
+              testID="profile-picker"
+            />
           </View>
           <Text style={styles.helperText}>
             💡 These profiles help AI personalize your travel itineraries

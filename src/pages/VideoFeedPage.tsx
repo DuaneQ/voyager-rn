@@ -60,6 +60,7 @@ const VideoFeedPage: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [uploadModalVisible, setUploadModalVisible] = useState(false);
   const [selectedVideoUri, setSelectedVideoUri] = useState<string | null>(null);
+  const [selectedVideoFileSize, setSelectedVideoFileSize] = useState<number | undefined>(undefined);
   const [isMuted, setIsMuted] = useState(false); // Videos play with audio by default (TikTok/Reels behavior)
   const [commentsModalVisible, setCommentsModalVisible] = useState(false);
   const [selectedVideoForComments, setSelectedVideoForComments] = useState<typeof videos[0] | null>(null);
@@ -253,10 +254,11 @@ const VideoFeedPage: React.FC = () => {
    * Handle upload button press
    */
   const handleUploadPress = useCallback(async () => {
-    const videoUri = await selectVideo();
-    if (videoUri) {
-      // Show modal to configure upload
-      setSelectedVideoUri(videoUri);
+    const result = await selectVideo();
+    if (result) {
+      // Show modal to configure upload - pass both uri and fileSize
+      setSelectedVideoUri(result.uri);
+      setSelectedVideoFileSize(result.fileSize);
       setUploadModalVisible(true);
     }
   }, [selectVideo]);
@@ -269,6 +271,7 @@ const VideoFeedPage: React.FC = () => {
     // Close modal
     setUploadModalVisible(false);
     setSelectedVideoUri(null);
+    setSelectedVideoFileSize(undefined);
     // Refresh feed after upload
     await refreshVideos();
   }, [uploadVideo, refreshVideos]);
@@ -279,6 +282,7 @@ const VideoFeedPage: React.FC = () => {
   const handleUploadModalClose = useCallback(() => {
     setUploadModalVisible(false);
     setSelectedVideoUri(null);
+    setSelectedVideoFileSize(undefined);
   }, []);
 
   /**
@@ -592,6 +596,7 @@ const VideoFeedPage: React.FC = () => {
           onClose={handleUploadModalClose}
           onUpload={handleVideoUpload}
           videoUri={selectedVideoUri}
+          pickerFileSize={selectedVideoFileSize}
           isUploading={uploadState.loading}
           uploadProgress={uploadState.progress}
           processingStatus={uploadState.processingStatus}

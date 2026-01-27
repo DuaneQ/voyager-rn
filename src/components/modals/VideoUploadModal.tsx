@@ -31,6 +31,7 @@ interface VideoUploadModalProps {
   onClose: () => void;
   onUpload: (videoData: VideoUploadData) => Promise<void>;
   videoUri: string | null;
+  pickerFileSize?: number; // Original file size from expo-image-picker (avoids iOS transcoding)
   isUploading?: boolean;
   uploadProgress?: number;
   processingStatus?: string | null;
@@ -47,6 +48,7 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
   onClose,
   onUpload,
   videoUri,
+  pickerFileSize,
   isUploading = false,
   uploadProgress = 0,
   processingStatus = null,
@@ -104,6 +106,7 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
         title: defaultTitle,
         description: defaultDescription,
         isPublic,
+        pickerFileSize, // Pass original file size to avoid iOS transcoding inflation
       });
 
       // Reset form after successful upload

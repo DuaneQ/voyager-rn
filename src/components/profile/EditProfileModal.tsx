@@ -19,13 +19,13 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import {
   GENDER_OPTIONS,
   STATUS_OPTIONS,
   SEXUAL_ORIENTATION_OPTIONS,
 } from '../../types/ManualItinerary';
 import { AndroidPickerModal } from '../common/AndroidPickerModal';
+import { CrossPlatformDatePicker } from '../common/CrossPlatformDatePicker';
 
 // iOS Picker Modal Component
 const IOSPickerModal: React.FC<{
@@ -118,9 +118,8 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   const [drinkingModalVisible, setDrinkingModalVisible] = useState(false);
   const [smokingModalVisible, setSmokingModalVisible] = useState(false);
   
-  // Date picker state
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [tempDate, setTempDate] = useState<Date>(() => {
+  // Date state for CrossPlatformDatePicker
+  const [dateValue, setDateValue] = useState<Date>(() => {
     if (initialData.dob) {
       return new Date(initialData.dob);
     }
@@ -133,6 +132,10 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   useEffect(() => {
     setFormData(initialData);
     setErrors({});
+    // Update dateValue when initialData.dob changes
+    if (initialData.dob) {
+      setDateValue(new Date(initialData.dob));
+    }
   }, [visible, initialData]);
 
   const isUserOver18 = (dob: string): boolean => {
@@ -288,87 +291,23 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
           {/* Date of Birth */}
           <View style={styles.fieldContainer}>
             <Text style={styles.label}>Date of Birth *</Text>
-            <TouchableOpacity
+            <CrossPlatformDatePicker
               testID="dob-input"
-              style={[styles.input, errors.dob && styles.inputError]}
-              onPress={() => setShowDatePicker(true)}
-            >
-              <Text style={[styles.inputText, !formData.dob && styles.placeholderText]}>
-                {formData.dob || 'Select date of birth...'}
-              </Text>
-              <Ionicons name="calendar-outline" size={20} color="#999" />
-            </TouchableOpacity>
-            
-            {/* iOS Date Picker Modal */}
-            {Platform.OS === 'ios' && showDatePicker && (
-              <Modal
-                visible={showDatePicker}
-                transparent={true}
-                animationType="slide"
-              >
-                <View style={styles.datePickerModalOverlay}>
-                  <View style={styles.datePickerModalContent}>
-                    <View style={styles.datePickerHeader}>
-                      <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                        <Text style={styles.datePickerCancelButton}>Cancel</Text>
-                      </TouchableOpacity>
-                      <Text style={styles.datePickerTitle}>Date of Birth</Text>
-                      <TouchableOpacity
-                        onPress={() => {
-                          // Format the tempDate and save it
-                          const year = tempDate.getFullYear();
-                          const month = String(tempDate.getMonth() + 1).padStart(2, '0');
-                          const day = String(tempDate.getDate()).padStart(2, '0');
-                          const formattedDate = `${year}-${month}-${day}`;
-                          handleChange('dob', formattedDate);
-                          setShowDatePicker(false);
-                        }}
-                      >
-                        <Text style={styles.datePickerDoneButton}>Done</Text>
-                      </TouchableOpacity>
-                    </View>
-                    <DateTimePicker
-                      testID="dateTimePicker"
-                      value={tempDate}
-                      mode="date"
-                      display="spinner"
-                      onChange={(event, selectedDate) => {
-                        if (selectedDate) {
-                          setTempDate(selectedDate);
-                        }
-                      }}
-                      maximumDate={new Date()}
-                    />
-                  </View>
-                </View>
-              </Modal>
-            )}
-            
-            {/* Android Date Picker */}
-            {Platform.OS === 'android' && showDatePicker && (
-              <DateTimePicker
-                testID="dateTimePicker"
-                value={tempDate}
-                mode="date"
-                display="default"
-                onChange={(event, selectedDate) => {
-                  setShowDatePicker(false);
-                  if (event.type === 'set' && selectedDate) {
-                    setTempDate(selectedDate);
-                    const year = selectedDate.getFullYear();
-                    const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
-                    const day = String(selectedDate.getDate()).padStart(2, '0');
-                    const formattedDate = `${year}-${month}-${day}`;
-                    handleChange('dob', formattedDate);
-                  }
-                }}
-                maximumDate={new Date()}
-              />
-            )}
-            
-            {errors.dob && (
-              <Text style={styles.errorText}>{errors.dob}</Text>
-            )}
+              value={dateValue}
+              onChange={(date) => {
+                setDateValue(date);
+                // Format date as YYYY-MM-DD
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const formattedDate = `${year}-${month}-${day}`;
+                handleChange('dob', formattedDate);
+              }}
+              maximumDate={new Date()}
+              label="Date of Birth"
+              error={!!errors.dob}
+              errorMessage={errors.dob}
+            />
           </View>
 
           {/* Status */}

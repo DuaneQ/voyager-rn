@@ -48,6 +48,7 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
   onViewTracked,
 }) => {
   const videoRef = useRef<Video>(null);
+  const webVideoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   // Track if user manually paused (vs auto-pause during scroll)
   // Play button should ONLY show when user pauses, not on initial load
@@ -198,6 +199,39 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
   }, [isActive, userPaused]);
 
   /**
+   * Web: Control video playback when isActive changes
+   */
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    
+    const webVideo = webVideoRef.current;
+    if (!webVideo) return;
+    
+    if (isActive && !userPaused) {
+      webVideo.play().catch((err) => {
+        // Autoplay may be blocked by browser
+        console.warn('[VideoCard] Web autoplay blocked:', err);
+      });
+      setIsPlaying(true);
+    } else {
+      webVideo.pause();
+      setIsPlaying(false);
+    }
+  }, [isActive, userPaused]);
+
+  /**
+   * Web: Update mute state when isMuted prop changes
+   */
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    
+    const webVideo = webVideoRef.current;
+    if (webVideo) {
+      webVideo.muted = isMuted;
+    }
+  }, [isMuted]);
+
+  /**
    * Update mute state when isMuted prop changes.
    */
   useEffect(() => {
@@ -287,6 +321,27 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
    * Toggle play/pause
    */
   const handlePlayPause = async () => {
+    // Web: Uses native video element
+    if (Platform.OS === 'web') {
+      const webVideo = webVideoRef.current;
+      if (!webVideo) return;
+      
+      try {
+        if (webVideo.paused) {
+          await webVideo.play();
+          setIsPlaying(true);
+          setUserPaused(false);
+        } else {
+          webVideo.pause();
+          setIsPlaying(false);
+          setUserPaused(true);
+        }
+      } catch (err) {
+        console.error('[VideoCard] Web play/pause error:', err);
+      }
+      return;
+    }
+
     // Android: Uses isPaused prop - just toggle userPaused state
     if (Platform.OS === 'android') {
       const newPausedState = !userPaused;
@@ -474,7 +529,27 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
           activeOpacity={1}
           onPress={handlePlayPause}
         >
-          {Platform.OS === 'android' ? (
+          {Platform.OS === 'web' ? (
+            <video
+              ref={webVideoRef as any}
+              src={video.videoUrl}
+              poster={video.thumbnailUrl || ''}
+              loop
+              playsInline
+              muted={isMuted}
+              autoPlay={isActive && !userPaused}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                backgroundColor: '#000',
+              }}
+              onError={() => {
+                console.error('[VideoCard] Web video error:', video.id);
+                setError(true);
+              }}
+            />
+          ) : Platform.OS === 'android' ? (
             <AndroidVideoPlayerRNV
               video={video}
               isActive={isActive}

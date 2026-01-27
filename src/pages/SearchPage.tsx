@@ -25,6 +25,7 @@ import {
   ActivityIndicator,
   ScrollView,
   ImageBackground,
+  Platform,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { getAuthInstance } from '../config/firebaseConfig';
@@ -41,6 +42,7 @@ import { connectionRepository } from '../repositories/ConnectionRepository';
 import { saveViewedItinerary, hasViewedItinerary } from '../utils/viewedStorage';
 import AddItineraryModal from '../components/search/AddItineraryModal';
 import { FeedbackButton } from '../components/utilities/FeedbackButton';
+import SubscriptionCard from '../components/common/SubscriptionCard';
 
 const SearchPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -48,6 +50,8 @@ const SearchPage: React.FC = () => {
   const [currentMockIndex, setCurrentMockIndex] = useState(0);
   const [selectedItineraryId, setSelectedItineraryId] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  // Stripe checkout result status (Web only)
+  const [checkoutStatus, setCheckoutStatus] = useState<'success' | 'cancel' | null>(null);
   const { showAlert } = useAlert();
   const { userProfile } = useUserProfile();
   
@@ -111,6 +115,24 @@ const SearchPage: React.FC = () => {
     });
 
     return unsubscribe;
+  }, []);
+
+  // Detect Stripe checkout result from URL query param (Web only)
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const checkout = urlParams.get('checkout');
+    
+    if (checkout === 'success' || checkout === 'cancel') {
+      setCheckoutStatus(checkout);
+      // Remove the query param from URL without page reload
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+      
+      // Auto-clear the status message after 5 seconds
+      setTimeout(() => setCheckoutStatus(null), 5000);
+    }
   }, []);
 
   // Refresh itineraries whenever user navigates to this screen
@@ -223,7 +245,6 @@ const SearchPage: React.FC = () => {
 
       if (myLikes.includes(otherUserUid)) {
         // MUTUAL MATCH! Create connection
-
         try {
           const myEmail = myItinerary?.userInfo?.email ?? '';
           const otherEmail = itinerary?.userInfo?.email ?? '';
@@ -240,11 +261,12 @@ const SearchPage: React.FC = () => {
           showAlert('success', "🎉 It's a match! You can now chat with this traveler.");
         } catch (connError: any) {
           console.error('[SearchPage] ❌ Error creating connection:', connError);
+          console.error('[SearchPage] ❌ Error details:', JSON.stringify(connError, null, 2));
           // Don't fail the like action if connection creation fails
           showAlert('warning', 'Match detected but connection setup had issues. Please check Chats.');
         }
       } else {
-        
+        console.log('[SearchPage] No mutual match yet - other user has not liked your itinerary');
       }
       
       // Advance to next itinerary
@@ -330,6 +352,25 @@ const SearchPage: React.FC = () => {
         accessibilityLabel="homeScreen"
         style={styles.safeArea}
       >
+        {/* Stripe Checkout Status Message (Web only) */}
+        {Platform.OS === 'web' && checkoutStatus === 'success' && (
+          <View style={styles.checkoutSuccess}>
+            <Text style={styles.checkoutSuccessText}>
+              Payment successful! Your subscription is now active.
+            </Text>
+          </View>
+        )}
+        {Platform.OS === 'web' && checkoutStatus === 'cancel' && (
+          <View style={styles.checkoutCancel}>
+            <Text style={styles.checkoutCancelText}>
+              Payment canceled. No changes were made to your subscription.
+            </Text>
+          </View>
+        )}
+
+        {/* Subscription Card - Web only, compact floating style */}
+        <SubscriptionCard compact />
+
         {/* Itinerary Selector Dropdown */}
         <ItinerarySelector
           itineraries={itineraries}
@@ -465,6 +506,41 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: 'transparent',
+  },
+  // Stripe checkout status messages (Web only)
+  checkoutSuccess: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    right: 16,
+    backgroundColor: '#e0ffe0',
+    padding: 12,
+    borderRadius: 8,
+    zIndex: 2000,
+    alignItems: 'center',
+  },
+  checkoutSuccessText: {
+    color: '#1b5e20',
+    fontWeight: '600',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  checkoutCancel: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    right: 16,
+    backgroundColor: '#fff3e0',
+    padding: 12,
+    borderRadius: 8,
+    zIndex: 2000,
+    alignItems: 'center',
+  },
+  checkoutCancelText: {
+    color: '#bf360c',
+    fontWeight: '600',
+    fontSize: 14,
+    textAlign: 'center',
   },
   usageContainer: {
     alignItems: 'center',

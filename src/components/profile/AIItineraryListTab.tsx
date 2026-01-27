@@ -27,10 +27,8 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Platform,
-  ActionSheetIOS,
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
+import { CrossPlatformPicker, PickerItem } from '../common/CrossPlatformPicker';
 import { useAIGeneratedItineraries } from '../../hooks/useAIGeneratedItineraries';
 import { AIItineraryDisplay } from '../ai/AIItineraryDisplay';
 
@@ -47,26 +45,11 @@ export const AIItineraryListTab: React.FC = () => {
 
   const selectedItinerary = itineraries.find(itin => itin.id === selectedItineraryId);
 
-  const showPicker = () => {
-    if (Platform.OS === 'ios') {
-      const options = [
-        'Cancel',
-        ...itineraries.map(itin => `${itin.destination} - ${new Date(itin.startDate).toLocaleDateString()}`)
-      ];
-      
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options,
-          cancelButtonIndex: 0,
-        },
-        (buttonIndex) => {
-          if (buttonIndex > 0) {
-            setSelectedItineraryId(itineraries[buttonIndex - 1].id);
-          }
-        }
-      );
-    }
-  };
+  // Create picker items
+  const pickerItems: PickerItem[] = itineraries.map(itin => ({
+    label: `${itin.destination} - ${new Date(itin.startDate).toLocaleDateString()}`,
+    value: itin.id,
+  }));
 
   if (loading) {
     return (
@@ -108,40 +91,12 @@ export const AIItineraryListTab: React.FC = () => {
       <View style={styles.dropdownContainer}>
         <Text style={styles.dropdownLabel}>Select Itinerary:</Text>
         
-        {Platform.OS === 'ios' ? (
-          // iOS: Use TouchableOpacity with ActionSheet
-          <TouchableOpacity 
-            style={styles.iosPickerButton}
-            onPress={showPicker}
-          >
-            <Text style={styles.iosPickerText}>
-              {selectedItinerary 
-                ? `${selectedItinerary.destination} - ${new Date(selectedItinerary.startDate).toLocaleDateString()}`
-                : 'Select an itinerary...'
-              }
-            </Text>
-            <Text style={styles.iosPickerArrow}>▼</Text>
-          </TouchableOpacity>
-        ) : (
-          // Android: Use standard Picker with mode="dialog" for better visibility
-          <View style={styles.pickerWrapper}>
-            <Picker
-              selectedValue={selectedItineraryId}
-              onValueChange={(value) => setSelectedItineraryId(value)}
-              style={styles.picker}
-              dropdownIconColor="#000000"
-              mode="dialog"
-            >
-              {itineraries.map((itinerary) => (
-                <Picker.Item
-                  key={itinerary.id}
-                  label={`${itinerary.destination} - ${new Date(itinerary.startDate).toLocaleDateString()}`}
-                  value={itinerary.id}
-                />
-              ))}
-            </Picker>
-          </View>
-        )}
+        <CrossPlatformPicker
+          items={pickerItems}
+          selectedValue={selectedItineraryId}
+          onValueChange={setSelectedItineraryId}
+          placeholder="Select an itinerary..."
+        />
       </View>
 
       {/* Display Selected Itinerary */}

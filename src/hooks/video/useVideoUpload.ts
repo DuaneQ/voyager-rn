@@ -45,8 +45,9 @@ export const useVideoUpload = () => {
 
   /**
    * Select video from library
+   * Returns both URI and fileSize from picker to avoid iOS transcoding issues
    */
-  const selectVideo = useCallback(async (): Promise<string | null> => {
+  const selectVideo = useCallback(async (): Promise<{ uri: string; fileSize?: number } | null> => {
     const hasPermission = await requestPermission();
     if (!hasPermission) {
       return null;
@@ -63,7 +64,12 @@ export const useVideoUpload = () => {
         return null;
       }
 
-      return result.assets[0].uri;
+      const asset = result.assets[0];
+      // Return both URI and fileSize from picker (avoids iOS transcoding issue)
+      return {
+        uri: asset.uri,
+        fileSize: asset.fileSize, // This is the ORIGINAL file size before any transcoding
+      };
     } catch (error) {
       console.error('Error selecting video:', error);
       Alert.alert('Error', 'Failed to select video');
@@ -94,8 +100,14 @@ export const useVideoUpload = () => {
       });
 
       try {
-        // Get file size
-        const fileSize = await getFileSize(videoData.uri);
+        // Get file size - prefer pickerFileSize from expo-image-picker (avoids iOS transcoding)
+        // Fall back to getFileSize() only if pickerFileSize not provided
+        let fileSize: number;
+        if (videoData.pickerFileSize && videoData.pickerFileSize > 0) {
+          fileSize = videoData.pickerFileSize;
+        } else {
+          fileSize = await getFileSize(videoData.uri);
+        }
 
         // Validate video file
         const fileValidation = await validateVideoFile(videoData.uri, fileSize);
@@ -110,8 +122,7 @@ export const useVideoUpload = () => {
         );
         if (!metadataValidation.isValid) {
           throw new Error(metadataValidation.errors.join(', '));
-        }
-
+        }        
         // Upload video
         const video = await videoService.uploadVideo(
           videoData,
@@ -135,8 +146,10 @@ export const useVideoUpload = () => {
 
         return video;
       } catch (error) {
+        console.error('[useVideoUpload] Upload error caught:', error);
         const errorMessage =
           error instanceof Error ? error.message : 'Upload failed';
+        console.error('[useVideoUpload] Error message:', errorMessage);
         
         setUploadState({
           loading: false,
@@ -177,17 +190,11 @@ export const useVideoUpload = () => {
   const effectiveAuth2 = tentative2 && tentative2.currentUser ? tentative2 : (firebaseCfg as any).auth;
   const userId = effectiveAuth2?.currentUser?.uid;
     if (!userId) {
-      
       return [];
     }
 
     try {
-      
       const videos = await videoService.getUserVideos(userId);
-      
-      videos.forEach((video, index) => {
-        
-      });
       return videos;
     } catch (error) {
       console.error('[useVideoUpload] Error loading videos:', error);

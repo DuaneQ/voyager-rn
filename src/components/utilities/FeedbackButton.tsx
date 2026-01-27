@@ -56,7 +56,8 @@ const styles = StyleSheet.create({
     zIndex: 1000,
     backgroundColor: '#1976d2',
     paddingVertical: 10,
-    paddingHorizontal: 4,
+    paddingHorizontal: 6,
+    minWidth: 24,
     borderTopLeftRadius: 6,
     borderBottomLeftRadius: 6,
     // Shadow

@@ -8,6 +8,7 @@ import {
   getFirestore,
   collection,
   doc,
+  addDoc,
   setDoc,
   getDoc,
   updateDoc,
@@ -15,6 +16,7 @@ import {
   where,
   getDocs,
   Timestamp,
+  serverTimestamp,
   QuerySnapshot,
   DocumentData
 } from 'firebase/firestore';
@@ -47,6 +49,7 @@ export class FirestoreConnectionRepository implements IConnectionRepository {
 
   /**
    * Create a new connection between two users
+   * Uses addDoc for auto-generated ID (matches PWA behavior)
    * @param params - Connection parameters (user IDs, itinerary IDs, itinerary objects)
    * @returns Created connection object
    */
@@ -56,23 +59,27 @@ export class FirestoreConnectionRepository implements IConnectionRepository {
 
       // Validate parameters
       if (!user1Id || !user2Id || !itinerary1Id || !itinerary2Id) {
+        console.error('[ConnectionRepository] Missing required parameters');
         throw new Error('Missing required connection parameters');
       }
 
-      // Generate connection ID (deterministic based on user IDs sorted alphabetically)
-      const sortedUsers = [user1Id, user2Id].sort();
-      const connectionId = `${sortedUsers[0]}_${sortedUsers[1]}`;
+      // Create connection with addDoc (auto-generated ID) - matches PWA exactly
+      const connectionData = {
+        users: [user1Id, user2Id],
+        emails: [itinerary1?.userInfo?.email ?? '', itinerary2?.userInfo?.email ?? ''],
+        itineraryIds: [itinerary1Id, itinerary2Id],
+        itineraries: [itinerary1, itinerary2],
+        createdAt: serverTimestamp(),
+        unreadCounts: {
+          [user1Id]: 0,
+          [user2Id]: 0
+        }
+      };
 
-      // Check if connection already exists
-      const existingConnection = await this.getConnectionById(connectionId);
-      if (existingConnection) {
-        
-        return existingConnection;
-      }
-
-      // Create connection object
-      const connection: Connection = {
-        id: connectionId,
+      const docRef = await addDoc(collection(this.db, this.connectionsCollection), connectionData);
+      
+      return {
+        id: docRef.id,
         users: [user1Id, user2Id],
         itineraryIds: [itinerary1Id, itinerary2Id],
         itineraries: [itinerary1, itinerary2],
@@ -82,20 +89,9 @@ export class FirestoreConnectionRepository implements IConnectionRepository {
           [user2Id]: 0
         }
       };
-
-      // Save to Firestore
-      const connectionRef = doc(this.db, this.connectionsCollection, connectionId);
-      await setDoc(connectionRef, connection);
-
-      return connection;
     } catch (error: any) {
       console.error('[ConnectionRepository] createConnection error:', error);
-      
-      if (error instanceof Error) {
-        throw error;
-      }
-      
-      throw new Error('Failed to create connection. Please try again.');
+      throw new Error(`Failed to create connection. ${error?.message || 'Please try again.'}`);
     }
   }
 

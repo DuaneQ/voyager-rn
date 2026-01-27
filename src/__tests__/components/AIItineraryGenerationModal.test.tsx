@@ -2,7 +2,7 @@ import React from 'react';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 
 // Mocks
-jest.mock('../../hooks/useAIGeneration');
+jest.mock('../../hooks/useAIGenerationV2');
 // Use central manual mock for firebaseConfig
 jest.mock('../../config/firebaseConfig');
 import { setMockUser, clearMockUser } from '../../testUtils/mockAuth';
@@ -14,8 +14,53 @@ jest.mock('react-native-google-places-autocomplete', () => ({
   }
 }));
 
+// Mock CityPicker component
+jest.mock('../../components/common/CityPicker', () => {
+  const React = require('react');
+  const { TextInput } = require('react-native');
+  return {
+    CityPicker: ({ testID, placeholder, value, onChangeText, onCitySelected }: any) => {
+      return React.createElement(TextInput, {
+        testID: testID || 'city-picker-input',
+        value: value || '',
+        placeholder: placeholder,
+        onChangeText: (text: string) => {
+          onChangeText?.(text);
+          if (text) {
+            onCitySelected?.({
+              name: text,
+              countryCode: 'US',
+              country: 'United States',
+              stateCode: 'CA',
+              coordinates: { lat: 0, lng: 0 },
+            }, text);
+          }
+        },
+      });
+    },
+  };
+});
+
+// Mock CrossPlatformDatePicker
+jest.mock('../../components/common/CrossPlatformDatePicker', () => {
+  const React = require('react');
+  const { View, TouchableOpacity, Text } = require('react-native');
+  return {
+    CrossPlatformDatePicker: ({ testID, value, onChange }: any) => {
+      return React.createElement(View, { testID },
+        React.createElement(TouchableOpacity, {
+          testID: `${testID}-button`,
+          onPress: () => onChange(value),
+        },
+          React.createElement(Text, {}, value?.toLocaleDateString() || 'Select date')
+        )
+      );
+    },
+  };
+});
+
 import { AIItineraryGenerationModal } from '../../components/modals/AIItineraryGenerationModal';
-const { useAIGeneration } = require('../../hooks/useAIGeneration');
+const { useAIGenerationV2 } = require('../../hooks/useAIGenerationV2');
 
 describe('AIItineraryGenerationModal', () => {
   beforeEach(() => {
@@ -28,7 +73,7 @@ describe('AIItineraryGenerationModal', () => {
   });
 
   it('renders form content when visible', () => {
-    (useAIGeneration as jest.Mock).mockReturnValue({
+    (useAIGenerationV2 as jest.Mock).mockReturnValue({
       generateItinerary: jest.fn(),
       isGenerating: false,
       progress: null,
@@ -50,7 +95,7 @@ describe('AIItineraryGenerationModal', () => {
   });
 
   it('shows validation errors when required fields are missing', async () => {
-    (useAIGeneration as jest.Mock).mockReturnValue({
+    (useAIGenerationV2 as jest.Mock).mockReturnValue({
       generateItinerary: jest.fn(),
       isGenerating: false,
       progress: null,
@@ -82,7 +127,7 @@ describe('AIItineraryGenerationModal', () => {
 
   it('calls generateItinerary and shows success state on success', async () => {
     const mockGenerate = jest.fn(() => Promise.resolve({ success: true, data: {} }));
-    (useAIGeneration as jest.Mock).mockReturnValue({
+    (useAIGenerationV2 as jest.Mock).mockReturnValue({
       generateItinerary: mockGenerate,
       isGenerating: false,
       progress: null,
@@ -117,7 +162,7 @@ describe('AIItineraryGenerationModal', () => {
   });
 
   it('renders progress UI when generating', () => {
-    (useAIGeneration as jest.Mock).mockReturnValue({
+    (useAIGenerationV2 as jest.Mock).mockReturnValue({
       generateItinerary: jest.fn(),
       isGenerating: true,
       progress: { stage: 'ai_generation', percent: 45, message: 'Generating' },
@@ -147,7 +192,7 @@ describe('AIItineraryGenerationModal', () => {
   });
 
   it('clears field errors when user modifies destination field', async () => {
-    (useAIGeneration as jest.Mock).mockReturnValue({
+    (useAIGenerationV2 as jest.Mock).mockReturnValue({
       generateItinerary: jest.fn(),
       isGenerating: false,
       progress: null,
@@ -184,7 +229,7 @@ describe('AIItineraryGenerationModal', () => {
 
   it('calls cancelGeneration when cancel button is pressed during generation', async () => {
     const mockCancel = jest.fn();
-    (useAIGeneration as jest.Mock).mockReturnValue({
+    (useAIGenerationV2 as jest.Mock).mockReturnValue({
       generateItinerary: jest.fn(),
       isGenerating: true,
       progress: { stage: 'ai_generation', percent: 50, message: 'Generating' },

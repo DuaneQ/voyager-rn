@@ -3,6 +3,7 @@
  * Adapted from PWA for React Native - simplified for mobile use
  */
 
+import { Platform } from 'react-native';
 import { Audio } from 'expo-av';
 import * as VideoThumbnails from 'expo-video-thumbnails';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -35,7 +36,8 @@ export const validateVideoFile = async (
   }
 
   // Check video duration if other validations pass
-  if (errors.length === 0) {
+  // Skip on web - expo-av doesn't support video duration on web
+  if (errors.length === 0 && Platform.OS !== 'web') {
     try {
       const duration = await getVideoDuration(uri);
       if (duration > VIDEO_CONSTRAINTS.MAX_DURATION) {
@@ -118,13 +120,19 @@ export const validateVideoMetadata = (
 
 /**
  * Generates a thumbnail from a video file
- * Uses expo-video-thumbnails for React Native
+ * Uses expo-video-thumbnails for React Native (iOS/Android only)
+ * On web, returns null as expo-video-thumbnails is not supported
  * Note: May fail with HEVC/H.265 encoded videos on Android emulator
  */
 export const generateVideoThumbnail = async (
   uri: string,
   timeInSeconds: number = 1
 ): Promise<string> => {
+  // Use different strategies for web vs native
+  if (Platform.OS === 'web') {
+    return generateWebThumbnail(uri, timeInSeconds);
+  }
+  
   try {
     
     const { uri: thumbnailUri } = await VideoThumbnails.getThumbnailAsync(uri, {
@@ -143,32 +151,96 @@ export const generateVideoThumbnail = async (
 };
 
 /**
+ * Generate thumbnail on web using HTML5 video element and canvas
+ */
+const generateWebThumbnail = (videoUri: string, timeInSeconds: number): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video');
+    video.crossOrigin = 'anonymous';
+    video.muted = true;
+    video.playsInline = true;
+    
+    video.onloadedmetadata = () => {
+      // Seek to specified time (or 1 second if video is shorter)
+      video.currentTime = Math.min(timeInSeconds, video.duration - 0.1);
+    };
+    
+    video.onseeked = () => {
+      try {
+        // Create canvas and draw video frame
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Could not get canvas context'));
+          return;
+        }
+        
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        // Convert to data URL (JPEG)
+        const thumbnailDataUrl = canvas.toDataURL('image/jpeg', 0.7);        
+        // Clean up
+        video.pause();
+        video.src = '';
+        video.load();
+        
+        resolve(thumbnailDataUrl);
+      } catch (error) {
+        reject(error);
+      }
+    };
+    
+    video.onerror = () => {
+      reject(new Error('Failed to load video for thumbnail generation'));
+    };
+    
+    // Set timeout in case video never loads
+    const timeout = setTimeout(() => {
+      video.pause();
+      video.src = '';
+      reject(new Error('Thumbnail generation timed out'));
+    }, 10000);
+    
+    video.oncanplay = () => {
+      clearTimeout(timeout);
+    };
+    
+    video.src = videoUri;
+    video.load();
+  });
+};
+
+/**
  * Gets file size from URI
  * Uses multiple fallback strategies for maximum compatibility
  */
 export const getFileSize = async (uri: string): Promise<number> => {
   try {
     // Strategy 1: Try expo-file-system (most reliable for local files)
-    try {
-      const fileInfo = await FileSystem.getInfoAsync(uri);
-      if (fileInfo && 'exists' in fileInfo && fileInfo.exists && 'size' in fileInfo && typeof fileInfo.size === 'number') {
-        console.log('[videoValidation] File size from FileSystem:', fileInfo.size);
-        return fileInfo.size;
+    // Skip on web - FileSystem.getInfoAsync is not available
+    if (Platform.OS !== 'web') {
+      try {
+        const fileInfo = await FileSystem.getInfoAsync(uri);
+        if (fileInfo && 'exists' in fileInfo && fileInfo.exists && 'size' in fileInfo && typeof fileInfo.size === 'number') {
+          return fileInfo.size;
+        }
+      } catch (fsError) {
+        // Swallow error, try next strategy
       }
-    } catch (fsError) {
-      console.log('[videoValidation] FileSystem failed, trying fetch fallback:', fsError);
     }
 
-    // Strategy 2: Fetch as blob (works for both file:// URIs and content:// URIs)
+    // Strategy 2: Fetch as blob (works for web and as fallback for mobile)
     try {
       const response = await fetch(uri);
       const blob = await response.blob();
       if (blob && blob.size > 0) {
-        console.log('[videoValidation] File size from fetch:', blob.size);
         return blob.size;
       }
     } catch (fetchError) {
-      console.log('[videoValidation] Fetch failed:', fetchError);
+      // Swallow error, try next strategy
     }
 
     throw new Error('Could not determine file size using any method');

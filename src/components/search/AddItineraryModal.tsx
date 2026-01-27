@@ -13,8 +13,9 @@ import {
   PanResponder,
   Animated,
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { PlacesAutocomplete } from '../common/PlacesAutocomplete';
+import { CrossPlatformDatePicker } from '../common/CrossPlatformDatePicker';
+import { CityPicker } from '../common/CityPicker';
+import { City } from '../../types/City';
 import RangeSlider from '../common/RangeSlider';
 import { AndroidPickerModal } from '../common/AndroidPickerModal';
 import { useCreateItinerary } from '../../hooks/useCreateItinerary';
@@ -80,8 +81,6 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
   const [upperRange, setUpperRange] = useState(45);
 
   // UI state
-  const [showStartPicker, setShowStartPicker] = useState(false);
-  const [showEndPicker, setShowEndPicker] = useState(false);
   const [editingItineraryId, setEditingItineraryId] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   
@@ -241,37 +240,6 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
     }
   };
 
-  // Date picker handlers
-  const handleStartDateChange = (event: any, selectedDate?: Date) => {
-    // On Android, close picker after selection or dismissal
-    if (Platform.OS === 'android') {
-      setShowStartPicker(false);
-    }
-    // Only update date if user didn't dismiss (cancel)
-    if (event.type !== 'dismissed' && selectedDate) {
-      setStartDate(selectedDate);
-    }
-  };
-
-  const handleEndDateChange = (event: any, selectedDate?: Date) => {
-    // On Android, close picker after selection or dismissal
-    if (Platform.OS === 'android') {
-      setShowEndPicker(false);
-    }
-    // Only update date if user didn't dismiss (cancel)
-    if (event.type !== 'dismissed' && selectedDate) {
-      setEndDate(selectedDate);
-    }
-  };
-
-  const handleStartDateDone = () => {
-    setShowStartPicker(false);
-  };
-
-  const handleEndDateDone = () => {
-    setShowEndPicker(false);
-  };
-
   // Selection helpers for iOS ActionSheet and Android Modal
   const handleGenderPress = () => {
     if (Platform.OS === 'ios') {
@@ -381,81 +349,43 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Trip Details</Text>
 
-            {/* Destination */}
+            {/* Destination - Uses static city database (no API calls) */}
             <Text style={styles.label}>Destination *</Text>
-            <PlacesAutocomplete
+            <CityPicker
               testID="google-places-input"
-              placeholder="Where do you want to go?"
+              placeholder="Select destination city"
               value={destination}
               onChangeText={setDestination}
-              onPlaceSelected={(description) => {
-                
-                setDestination(description);
+              onCitySelected={(city: City, displayName: string) => {
+                setDestination(displayName);
+                // Note: coordinates available in city.coordinates if needed
               }}
               error={!!destination && destination.length === 0}
             />
 
             {/* Start Date */}
             <Text style={styles.label}>Start Date *</Text>
-            <TouchableOpacity 
-              testID="start-date-button"
-              style={styles.dateButton}
-              onPress={() => setShowStartPicker(true)}
-            >
-              <Text>{startDate.toLocaleDateString()}</Text>
-            </TouchableOpacity>
-            {showStartPicker && (
-              <View>
-                <DateTimePicker
-                  testID="start-date-picker"
-                  value={startDate}
-                  mode="date"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  onChange={handleStartDateChange}
-                  minimumDate={new Date()}
-                />
-                {Platform.OS === 'ios' && (
-                  <TouchableOpacity 
-                    testID="start-date-done"
-                    style={styles.datePickerDoneButton}
-                    onPress={handleStartDateDone}
-                  >
-                    <Text style={styles.datePickerDoneText}>Done</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            )}
+            <CrossPlatformDatePicker
+              testID="start-date-picker"
+              value={startDate}
+              onChange={(date) => {
+                setStartDate(date);
+                // If end date is before new start date, update it
+                if (endDate < date) {
+                  setEndDate(date);
+                }
+              }}
+              minimumDate={new Date()}
+            />
 
             {/* End Date */}
             <Text style={styles.label}>End Date *</Text>
-            <TouchableOpacity 
-              testID="end-date-button"
-              style={styles.dateButton}
-              onPress={() => setShowEndPicker(true)}
-            >
-              <Text>{endDate.toLocaleDateString()}</Text>
-            </TouchableOpacity>
-            {showEndPicker && (
-              <View>
-                <DateTimePicker
-                  testID="end-date-picker"
-                  value={endDate}
-                  mode="date"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  onChange={handleEndDateChange}
-                  minimumDate={startDate}
-                />
-                {Platform.OS === 'ios' && (
-                  <TouchableOpacity 
-                    testID="end-date-done"
-                    style={styles.datePickerDoneButton}
-                    onPress={handleEndDateDone}
-                  >
-                    <Text style={styles.datePickerDoneText}>Done</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            )}
+            <CrossPlatformDatePicker
+              testID="end-date-picker"
+              value={endDate}
+              onChange={setEndDate}
+              minimumDate={startDate}
+            />
 
             {/* Description */}
             <Text style={styles.label}>Description</Text>

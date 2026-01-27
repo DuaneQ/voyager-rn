@@ -1,13 +1,19 @@
 // Firebase configuration for voyager-RN (React Native Expo)
 // Replicating EXACT same config as voyager-pwa to share the database
 
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithCustomToken as firebaseSignInWithCustomToken } from 'firebase/auth';
+import { initializeApp, getApps } from 'firebase/app';
+import { 
+  initializeAuth, 
+  getAuth,
+  signInWithCustomToken as firebaseSignInWithCustomToken 
+} from 'firebase/auth';
+// @ts-ignore - getReactNativePersistence is exported for React Native but TypeScript doesn't see it
+import { getReactNativePersistence } from '@firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getFunctions } from 'firebase/functions';
 import { Platform } from 'react-native';
-import Constants from 'expo-constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const devConfig = {
   apiKey: "AIzaSyCbckV9cMuKUM4ZnvYDJZUvfukshsZfvM0",
@@ -33,25 +39,35 @@ const prodConfig = {
 // Use dev config for development, prod for release builds
 const firebaseConfig = __DEV__ ? devConfig : prodConfig;
 
-// Debug: Log which config is being used
-console.log(`[FirebaseConfig] Using ${__DEV__ ? 'DEV' : 'PROD'} config - Project: ${firebaseConfig.projectId}`);
+// Initialize Firebase app (only if not already initialized)
+export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 
-export const app = initializeApp(firebaseConfig);
+// Initialize Auth with AsyncStorage persistence for React Native
+// This ensures auth state persists across app restarts
+let auth: ReturnType<typeof getAuth>;
 
-// Use getAuth for both platforms
-// React Native AsyncStorage persistence is automatically used
-export const auth = getAuth(app);
-
-// Ensure auth persistence is properly configured
-// React Native automatically uses AsyncStorage, but we can be explicit about it
-if (Platform.OS !== 'web') {
-  // For React Native, persistence is automatic via AsyncStorage
-  // No need to explicitly set persistence
-  
+if (Platform.OS === 'web') {
+  // For web, use default persistence (IndexedDB)
+  auth = getAuth(app);
 } else {
-  // For web (if running on web), ensure local persistence
-  
+  // For React Native (iOS/Android), use AsyncStorage persistence
+  // This is CRITICAL for keeping users logged in across app restarts
+  try {
+    auth = initializeAuth(app, {
+      persistence: getReactNativePersistence(AsyncStorage),
+    });
+  } catch (error: any) {
+    // If auth is already initialized, just get the existing instance
+    if (error.code === 'auth/already-initialized') {
+      auth = getAuth(app);
+    } else {
+      console.error('[FirebaseConfig] Error initializing auth:', error);
+      auth = getAuth(app);
+    }
+  }
 }
+
+export { auth };
 
 export const db = getFirestore(app);
 export const storage = getStorage(app);

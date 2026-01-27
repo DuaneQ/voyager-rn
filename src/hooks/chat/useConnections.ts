@@ -1,7 +1,7 @@
 /**
  * useConnections Hook
  * Subscribes to connections collection and provides real-time updates
- * Handles pagination, last message preview, and unread counts
+ * Handles last message preview and unread counts
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -13,8 +13,8 @@ import {
   orderBy,
   limit,
   startAfter,
-  onSnapshot,
   getDocs,
+  onSnapshot,
   QueryDocumentSnapshot,
   DocumentData,
   Timestamp,
@@ -29,6 +29,7 @@ interface UseConnectionsResult {
   hasMore: boolean;
   loadMore: () => Promise<void>;
   refresh: () => void;
+  removeConnectionOptimistic: (connectionId: string) => void;
 }
 
 const CONNECTIONS_PAGE_SIZE = 10;
@@ -60,6 +61,7 @@ export function useConnections(userId: string | null): UseConnectionsResult {
     setLoading(true);
     setError(null);
 
+    // Use composite index: connections (users array-contains + createdAt desc)
     const q = query(
       collection(db, 'connections'),
       where('users', 'array-contains', userId),
@@ -193,6 +195,10 @@ export function useConnections(userId: string | null): UseConnectionsResult {
 
     unsubscribeRef.current = unsubscribe;
   }, [userId]);
+// Optimistically remove connection from local state
+  const removeConnectionOptimistic = useCallback((connectionId: string) => {
+    setConnections((prev) => prev.filter((conn) => conn.id !== connectionId));
+  }, []);
 
   return {
     connections,
@@ -201,5 +207,6 @@ export function useConnections(userId: string | null): UseConnectionsResult {
     hasMore,
     loadMore,
     refresh,
+    removeConnectionOptimistic,
   };
 }

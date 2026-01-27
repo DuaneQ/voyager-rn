@@ -77,6 +77,7 @@ describe('ChatPage', () => {
         hasMore: false,
         loadMore: jest.fn(),
         refresh: jest.fn(),
+        removeConnectionOptimistic: jest.fn(),
       });
 
       const { getByText } = render(<ChatPage />, { wrapper: TestWrapper });
@@ -94,6 +95,7 @@ describe('ChatPage', () => {
         hasMore: false,
         loadMore: jest.fn(),
         refresh: jest.fn(),
+        removeConnectionOptimistic: jest.fn(),
       });
 
       const { getByText } = render(<ChatPage />, { wrapper: TestWrapper });
@@ -169,6 +171,7 @@ describe('ChatPage', () => {
         hasMore: false,
         loadMore: jest.fn(),
         refresh: jest.fn(),
+        removeConnectionOptimistic: jest.fn(),
       });
 
       const { getByText, queryByText } = render(<ChatPage />, { wrapper: TestWrapper });
@@ -225,6 +228,7 @@ describe('ChatPage', () => {
         hasMore: false,
         loadMore: jest.fn(),
         refresh: jest.fn(),
+        removeConnectionOptimistic: jest.fn(),
       });
 
       const { getByText } = render(<ChatPage />, { wrapper: TestWrapper });
@@ -251,6 +255,7 @@ describe('ChatPage', () => {
         hasMore: false,
         loadMore: jest.fn(),
         refresh: mockRefresh,
+        removeConnectionOptimistic: jest.fn(),
       });
 
       const { getByText } = render(<ChatPage />, { wrapper: TestWrapper });
@@ -301,6 +306,7 @@ describe('ChatPage', () => {
         hasMore: false,
         loadMore: jest.fn(),
         refresh: jest.fn(),
+        removeConnectionOptimistic: jest.fn(),
       });
 
       const { getByText } = render(<ChatPage />, { wrapper: TestWrapper });
@@ -342,6 +348,7 @@ describe('ChatPage', () => {
         hasMore: false,
         loadMore: jest.fn(),
         refresh: jest.fn(),
+        removeConnectionOptimistic: jest.fn(),
       });
 
       const { getByText } = render(<ChatPage />, { wrapper: TestWrapper });
@@ -374,6 +381,7 @@ describe('ChatPage', () => {
         hasMore: false,
         loadMore: jest.fn(),
         refresh: jest.fn(),
+        removeConnectionOptimistic: jest.fn(),
       });
 
       const { getByText } = render(<ChatPage />, { wrapper: TestWrapper });
@@ -418,6 +426,7 @@ describe('ChatPage', () => {
         hasMore: false,
         loadMore: jest.fn(),
         refresh: mockRefresh,
+        removeConnectionOptimistic: jest.fn(),
       });
 
       const { getByTestId, UNSAFE_getByType } = render(<ChatPage />, { wrapper: TestWrapper });

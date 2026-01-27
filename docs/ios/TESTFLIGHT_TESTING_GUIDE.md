@@ -14,14 +14,40 @@ Test the exact build that will go to TestFlight WITHOUT wasting uploads.
 
 ## 🎯 Recommended Testing Flow
 
-### Phase 1: Quick Validation (What You're Doing Now)
+### Phase 1: Quick Validation (Local Release Build on Simulator)
+
 ```bash
-# Run local release build for quick testing
-npx expo run:ios --configuration Release
+# Step 1: Shutdown all simulators
+xcrun simctl shutdown all
+
+# Step 2: Boot iPhone 17 Pro simulator
+xcrun simctl boot "iPhone 17 Pro"
+open -a Simulator
+
+# Step 3: Build release configuration
+cd ios
+xcodebuild -workspace TravalPass.xcworkspace \
+  -scheme TravalPass \
+  -configuration Release \
+  -sdk iphonesimulator \
+  -destination 'name=iPhone 17 Pro' \
+  -derivedDataPath ./build
+
+# Step 4: Install and launch on simulator
+SIMULATOR_ID=$(xcrun simctl list devices | grep "iPhone 17 Pro" | grep "Booted" | grep -oE '\([A-F0-9-]+\)' | tr -d '()')
+xcrun simctl install $SIMULATOR_ID ./build/Build/Products/Release-iphonesimulator/TravalPass.app
+xcrun simctl launch $SIMULATOR_ID com.travalpass.app
+cd ..
 ```
+
 **Purpose**: Catch obvious crashes and logic errors  
-**Time**: Instant (already built)  
+**Time**: ~2-5 minutes for clean build  
 **Cost**: Free
+
+**Why iPhone 17 Pro simulator?**
+- Latest iOS features
+- Production-representative screen size
+- Faster than older simulator models
 
 ### Phase 2: EAS Testing Build (RECOMMENDED BEFORE TESTFLIGHT)
 ```bash
