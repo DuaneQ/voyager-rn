@@ -14,6 +14,18 @@ import { render, waitFor } from '@testing-library/react-native';
 import { VideoCard } from '../../components/video/VideoCard';
 import { Video } from '../../types/Video';
 
+// Mock Firestore Timestamp
+const mockTimestamp = (date: Date) => ({
+  toDate: () => date,
+  seconds: Math.floor(date.getTime() / 1000),
+  nanoseconds: 0,
+});
+
+const Timestamp = {
+  fromDate: (date: Date) => mockTimestamp(date),
+  now: () => mockTimestamp(new Date()),
+};
+
 // Mock expo-av Video component
 const mockLoadAsync = jest.fn();
 const mockUnloadAsync = jest.fn();
@@ -566,7 +578,7 @@ describe('VideoCard', () => {
         thumbnailUrl: 'https://example.com/track2-thumb.jpg',
         userId: 'user-789',
         username: 'viewer2',
-        createdAt: new Date().toISOString(),
+        createdAt: Timestamp.fromDate(new Date()),
         viewCount: 0,
         isPrivate: false,
       };
@@ -622,7 +634,7 @@ describe('VideoCard', () => {
         thumbnailUrl: 'https://example.com/track4-thumb.jpg',
         userId: 'user-111',
         username: 'viewer4',
-        createdAt: new Date().toISOString(),
+        createdAt: Timestamp.fromDate(new Date()),
         viewCount: 0,
         isPrivate: false,
       };
