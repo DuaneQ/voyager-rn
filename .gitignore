@@ -15,6 +15,7 @@ ios/Podfile.lock
 ios/xcodebuild.log
 *.keystore
 *.jks
+dist/
 
 # Firebase Config (sensitive)
 firebase-config.js

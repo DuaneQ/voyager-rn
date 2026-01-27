@@ -1,6 +1,6 @@
 {
   "name": "voyager-rn",
-  "version": "1.0.0",
+  "version": "1.2.3",
   "description": "React Native Expo version of voyager-pwa with identical functionality",
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
@@ -10,6 +10,8 @@
     "start:ios": "expo run:ios",
     "start:web": "expo start --web",
     "postinstall": "patch-package",
+    "# === BUILD ===": "",
+    "build:web": "expo export -p web",
     "# === UNIT TESTS ===": "",
     "test": "jest",
     "test:watch": "jest --watch",

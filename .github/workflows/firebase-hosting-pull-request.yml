@@ -1,0 +1,118 @@
+# Deploy React Native Web preview to Firebase Hosting on PR
+name: Deploy to Firebase Hosting on PR
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+permissions:
+  checks: write
+  contents: read
+  pull-requests: write
+jobs:
+  build_and_preview:
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    outputs:
+      preview_url: ${{ steps.firebase_deploy.outputs.preview_url }}
+      details_url: ${{ steps.firebase_deploy.outputs.details_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Debug origin info (for skipped preview diagnostics)
+        run: |
+          echo "PR head repo: ${{ github.event.pull_request.head.repo.full_name }}"
+          echo "Base repo: ${{ github.repository }}"
+          if [ "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]; then
+            echo "::warning::This PR originates from a fork. The preview deploy job will be skipped to avoid exposing secrets."
+          fi
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Security audit (report only)
+        run: |
+          echo "🔍 Running security audit..."
+          npm audit --audit-level=moderate || echo "⚠️ Vulnerabilities found - check output above"
+
+      - name: Security audit (fail on critical only)
+        run: npm audit --audit-level=critical
+
+      - name: Build React Native Web (Development)
+        run: npm run build:web
+        env:
+          CI: false
+          # Reuse PWA dev secrets but map to EXPO_PUBLIC_ prefix (required by Expo bundler)
+          EXPO_PUBLIC_FIREBASE_API_KEY: ${{ secrets.REACT_APP_FIREBASE_API_KEY_DEV }}
+          EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.REACT_APP_FIREBASE_AUTH_DOMAIN_DEV }}
+          EXPO_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.REACT_APP_FIREBASE_PROJECT_ID_DEV }}
+          EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.REACT_APP_FIREBASE_STORAGE_BUCKET_DEV }}
+          EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.REACT_APP_FIREBASE_MESSAGING_SENDER_ID_DEV }}
+          EXPO_PUBLIC_FIREBASE_APP_ID: ${{ secrets.REACT_APP_FIREBASE_APP_ID_DEV }}
+          EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID: ${{ secrets.REACT_APP_FIREBASE_MEASUREMENT_ID_DEV }}
+          EXPO_PUBLIC_GOOGLE_PLACES_API_KEY: ${{ secrets.REACT_APP_GOOGLE_PLACES_API_KEY }}
+
+      - name: "Preflight: check required secrets for preview deploy"
+        run: |
+          missing=0
+          if [ -z "${{ secrets.FIREBASE_SERVICE_ACCOUNT_DEV }}" ]; then
+            echo "::error::Missing required secret: FIREBASE_SERVICE_ACCOUNT_DEV"
+            missing=1
+          fi
+          if [ $missing -eq 1 ]; then
+            echo "Aborting: required secrets are missing for preview deploy."
+            exit 1
+          fi
+
+      - name: Deploy to Firebase Hosting (Preview)
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        id: firebase_deploy
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_DEV }}
+          projectId: mundo1-dev
+
+      - name: Debug Firebase Deploy Outputs
+        run: |
+          echo "preview_url: ${{ steps.firebase_deploy.outputs.preview_url }}"
+          echo "details_url: ${{ steps.firebase_deploy.outputs.details_url }}"
+          echo "details_path: ${{ steps.firebase_deploy.outputs.details_path }}"
+
+  test_preview:
+    needs: build_and_preview
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests with coverage
+        run: npm test -- --coverage --watchAll=false
+        env:
+          CI: true
+
+      - name: Run integration tests
+        run: npm run test:integration
+        env:
+          CI: true
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/lcov.info
+          flags: unittests
+          fail_ci_if_error: false
