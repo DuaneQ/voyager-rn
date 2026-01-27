@@ -12,7 +12,7 @@
 import React from 'react';
 import { render, waitFor } from '@testing-library/react-native';
 import { VideoCard } from '../../components/video/VideoCard';
-import { Video } from '../../types/video';
+import { Video } from '../../types/Video';
 
 // Mock expo-av Video component
 const mockLoadAsync = jest.fn();
@@ -575,6 +575,8 @@ describe('VideoCard', () => {
         <VideoCard
           video={testVideo}
           isActive={true}
+          isMuted={false}
+          onMuteToggle={jest.fn()}
           onLike={jest.fn()}
           onShare={jest.fn()}
           onViewTracked={mockOnViewTracked}
@@ -592,6 +594,8 @@ describe('VideoCard', () => {
         <VideoCard
           video={testVideo}
           isActive={false}
+          isMuted={false}
+          onMuteToggle={jest.fn()}
           onLike={jest.fn()}
           onShare={jest.fn()}
           onViewTracked={mockOnViewTracked}
@@ -627,6 +631,8 @@ describe('VideoCard', () => {
         <VideoCard
           video={testVideo}
           isActive={true}
+          isMuted={false}
+          onMuteToggle={jest.fn()}
           onLike={jest.fn()}
           onShare={jest.fn()}
           onViewTracked={mockOnViewTracked}
