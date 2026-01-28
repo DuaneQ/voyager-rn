@@ -134,8 +134,8 @@ export const LandingPage: React.FC = () => {
 
   const scrollViewContent = (
     <>
-      {/* Video Background - matching PWA implementation */}
-      {!videoError && Platform.OS === 'web' && (
+      {/* Video Background - disabled on iOS due to rendering conflicts */}
+      {!videoError && Platform.OS === 'web' && typeof window !== 'undefined' && !/(iPhone|iPad|iPod)/i.test(navigator.userAgent) && (
         <div style={{
           position: 'fixed',
           top: 0,
@@ -362,7 +362,7 @@ export const LandingPage: React.FC = () => {
             Watch how easy it is to plan, match, and travel together.
           </Text>
 
-          {Platform.OS === 'web' && (
+          {Platform.OS === 'web' && typeof window !== 'undefined' && !/(iPhone|iPad|iPod)/i.test(navigator.userAgent) && (
             <div style={{ display: 'flex', justifyContent: 'center', marginTop: 32 }}>
               <iframe
                 src="https://www.youtube.com/embed/hyRvN9cHtRM"
