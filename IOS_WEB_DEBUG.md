@@ -246,3 +246,53 @@ onAppleSignUp={undefined}  // TEMP DISABLED FOR iOS DEBUG
 **Test on iPhone**: Deploy and check if the auth page loads without iframes/stack overflow.
 - If ✅ works: Issue is with Google/Apple OAuth implementation on iOS
 - If ❌ still fails: Issue is elsewhere (Firebase Auth initialization, etc.)
+
+---
+
+## CRITICAL FIX: Remove Raw <style> Tag Causing Infinite Re-renders
+
+**ROOT CAUSE IDENTIFIED**: `CrossPlatformDatePicker.tsx` lines 137-146 had raw `<style>` tag injected on every render!
+
+**The Problem**:
+```tsx
+<style>{`
+  input[type="date"]::-webkit-calendar-picker-indicator { ... }
+`}</style>
+```
+
+This causes:
+1. Component renders → injects `<style>` tag into DOM
+2. DOM mutation triggers re-render on iOS Safari
+3. Injects another `<style>` tag
+4. **Infinite loop** → stack overflow
+
+**The Fix**:
+1. **Removed** raw `<style>` tag from `CrossPlatformDatePicker.tsx`
+2. **Added** CSS to global stylesheet in `public/index.html` (lines 41-51)
+
+**Files changed**:
+- `src/components/common/CrossPlatformDatePicker.tsx` - Removed inline style tag
+- `public/index.html` - Added global CSS for date picker styling
+
+**Next**: Deploy and test on iPhone. This should fix the stack overflow!
+
+---
+
+## UPDATE: Still Failing After <style> Tag Fix
+
+**Status**: Removed `<style>` tag and disabled OAuth, but stack overflow persists.
+
+**Current errors on iPhone**:
+- Still: `RangeError: Maximum call stack size exceeded`
+- Still: Multiple spinning iframes (4 visible in Network tab)
+- Domain: `mundo1-1.firebaseapp.com`
+
+**Analysis**: The iframes are being created even with OAuth handlers disabled. Possible causes:
+1. LoginForm/RegisterForm components still rendering OAuth buttons despite `undefined` handlers
+2. Firebase Auth SDK auto-creating iframes on initialization
+3. Google/Apple Sign-In SDKs loading and creating iframes automatically
+
+**Next steps**:
+1. Check if LoginForm/RegisterForm properly check for `undefined` before rendering OAuth buttons
+2. May need to completely remove OAuth import/initialization code
+3. Consider commenting out Firebase Auth entirely for testing

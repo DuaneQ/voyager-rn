@@ -37,6 +37,19 @@
     <!-- Theme Color -->
     <meta name="theme-color" content="#007AFF" />
     
+    <!-- Global Styles - Fix for CrossPlatformDatePicker iOS Safari issue -->
+    <style>
+      /* Hide browser's default calendar icon for date inputs */
+      input[type="date"]::-webkit-calendar-picker-indicator {
+        opacity: 0;
+        position: absolute;
+        right: 0;
+        width: 100%;
+        height: 100%;
+        cursor: pointer;
+      }
+    </style>
+    
     <!-- Structured Data for SEO -->
     <script type="application/ld+json">
     {
