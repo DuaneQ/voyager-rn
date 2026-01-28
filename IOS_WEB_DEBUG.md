@@ -194,3 +194,55 @@ The PWA (voyager-pwa) works on iOS. Compare:
 - Dependencies
 - Bundle size
 - Service worker usage
+---
+
+## ACTUAL ERROR FROM PHYSICAL IPHONE (Preview URL)
+
+**URL**: `https://mundo1-dev--pr48-ios-web-6qy69pc0.web.app`
+
+**Errors**:
+1. **RangeError: Maximum call stack size exceeded**
+   - File: `AppEntry-98adbd6b6691c2814ebbb4f637bf2404.js:5:106`
+   - Stack: `reportFatalError` → `(anonymous function)` → `a`
+   - **CRITICAL**: This is an infinite recursion/render loop
+
+2. **Multiple spinning iframes**
+   - Domain: `mundo1-1.firebaseapp.com`
+   - Status: Loading indefinitely
+   - **Likely cause**: Firebase Auth or Google Sign-In creating iframes that trigger re-renders
+
+3. **OAuth warning** (not critical):
+   - "The current domain is not authorized for OAuth operations"
+   - Expected for preview URLs, not the root cause
+
+**ROOT CAUSE**: Something is creating iframes (likely Firebase Auth or Google Sign-In) that trigger infinite re-renders on iOS Safari, causing stack overflow.
+
+**Possible culprits**:
+- Firebase Auth popup/redirect flow
+- Google Sign-In button/iframe
+- Apple Sign-In iframe
+- Some modal or authentication component
+
+**Next steps**:
+1. Disable all authentication providers temporarily
+2. Remove Google/Apple sign-in buttons from AuthPage
+3. Test with email/password only
+4. Identify which auth provider causes the iframe loop
+
+---
+
+## TEST: Disable OAuth Sign-In
+
+**Change**: Modified `src/pages/AuthPage.tsx` lines 218, 219, 237, 238:
+```tsx
+onGoogleSignIn={undefined} // TEMP DISABLED FOR iOS DEBUG
+onAppleSignIn={undefined}  // TEMP DISABLED FOR iOS DEBUG
+onGoogleSignUp={undefined} // TEMP DISABLED FOR iOS DEBUG  
+onAppleSignUp={undefined}  // TEMP DISABLED FOR iOS DEBUG
+```
+
+**Result**: Google/Apple sign-in buttons will be hidden. Only email/password login available.
+
+**Test on iPhone**: Deploy and check if the auth page loads without iframes/stack overflow.
+- If ✅ works: Issue is with Google/Apple OAuth implementation on iOS
+- If ❌ still fails: Issue is elsewhere (Firebase Auth initialization, etc.)
