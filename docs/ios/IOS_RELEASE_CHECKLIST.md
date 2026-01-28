@@ -37,9 +37,34 @@ npm test -- --no-coverage
 
 ### 3. ✅ Test Release Build Locally
 
+**IMPORTANT:** Test on iOS Simulator to avoid code signing issues with physical devices.
+
 ```bash
-npx expo run:ios --configuration Release
+# Step 1: Shutdown all simulators (if any are running)
+xcrun simctl shutdown all
+
+# Step 2: Boot iPhone 17 Pro simulator
+xcrun simctl boot "iPhone 17 Pro"
+open -a Simulator
+
+# Step 3: Build release configuration
+cd ios
+xcodebuild -workspace TravalPass.xcworkspace \
+  -scheme TravalPass \
+  -configuration Release \
+  -sdk iphonesimulator \
+  -destination 'name=iPhone 17 Pro' \
+  -derivedDataPath ./build
+
+# Step 4: Install and launch
+SIMULATOR_ID=$(xcrun simctl list devices | grep "iPhone 17 Pro" | grep "Booted" | grep -oE '\([A-F0-9-]+\)' | tr -d '()')
+xcrun simctl install $SIMULATOR_ID ./build/Build/Products/Release-iphonesimulator/TravalPass.app
+xcrun simctl launch $SIMULATOR_ID com.travalpass.app
+
+cd ..
 ```
+
+**Why not use `npx expo run:ios`?** Expo detects physical devices even when simulators are booted, causing code signing errors. Using xcodebuild directly avoids this issue.
 
 **Test checklist:**
 - [ ] App launches without errors

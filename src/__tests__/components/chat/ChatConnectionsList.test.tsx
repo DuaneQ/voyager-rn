@@ -149,6 +149,7 @@ describe('ChatConnectionsList', () => {
       hasMore: false,
       loadMore: jest.fn(),
       refresh: jest.fn(),
+      removeConnectionOptimistic: jest.fn(),
     });
     mockUseRemoveConnection.mockReturnValue(jest.fn());
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
@@ -180,6 +181,7 @@ describe('ChatConnectionsList', () => {
         hasMore: false,
         loadMore: jest.fn(),
         refresh: jest.fn(),
+        removeConnectionOptimistic: jest.fn(),
       });
 
       const { getByText } = render(<ChatConnectionsList {...defaultProps} />);
@@ -196,6 +198,7 @@ describe('ChatConnectionsList', () => {
         hasMore: false,
         loadMore: jest.fn(),
         refresh: jest.fn(),
+        removeConnectionOptimistic: jest.fn(),
       });
 
       const { getByText } = render(<ChatConnectionsList {...defaultProps} />);
@@ -212,6 +215,7 @@ describe('ChatConnectionsList', () => {
         hasMore: false,
         loadMore: jest.fn(),
         refresh: jest.fn(),
+        removeConnectionOptimistic: jest.fn(),
       });
 
       const { getByText } = render(<ChatConnectionsList {...defaultProps} />);
@@ -356,6 +360,7 @@ describe('ChatConnectionsList', () => {
         hasMore: true,
         loadMore: jest.fn(),
         refresh: jest.fn(),
+        removeConnectionOptimistic: jest.fn(),
       });
 
       const { UNSAFE_root } = render(<ChatConnectionsList {...defaultProps} />);
@@ -373,6 +378,7 @@ describe('ChatConnectionsList', () => {
         hasMore: true,
         loadMore: mockLoadMore,
         refresh: jest.fn(),
+        removeConnectionOptimistic: jest.fn(),
       });
 
       render(<ChatConnectionsList {...defaultProps} />);
@@ -390,6 +396,7 @@ describe('ChatConnectionsList', () => {
         hasMore: false,
         loadMore: mockLoadMore,
         refresh: jest.fn(),
+        removeConnectionOptimistic: jest.fn(),
       });
 
       render(<ChatConnectionsList {...defaultProps} />);
@@ -408,6 +415,7 @@ describe('ChatConnectionsList', () => {
         hasMore: false,
         loadMore: jest.fn(),
         refresh: mockRefresh,
+        removeConnectionOptimistic: jest.fn(),
       });
 
       const { UNSAFE_root } = render(<ChatConnectionsList {...defaultProps} />);
@@ -437,6 +445,7 @@ describe('ChatConnectionsList', () => {
         hasMore: false,
         loadMore: jest.fn(),
         refresh: jest.fn(),
+        removeConnectionOptimistic: jest.fn(),
       });
 
       const { getByTestId } = render(<ChatConnectionsList {...defaultProps} />);
@@ -471,6 +480,7 @@ describe('ChatConnectionsList', () => {
         hasMore: false,
         loadMore: jest.fn(),
         refresh: jest.fn(),
+        removeConnectionOptimistic: jest.fn(),
       });
 
       const { getByTestId } = render(<ChatConnectionsList {...defaultProps} />);
@@ -522,6 +532,7 @@ describe('ChatConnectionsList', () => {
         hasMore: true,
         loadMore: mockLoadMore,
         refresh: jest.fn(),
+        removeConnectionOptimistic: jest.fn(),
       });
 
       const { UNSAFE_root } = render(<ChatConnectionsList {...defaultProps} />);
@@ -542,6 +553,7 @@ describe('ChatConnectionsList', () => {
         error: null,
         hasMore: true,
         loadMore: jest.fn(),
+        removeConnectionOptimistic: jest.fn(),
         refresh: jest.fn(),
       });
 

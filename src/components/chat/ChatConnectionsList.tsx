@@ -43,18 +43,23 @@ export const ChatConnectionsList: React.FC<ChatConnectionsListProps> = ({
   onConnectionPress,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const { connections, loading, error, hasMore, loadMore, refresh } = useConnections(userId);
+  const { connections, loading, error, hasMore, loadMore, refresh, removeConnectionOptimistic } = useConnections(userId);
   const removeConnection = useRemoveConnection();
 
   /**
-   * Handle connection deletion.
+   * Handle connection deletion with optimistic UI update.
    */
   const handleDeleteConnection = useCallback(async (connectionId: string) => {
+    // Optimistically remove from UI immediately
+    removeConnectionOptimistic(connectionId);
+    
     const result = await removeConnection(connectionId);
     if (!result.success) {
+      // If failed, refresh to restore the connection in the list
+      refresh();
       Alert.alert('Error', result.error || 'Failed to remove connection');
     }
-  }, [removeConnection]);
+  }, [removeConnection, removeConnectionOptimistic, refresh]);
 
   /**
    * Filter connections based on search query.

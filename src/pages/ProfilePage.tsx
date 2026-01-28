@@ -26,6 +26,7 @@ type TabType = 'profile' | 'photos' | 'videos' | 'itinerary';
 type ProfilePageRouteParams = {
   openEditModal?: boolean;
   incompleteProfile?: boolean;
+  missingFields?: string[];
 };
 
 const ProfilePage: React.FC = () => {
@@ -42,9 +43,26 @@ const ProfilePage: React.FC = () => {
   useEffect(() => {
     if (route.params?.openEditModal && route.params?.incompleteProfile) {
       setEditModalVisible(true);
-      showAlert('warning', 'Please complete your profile to use all features');
+      
+      // Calculate all missing fields for 100% completion (not just required fields for itinerary creation)
+      const allMissingFields: string[] = [];
+      
+      if (!userProfile?.username?.trim()) allMissingFields.push('Username');
+      if (!userProfile?.bio?.trim()) allMissingFields.push('Bio');
+      if (!userProfile?.dob?.trim()) allMissingFields.push('Date of Birth');
+      if (!userProfile?.gender?.trim()) allMissingFields.push('Gender');
+      if (!userProfile?.sexualOrientation?.trim()) allMissingFields.push('Sexual Orientation');
+      if (!userProfile?.status?.trim()) allMissingFields.push('Status');
+      if (!userProfile?.photoURL && !userProfile?.photos?.profile) allMissingFields.push('Profile Photo');
+      
+      if (allMissingFields.length > 0) {
+        const fieldsList = allMissingFields.join(', ');
+        showAlert('warning', `Complete your profile to reach 100%. Missing: ${fieldsList}`);
+      } else {
+        showAlert('warning', 'Please complete your profile to use all features');
+      }
     }
-  }, [route.params]);
+  }, [route.params?.openEditModal, route.params?.incompleteProfile]); // Only trigger when params change, not on every userProfile update
 
   // Removed auto-opening modal when no profile exists
   // Profile completion will be prompted when user tries to create itineraries
@@ -64,14 +82,28 @@ const ProfilePage: React.FC = () => {
       photoURL: 15,
     };
 
-    if (userProfile.username) score += weights.username;
-    if (userProfile.bio) score += weights.bio;
-    if (userProfile.dob) score += weights.dob;
-    if (userProfile.gender) score += weights.gender;
-    if (userProfile.sexualOrientation) score += weights.sexualOrientation;
-    if (userProfile.status) score += weights.status;
-    if (userProfile.photoURL || userProfile.photos?.profile) score += weights.photoURL;
-
+    // Check for non-empty string values (trim to handle whitespace)
+    const usernameCheck = userProfile.username?.trim();
+    if (usernameCheck) score += weights.username;
+    
+    const bioCheck = userProfile.bio?.trim();
+    if (bioCheck) score += weights.bio;
+    
+    const dobCheck = userProfile.dob?.trim();
+    if (dobCheck) score += weights.dob;
+    
+    const genderCheck = userProfile.gender?.trim();
+    if (genderCheck) score += weights.gender;
+    
+    const orientationCheck = userProfile.sexualOrientation?.trim();
+    if (orientationCheck) score += weights.sexualOrientation;
+    
+    const statusCheck = userProfile.status?.trim();
+    if (statusCheck) score += weights.status;
+    
+    const photoCheck = userProfile.photoURL || userProfile.photos?.profile;
+    if (photoCheck) score += weights.photoURL;
+    
     return score;
   };
 
@@ -111,11 +143,12 @@ const ProfilePage: React.FC = () => {
   const handleSaveProfile = async (data: ProfileData) => {
     try {
       await updateProfile(data);
+      setEditModalVisible(false); // Close modal immediately after successful save
       showAlert('Profile updated successfully', 'success');
     } catch (error) {
       console.error('Error updating profile:', error);
       showAlert('Failed to update profile', 'error');
-      throw error;
+      throw error; // Let modal handle the error state
     }
   };
 

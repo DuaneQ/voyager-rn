@@ -16,6 +16,7 @@ import {
   ScrollView,
   Modal,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Video as VideoType } from '../../types/Video';
@@ -23,7 +24,7 @@ import { useVideoUpload } from '../../hooks/video/useVideoUpload';
 import { Video, ResizeMode } from 'expo-av';
 import { VideoUploadModal } from '../modals/VideoUploadModal';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 const GRID_COLUMNS = 3;
 const ITEM_SIZE = (width - 40) / GRID_COLUMNS;
 
@@ -42,6 +43,7 @@ export const VideoGrid: React.FC = () => {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadModalVisible, setUploadModalVisible] = useState(false);
   const [selectedVideoUri, setSelectedVideoUri] = useState<string | null>(null);
+  const [selectedVideoFileSize, setSelectedVideoFileSize] = useState<number | undefined>(undefined);
 
   // Load videos on mount
   const refreshVideos = useCallback(async () => {
@@ -56,11 +58,12 @@ export const VideoGrid: React.FC = () => {
   }, [refreshVideos]);
 
   const handleAddVideo = async () => {
-    const uri = await selectVideo();
-    if (!uri) return;
+    const result = await selectVideo();
+    if (!result) return;
 
     // Show modal to configure upload
-    setSelectedVideoUri(uri);
+    setSelectedVideoUri(result.uri);
+    setSelectedVideoFileSize(result.fileSize);
     setUploadModalVisible(true);
   };
 
@@ -68,14 +71,19 @@ export const VideoGrid: React.FC = () => {
    * Handle video upload from modal
    */
   const handleVideoUpload = useCallback(async (videoData: any) => {
-    await uploadVideo(videoData);
+    const result = await uploadVideo(videoData);
     // Close modal
     setUploadModalVisible(false);
     setSelectedVideoUri(null);
+    setSelectedVideoFileSize(undefined);
     // Refresh videos after upload
-    Alert.alert('Success', 'Video uploaded successfully!');
-    await refreshVideos();
-  }, [uploadVideo, refreshVideos]);
+    if (result) {
+      Alert.alert('Success', 'Video uploaded successfully!');
+      await refreshVideos();
+    } else {
+      console.log('[VideoGrid] Upload returned null, not refreshing');
+    }
+  }, [uploadVideo, refreshVideos, videos.length]);
 
   /**
    * Handle upload modal close
@@ -83,6 +91,7 @@ export const VideoGrid: React.FC = () => {
   const handleUploadModalClose = useCallback(() => {
     setUploadModalVisible(false);
     setSelectedVideoUri(null);
+    setSelectedVideoFileSize(undefined);
   }, []);
 
   const handleDeleteVideo = (video: VideoType) => {
@@ -118,7 +127,7 @@ export const VideoGrid: React.FC = () => {
           onLongPress={() => handleDeleteVideo(video)}
           style={styles.videoTouchable}
         >
-          {video.thumbnailUrl ? (
+          {video.thumbnailUrl && video.thumbnailUrl.length > 0 ? (
             <Image 
               source={{ uri: video.thumbnailUrl }} 
               style={{ width: '100%', height: '100%' }}
@@ -226,32 +235,52 @@ export const VideoGrid: React.FC = () => {
 
           {selectedVideo && (
             <>
-              <Video
-                source={{ uri: selectedVideo.videoUrl }}
-                style={styles.video}
-                useNativeControls
-                resizeMode={ResizeMode.CONTAIN}
-                shouldPlay
-                onError={(error) => {
-                  console.error('[VideoGrid] Video playback error:', selectedVideo.id, error);
-                  setSelectedVideo(null);
-                  
-                  // Check for codec-related errors
-                  const errorStr = typeof error === 'string' ? error : JSON.stringify(error);
-                  if (errorStr.includes('Decoder failed') || errorStr.includes('hevc') || errorStr.includes('codec')) {
-                    Alert.alert(
-                      'Playback Error',
-                      'This video format is not supported on your device. Please use H.264 (AVC) encoded videos.',
-                      [{ text: 'OK' }]
-                    );
-                  } else {
-                    Alert.alert('Error', 'Failed to play video. Please try again.');
-                  }
-                }}
-                onLoad={() => {
-                  
-                }}
-              />
+              {Platform.OS === 'web' ? (
+                <View style={styles.webVideoWrapper}>
+                  <video
+                    src={selectedVideo.videoUrl}
+                    controls
+                    autoPlay
+                    style={{
+                      width: '100%',
+                      maxHeight: '80vh',
+                      objectFit: 'contain',
+                    }}
+                    onError={() => {
+                      console.error('[VideoGrid] Video playback error:', selectedVideo.id);
+                      setSelectedVideo(null);
+                      Alert.alert('Error', 'Failed to play video. Please try again.');
+                    }}
+                  />
+                </View>
+              ) : (
+                <Video
+                  source={{ uri: selectedVideo.videoUrl }}
+                  style={styles.video}
+                  useNativeControls
+                  resizeMode={ResizeMode.CONTAIN}
+                  shouldPlay
+                  onError={(error) => {
+                    console.error('[VideoGrid] Video playback error:', selectedVideo.id, error);
+                    setSelectedVideo(null);
+                    
+                    // Check for codec-related errors
+                    const errorStr = typeof error === 'string' ? error : JSON.stringify(error);
+                    if (errorStr.includes('Decoder failed') || errorStr.includes('hevc') || errorStr.includes('codec')) {
+                      Alert.alert(
+                        'Playback Error',
+                        'This video format is not supported on your device. Please use H.264 (AVC) encoded videos.',
+                        [{ text: 'OK' }]
+                      );
+                    } else {
+                      Alert.alert('Error', 'Failed to play video. Please try again.');
+                    }
+                  }}
+                  onLoad={() => {
+                    
+                  }}
+                />
+              )}
               {selectedVideo.title && (
                 <View style={styles.videoInfo}>
                   <Text style={styles.videoTitle}>{selectedVideo.title}</Text>
@@ -274,6 +303,7 @@ export const VideoGrid: React.FC = () => {
           onClose={handleUploadModalClose}
           onUpload={handleVideoUpload}
           videoUri={selectedVideoUri}
+          pickerFileSize={selectedVideoFileSize}
           isUploading={uploadState.loading}
           uploadProgress={uploadState.progress}
           processingStatus={uploadState.processingStatus}
@@ -411,6 +441,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000',
     justifyContent: 'center',
+    alignItems: Platform.OS === 'web' ? 'center' : undefined,
   },
   closeButton: {
     position: 'absolute',
@@ -421,7 +452,13 @@ const styles = StyleSheet.create({
   },
   video: {
     width: '100%',
-    height: 300,
+    height: Platform.OS === 'web' ? height * 0.7 : 300,
+  },
+  webVideoWrapper: {
+    width: '100%',
+    maxWidth: 900,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   videoInfo: {
     padding: 20,

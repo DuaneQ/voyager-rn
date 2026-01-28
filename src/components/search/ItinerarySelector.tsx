@@ -10,10 +10,8 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Platform,
-  ActionSheetIOS,
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
+import { CrossPlatformPicker, PickerItem } from '../common/CrossPlatformPicker';
 import { Itinerary } from '../../hooks/useAllItineraries';
 
 interface ItinerarySelectorProps {
@@ -31,38 +29,16 @@ export const ItinerarySelector: React.FC<ItinerarySelectorProps> = ({
   onAddItinerary,
   loading = false,
 }) => {
-  const showPicker = () => {
-    if (Platform.OS === 'ios') {
-      const options = [
-        'Cancel',
-        ...itineraries.map(itin => {
-          const isAI = itin.ai_status === 'completed';
-          const prefix = isAI ? '🤖 ' : '✈️ ';
-          return `${prefix}${itin.destination} - ${new Date(itin.startDate).toLocaleDateString()}`;
-        })
-      ];
-      
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options,
-          cancelButtonIndex: 0,
-        },
-        (buttonIndex) => {
-          if (buttonIndex > 0) {
-            onSelect(itineraries[buttonIndex - 1].id);
-          }
-        }
-      );
-    }
-  };
-
-  const selectedItinerary = itineraries.find(itin => itin.id === selectedItineraryId);
-
   const formatItineraryLabel = (itinerary: Itinerary) => {
     const isAI = itinerary.ai_status === 'completed';
     const prefix = isAI ? '🤖 ' : '✈️ ';
     return `${prefix}${itinerary.destination} - ${new Date(itinerary.startDate).toLocaleDateString()}`;
   };
+
+  const pickerItems: PickerItem[] = itineraries.map(itin => ({
+    label: formatItineraryLabel(itin),
+    value: itin.id,
+  }));
 
   if (loading) {
     return (
@@ -77,51 +53,13 @@ export const ItinerarySelector: React.FC<ItinerarySelectorProps> = ({
       <View style={styles.header}>
         <View style={styles.dropdownSection}>
           {itineraries.length > 0 ? (
-            <>
-              {Platform.OS === 'ios' ? (
-                // iOS: Use TouchableOpacity with ActionSheet
-                <TouchableOpacity 
-                  style={styles.iosPickerButton}
-                  onPress={showPicker}
-                  testID="itinerary-selector-button"
-                >
-                  <Text style={styles.iosPickerText} numberOfLines={1}>
-                    {selectedItinerary 
-                      ? formatItineraryLabel(selectedItinerary)
-                      : 'Select itinerary...'
-                    }
-                  </Text>
-                  <Text style={styles.iosPickerArrow}>▼</Text>
-                </TouchableOpacity>
-              ) : (
-                // Android: Picker with explicit black text on white dropdown
-                <View style={styles.pickerWrapper}>
-                  <Picker
-                    selectedValue={selectedItineraryId || ''}
-                    onValueChange={(value) => value && onSelect(value)}
-                    style={styles.androidPicker}
-                    dropdownIconColor="#000000"
-                    mode="dropdown"
-                    itemStyle={{ backgroundColor: '#FFFFFF', color: '#000000' }}
-                    testID="itinerary-selector-picker"
-                  >
-                    <Picker.Item
-                      label="Select itinerary..."
-                      value=""
-                      color="#666666"
-                    />
-                    {itineraries.map((itinerary) => (
-                      <Picker.Item
-                        key={itinerary.id}
-                        label={formatItineraryLabel(itinerary)}
-                        value={itinerary.id}
-                        color="#FFFFFF"
-                      />
-                    ))}
-                  </Picker>
-                </View>
-              )}
-            </>
+            <CrossPlatformPicker
+              items={pickerItems}
+              selectedValue={selectedItineraryId}
+              onValueChange={onSelect}
+              placeholder="Select itinerary..."
+              testID="itinerary-selector-picker"
+            />
           ) : (
             <Text style={styles.noItinerariesText}>No itineraries found</Text>
           )}
@@ -195,6 +133,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ddd',
     overflow: 'hidden',
+  },
+  webPickerWrapper: {
+    width: '100%',
+    minWidth: 250,
   },
   picker: {
     height: 50,

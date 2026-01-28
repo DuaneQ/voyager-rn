@@ -16,6 +16,8 @@ export const cityAirportMappings: Record<string, string[]> = {
   "Los Angeles, CA, USA": ["LAX", "BUR", "ONT", "SNA", "LGB"],
   "Los Angeles": ["LAX", "BUR", "ONT", "SNA", "LGB"],
   "New York, NY, USA": ["JFK", "LGA", "EWR"],
+  "New York City, NY, United States": ["JFK", "LGA", "EWR"],
+  "New York City": ["JFK", "LGA", "EWR"],
   "New York": ["JFK", "LGA", "EWR"],
   "Charlotte, NC, USA": ["CLT"],
   "Charlotte": ["CLT"],
@@ -531,15 +533,40 @@ export const cityAirportMappings: Record<string, string[]> = {
 
 /**
  * Normalize a location string for mapping lookup
- * Handles various input formats: "Paris", "Paris, France", "paris, france"
+ * Handles various input formats: "Paris", "Paris, France", "New York City, NY, United States"
  */
 export function normalizeLocationForMapping(location: string): string[] {
   const normalized = location.trim();
   const possibleKeys: string[] = [normalized];
   
-  // Don't add single-word fallback if there's a comma (user specified a location)
-  // This prevents "Paris, TX" from matching "Paris" → "Paris, France"
-  // We only want exact matches or case-insensitive exact matches
+  // If there's a comma, also try just the city name (first part)
+  // This handles CityPicker format: "New York City, NY, United States" -> "New York City"
+  if (normalized.includes(',')) {
+    const parts = normalized.split(',').map(p => p.trim());
+    const cityOnly = parts[0];
+    if (cityOnly && cityOnly.length > 0) {
+      possibleKeys.push(cityOnly);
+      
+      // Also try removing common suffixes like "City" for better matching
+      // "New York City" -> "New York"
+      const withoutCity = cityOnly.replace(/\s+City$/i, '').trim();
+      if (withoutCity !== cityOnly && withoutCity.length > 0) {
+        possibleKeys.push(withoutCity);
+      }
+    }
+    
+    // Also try "City, Country" format (e.g., "New York, United States")
+    if (parts.length >= 2) {
+      const country = parts[parts.length - 1];
+      possibleKeys.push(`${cityOnly}, ${country}`);
+      
+      // Try without "City" suffix too
+      const withoutCity = cityOnly.replace(/\s+City$/i, '').trim();
+      if (withoutCity !== cityOnly) {
+        possibleKeys.push(`${withoutCity}, ${country}`);
+      }
+    }
+  }
   
   return possibleKeys;
 }

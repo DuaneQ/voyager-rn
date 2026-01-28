@@ -1,6 +1,6 @@
 {
   "name": "voyager-rn",
-  "version": "1.0.0",
+  "version": "1.2.3",
   "description": "React Native Expo version of voyager-pwa with identical functionality",
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
@@ -10,6 +10,8 @@
     "start:ios": "expo run:ios",
     "start:web": "expo start --web",
     "postinstall": "patch-package",
+    "# === BUILD ===": "",
+    "build:web": "expo export -p web",
     "# === UNIT TESTS ===": "",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -49,6 +51,7 @@
     "@react-navigation/native": "^6.1.18",
     "@react-navigation/stack": "^6.3.29",
     "axios": "^1.13.2",
+    "country-state-city": "^3.2.1",
     "date-fns": "^4.1.0",
     "expo": "~54.0.24",
     "expo-apple-authentication": "~8.0.8",
@@ -89,6 +92,7 @@
     "@testing-library/react-native": "^13.3.3",
     "@types/jest": "29.5.14",
     "@types/react": "~19.1.10",
+    "baseline-browser-mapping": "^2.9.18",
     "firebase-admin": "^12.7.0",
     "firebase-tools": "^14.25.1",
     "jest": "~29.7.0",

@@ -13,12 +13,14 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
-  Alert,
   StyleSheet,
+  Platform,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import Slider from '@react-native-community/slider';
+import { CrossPlatformPicker, PickerItem } from '../common/CrossPlatformPicker';
 import { useTravelPreferences } from '../../hooks/useTravelPreferences';
+import { useAlert } from '../../context/AlertContext';
 import {
   TravelPreferenceProfile,
   ACTIVITY_DEFINITIONS,
@@ -46,6 +48,8 @@ export const TravelPreferencesTab: React.FC<TravelPreferencesTabProps> = ({
     updateProfile,
     setDefaultProfile,
   } = useTravelPreferences();
+  
+  const { showAlert } = useAlert();
 
   // Expanded sections for accordions
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -136,7 +140,7 @@ export const TravelPreferencesTab: React.FC<TravelPreferencesTabProps> = ({
   const handleSave = async () => {
     try {
       if (!formData.name || formData.name.trim().length === 0) {
-        Alert.alert('Error', 'Please enter a profile name');
+        showAlert('error', 'Please enter a profile name');
         return;
       }
 
@@ -150,17 +154,17 @@ export const TravelPreferencesTab: React.FC<TravelPreferencesTabProps> = ({
       if (existingProfile) {
         // Update existing profile
         await updateProfile(existingProfile.id, formData);
-        Alert.alert('Success', 'Profile updated successfully');
+        showAlert('success', 'Profile updated successfully');
       } else {
         // Create new profile
         await createProfile(formData as Omit<TravelPreferenceProfile, 'id' | 'createdAt' | 'updatedAt'>);
-        Alert.alert('Success', 'Profile created successfully');
+        showAlert('success', 'Profile created successfully');
       }
     } catch (err: any) {
       const errorMessage = isTravelPreferencesError(err)
         ? err.getUserMessage()
         : 'Failed to save profile. Please try again.';
-      Alert.alert('Error', errorMessage);
+      showAlert('error', errorMessage);
     }
   };
 
@@ -182,44 +186,34 @@ export const TravelPreferencesTab: React.FC<TravelPreferencesTabProps> = ({
     );
   }
 
+  // Create picker items for profiles
+  const profilePickerItems: PickerItem[] = [
+    { label: '-- Select a profile to edit --', value: '' },
+    ...profiles.map(profile => ({
+      label: `${profile.name}${profile.isDefault ? ' ⭐' : ''}`,
+      value: profile.id,
+    })),
+  ];
+
   return (
     <View style={styles.container}>
       {/* Load Existing Profile Dropdown (only show if profiles exist) */}
       {profiles.length > 0 && (
         <View style={styles.section}>
           <View style={styles.pickerContainer}>
-            <Picker
-              testID="profile-picker"
+            <CrossPlatformPicker
+              items={profilePickerItems}
               selectedValue={selectedProfileId}
-              onValueChange={(itemValue) => {
-                if (itemValue) {
-                  handleLoadProfile(itemValue);
+              onValueChange={(value) => {
+                if (value) {
+                  handleLoadProfile(value);
                 } else {
-                  // User selected "-- Select a profile to edit --", clear form
                   setSelectedProfileId('');
                 }
               }}
-              style={styles.picker}
-              itemStyle={styles.pickerItem}
-              mode="dropdown"
-              dropdownIconColor="#007AFF"
-            >
-              <Picker.Item 
-                label="-- Select a profile to edit --" 
-                value="" 
-                color="#FFFFFF"
-                style={{ fontWeight: '600', fontSize: 18 }}
-              />
-              {profiles.map(profile => (
-                <Picker.Item
-                  key={profile.id}
-                  label={`${profile.name}${profile.isDefault ? ' ⭐' : ''}`}
-                  value={profile.id}
-                  color="#FFFFFF"
-                  style={{ fontWeight: '600', fontSize: 18 }}
-                />
-              ))}
-            </Picker>
+              placeholder="-- Select a profile to edit --"
+              testID="profile-picker"
+            />
           </View>
           <Text style={styles.helperText}>
             💡 These profiles help AI personalize your travel itineraries
@@ -633,10 +627,9 @@ export const TravelPreferencesTab: React.FC<TravelPreferencesTabProps> = ({
         onPress={() => {
           // Check if user has created at least one travel preference profile
           if (profiles.length === 0) {
-            Alert.alert(
-              'Create a Profile First',
-              'Please create a travel preference profile before generating an AI itinerary. This helps us personalize your travel recommendations.  Type the name of the profile in the Profile Name field and open the accordions to customize your preferences, then tap "Save Profile".',
-              [{ text: 'OK' }]
+            showAlert(
+              'warning',
+              'Please create a travel preference profile before generating an AI itinerary. This helps us personalize your travel recommendations. Type the name of the profile in the Profile Name field and open the accordions to customize your preferences, then tap "Save Profile".'
             );
             return;
           }
@@ -644,7 +637,7 @@ export const TravelPreferencesTab: React.FC<TravelPreferencesTabProps> = ({
           if (onGenerateItinerary) {
             onGenerateItinerary();
           } else {
-            Alert.alert('Coming Soon', 'AI itinerary generation will be implemented next');
+            showAlert('info', 'AI itinerary generation will be implemented next');
           }
         }}
       >

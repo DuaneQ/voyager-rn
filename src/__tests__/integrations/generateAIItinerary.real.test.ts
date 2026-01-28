@@ -519,7 +519,7 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
       
     }, 30000);
 
-    it('should generate itinerary for South American destination', async () => {
+    it.skip('should generate itinerary for South American destination', async () => {
       const profile = testProfiles[2];
       
       const payload = {

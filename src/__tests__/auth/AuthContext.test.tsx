@@ -68,12 +68,21 @@ describe('AuthContext (firebase-backed)', () => {
   });
 
   it('throws when firebase returns unverified email', async () => {
-    const unverifiedUser = { uid: 'uid-2', email: 'new@example.com', emailVerified: false, isAnonymous: false, providerData: [], reload: jest.fn() };
+    const unverifiedUser = { 
+      uid: 'uid-2', 
+      email: 'new@example.com', 
+      emailVerified: false, 
+      isAnonymous: false, 
+      providerData: [], 
+      reload: jest.fn().mockResolvedValue(undefined),
+      getIdToken: jest.fn().mockResolvedValue('mock-token')
+    };
     (signInWithEmailAndPassword as jest.Mock).mockResolvedValueOnce({ user: unverifiedUser });
-    (firebaseSignOut as jest.Mock).mockResolvedValueOnce(undefined);
+    (firebaseSignOut as jest.Mock).mockResolvedValue(undefined);
 
     // Mock onAuthStateChanged to not call callback (user gets signed out immediately)
     const cfg = require('../../config/firebaseConfig');
+    cfg.auth.currentUser = null; // No existing user
     cfg.auth.onAuthStateChanged = jest.fn((callback) => {
       // Don't call callback - user is signed out before onAuthStateChanged fires
       return () => {};
@@ -99,6 +108,10 @@ describe('AuthContext (firebase-backed)', () => {
     expect(result.current.status).not.toBe('authenticated');
     expect(['idle', 'error']).toContain(result.current.status);
     expect(result.current.user).toBeNull();
+    
+    // Verify token refresh was called
+    expect(unverifiedUser.getIdToken).toHaveBeenCalledWith(true);
+    expect(unverifiedUser.reload).toHaveBeenCalled();
   });
 
   it('signs out and clears state', async () => {
@@ -197,6 +210,55 @@ describe('AuthContext (firebase-backed)', () => {
     // Status may be 'error' or 'idle' depending on timing of onAuthStateChanged
     expect(['idle', 'error']).toContain(result.current.status);
     expect(result.current.user).toBeNull();
+  });
+
+  it('signs out existing session before signing in with fresh credentials', async () => {
+    const cfg = require('../../config/firebaseConfig');
+    
+    // Mock an existing unverified user session (from signup)
+    const existingUser = { 
+      uid: 'uid-existing', 
+      email: 'test@example.com', 
+      emailVerified: false 
+    };
+    cfg.auth.currentUser = existingUser;
+    
+    // Mock the verified user after login
+    const verifiedUser = { 
+      uid: 'uid-existing', 
+      email: 'test@example.com', 
+      emailVerified: true, 
+      isAnonymous: false, 
+      providerData: [],
+      reload: jest.fn().mockResolvedValue(undefined),
+      getIdToken: jest.fn().mockResolvedValue('fresh-token')
+    };
+    
+    (firebaseSignOut as jest.Mock).mockResolvedValue(undefined);
+    (signInWithEmailAndPassword as jest.Mock).mockResolvedValueOnce({ user: verifiedUser });
+    
+    cfg.auth.onAuthStateChanged = jest.fn((callback) => {
+      setTimeout(() => callback(verifiedUser), 0);
+      return () => {};
+    });
+
+    const wrapper = ({ children }: any) => <AuthProvider>{children}</AuthProvider>;
+    const { result } = renderHook(() => useAuth(), { wrapper });
+
+    await act(async () => {
+      await result.current.signIn('test@example.com', 'password');
+    });
+
+    // Verify signOut was called first to clear stale session
+    expect(firebaseSignOut).toHaveBeenCalledWith(auth);
+    // Verify token refresh was called to get fresh verification status
+    expect(verifiedUser.getIdToken).toHaveBeenCalledWith(true);
+    expect(verifiedUser.reload).toHaveBeenCalled();
+    
+    await waitFor(() => {
+      expect(result.current.status).toBe('authenticated');
+      expect(result.current.user?.emailVerified).toBe(true);
+    });
   });
 
   it('throws error when useAuth is used outside AuthProvider', () => {
@@ -704,7 +766,8 @@ describe('AuthContext - Edge Cases: Email Verification', () => {
       uid: 'unverified-uid',
       email: 'unverified@example.com',
       emailVerified: false,
-      reload: jest.fn(),
+      reload: jest.fn().mockResolvedValue(undefined),
+      getIdToken: jest.fn().mockResolvedValue('mock-token'),
     };
     (signInWithEmailAndPassword as jest.Mock).mockResolvedValueOnce({ user: unverifiedUser });
 
@@ -732,7 +795,8 @@ describe('AuthContext - Edge Cases: Email Verification', () => {
       uid: 'verify-later-uid',
       email: 'verify@example.com',
       emailVerified: false,
-      reload: jest.fn(),
+      reload: jest.fn().mockResolvedValue(undefined),
+      getIdToken: jest.fn().mockResolvedValue('mock-token'),
     };
     (signInWithEmailAndPassword as jest.Mock).mockResolvedValueOnce({ user: unverifiedUser });
 
@@ -749,7 +813,8 @@ describe('AuthContext - Edge Cases: Email Verification', () => {
       uid: 'verify-later-uid',
       email: 'verify@example.com',
       emailVerified: true,
-      reload: jest.fn(),
+      reload: jest.fn().mockResolvedValue(undefined),
+      getIdToken: jest.fn().mockResolvedValue('fresh-token'),
     };
     (signInWithEmailAndPassword as jest.Mock).mockResolvedValueOnce({ user: verifiedUser });
 

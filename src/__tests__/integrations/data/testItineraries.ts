@@ -14,6 +14,9 @@
 
 const TEST_USER_ID = '3e6ot6MHvGR1Nu8wno0XbdAtOnP2';
 
+// Generate unique user IDs for test itineraries (different from searcher)
+const generateTestUserId = (index: number) => `test-user-${index}-${Date.now().toString().slice(-6)}`;
+
 // Helper to get future dates
 const getFutureDates = () => {
   const now = Date.now();
@@ -55,7 +58,7 @@ export const generateTestItineraries = () => {
     // Paris itineraries (for destination exact match tests)
     {
       id: `test-paris-male-${timestamp}`,
-      userId: TEST_USER_ID,
+      userId: generateTestUserId(1),
       destination: 'Paris, France',
       title: 'Paris Adventure',
       description: 'Test itinerary for Paris',
@@ -73,18 +76,18 @@ export const generateTestItineraries = () => {
       activities: '["Sightseeing", "Museums"]',
       userInfo: JSON.stringify({
         dob: '1995-01-01',
-        uid: TEST_USER_ID,
-        email: 'usertravaltest@gmail.com',
+        uid: generateTestUserId(1),
+        email: 'testuser1@test.com',
         gender: 'Male',
         status: 'single',
         blocked: [],
-        username: 'TestUser_Paris',
+        username: 'TestUser_Paris_Male',
         sexualOrientation: 'heterosexual',
       }),
     },
     {
       id: `test-paris-female-${timestamp}`,
-      userId: TEST_USER_ID,
+      userId: generateTestUserId(2),
       destination: 'Paris, France',
       title: 'Paris Trip',
       description: 'Test itinerary for Paris female',
@@ -102,7 +105,7 @@ export const generateTestItineraries = () => {
       activities: '["Shopping", "Food"]',
       userInfo: JSON.stringify({
         dob: '1997-01-01',
-        uid: TEST_USER_ID,
+        uid: generateTestUserId(1),
         email: 'usertravaltest@gmail.com',
         gender: 'Female',
         status: 'single',
@@ -115,7 +118,7 @@ export const generateTestItineraries = () => {
     // Tokyo itinerary (different destination)
     {
       id: `test-tokyo-${timestamp}`,
-      userId: TEST_USER_ID,
+      userId: generateTestUserId(1),
       destination: 'Tokyo, Japan',
       title: 'Tokyo Adventure',
       description: 'Test itinerary for Tokyo',
@@ -133,7 +136,7 @@ export const generateTestItineraries = () => {
       activities: '["Anime", "Food"]',
       userInfo: JSON.stringify({
         dob: '1995-01-01',
-        uid: TEST_USER_ID,
+        uid: generateTestUserId(2),
         email: 'usertravaltest@gmail.com',
         gender: 'Male',
         status: 'single',
@@ -147,7 +150,7 @@ export const generateTestItineraries = () => {
     // Barcelona itineraries with different ages
     {
       id: `test-barcelona-age22-${timestamp}`,
-      userId: TEST_USER_ID,
+      userId: generateTestUserId(2),
       destination: 'Barcelona, Spain',
       title: 'Barcelona Young',
       description: 'Test itinerary age 22',
@@ -165,7 +168,7 @@ export const generateTestItineraries = () => {
       activities: '["Beach", "Clubs"]',
       userInfo: JSON.stringify({
         dob: '2003-01-01',
-        uid: TEST_USER_ID,
+        uid: generateTestUserId(3),
         email: 'usertravaltest@gmail.com',
         gender: 'Female',
         status: 'single',
@@ -176,7 +179,7 @@ export const generateTestItineraries = () => {
     },
     {
       id: `test-barcelona-age30-${timestamp}`,
-      userId: TEST_USER_ID,
+      userId: generateTestUserId(3),
       destination: 'Barcelona, Spain',
       title: 'Barcelona Mid',
       description: 'Test itinerary age 30',
@@ -194,7 +197,7 @@ export const generateTestItineraries = () => {
       activities: '["Wine", "Architecture"]',
       userInfo: JSON.stringify({
         dob: '1995-01-01',
-        uid: TEST_USER_ID,
+        uid: generateTestUserId(4),
         email: 'usertravaltest@gmail.com',
         gender: 'Female',
         status: 'single',
@@ -205,7 +208,7 @@ export const generateTestItineraries = () => {
     },
     {
       id: `test-barcelona-age45-${timestamp}`,
-      userId: TEST_USER_ID,
+      userId: generateTestUserId(4),
       destination: 'Barcelona, Spain',
       title: 'Barcelona Older',
       description: 'Test itinerary age 45',
@@ -223,7 +226,7 @@ export const generateTestItineraries = () => {
       activities: '["Museums", "Fine Dining"]',
       userInfo: JSON.stringify({
         dob: '1980-01-01',
-        uid: TEST_USER_ID,
+        uid: generateTestUserId(5),
         email: 'usertravaltest@gmail.com',
         gender: 'Female',
         status: 'single',
@@ -237,7 +240,7 @@ export const generateTestItineraries = () => {
     // Amsterdam itineraries with different genders
     {
       id: `test-amsterdam-male-${timestamp}`,
-      userId: TEST_USER_ID,
+      userId: generateTestUserId(5),
       destination: 'Amsterdam, Netherlands',
       title: 'Amsterdam Male',
       description: 'Test itinerary male gender',
@@ -255,7 +258,7 @@ export const generateTestItineraries = () => {
       activities: '["Biking", "Coffee Shops"]',
       userInfo: JSON.stringify({
         dob: '1995-01-01',
-        uid: TEST_USER_ID,
+        uid: generateTestUserId(6),
         email: 'usertravaltest@gmail.com',
         gender: 'Male',
         status: 'single',
@@ -266,7 +269,7 @@ export const generateTestItineraries = () => {
     },
     {
       id: `test-amsterdam-female-${timestamp}`,
-      userId: TEST_USER_ID,
+      userId: generateTestUserId(6),
       destination: 'Amsterdam, Netherlands',
       title: 'Amsterdam Female',
       description: 'Test itinerary female gender',
@@ -284,7 +287,7 @@ export const generateTestItineraries = () => {
       activities: '["Museums", "Canals"]',
       userInfo: JSON.stringify({
         dob: '1997-01-01',
-        uid: TEST_USER_ID,
+        uid: generateTestUserId(7),
         email: 'usertravaltest@gmail.com',
         gender: 'Female',
         status: 'single',
@@ -298,7 +301,7 @@ export const generateTestItineraries = () => {
     // Rome itineraries with different statuses
     {
       id: `test-rome-single-${timestamp}`,
-      userId: TEST_USER_ID,
+      userId: generateTestUserId(7),
       destination: 'Rome, Italy',
       title: 'Rome Single',
       description: 'Test itinerary single status',
@@ -316,7 +319,7 @@ export const generateTestItineraries = () => {
       activities: '["History", "Food"]',
       userInfo: JSON.stringify({
         dob: '1995-01-01',
-        uid: TEST_USER_ID,
+        uid: generateTestUserId(8),
         email: 'usertravaltest@gmail.com',
         gender: 'Male',
         status: 'single',
@@ -327,7 +330,7 @@ export const generateTestItineraries = () => {
     },
     {
       id: `test-rome-couple-${timestamp}`,
-      userId: TEST_USER_ID,
+      userId: generateTestUserId(8),
       destination: 'Rome, Italy',
       title: 'Rome Couple',
       description: 'Test itinerary couple status',
@@ -345,7 +348,7 @@ export const generateTestItineraries = () => {
       activities: '["Romantic", "Wine"]',
       userInfo: JSON.stringify({
         dob: '1995-01-01',
-        uid: TEST_USER_ID,
+        uid: generateTestUserId(9),
         email: 'usertravaltest@gmail.com',
         gender: 'Male',
         status: 'couple',
@@ -359,7 +362,7 @@ export const generateTestItineraries = () => {
     // Berlin itineraries with different orientations
     {
       id: `test-berlin-hetero-${timestamp}`,
-      userId: TEST_USER_ID,
+      userId: generateTestUserId(9),
       destination: 'Berlin, Germany',
       title: 'Berlin Hetero',
       description: 'Test itinerary heterosexual',
@@ -377,7 +380,7 @@ export const generateTestItineraries = () => {
       activities: '["Clubs", "History"]',
       userInfo: JSON.stringify({
         dob: '1995-01-01',
-        uid: TEST_USER_ID,
+        uid: generateTestUserId(10),
         email: 'usertravaltest@gmail.com',
         gender: 'Male',
         status: 'single',
@@ -388,7 +391,7 @@ export const generateTestItineraries = () => {
     },
     {
       id: `test-berlin-bi-${timestamp}`,
-      userId: TEST_USER_ID,
+      userId: generateTestUserId(10),
       destination: 'Berlin, Germany',
       title: 'Berlin Bi',
       description: 'Test itinerary bisexual',
@@ -406,7 +409,7 @@ export const generateTestItineraries = () => {
       activities: '["Art", "Music"]',
       userInfo: JSON.stringify({
         dob: '1997-01-01',
-        uid: TEST_USER_ID,
+        uid: generateTestUserId(11),
         email: 'usertravaltest@gmail.com',
         gender: 'Female',
         status: 'single',
@@ -417,7 +420,7 @@ export const generateTestItineraries = () => {
     },
     {
       id: `test-berlin-homo-${timestamp}`,
-      userId: TEST_USER_ID,
+      userId: generateTestUserId(11),
       destination: 'Berlin, Germany',
       title: 'Berlin Homo',
       description: 'Test itinerary homosexual',
@@ -435,7 +438,7 @@ export const generateTestItineraries = () => {
       activities: '["Pride Events", "Nightlife"]',
       userInfo: JSON.stringify({
         dob: '1995-01-01',
-        uid: TEST_USER_ID,
+        uid: generateTestUserId(12),
         email: 'usertravaltest@gmail.com',
         gender: 'Male',
         status: 'single',
@@ -449,7 +452,7 @@ export const generateTestItineraries = () => {
     // London itineraries with different date ranges
     {
       id: `test-london-week1-${timestamp}`,
-      userId: TEST_USER_ID,
+      userId: generateTestUserId(12),
       destination: 'London, UK',
       title: 'London Week 1',
       description: 'Test itinerary week 1 dates',
@@ -467,7 +470,7 @@ export const generateTestItineraries = () => {
       activities: '["Theater", "Pubs"]',
       userInfo: JSON.stringify({
         dob: '1995-01-01',
-        uid: TEST_USER_ID,
+        uid: generateTestUserId(13),
         email: 'usertravaltest@gmail.com',
         gender: 'Male',
         status: 'single',
@@ -478,7 +481,7 @@ export const generateTestItineraries = () => {
     },
     {
       id: `test-london-week3-${timestamp}`,
-      userId: TEST_USER_ID,
+      userId: generateTestUserId(13),
       destination: 'London, UK',
       title: 'London Week 3',
       description: 'Test itinerary week 3 dates (no overlap with week 1)',
@@ -496,7 +499,7 @@ export const generateTestItineraries = () => {
       activities: '["Museums", "Shopping"]',
       userInfo: JSON.stringify({
         dob: '1995-01-01',
-        uid: TEST_USER_ID,
+        uid: generateTestUserId(14),
         email: 'usertravaltest@gmail.com',
         gender: 'Male',
         status: 'single',

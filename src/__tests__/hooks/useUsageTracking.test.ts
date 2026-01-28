@@ -66,7 +66,6 @@ describe('useUsageTracking', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    console.log = jest.fn();
     console.error = jest.fn();
     // Ensure mocked auth reports an authenticated test user by default
     setMockUser();

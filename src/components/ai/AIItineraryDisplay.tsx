@@ -1146,6 +1146,32 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                                 </Text>
                               </TouchableOpacity>
                             )}
+                            
+                            {/* AI-First: Google Maps link (replaces phone/website for AI-generated itineraries) */}
+                            {!isEditing && activity.googleMapsUrl && (
+                              <TouchableOpacity onPress={() => Linking.openURL(activity.googleMapsUrl)}>
+                                <Text style={styles.googleMapsLink}>
+                                  📍 View on Google Maps
+                                </Text>
+                              </TouchableOpacity>
+                            )}
+                            
+                            {/* AI-First: "Why this fits you" personalized explanation */}
+                            {!isEditing && activity.why_for_you && (
+                              <View style={styles.whyForYouContainer}>
+                                <Text style={styles.whyForYouLabel}>✨ Why this fits you:</Text>
+                                <Text style={styles.whyForYouText}>{activity.why_for_you}</Text>
+                              </View>
+                            )}
+                            
+                            {/* AI-First: Insider tip */}
+                            {!isEditing && activity.insider_tip && (
+                              <View style={styles.insiderTipContainer}>
+                                <Text style={styles.insiderTipLabel}>💡 Insider tip:</Text>
+                                <Text style={styles.insiderTipText}>{activity.insider_tip}</Text>
+                              </View>
+                            )}
+                            
                             {(activity.estimatedCost || activity.cost || activity.price) && (
                               <Text style={styles.activityCost}>
                                 💰 {
@@ -1292,6 +1318,40 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                                     </Text>
                                   </TouchableOpacity>
                                 )}
+                                
+                                {/* AI-First: Google Maps link for restaurant */}
+                                {!isEditing && meal.restaurant.googleMapsUrl && (
+                                  <TouchableOpacity onPress={() => Linking.openURL(meal.restaurant.googleMapsUrl)}>
+                                    <Text style={styles.googleMapsLink}>
+                                      📍 View on Google Maps
+                                    </Text>
+                                  </TouchableOpacity>
+                                )}
+                                
+                                {/* AI-First: "Why this fits you" for restaurant */}
+                                {!isEditing && meal.restaurant.why_for_you && (
+                                  <View style={styles.whyForYouContainer}>
+                                    <Text style={styles.whyForYouLabel}>✨ Why this fits you:</Text>
+                                    <Text style={styles.whyForYouText}>{meal.restaurant.why_for_you}</Text>
+                                  </View>
+                                )}
+                                
+                                {/* AI-First: Dietary fit explanation */}
+                                {!isEditing && meal.restaurant.dietary_fit && (
+                                  <View style={styles.dietaryFitContainer}>
+                                    <Text style={styles.dietaryFitLabel}>🥗 Dietary fit:</Text>
+                                    <Text style={styles.dietaryFitText}>{meal.restaurant.dietary_fit}</Text>
+                                  </View>
+                                )}
+                                
+                                {/* AI-First: Insider tip for restaurant */}
+                                {!isEditing && meal.restaurant.insider_tip && (
+                                  <View style={styles.insiderTipContainer}>
+                                    <Text style={styles.insiderTipLabel}>💡 Insider tip:</Text>
+                                    <Text style={styles.insiderTipText}>{meal.restaurant.insider_tip}</Text>
+                                  </View>
+                                )}
+                                
                                 {(meal.cost || meal.restaurant.estimatedCost) && (
                                   <Text style={styles.restaurantPrice}>
                                     💰 {
@@ -2084,5 +2144,71 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     borderWidth: 1,
     borderColor: '#1976d2',
+  },
+  
+  // AI-First styles - personalized explanations and tips
+  googleMapsLink: {
+    fontSize: 14,
+    color: '#1976d2',
+    marginTop: 6,
+    fontWeight: '500',
+    textDecorationLine: 'underline',
+  },
+  whyForYouContainer: {
+    backgroundColor: '#E8F5E9',
+    padding: 10,
+    borderRadius: 8,
+    marginTop: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#4CAF50',
+  },
+  whyForYouLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#2E7D32',
+    marginBottom: 4,
+  },
+  whyForYouText: {
+    fontSize: 13,
+    color: '#1B5E20',
+    lineHeight: 18,
+  },
+  insiderTipContainer: {
+    backgroundColor: '#FFF3E0',
+    padding: 10,
+    borderRadius: 8,
+    marginTop: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#FF9800',
+  },
+  insiderTipLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#E65100',
+    marginBottom: 4,
+  },
+  insiderTipText: {
+    fontSize: 13,
+    color: '#BF360C',
+    lineHeight: 18,
+  },
+  dietaryFitContainer: {
+    backgroundColor: '#E3F2FD',
+    padding: 10,
+    borderRadius: 8,
+    marginTop: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#2196F3',
+  },
+  dietaryFitLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1565C0',
+    marginBottom: 4,
+  },
+  dietaryFitText: {
+    fontSize: 13,
+    color: '#0D47A1',
+    lineHeight: 18,
   },
 });

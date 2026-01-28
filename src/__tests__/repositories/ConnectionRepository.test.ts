@@ -10,12 +10,14 @@ jest.mock('firebase/firestore', () => ({
   collection: jest.fn(),
   doc: jest.fn(),
   setDoc: jest.fn(),
+  addDoc: jest.fn(),
   getDoc: jest.fn(),
   getDocs: jest.fn(),
   query: jest.fn(),
   where: jest.fn(),
+  serverTimestamp: jest.fn(() => ({ __serverTimestamp: true })),
   Timestamp: {
-    now: jest.fn(),
+    now: jest.fn(() => ({ seconds: Date.now() / 1000, nanoseconds: 0 })),
     fromDate: jest.fn(),
   },
 }));
@@ -35,6 +37,7 @@ import * as firestore from 'firebase/firestore';
 const mockGetDoc = firestore.getDoc as jest.Mock;
 const mockGetDocs = firestore.getDocs as jest.Mock;
 const mockSetDoc = firestore.setDoc as jest.Mock;
+const mockAddDoc = firestore.addDoc as jest.Mock;
 const mockQuery = firestore.query as jest.Mock;
 const mockWhere = firestore.where as jest.Mock;
 const mockCollection = firestore.collection as jest.Mock;
@@ -98,10 +101,10 @@ describe('ConnectionRepository', () => {
   };
 
   describe('createConnection', () => {
-    it('should create connection successfully with deterministic ID', async () => {
-      const mockDocRef = { id: 'user-1_user-2' };
-      mockDoc.mockReturnValue(mockDocRef);
-      mockSetDoc.mockResolvedValue(undefined);
+    it('should create connection successfully with auto-generated ID', async () => {
+      const mockDocRef = { id: 'auto-generated-id-123' };
+      mockAddDoc.mockResolvedValue(mockDocRef);
+      mockCollection.mockReturnValue({ type: 'collection' });
 
       const connectionData: CreateConnectionParams = {
         user1Id: 'user-1',
@@ -114,51 +117,18 @@ describe('ConnectionRepository', () => {
 
       const result = await connectionRepository.createConnection(connectionData);
 
-      expect(result.id).toBe('user-1_user-2');
+      expect(result.id).toBe('auto-generated-id-123');
       expect(result.users).toContain('user-1');
       expect(result.users).toContain('user-2');
       expect(result.itineraryIds).toContain('itinerary-1');
       expect(result.itineraryIds).toContain('itinerary-2');
-      expect(mockSetDoc).toHaveBeenCalled();
-    });
-
-    it('should create deterministic ID regardless of user order', async () => {
-      const mockDocRef1 = { id: 'user-1_user-2' };
-      const mockDocRef2 = { id: 'user-1_user-2' };
-      
-      // First call with user-1, user-2
-      mockDoc.mockReturnValueOnce(mockDocRef1);
-      mockSetDoc.mockResolvedValue(undefined);
-      
-      const connection1 = await connectionRepository.createConnection({
-        user1Id: 'user-1',
-        user2Id: 'user-2',
-        itinerary1Id: 'itinerary-1',
-        itinerary2Id: 'itinerary-2',
-        itinerary1: mockItinerary1,
-        itinerary2: mockItinerary2,
-      });
-
-      // Second call with user-2, user-1 (reversed)
-      mockDoc.mockReturnValueOnce(mockDocRef2);
-      
-      const connection2 = await connectionRepository.createConnection({
-        user1Id: 'user-2',
-        user2Id: 'user-1',
-        itinerary1Id: 'itinerary-2',
-        itinerary2Id: 'itinerary-1',
-        itinerary1: mockItinerary2,
-        itinerary2: mockItinerary1,
-      });
-
-      // Should produce same connection ID regardless of order
-      expect(connection1.id).toBe(connection2.id);
+      expect(mockAddDoc).toHaveBeenCalled();
     });
 
     it('should include itinerary IDs in connection', async () => {
-      const mockDocRef = { id: 'user-1_user-2' };
-      mockDoc.mockReturnValue(mockDocRef);
-      mockSetDoc.mockResolvedValue(undefined);
+      const mockDocRef = { id: 'auto-id-456' };
+      mockAddDoc.mockResolvedValue(mockDocRef);
+      mockCollection.mockReturnValue({ type: 'collection' });
 
       const result = await connectionRepository.createConnection({
         user1Id: 'user-1',
@@ -174,9 +144,8 @@ describe('ConnectionRepository', () => {
     });
 
     it('should handle Firestore errors', async () => {
-      const mockDocRef = { id: 'user-1_user-2' };
-      mockDoc.mockReturnValue(mockDocRef);
-      mockSetDoc.mockRejectedValue(new Error('Firestore write failed'));
+      mockAddDoc.mockRejectedValue(new Error('Firestore write failed'));
+      mockCollection.mockReturnValue({ type: 'collection' });
 
       await expect(
         connectionRepository.createConnection({

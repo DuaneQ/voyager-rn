@@ -164,12 +164,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setStatus('loading');
 
+      // CRITICAL FIX: If user is already signed in from signup, sign them out first
+      // This ensures we get fresh verification status from Firebase servers
+      if (auth.currentUser) {
+        await signOut(auth);
+        // Wait briefly for sign out to complete
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
       // Use Firebase Web SDK EVERYWHERE (works on web, iOS, Android)
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
       
-      // Check email verification (PWA pattern)
-      await user.reload();
+      // CRITICAL: Force fresh token refresh AND reload to get latest verification status
+      // user.reload() alone may use cached state - we need to force a server round-trip
+      await user.getIdToken(true); // Force token refresh from server
+      await user.reload(); // Reload user data with fresh token
+      
       if (!user.emailVerified) {
         // Sign out the user immediately so onAuthStateChanged doesn't authenticate them
         await signOut(auth);
@@ -189,9 +200,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       };
       await AsyncStorage.setItem('USER_CREDENTIALS', JSON.stringify(userCredentials));
       
-      // That's it! Firebase Auth SDK handles everything
-      // UserProfileContext will load the profile via onAuthStateChanged
-      setStatus('authenticated');
+      // CRITICAL: On web, force a page reload to ensure proper auth state
+      // This matches PWA pattern that uses window.location.href = '/'
+      // Without this, the navigator may not properly update after email verification
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        setStatus('authenticated');
+        window.location.reload();
+        return;
+      }
+      
+      // On mobile: Keep status as 'loading' and let onAuthStateChanged update it
+      // This prevents the auth form from flashing before navigation completes
+      // The listener will fire immediately and set status to 'authenticated'
     } catch (error: any) {
       console.error('❌ Sign in error:', error);
       setStatus('error');
@@ -239,6 +259,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await sendEmailVerification(user);
       
       // Store profile and credentials (PWA pattern)
+      // Keep user signed in to Firebase so resend verification works
       await AsyncStorage.setItem('PROFILE_INFO', JSON.stringify(userProfile));
       const userCredentials = {
         user: {
@@ -532,14 +553,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
       
       // Existing user - success
-      console.log('[AuthContext] Apple sign-in successful');
       setStatus('authenticated');
       return user;
       
     } catch (error: any) {
       if (error.code === 'ERR_REQUEST_CANCELED') {
         // User canceled - don't throw error
-        console.log('[AuthContext] Apple sign-in canceled by user');
         setStatus('idle');
         return;
       }
@@ -586,7 +605,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       if (userDoc.exists()) {
         // Existing user trying to sign up - just sign them in
-        console.log('[AuthContext] Apple user already exists, signing in');
         setStatus('authenticated');
         return user;
       }
@@ -622,13 +640,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       };
 
       await setDoc(userRef, userProfile);
-      console.log('[AuthContext] Apple sign-up successful, profile created');
       setStatus('authenticated');
       return user;
       
     } catch (error: any) {
       if (error.code === 'ERR_REQUEST_CANCELED') {
-        console.log('[AuthContext] Apple sign-up canceled by user');
         setStatus('idle');
         return;
       }

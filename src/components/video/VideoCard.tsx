@@ -48,6 +48,7 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
   onViewTracked,
 }) => {
   const videoRef = useRef<Video>(null);
+  const webVideoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   // Track if user manually paused (vs auto-pause during scroll)
   // Play button should ONLY show when user pauses, not on initial load
@@ -198,6 +199,39 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
   }, [isActive, userPaused]);
 
   /**
+   * Web: Control video playback when isActive changes
+   */
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    
+    const webVideo = webVideoRef.current;
+    if (!webVideo) return;
+    
+    if (isActive && !userPaused) {
+      webVideo.play().catch((err) => {
+        // Autoplay may be blocked by browser
+        console.warn('[VideoCard] Web autoplay blocked:', err);
+      });
+      setIsPlaying(true);
+    } else {
+      webVideo.pause();
+      setIsPlaying(false);
+    }
+  }, [isActive, userPaused]);
+
+  /**
+   * Web: Update mute state when isMuted prop changes
+   */
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    
+    const webVideo = webVideoRef.current;
+    if (webVideo) {
+      webVideo.muted = isMuted;
+    }
+  }, [isMuted]);
+
+  /**
    * Update mute state when isMuted prop changes.
    */
   useEffect(() => {
@@ -287,6 +321,27 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
    * Toggle play/pause
    */
   const handlePlayPause = async () => {
+    // Web: Uses native video element
+    if (Platform.OS === 'web') {
+      const webVideo = webVideoRef.current;
+      if (!webVideo) return;
+      
+      try {
+        if (webVideo.paused) {
+          await webVideo.play();
+          setIsPlaying(true);
+          setUserPaused(false);
+        } else {
+          webVideo.pause();
+          setIsPlaying(false);
+          setUserPaused(true);
+        }
+      } catch (err) {
+        console.error('[VideoCard] Web play/pause error:', err);
+      }
+      return;
+    }
+
     // Android: Uses isPaused prop - just toggle userPaused state
     if (Platform.OS === 'android') {
       const newPausedState = !userPaused;
@@ -318,28 +373,43 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
    * Toggle mute/unmute
    */
   const handleMuteToggle = async () => {
-    // Update parent-controlled mute state first. Rely on the controlled
-    // `isMuted` prop on the <Video /> to apply the change. Avoid calling
-    // instance methods directly here because the native view may be
-    // recycled (especially on Android emulator) which can cause errors.
+    console.log('[VideoCard] handleMuteToggle called');
+    console.log('[VideoCard] Video ID:', video.id);
+    console.log('[VideoCard] Current isMuted:', isMuted);
+    console.log('[VideoCard] Platform:', Platform.OS);
+    
     const newMutedState = !isMuted;
+    console.log('[VideoCard] New muted state:', newMutedState);
+    
     try {
+      // Call parent callback to update global mute state
       onMuteToggle(newMutedState);
-      // Best-effort: if the ref is valid, attempt to set mute asynchronously
-      // but don't fail if it errors (prevents redbox on emulator).
-      const ref = videoRef.current;
-      if (ref) {
-        ref.setIsMutedAsync(newMutedState).catch((e) => {
-          // Ignore failures; the Video component will receive the new prop
-          // and should apply it when possible.
-          const m = e?.message || String(e);
-          if (!m.includes('Invalid view returned from registry')) {
-            console.warn('setIsMutedAsync failed while toggling mute:', e);
-          }
-        });
+      console.log('[VideoCard] onMuteToggle callback called');
+      
+      // Platform-specific muting
+      if (Platform.OS === 'web') {
+        // For web: directly set muted property on HTML5 video element
+        const webVideo = webVideoRef.current;
+        if (webVideo) {
+          webVideo.muted = newMutedState;
+          console.log('[VideoCard] Web video muted property set to:', newMutedState);
+        } else {
+          console.warn('[VideoCard] Web video ref is null');
+        }
+      } else {
+        // For mobile: use expo-av API
+        const ref = videoRef.current;
+        if (ref) {
+          ref.setIsMutedAsync(newMutedState).catch((e) => {
+            const m = e?.message || String(e);
+            if (!m.includes('Invalid view returned from registry')) {
+              console.warn('[VideoCard] setIsMutedAsync failed while toggling mute:', e);
+            }
+          });
+        }
       }
     } catch (err) {
-      console.error('Error toggling mute:', err);
+      console.error('[VideoCard] Error toggling mute:', err);
     }
   };
 
@@ -380,11 +450,7 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
   const renderVideoInfo = () => (
     <View style={styles.infoOverlay}>
       {video.title && <Text style={styles.title}>{video.title}</Text>}
-      {video.description && (
-        <Text style={styles.description} numberOfLines={2}>
-          {video.description}
-        </Text>
-      )}
+      {video.description && <Text style={styles.description} numberOfLines={2}>{video.description}</Text>}
       <View style={styles.statsRow}>
         <Text style={styles.statText}>👁️ {viewCount.toLocaleString()}</Text>
       </View>
@@ -474,7 +540,27 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
           activeOpacity={1}
           onPress={handlePlayPause}
         >
-          {Platform.OS === 'android' ? (
+          {Platform.OS === 'web' ? (
+            <video
+              ref={webVideoRef as any}
+              src={video.videoUrl}
+              poster={video.thumbnailUrl || ''}
+              loop
+              playsInline
+              muted={isMuted}
+              autoPlay={isActive && !userPaused}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                backgroundColor: '#000',
+              }}
+              onError={() => {
+                console.error('[VideoCard] Web video error:', video.id);
+                setError(true);
+              }}
+            />
+          ) : Platform.OS === 'android' ? (
             <AndroidVideoPlayerRNV
               video={video}
               isActive={isActive}
@@ -511,20 +597,6 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
         </TouchableOpacity>
       </View>
 
-      {/* Mute button - moved outside videoContainer to prevent touch blocking on Android */}
-      <TouchableOpacity 
-        style={styles.muteButton} 
-        onPress={handleMuteToggle}
-        testID="mute-button"
-        accessibilityLabel={isMuted ? 'Unmute video' : 'Mute video'}
-      >
-        <Ionicons
-          name={isMuted ? 'volume-mute' : 'volume-high'}
-          size={24}
-          color="#fff"
-        />
-      </TouchableOpacity>
-
       {/* Video info overlay */}
       <View testID="info-overlay" style={styles.infoOverlayWrapper} pointerEvents="box-none">
         {renderVideoInfo()}
@@ -532,6 +604,26 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
 
       {/* Action buttons */}
       {renderActionButtons()}
+      
+      {/* Mute button wrapper - same pattern as action buttons to allow touches on web */}
+      <View pointerEvents="box-none" style={styles.muteButtonWrapper}>
+        <TouchableOpacity 
+          style={styles.muteButton}
+          onPress={() => {
+            console.log('[VideoCard] Mute button PRESSED - Video ID:', video.id);
+            handleMuteToggle();
+          }}
+          testID="mute-button"
+          accessibilityLabel={isMuted ? 'Unmute video' : 'Mute video'}
+          activeOpacity={0.7}
+        >
+          <Ionicons
+            name={isMuted ? 'volume-mute' : 'volume-high'}
+            size={24}
+            color="#fff"
+          />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
@@ -559,15 +651,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.3)',
   },
+  muteButtonWrapper: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 50, // Highest z-index to ensure wrapper and button are on top
+    pointerEvents: 'box-none' as any, // Pass through touches except to children
+  },
   muteButton: {
     position: 'absolute',
-    top: Platform.select({ ios: 60, android: 200 }), // Lower on Android to avoid tab bar overlap
+    top: Platform.select({ 
+      ios: 60, 
+      android: 200, // Lower on Android to avoid tab bar overlap
+      web: 60, // Match iOS - keep it at top to avoid covering heart icon
+    }), 
     right: 16,
     backgroundColor: 'rgba(0,0,0,0.5)',
     borderRadius: 20,
     padding: 8,
-    zIndex: 20, // Higher zIndex to ensure it appears above video and is touchable
-    elevation: 10, // Increased Android elevation for proper touch handling (was 5, now 10)
+    elevation: 10, // Increased Android elevation for proper touch handling
   },
   infoOverlayWrapper: {
     position: 'absolute',
@@ -614,7 +714,9 @@ const styles = StyleSheet.create({
     right: 16,
     bottom: 140, // Raised from 100 to sit above transparent tab bar
     alignItems: 'center',
-    zIndex: 10, // Ensure actions appear above video
+    zIndex: 30, // Higher than mute button (20) and video to ensure touches work on web
+    elevation: 15, // Android elevation
+    pointerEvents: 'box-none', // Allow touches to pass through container but children receive touches
   },
   actionButton: {
     alignItems: 'center',

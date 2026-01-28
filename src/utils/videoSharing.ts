@@ -32,6 +32,33 @@ export const generateShareMessage = (video: Video): string => {
 export const shareVideo = async (video: Video): Promise<boolean> => {
   try {
     const message = generateShareMessage(video);
+    
+    // Web-specific sharing using Web Share API
+    if (Platform.OS === 'web') {
+      // Check if Web Share API is available
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: video.title || 'Check out this video on TravalPass',
+            text: 'Watch this amazing travel video!',
+            url: generateVideoShareUrl(video.id),
+          });
+          return true;
+        } catch (error: any) {
+          // User cancelled or share failed
+          if (error.name !== 'AbortError') {
+            console.error('[videoSharing] Web share error:', error);
+          }
+        }
+      }
+      
+      // Fallback for web: copy to clipboard and show alert
+      await copyVideoLink(video);
+      alert('Link copied to clipboard! You can now paste it anywhere to share.');
+      return true;
+    }
+    
+    // Mobile native sharing
     const isAvailable = await Sharing.isAvailableAsync();
 
     if (isAvailable) {

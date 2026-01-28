@@ -25,7 +25,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { prepareImageForUpload, isValidHttpUrl } from '../utils/imageValidation';
-import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
+import { useRoute, useNavigation, useNavigationState, RouteProp, CommonActions } from '@react-navigation/native';
 import { getDoc, doc } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
 import { UserProfileContext } from '../context/UserProfileContext';
@@ -51,6 +51,32 @@ const ChatThreadScreen: React.FC = () => {
   const navigation = useNavigation();
   const { connectionId, otherUserName } = route.params;
   const { userProfile } = useContext(UserProfileContext);
+  
+  // Check if we can go back in navigation history
+  const canGoBack = useNavigationState(state => state.routes.length > 1);
+  
+  // Safe back handler - falls back to Chat tab if no history (e.g., direct URL navigation on web)
+  const handleBack = () => {
+    if (canGoBack) {
+      navigation.goBack();
+    } else {
+      // No history to go back to - navigate to Chat tab
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [
+            {
+              name: 'MainApp',
+              state: {
+                routes: [{ name: 'Chat' }],
+                index: 0,
+              },
+            },
+          ],
+        })
+      );
+    }
+  };
 
   const [messageText, setMessageText] = useState('');
   const [sending, setSending] = useState(false);
@@ -466,8 +492,9 @@ const ChatThreadScreen: React.FC = () => {
     <View style={styles.container}>
       {/* Header with profile avatars */}
       <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButtonContainer}>
-            <Text style={styles.backButton}>← Back</Text>
+          <TouchableOpacity onPress={handleBack} style={styles.backButtonContainer}>
+            <Ionicons name="arrow-back" size={20} color="#007AFF" />
+            <Text style={styles.backButton}>Back</Text>
           </TouchableOpacity>
           
           {/* Profile avatars for all users in chat */}
@@ -692,7 +719,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   backButtonContainer: {
-    width: 60,
+    width: 70,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   backButton: {
     fontSize: 16,

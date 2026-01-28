@@ -331,19 +331,19 @@ const styles = StyleSheet.create({
   profileSection: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 6,
   },
 
   avatarButton: {
     padding: 0,
   },
 
-  // Avatar - Larger and more prominent
+  // Avatar - Reduced for more activities space
   avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    borderWidth: 3,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 2,
     borderColor: '#e0e0e0',
     backgroundColor: '#f0f0f0',
   },
@@ -358,10 +358,10 @@ const styles = StyleSheet.create({
   username: {
     fontWeight: 'bold',
     color: '#333',
-    fontSize: 20,
+    fontSize: 16,
     textAlign: 'center',
-    marginBottom: 12,
-    marginTop: 4,
+    marginBottom: 6,
+    marginTop: 2,
   },
 
   // Destination - Prominent headline
@@ -369,23 +369,23 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: 'bold',
     color: '#000',
-    fontSize: 26,
-    marginBottom: 16,
-    letterSpacing: 0.5,
+    fontSize: 20,
+    marginBottom: 8,
+    letterSpacing: 0.3,
   },
 
   // Date text - Clear and readable
   dateText: {
     textAlign: 'center',
     color: '#666',
-    marginBottom: 10,
-    fontSize: 16,
+    marginBottom: 6,
+    fontSize: 14,
   },
 
-  // Scrollable content - Adequate space for description and activities
+  // Scrollable content - More space for activities by shrinking header
   scrollContent: {
-    maxHeight: 230, // Increased to ensure description is visible
-    marginTop: 16,
+    maxHeight: 280, // Increased to provide more space for activities
+    marginTop: 8,
     paddingRight: 8,
   },
 
@@ -442,60 +442,39 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
 
-  // Card actions - Large circular buttons like iOS screenshot
+  // Card actions - Reduced button sizes for more activities space
   cardActions: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    paddingVertical: 24,
-    paddingHorizontal: 60,
-    marginTop: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 40,
+    marginTop: 12,
   },
 
   editButton: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: '#2196F3',
     justifyContent: 'center',
     alignItems: 'center',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 6,
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
       },
       android: {
-        elevation: 8,
+        elevation: 6,
       },
     }),
   },
 
   deleteButton: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: '#f44336',
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 6,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
-  },
-
-  // Dislike button - Consistent across platforms
-  dislikeButton: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: '#f44336',
     justifyContent: 'center',
     alignItems: 'center',
@@ -503,8 +482,29 @@ const styles = StyleSheet.create({
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.3,
-        shadowRadius: 5,
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
+  },
+
+  // Dislike button - Consistent across platforms
+  dislikeButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#FF6B6B',
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
       },
       android: {
         elevation: 6,
@@ -514,18 +514,18 @@ const styles = StyleSheet.create({
 
   // Like button - Consistent across platforms
   likeButton: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: '#4caf50',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#4CAF50',
     justifyContent: 'center',
     alignItems: 'center',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.3,
-        shadowRadius: 5,
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
       },
       android: {
         elevation: 6,
@@ -534,24 +534,24 @@ const styles = StyleSheet.create({
   },
 
   editIcon: {
-    fontSize: 32,
+    fontSize: 28,
     color: '#fff',
   },
 
   deleteIcon: {
-    fontSize: 32,
+    fontSize: 28,
     color: '#fff',
   },
 
-  // Icons - Larger and more visible
+  // Icons - Reduced for more activities space
   dislikeIcon: {
-    fontSize: 32,
+    fontSize: 28,
     color: 'white',
     fontWeight: 'bold',
   },
 
   likeIcon: {
-    fontSize: 32,
+    fontSize: 28,
     color: 'white',
     fontWeight: 'bold',
   },

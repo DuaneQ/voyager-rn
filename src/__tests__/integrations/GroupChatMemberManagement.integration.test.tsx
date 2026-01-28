@@ -29,11 +29,20 @@ jest.mock('firebase/firestore', () => ({
 
 // Mock navigation hooks
 const mockUseRoute = jest.fn();
-const mockUseNavigation = jest.fn(() => ({ goBack: jest.fn() }));
+const mockUseNavigation = jest.fn(() => ({ 
+  goBack: jest.fn(),
+  dispatch: jest.fn(),
+}));
+const mockUseNavigationState = jest.fn(() => true); // Mock canGoBack as true
+const mockCommonActions = {
+  reset: jest.fn(),
+};
 
 jest.mock('@react-navigation/native', () => ({
   useRoute: () => mockUseRoute(),
   useNavigation: () => mockUseNavigation(),
+  useNavigationState: (selector: any) => mockUseNavigationState(selector),
+  CommonActions: mockCommonActions,
 }));
 
 // Mock hooks
@@ -97,6 +106,7 @@ describe('Group Chat Member Management Integration', () => {
       error: null,
       participants: mockParticipants,
       getParticipants: jest.fn().mockReturnValue(mockParticipants),
+      removeConnectionOptimistic: jest.fn(),
     } as any);
 
     mockUseMessages.mockReturnValue({
@@ -122,6 +132,7 @@ describe('Group Chat Member Management Integration', () => {
         error: null,
         participants: mockParticipants.slice(0, 2),
         getParticipants: jest.fn().mockReturnValue(mockParticipants.slice(0, 2)),
+        removeConnectionOptimistic: jest.fn(),
       } as any);
 
       const result = renderWithContext(<ChatThreadScreen />);

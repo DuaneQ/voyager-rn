@@ -44,16 +44,21 @@ jest.mock('expo-secure-store', () => ({
 }));
 
 // Mock Firebase
-jest.mock('./src/config/firebaseConfig', () => ({
-  auth: {
-    currentUser: null,
+jest.mock('./src/config/firebaseConfig', () => {
+  const mockAuth = {
+    currentUser: { uid: 'test-user-123', email: 'test@example.com', emailVerified: true },
     onAuthStateChanged: jest.fn((callback) => {
       // Return unsubscribe function
       return () => {};
     }),
-  },
-  db: {},
-}));
+  };
+  
+  return {
+    auth: mockAuth,
+    db: {},
+    getAuthInstance: () => mockAuth,
+  };
+});
 
 // Mock firebase/auth functions used by AuthContext
 jest.mock('firebase/auth', () => {

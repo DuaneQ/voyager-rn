@@ -13,7 +13,7 @@ const ChatPage: React.FC = () => {
   const { userProfile } = useContext(UserProfileContext);
   const navigation = useNavigation();
   
-  const { connections, loading, error, refresh } = useConnections(userProfile?.uid || null);
+  const { connections, loading, error, refresh, removeConnectionOptimistic } = useConnections(userProfile?.uid || null);
   const removeConnection = useRemoveConnection();
   
   // Store user profile photos
@@ -63,6 +63,24 @@ const ChatPage: React.FC = () => {
   }, [connections, userProfile?.uid]);
 
   const handleRemoveConnection = async (connectionId: string, otherUserName: string) => {
+    // Alert.alert with buttons doesn't work on React Native Web - use window.confirm
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(`Are you sure you want to remove ${otherUserName} from your connections?`);
+      if (confirmed) {
+        // Optimistically remove from UI immediately
+        removeConnectionOptimistic(connectionId);
+        
+        const result = await removeConnection(connectionId);
+        if (!result.success) {
+          // If failed, refresh to restore the connection in the list
+          refresh();
+          window.alert(result.error || 'Failed to remove connection');
+        }
+      }
+      return;
+    }
+    
+    // Native iOS/Android - use Alert.alert
     Alert.alert(
       'Remove Connection',
       `Are you sure you want to remove ${otherUserName} from your connections?`,
@@ -75,11 +93,13 @@ const ChatPage: React.FC = () => {
           text: 'Remove',
           style: 'destructive',
           onPress: async () => {
+            // Optimistically remove from UI immediately
+            removeConnectionOptimistic(connectionId);
+            
             const result = await removeConnection(connectionId);
-            if (result.success) {
-              // Refresh the connections list
+            if (!result.success) {
+              // If failed, refresh to restore the connection in the list
               refresh();
-            } else {
               Alert.alert('Error', result.error || 'Failed to remove connection');
             }
           },

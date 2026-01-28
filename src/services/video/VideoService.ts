@@ -23,6 +23,7 @@ import {
   limit,
   Timestamp,
 } from 'firebase/firestore';
+import { Platform } from 'react-native';
 import { storage, db } from '../../config/firebaseConfig';
 import { Video, VideoUploadData } from '../../types/Video';
 import { generateVideoThumbnail } from '../../utils/videoValidation';
@@ -43,21 +44,36 @@ export class VideoService {
 
       onProgress?.(10, 'Preparing video...');
 
-      // Read video file as blob using XMLHttpRequest (works reliably on both iOS and Android)
-      const videoBlob = await new Promise<Blob>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.onload = function() {
-          if (xhr.status === 200) {
-            resolve(xhr.response);
-          } else {
-            reject(new Error(`Failed to read video file: ${xhr.status}`));
-          }
-        };
-        xhr.onerror = () => reject(new Error('Failed to read video file'));
-        xhr.responseType = 'blob';
-        xhr.open('GET', videoData.uri, true);
-        xhr.send(null);
-      });
+      // Read video file as blob
+      // On web, the URI is typically a blob: URL or data: URL from file input
+      // On native, it's a file:// or content:// URI
+      let videoBlob: Blob;
+      
+      if (Platform.OS === 'web') {
+        // Web: Use fetch for blob: and data: URLs, or any URL really
+        try {
+          const response = await fetch(videoData.uri);
+          videoBlob = await response.blob();
+        } catch (fetchError) {
+          throw new Error(`Failed to read video file on web: ${fetchError}`);
+        }
+      } else {
+        // Native platforms use XMLHttpRequest
+        videoBlob = await new Promise<Blob>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.onload = function() {
+            if (xhr.status === 200) {
+              resolve(xhr.response);
+            } else {
+              reject(new Error(`Failed to read video file: ${xhr.status}`));
+            }
+          };
+          xhr.onerror = () => reject(new Error('Failed to read video file'));
+          xhr.responseType = 'blob';
+          xhr.open('GET', videoData.uri, true);
+          xhr.send(null);
+        });
+      }
 
       onProgress?.(20, 'Uploading video...');
 
@@ -85,16 +101,13 @@ export class VideoService {
             
           },
           (error) => {
-            console.error('[VideoService] Upload error:', error);
             reject(new Error(`Upload failed: ${error.message}`));
           },
           async () => {
             try {
               const url = await getDownloadURL(uploadTask.snapshot.ref);
-              
               resolve(url);
             } catch (error) {
-              console.error('[VideoService] Failed to get download URL:', error);
               reject(new Error('Failed to get download URL'));
             }
           }
@@ -108,22 +121,30 @@ export class VideoService {
       try {
         
         const thumbnailUri = await generateVideoThumbnail(videoData.uri);
-
-        // Read thumbnail as blob using XMLHttpRequest
-        const thumbnailBlob = await new Promise<Blob>((resolve, reject) => {
-          const xhr = new XMLHttpRequest();
-          xhr.onload = function() {
-            if (xhr.status === 200) {
-              resolve(xhr.response);
-            } else {
-              reject(new Error(`Failed to read thumbnail: ${xhr.status}`));
-            }
-          };
-          xhr.onerror = () => reject(new Error('Failed to read thumbnail'));
-          xhr.responseType = 'blob';
-          xhr.open('GET', thumbnailUri, true);
-          xhr.send(null);
-        });
+        let thumbnailBlob: Blob;
+        
+        // Handle data URL (from web) vs file URI (from mobile)
+        if (thumbnailUri.startsWith('data:')) {
+          // Convert data URL to blob
+          const response = await fetch(thumbnailUri);
+          thumbnailBlob = await response.blob();
+        } else {
+          // Read thumbnail as blob using XMLHttpRequest (mobile)
+          thumbnailBlob = await new Promise<Blob>((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.onload = function() {
+              if (xhr.status === 200) {
+                resolve(xhr.response);
+              } else {
+                reject(new Error(`Failed to read thumbnail: ${xhr.status}`));
+              }
+            };
+            xhr.onerror = () => reject(new Error('Failed to read thumbnail'));
+            xhr.responseType = 'blob';
+            xhr.open('GET', thumbnailUri, true);
+            xhr.send(null);
+          });
+        }
 
         const thumbnailRef = ref(
           storage,
@@ -131,8 +152,7 @@ export class VideoService {
         );
         
         await uploadBytesResumable(thumbnailRef, thumbnailBlob);
-        thumbnailUrl = await getDownloadURL(thumbnailRef);
-        
+        thumbnailUrl = await getDownloadURL(thumbnailRef);        
       } catch (error) {
         console.warn('[VideoService] Failed to generate/upload thumbnail:', error);
         // Use empty string if thumbnail generation fails (PWA uses fallback)
@@ -162,7 +182,6 @@ export class VideoService {
       };
 
       const videoDoc = await addDoc(collection(db, 'videos'), video);
-
       onProgress?.(100, 'Upload complete!');
 
       return {
@@ -206,7 +225,6 @@ export class VideoService {
    */
   async getUserVideos(userId: string): Promise<Video[]> {
     try {
-
       const videosQuery = query(
         collection(db, 'videos'),
         where('userId', '==', userId),
@@ -215,12 +233,10 @@ export class VideoService {
       );
 
       const videosSnapshot = await getDocs(videosQuery);
-
       const videos: Video[] = [];
 
       videosSnapshot.forEach((doc) => {
         const data = doc.data();
-
         videos.push({
           id: doc.id,
           ...data,

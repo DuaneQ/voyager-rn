@@ -197,17 +197,17 @@ describe('useVideoUpload', () => {
       mockRequestMediaLibraryPermissionsAsync.mockResolvedValue({ status: 'granted' });
       mockLaunchImageLibraryAsync.mockResolvedValue({
         canceled: false,
-        assets: [{ uri: 'file://selected-video.mp4' }],
+        assets: [{ uri: 'file://selected-video.mp4', fileSize: 1024000 }],
       });
 
       const { result } = renderHook(() => useVideoUpload());
       
-      let selectedUri: string | null;
+      let selectedResult: { uri: string; fileSize?: number } | null;
       await act(async () => {
-        selectedUri = await result.current.selectVideo();
+        selectedResult = await result.current.selectVideo();
       });
 
-      expect(selectedUri!).toBe('file://selected-video.mp4');
+      expect(selectedResult!).toEqual({ uri: 'file://selected-video.mp4', fileSize: 1024000 });
       expect(mockLaunchImageLibraryAsync).toHaveBeenCalledWith({
         mediaTypes: ['videos'],
         allowsEditing: false,
@@ -220,12 +220,12 @@ describe('useVideoUpload', () => {
 
       const { result } = renderHook(() => useVideoUpload());
       
-      let selectedUri: string | null;
+      let selectedResult: { uri: string; fileSize?: number } | null;
       await act(async () => {
-        selectedUri = await result.current.selectVideo();
+        selectedResult = await result.current.selectVideo();
       });
 
-      expect(selectedUri!).toBeNull();
+      expect(selectedResult!).toBeNull();
       expect(mockLaunchImageLibraryAsync).not.toHaveBeenCalled();
     });
 
@@ -236,12 +236,12 @@ describe('useVideoUpload', () => {
 
       const { result } = renderHook(() => useVideoUpload());
       
-      let selectedUri: string | null;
+      let selectedResult: { uri: string; fileSize?: number } | null;
       await act(async () => {
-        selectedUri = await result.current.selectVideo();
+        selectedResult = await result.current.selectVideo();
       });
 
-      expect(selectedUri!).toBeNull();
+      expect(selectedResult!).toBeNull();
     });
 
     it('should handle video selection errors', async () => {
@@ -249,12 +249,12 @@ describe('useVideoUpload', () => {
 
       const { result } = renderHook(() => useVideoUpload());
       
-      let selectedUri: string | null;
+      let selectedResult: { uri: string; fileSize?: number } | null;
       await act(async () => {
-        selectedUri = await result.current.selectVideo();
+        selectedResult = await result.current.selectVideo();
       });
 
-      expect(selectedUri!).toBeNull();
+      expect(selectedResult!).toBeNull();
       expect(console.error).toHaveBeenCalledWith('Error selecting video:', expect.any(Error));
       expect(Alert.alert).toHaveBeenCalledWith('Error', 'Failed to select video');
     });

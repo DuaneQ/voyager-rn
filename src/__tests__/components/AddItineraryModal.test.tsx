@@ -45,7 +45,70 @@ jest.mock('react-native-google-places-autocomplete', () => {
   };
 });
 
-// Mock DateTimePicker
+// Mock CityPicker component with TextInput for testing compatibility
+jest.mock('../../components/common/CityPicker', () => {
+  const React = require('react');
+  return {
+    CityPicker: ({ testID, placeholder, value, onChangeText, onCitySelected }: any) => {
+      return React.createElement(
+        require('react-native').TextInput,
+        {
+          testID: testID || 'city-picker-input',
+          value: value || '',
+          placeholder: placeholder,
+          onChangeText: (text: string) => {
+            onChangeText?.(text);
+            // Simulate city selection for testing
+            if (text) {
+              onCitySelected?.({
+                name: text,
+                countryCode: 'US',
+                country: 'United States',
+                stateCode: 'CA',
+                coordinates: { lat: 0, lng: 0 },
+              }, text);
+            }
+          },
+        }
+      );
+    },
+  };
+});
+
+// Mock CrossPlatformDatePicker
+jest.mock('../../components/common/CrossPlatformDatePicker', () => {
+  const React = require('react');
+  return {
+    CrossPlatformDatePicker: ({ testID, value, onChange, minimumDate, error, errorMessage }: any) => {
+      return React.createElement(
+        require('react-native').View,
+        { testID: testID || 'date-picker' },
+        [
+          React.createElement(
+            require('react-native').TouchableOpacity,
+            {
+              key: 'button',
+              testID: `${testID}-button`,
+              onPress: () => {
+                // Simulate selecting a new date (tomorrow)
+                const newDate = new Date(value);
+                newDate.setDate(newDate.getDate() + 1);
+                onChange(newDate);
+              },
+            },
+            React.createElement(
+              require('react-native').Text,
+              { key: 'text' },
+              value?.toLocaleDateString() || 'Select date'
+            )
+          ),
+        ]
+      );
+    },
+  };
+});
+
+// Mock DateTimePicker (kept for any remaining references)
 jest.mock('@react-native-community/datetimepicker', () => {
   const React = require('react');
   return {
@@ -778,10 +841,8 @@ describe('AddItineraryModal', () => {
       // Consider testing in E2E tests instead
     });
 
-    it('should show done button on iOS for date picker', () => {
-      Platform.OS = 'ios';
-      
-      const { getByTestId, queryByTestId } = render(
+    it('should render date pickers for start and end dates', () => {
+      const { getByTestId } = render(
         <AddItineraryModal
           visible={true}
           onClose={mockOnClose}
@@ -791,10 +852,9 @@ describe('AddItineraryModal', () => {
         />
       );
 
-      const startDateButton = getByTestId('start-date-button');
-      fireEvent.press(startDateButton);
-
-      expect(queryByTestId('start-date-done')).toBeTruthy();
+      // CrossPlatformDatePicker handles platform-specific UI internally
+      expect(getByTestId('start-date-picker')).toBeTruthy();
+      expect(getByTestId('end-date-picker')).toBeTruthy();
     });
 
     it.skip('should close date picker when done button is clicked', () => {

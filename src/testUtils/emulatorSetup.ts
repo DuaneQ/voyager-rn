@@ -53,40 +53,28 @@ export const setupEmulatorTests = async () => {
   try {
     // If already initialized, just return (reuse existing connection)
     if (testApp && testFirestore && testAuth && testUserId) {
-      console.log('🔧 [EmulatorSetup] Admin SDK already initialized, reusing existing connection');
       return;
-    }
-    
-    console.log('🔧 [EmulatorSetup] Starting Firebase Admin SDK emulator initialization...');
-    
+    }    
     // Configure emulator connections FIRST (before initializing Admin SDK)
     // CRITICAL: Set these BEFORE any Admin SDK initialization
     process.env.FIRESTORE_EMULATOR_HOST = `${EMULATOR_CONFIG.firestore.host}:${EMULATOR_CONFIG.firestore.port}`;
     process.env.FIREBASE_AUTH_EMULATOR_HOST = `${EMULATOR_CONFIG.auth.host}:${EMULATOR_CONFIG.auth.port}`;
-    console.log(`✅ [EmulatorSetup] Emulator environment configured:`);
-    console.log(`   - Firestore: ${process.env.FIRESTORE_EMULATOR_HOST}`);
-    console.log(`   - Auth: ${process.env.FIREBASE_AUTH_EMULATOR_HOST}`);
     
     // Only initialize if not already done
     if (!testApp) {
-      console.log('🔧 [EmulatorSetup] Initializing Firebase Admin SDK...');
       testApp = admin.initializeApp({
         projectId: 'mundo1-dev',
       }, `test-admin-${Date.now()}`);
-      console.log(`✅ [EmulatorSetup] Admin app initialized: ${testApp.name}`);
     }
 
     // Get services (reuse if already available)
     if (!testAuth || !testFirestore) {
-      console.log('🔧 [EmulatorSetup] Getting Firebase Admin services...');
       testAuth = admin.auth(testApp);
       testFirestore = admin.firestore(testApp);
-      console.log('✅ [EmulatorSetup] Firebase Admin services obtained');
     }
 
     // Create a test user for authenticated operations (only once)
     if (!testUserId) {
-      console.log('🔧 [EmulatorSetup] Creating test user...');
       try {
         const userRecord = await testAuth.createUser({
           uid: `test-user-${Date.now()}`,
@@ -95,11 +83,9 @@ export const setupEmulatorTests = async () => {
           displayName: 'Test User',
         });
         testUserId = userRecord.uid;
-        console.log(`✅ [EmulatorSetup] Test user created: ${testUserId}`);
       } catch (error: any) {
         // If user already exists, just use it
         if (error.code === 'auth/email-already-exists') {
-          console.log('⚠️  Test user already exists, reusing...');
           testUserId = `test-user-${Date.now()}`;
         } else {
           throw error;
@@ -107,7 +93,6 @@ export const setupEmulatorTests = async () => {
       }
     }
 
-    console.log('✅ Firebase Admin Emulators connected successfully');
   } catch (error) {
     console.error('❌ Failed to setup emulator tests:', error);
     throw error;
@@ -127,7 +112,6 @@ export const cleanupEmulatorTests = async () => {
       testFirestore = null;
       testUserId = null;
     }
-    console.log('✅ Emulator tests cleaned up');
   } catch (error) {
     console.error('❌ Failed to cleanup emulator tests:', error);
   }
@@ -265,9 +249,7 @@ export const clearFirestoreEmulator = async () => {
       `This might not be the emulator!`
     );
   }
-  
-  console.log(`✅ Safety check passed: Connected to emulator at ${process.env.FIRESTORE_EMULATOR_HOST}`);
-  
+    
   const firestore = getTestFirestore();
   
   // Delete all itineraries
@@ -277,9 +259,7 @@ export const clearFirestoreEmulator = async () => {
   // Delete all users
   const usersSnapshot = await firestore.collection('users').get();
   await Promise.all(usersSnapshot.docs.map(doc => doc.ref.delete()));
-  
-  console.log('✅ Firestore emulator data cleared');
-};
+  };
 
 /**
  * Check if emulators are running
