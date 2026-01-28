@@ -56,7 +56,12 @@
     "web": {
       "bundler": "metro",
       "output": "single",
-      "favicon": "./assets/icon.png"
+      "favicon": "./assets/icon.png",
+      "name": "TravalPass - AI-Powered Travel Matching & Itinerary Planning",
+      "shortName": "TravalPass",
+      "description": "Match with travelers, generate AI itineraries, and plan your perfect trip",
+      "themeColor": "#007AFF",
+      "backgroundColor": "#ffffff"
     },
     "scheme": "travalpass",
     "platforms": [

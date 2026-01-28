@@ -1,0 +1,6 @@
+# TravalPass robots.txt
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: https://app.travalpass.com/sitemap.xml

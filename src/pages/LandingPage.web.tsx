@@ -8,7 +8,7 @@
  * - Uses React Native components that render to web
  * - Simplified video handling for RN Web compatibility
  * - Uses inline styles instead of Material-UI sx prop
- * - SEO meta tags handled via expo-head
+ * - SEO meta tags injected directly into document.head on mount
  */
 
 import React, { useEffect, useState } from 'react';
@@ -31,6 +31,58 @@ import { CookiePolicyModal } from '../components/modals/legal/CookiePolicyModal'
 
 const { width } = Dimensions.get('window');
 
+// SEO meta tags injection helper for web
+const injectSEOMetaTags = () => {
+  if (typeof document === 'undefined') return;
+
+  // Set page title
+  document.title = 'TravalPass – Find Your Perfect Travel Companion | Travel Buddies & Itineraries';
+
+  // Helper to set/update meta tag
+  const setMetaTag = (name: string, content: string, property?: string) => {
+    const selector = property ? `meta[property="${name}"]` : `meta[name="${name}"]`;
+    let meta = document.querySelector(selector) as HTMLMetaElement;
+    if (!meta) {
+      meta = document.createElement('meta');
+      if (property) {
+        meta.setAttribute('property', name);
+      } else {
+        meta.setAttribute('name', name);
+      }
+      document.head.appendChild(meta);
+    }
+    meta.content = content;
+  };
+
+  // Primary Meta Tags
+  setMetaTag('description', 'Find your perfect travel companion, vacation buddy, or trip partner on TravalPass. Connect with like-minded travelers, share itineraries, discover travel tips, and explore the world together safely. Join our community of travel companions today!');
+  setMetaTag('keywords', 'travel companions, travel buddies, vacation buddy, vacation companions, trip companion, trip partner, travel partner, adventure companions, solo traveler, solo travel, travel match, travel matching, AI itinerary, travel planning, travel tips, find travel companions, trip planner, vacation planning');
+
+  // Open Graph / Facebook
+  setMetaTag('og:type', 'website', true);
+  setMetaTag('og:url', 'https://app.travalpass.com/', true);
+  setMetaTag('og:title', 'TravalPass - Find Travel Companions & Vacation Buddies | Travel Match Platform', true);
+  setMetaTag('og:description', 'Find your perfect travel companion or vacation buddy. Travel match platform connecting adventure companions worldwide. Share itineraries, get travel tips, and explore together safely.', true);
+  setMetaTag('og:image', 'https://app.travalpass.com/assets/icon.png', true);
+  setMetaTag('og:site_name', 'TravalPass', true);
+
+  // Twitter
+  setMetaTag('twitter:card', 'summary_large_image', true);
+  setMetaTag('twitter:url', 'https://app.travalpass.com/', true);
+  setMetaTag('twitter:title', 'TravalPass - Find Travel Companions & Vacation Buddies | Travel Match Platform', true);
+  setMetaTag('twitter:description', 'Find your perfect travel companion or vacation buddy. Travel match platform connecting adventure companions worldwide. Share itineraries, get travel tips, and explore together safely.', true);
+  setMetaTag('twitter:image', 'https://app.travalpass.com/assets/icon.png', true);
+
+  // Canonical URL
+  let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement;
+  if (!canonical) {
+    canonical = document.createElement('link');
+    canonical.rel = 'canonical';
+    document.head.appendChild(canonical);
+  }
+  canonical.href = 'https://app.travalpass.com/';
+};
+
 export const LandingPage: React.FC = () => {
   const navigation = useNavigation();
   const { user } = useAuth();
@@ -39,6 +91,20 @@ export const LandingPage: React.FC = () => {
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [showSafetyModal, setShowSafetyModal] = useState(false);
   const [showCookieModal, setShowCookieModal] = useState(false);
+
+  // Inject SEO meta tags on component mount (web only)
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      injectSEOMetaTags();
+    }
+
+    // Cleanup function to reset title when component unmounts
+    return () => {
+      if (Platform.OS === 'web' && typeof document !== 'undefined') {
+        document.title = 'TravalPass';
+      }
+    };
+  }, []);
 
   // Note: Auth redirect is handled by AppNavigator's RootNavigator
   // The landing page should only render when user is not authenticated
