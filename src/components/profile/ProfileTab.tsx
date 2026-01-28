@@ -5,7 +5,7 @@
  */
 
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput, Modal, Platform } from 'react-native';
 import { ProfileStats } from './ProfileStats';
 import { PersonalInfoAccordion } from './PersonalInfoAccordion';
 import { LifestyleAccordion } from './LifestyleAccordion';
@@ -71,29 +71,40 @@ export const ProfileTab: React.FC = () => {
   };
 
   const handleSignOut = () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await signOut();
-            } catch (error) {
-              console.error('Sign out error:', error);
-              Alert.alert('Error', 'Failed to sign out. Please try again.');
-            }
+    // Web browsers don't support Alert.alert, so use window.confirm
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('Are you sure you want to sign out?');
+      if (confirmed) {
+        signOut().catch((error) => {
+          console.error('Sign out error:', error);
+          window.alert('Failed to sign out. Please try again.');
+        });
+      }
+    } else {
+      Alert.alert(
+        'Sign Out',
+        'Are you sure you want to sign out?',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
           },
-        },
-      ],
-      { cancelable: true }
-    );
+          {
+            text: 'Sign Out',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await signOut();
+              } catch (error) {
+                console.error('Sign out error:', error);
+                Alert.alert('Error', 'Failed to sign out. Please try again.');
+              }
+            },
+          },
+        ],
+        { cancelable: true }
+      );
+    }
   };
 
   const handleDeleteAccount = async () => {
