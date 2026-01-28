@@ -39,12 +39,12 @@ const injectSEOMetaTags = () => {
   document.title = 'TravalPass – Find Your Perfect Travel Companion | Travel Buddies & Itineraries';
 
   // Helper to set/update meta tag
-  const setMetaTag = (name: string, content: string, property?: string) => {
-    const selector = property ? `meta[property="${name}"]` : `meta[name="${name}"]`;
+  const setMetaTag = (name: string, content: string, useProperty?: boolean) => {
+    const selector = useProperty ? `meta[property="${name}"]` : `meta[name="${name}"]`;
     let meta = document.querySelector(selector) as HTMLMetaElement;
     if (!meta) {
       meta = document.createElement('meta');
-      if (property) {
+      if (useProperty) {
         meta.setAttribute('property', name);
       } else {
         meta.setAttribute('name', name);
