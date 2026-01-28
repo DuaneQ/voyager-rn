@@ -21,8 +21,8 @@ import styles from './authFormStyles';
 
 interface RegisterFormProps {
   onSubmit: (username: string, email: string, password: string) => Promise<void>;
-  onGoogleSignUp: () => void;
-  onAppleSignUp: () => void;
+  onGoogleSignUp?: () => void; // Optional - OAuth may be disabled
+  onAppleSignUp?: () => void;  // Optional - OAuth may be disabled
   onSignInPress: () => void;
   isLoading?: boolean;
 }
@@ -208,39 +208,48 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
         </Text>
       </TouchableOpacity>
 
-      {/* Divider */}
-      <View style={styles.dividerContainer}>
-        <View style={styles.dividerLine} />
-        <Text style={styles.dividerText}>or</Text>
-        <View style={styles.dividerLine} />
-      </View>
+      {/* OAuth Buttons - Only show if handlers are provided */}
+      {(onGoogleSignUp || onAppleSignUp) && (
+        <>
+          {/* Divider */}
+          <View style={styles.dividerContainer}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
+          </View>
 
-      {/* Google Sign Up Button */}
-      <TouchableOpacity 
-        testID="google-signup-button"
-        style={[styles.button, styles.googleButton]}
-        onPress={onGoogleSignUp}
-        disabled={isLoading}
-      >
-        <View style={styles.googleButtonContent}>
-          <GoogleIcon size={18} />
-          <Text style={styles.googleButtonText}>Sign up with Google</Text>
-        </View>
-      </TouchableOpacity>
+          {/* Google Sign Up Button */}
+          {onGoogleSignUp && (
+            <TouchableOpacity 
+              testID="google-signup-button"
+              style={[styles.button, styles.googleButton]}
+              onPress={onGoogleSignUp}
+              disabled={isLoading}
+            >
+              <View style={styles.googleButtonContent}>
+                <GoogleIcon size={18} />
+                <Text style={styles.googleButtonText}>Sign up with Google</Text>
+              </View>
+            </TouchableOpacity>
+          )}
 
-      {/* Apple Sign-Up Button - iOS Only */}
-      <AppleSignInButton 
-        onPress={onAppleSignUp}
-        buttonType="sign-up"
-        isLoading={isLoading}
-      />
+          {/* Apple Sign-Up Button - iOS Only */}
+          {onAppleSignUp && (
+            <AppleSignInButton 
+              onPress={onAppleSignUp}
+              buttonType="sign-up"
+              isLoading={isLoading}
+            />
+          )}
 
-      {/* Divider */}
-      <View style={styles.dividerContainer}>
-        <View style={styles.dividerLine} />
-        <Text style={styles.dividerText}>or</Text>
-        <View style={styles.dividerLine} />
-      </View>
+          {/* Divider */}
+          <View style={styles.dividerContainer}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
+          </View>
+        </>
+      )}
 
       {/* Sign In Link */}
       <View style={styles.signinContainer}>
