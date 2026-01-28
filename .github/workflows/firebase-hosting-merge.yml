@@ -44,10 +44,8 @@ jobs:
         env:
           CI: true
 
-      - name: Run integration tests
-        run: npm run test:integration
-        env:
-          CI: true
+      # Integration tests removed from deployment workflow - they run separately in integration-tests.yml
+      # These tests call real external APIs (Google Places, SerpAPI) and are slow/expensive
 
       - name: Build React Native Web
         run: npm run build:web

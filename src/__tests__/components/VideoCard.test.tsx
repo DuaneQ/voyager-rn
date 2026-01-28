@@ -19,6 +19,10 @@ const mockTimestamp = (date: Date) => ({
   toDate: () => date,
   seconds: Math.floor(date.getTime() / 1000),
   nanoseconds: 0,
+  toMillis: () => date.getTime(),
+  isEqual: (other: any) => date.getTime() === other?.toDate?.()?.getTime(),
+  toJSON: () => ({ seconds: Math.floor(date.getTime() / 1000), nanoseconds: 0, type: 'timestamp' }),
+  valueOf: () => date.toISOString(),
 });
 
 const Timestamp = {
@@ -577,10 +581,14 @@ describe('VideoCard', () => {
         videoUrl: 'https://example.com/track2.mp4',
         thumbnailUrl: 'https://example.com/track2-thumb.jpg',
         userId: 'user-789',
-        username: 'viewer2',
-        createdAt: Timestamp.fromDate(new Date()),
+        isPublic: true,
+        likes: [],
+        comments: [],
         viewCount: 0,
-        isPrivate: false,
+        duration: 120,
+        fileSize: 1024000,
+        createdAt: Timestamp.fromDate(new Date()),
+        updatedAt: Timestamp.fromDate(new Date()),
       };
 
       const { rerender } = render(
@@ -633,10 +641,14 @@ describe('VideoCard', () => {
         videoUrl: 'https://example.com/track4.mp4',
         thumbnailUrl: 'https://example.com/track4-thumb.jpg',
         userId: 'user-111',
-        username: 'viewer4',
-        createdAt: Timestamp.fromDate(new Date()),
+        isPublic: true,
+        likes: [],
+        comments: [],
         viewCount: 0,
-        isPrivate: false,
+        duration: 120,
+        fileSize: 1024000,
+        createdAt: Timestamp.fromDate(new Date()),
+        updatedAt: Timestamp.fromDate(new Date()),
       };
 
       const { unmount } = render(
