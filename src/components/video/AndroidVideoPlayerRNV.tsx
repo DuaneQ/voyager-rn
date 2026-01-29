@@ -7,7 +7,7 @@
  * ARCHITECTURE:
  * - Detects react-native-video availability at module load time
  * - Uses composition pattern (not conditional hooks) to avoid Rules of Hooks violation
- * - expo-av is dynamically imported ONLY when needed (preserves lazy loading benefit)
+ * - expo-av is statically imported (Metro resolves to stub on web)
  * 
  * Why react-native-video v6:
  * - Better MediaCodec/ExoPlayer memory management than expo-av
@@ -19,6 +19,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, ActivityIndicator, Text, StyleSheet, UIManager } from 'react-native';
+import { Video as ExpoVideo, ResizeMode as ExpoResizeMode } from 'expo-av';
 import { Video as VideoType } from '../../types/Video';
 
 // Detect if react-native-video is available at module load time
@@ -51,7 +52,7 @@ interface AndroidVideoPlayerProps {
 // ============================================
 // FALLBACK COMPONENT: expo-av implementation
 // Separate component to avoid Rules of Hooks violation
-// expo-av is dynamically imported to preserve lazy loading benefit
+// expo-av is statically imported (Metro resolves to stub on web)
 // ============================================
 const ExpoAVFallbackPlayer: React.FC<AndroidVideoPlayerProps> = ({
   video,
@@ -62,31 +63,11 @@ const ExpoAVFallbackPlayer: React.FC<AndroidVideoPlayerProps> = ({
   onError,
   onPlaybackStatusUpdate,
 }) => {
-  // Dynamic import of expo-av - only loads when this component renders
-  const [ExpoVideo, setExpoVideo] = useState<any>(null);
-  const [ResizeMode, setResizeMode] = useState<any>(null);
+  // expo-av is statically imported - Metro resolver will substitute web stub
   const expoVideoRef = useRef<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isBuffering, setIsBuffering] = useState(false);
-
-  // Load expo-av dynamically
-  useEffect(() => {
-    let mounted = true;
-    import('expo-av').then((module) => {
-      if (mounted) {
-        setExpoVideo(() => module.Video);
-        setResizeMode(module.ResizeMode);
-      }
-    }).catch((err) => {
-      console.error('[ExpoAV Fallback] Failed to load expo-av:', err);
-      if (mounted) {
-        setError('Failed to load video player');
-        setIsLoading(false);
-      }
-    });
-    return () => { mounted = false; };
-  }, []);
 
   const handlePlaybackStatusUpdate = useCallback((status: any) => {
     if (status.isLoaded) {
@@ -120,24 +101,13 @@ const ExpoAVFallbackPlayer: React.FC<AndroidVideoPlayerProps> = ({
     }
   }, [isActive, isPaused]);
 
-  // Show loading while expo-av is being imported
-  if (!ExpoVideo || !ResizeMode) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color="#FFFFFF" />
-        </View>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container} pointerEvents="none">
       <ExpoVideo
         ref={expoVideoRef}
         source={{ uri: video.videoUrl }}
         style={styles.video}
-        resizeMode={ResizeMode.COVER}
+        resizeMode={ExpoResizeMode.COVER}
         shouldPlay={isActive && !isPaused}
         isLooping
         isMuted={isMuted}

@@ -1286,3 +1286,99 @@ Following the EXACT pattern from Expo's official documentation for Metro aliases
 **Key change**: Pass the alias to `context.resolveRequest()` instead of returning a custom resolution object.
 
 ### Testing now...
+
+---
+
+## ❌ ATTEMPT 5 FAILED: Correct Metro Pattern Still Doesn't Work (January 29, 2026 - 5:36 PM)
+
+### What We Fixed:
+Used the EXACT Metro alias pattern from Expo's official documentation:
+```javascript
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (platform === 'web' && ALIASES[moduleName]) {
+    return context.resolveRequest(context, ALIASES[moduleName], platform);
+  }
+  return context.resolveRequest(context, moduleName, platform);
+};
+```
+
+### Result:
+❌ **STILL FAILING** - Same crash pattern on iOS Safari
+- "Maximum call stack size exceeded"
+- Firestore channel errors
+- App stuck on white screen
+
+### Why All Attempts Are Failing:
+
+**CRITICAL REALIZATION**: We've tried 5 different approaches to stub/alias expo-av, but the crash keeps happening. This means:
+
+1. **Metro's resolver might not work for web at all** - Expo web may use a completely different bundling system
+2. **The stub is never being used** - Real expo-av is somehow always loaded
+3. **Lazy loading isn't enough** - Even with lazy loading, when pages DO load, they still get real expo-av
+
+### Evidence Metro Resolver Isn't Working:
+- No separate `expo-av-xxx.js` bundle (good sign?)
+- But crash still happens (bad sign - real code executing)
+- All 5 attempts show identical crash behavior
+
+---
+
+## 🎯 NEW APPROACH NEEDED: Verify What's Actually Being Bundled
+
+Before trying more blind fixes, we need to:
+
+1. **Inspect the actual web bundle** - Search for expo-av deprecation warning text in the built files
+2. **Check if stub is used at all** - Add console.log to stub to see if it loads
+3. **Test locally first** - Run web locally and verify stub works before deploying
+
+### Option A: Verify Stub Is Being Used
+Add logging to `expo-av.web.js`:
+```javascript
+console.log('[STUB] expo-av.web.js loaded - NO REAL EXPO-AV CODE');
+```
+
+Then check browser console for this message.
+
+### Option B: Remove Expo-AV Entirely From Web
+Since stubbing isn't working, **completely remove** expo-av usage from components:
+- Remove Video components from web builds entirely
+- Use conditional rendering: `Platform.OS !== 'web' && <VideoComponent />`
+- Accept that video features won't work on web
+
+### Option C: Investigate Expo Web Bundler
+Research exactly what bundler Expo uses for web (Metro vs Webpack vs other) and configure that specific bundler.
+
+**NEXT STEP**: Which approach should we try?
+
+---
+
+## 🎉 ROOT CAUSE FOUND! (January 29, 2026 - 5:42 PM)
+
+### Discovery:
+Searched the built web bundle and found:
+1. ✅ **Our stub IS being used** - Found console.log from stub in bundle
+2. ❌ **BUT there's a dynamic import()** - AndroidVideoPlayerRNV.tsx line 76 has:
+   ```typescript
+   import('expo-av').then((module) => { ... })
+   ```
+
+**Dynamic imports bypass Metro's static resolver!**
+
+Metro's `resolveRequest` only handles static imports like:
+```javascript
+import { Video } from 'expo-av';  // ✅ Metro resolves this
+```
+
+But dynamic imports are resolved at **runtime**:
+```javascript
+import('expo-av').then(...)  // ❌ Bypasses Metro, loads real package!
+```
+
+### The Fix:
+Change AndroidVideoPlayerRNV.tsx from dynamic import to static import so Metro can resolve it to our stub.
+
+---
+
+## 🔧 ATTEMPT 6: Fix Dynamic Import in AndroidVideoPlayerRNV (January 29, 2026 - 5:43 PM)
+
+Changing runtime `import()` to build-time `import` statement...

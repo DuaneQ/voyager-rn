@@ -6,6 +6,10 @@
  * so we stub it out entirely on web where we use expo-audio and expo-video instead.
  */
 
+// CRITICAL: Log to verify this stub is actually being loaded
+console.log('[EXPO-AV STUB] ✅ Using web stub - real expo-av NOT loaded');
+console.log('[EXPO-AV STUB] This should appear in browser console if stub is working');
+
 // Import React for proper component definition
 import React from 'react';
 
