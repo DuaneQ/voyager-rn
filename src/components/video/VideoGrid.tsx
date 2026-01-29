@@ -2,6 +2,10 @@
  * VideoGrid Component
  * Displays user videos in a grid with upload and delete functionality
  * Simplified from PWA for mobile use
+ * 
+ * PLATFORM NOTES:
+ * - expo-av is NOT imported on web to avoid iOS Safari crash
+ * - Web uses HTML5 video element
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -21,8 +25,12 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Video as VideoType } from '../../types/Video';
 import { useVideoUpload } from '../../hooks/video/useVideoUpload';
-import { Video, ResizeMode } from 'expo-av';
 import { VideoUploadModal } from '../modals/VideoUploadModal';
+
+// Conditionally import expo-av only on native platforms
+const ExpoAV = Platform.OS !== 'web' ? require('expo-av') : null;
+const Video = ExpoAV?.Video;
+const ResizeMode = ExpoAV?.ResizeMode ?? { CONTAIN: 'contain', COVER: 'cover', STRETCH: 'stretch' };
 
 const { width, height } = Dimensions.get('window');
 const GRID_COLUMNS = 3;

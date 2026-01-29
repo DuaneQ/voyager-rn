@@ -494,7 +494,7 @@ After deploying with the new config:
 ---
 
 ## FINAL FIX: React.lazy() for expo-av Pages (January 29, 2026)
-
+The branch was ios-web
 **Status**: ✅ **DEPLOYED TO WEB** | ⚠️ **ANDROID REQUIRES FURTHER TESTING**
 
 ### Summary
@@ -739,6 +739,107 @@ Use the `expo-audio` and `expo-video` packages to replace the required functiona
 | Jan 29, 2026 | Implemented React.lazy() | Web fixed, score 93 |
 | Jan 29, 2026 | Tested Android | 28-second delay observed |
 | Jan 29, 2026 | Added expo-av fallback for Android | RCTVideo crash fixed |
-| Jan 29, 2026 | **Deployed to web** | ✅ Pending verification |
+| Jan 29, 2026 | **Deployed to web** | ✅ Landing page works |
+| Jan 29, 2026 | **Post-login crash on iOS** | ⚠️ NEW ISSUE - see below |
+| TBD | Fix post-login expo-av crash | ⚠️ BLOCKED |
 | TBD | Android performance investigation | ⚠️ BLOCKED |
 | TBD | Android deployment | ⚠️ BLOCKED |
+
+---
+
+## ⚠️ NEW ISSUE: Post-Login Crash on iOS Safari (January 29, 2026)
+
+**Status**: 🔴 **CRITICAL - Blocks iOS Web Login**
+
+### What Works
+- ✅ Landing page loads on iOS Safari (lazy loading fix worked!)
+- ✅ Auth page loads (email/password form visible)
+- ✅ Lighthouse score improved to 93
+
+### What Fails
+- ❌ After successful login, app crashes with `RangeError: Maximum call stack size exceeded`
+- ❌ expo-av deprecation warning appears just before crash
+- ❌ Multiple Firestore `Listen/channel` requests in Network tab
+
+### Error Details (Safari Web Inspector)
+
+**Console errors**:
+```
+⚠ [expo-av]: Expo AV has been deprecated and will be removed in SDK 54. 
+  Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+
+🔴 RangeError: Maximum call stack size exceeded
+   at reportError — __expo-metro-runtime-46ac14f77b8d07852b02d57eb3e5b645.js:2:2062
+   at Tu — AppEntry-ea74700e19b969074ff09e8635703889.js:42:69541
+   ... (infinite recursion)
+```
+
+**Network observations**:
+- Multiple `iframe` requests to `https://travalpass.com/__/auth/iframe?apiKey=...` (pending/spinning)
+- Multiple Firestore `Listen/channel` requests (status 200, working)
+- Origin: `https://travalpass.com`
+
+### Root Cause Analysis
+
+The lazy loading fix only **deferred** the expo-av crash - it didn't eliminate it. Here's what happens:
+
+1. ✅ Landing page loads (no expo-av imported yet)
+2. ✅ User clicks "Get Started" → Auth page loads (no expo-av)
+3. ✅ User logs in successfully
+4. ❌ App navigates to main tabs (Search/Videos/Profile)
+5. ❌ React.lazy() loads SearchPage chunk
+6. ❌ SearchPage imports ViewProfileModal → expo-av loads
+7. ❌ expo-av deprecation warning triggers infinite loop on iOS Safari
+8. ❌ **CRASH**: Maximum call stack size exceeded
+
+### Why This Happens
+
+The expo-av deprecation warning handler has a bug that causes infinite recursion **specifically on iOS Safari**. This happens whenever expo-av code is executed, regardless of whether it's at startup or after navigation.
+
+**The lazy loading moved the crash from "app load" to "post-login"**, but didn't fix the underlying expo-av issue.
+
+### Possible Solutions
+
+#### Option 1: Migrate away from expo-av (Recommended, but time-consuming)
+- Replace `expo-av` with `expo-video` and `expo-audio` packages
+- This is the proper long-term fix
+- Requires updating VideoFeedPage, VideoGrid, VideoCard, etc.
+
+#### Option 2: Suppress/patch expo-av deprecation warning on web
+- Find where the deprecation warning is triggered
+- Patch it to not trigger on iOS Safari web
+- Risky - may have unintended side effects
+
+#### Option 3: Disable video features on iOS Safari web
+- Detect iOS Safari and skip video-related imports entirely
+- Users would see a "Videos not supported on iOS Safari" message
+- Quick workaround, poor UX
+
+#### Option 4: Investigate expo-av source code
+- Find the exact code path causing the infinite loop
+- May be able to create a targeted patch
+- Requires deep diving into expo-av internals
+
+### Immediate Workaround for Testing
+
+For now, iOS Safari users can:
+- Use the landing page ✅
+- View auth page ✅
+- **Cannot log in** ❌
+
+### Files That Need Changes for Permanent Fix
+
+If migrating to expo-video/expo-audio:
+- `src/pages/VideoFeedPage.tsx` - Uses `Audio` from expo-av
+- `src/pages/VideoFeedPage.android.tsx` - Uses `Audio` from expo-av
+- `src/components/video/VideoCard.tsx` - Uses `Video` from expo-av
+- `src/components/video/VideoGrid.tsx` - May use expo-av
+- Any component using `ViewProfileModal` (has video)
+
+### Google OAuth Redirect URI
+
+Also noted: After adding `https://travalpass.com` to Google Cloud Console:
+- **Authorized JavaScript origins**: Added `https://travalpass.com` ✅
+- **Authorized redirect URIs**: Added `https://travalpass.com/__/auth/handler` ✅
+
+Google OAuth should work once the expo-av crash is resolved.

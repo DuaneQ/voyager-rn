@@ -5,7 +5,6 @@
 
 import * as VideoThumbnails from 'expo-video-thumbnails';
 import * as FileSystem from 'expo-file-system';
-import { Audio } from 'expo-av';
 import {
   validateVideoFile,
   getVideoDuration,
@@ -18,35 +17,39 @@ import { VIDEO_CONSTRAINTS } from '../../types/Video';
 // Mock expo modules
 jest.mock('expo-video-thumbnails');
 jest.mock('expo-file-system');
-jest.mock('expo-av', () => ({
-  Audio: {
-    Sound: {
-      createAsync: jest.fn(),
-    },
-  },
+
+// Mock expo-video createVideoPlayer
+jest.mock('expo-video', () => ({
+  createVideoPlayer: jest.fn(() => ({
+    duration: 30, // 30 seconds
+    status: 'readyToPlay',
+    release: jest.fn(),
+  })),
 }));
 
 describe('videoValidation', () => {
+  // Track mock state for createVideoPlayer
+  let mockPlayer: any;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    
+    // Default mock player that returns valid duration
+    mockPlayer = {
+      duration: 30, // 30 seconds
+      status: 'readyToPlay',
+      release: jest.fn(),
+    };
+    
+    // Reset the mock to return default player
+    const expoVideo = require('expo-video');
+    (expoVideo.createVideoPlayer as jest.Mock).mockReturnValue(mockPlayer);
   });
 
   describe('validateVideoFile', () => {
     const mockUri = 'file:///test/video.mp4';
 
     it('should validate a valid video file', async () => {
-      const mockSound = {
-        unloadAsync: jest.fn().mockResolvedValue(undefined),
-      };
-
-      (Audio.Sound.createAsync as jest.Mock).mockResolvedValue({
-        sound: mockSound,
-        status: {
-          isLoaded: true,
-          durationMillis: 30000, // 30 seconds
-        },
-      });
-
       const result = await validateVideoFile(mockUri, 10 * 1024 * 1024); // 10MB
 
       expect(result.isValid).toBe(true);
@@ -78,17 +81,10 @@ describe('videoValidation', () => {
     });
 
     it('should reject video exceeding max duration', async () => {
-      const mockSound = {
-        unloadAsync: jest.fn().mockResolvedValue(undefined),
-      };
-
-      (Audio.Sound.createAsync as jest.Mock).mockResolvedValue({
-        sound: mockSound,
-        status: {
-          isLoaded: true,
-          durationMillis: (VIDEO_CONSTRAINTS.MAX_DURATION + 10) * 1000, // Over max
-        },
-      });
+      // Mock player with duration exceeding max
+      const expoVideo = require('expo-video');
+      mockPlayer.duration = VIDEO_CONSTRAINTS.MAX_DURATION + 10;
+      (expoVideo.createVideoPlayer as jest.Mock).mockReturnValue(mockPlayer);
 
       const result = await validateVideoFile(mockUri, 10 * 1024 * 1024);
 
@@ -98,11 +94,11 @@ describe('videoValidation', () => {
     });
 
     it('should handle duration check errors', async () => {
-      const mockSound = {
-        unloadAsync: jest.fn().mockResolvedValue(undefined),
-      };
-
-      (Audio.Sound.createAsync as jest.Mock).mockRejectedValue(new Error('Failed to load'));
+      // Mock player with error status
+      const expoVideo = require('expo-video');
+      mockPlayer.duration = 0;
+      mockPlayer.status = 'error';
+      (expoVideo.createVideoPlayer as jest.Mock).mockReturnValue(mockPlayer);
 
       const result = await validateVideoFile(mockUri, 10 * 1024 * 1024);
 
@@ -125,75 +121,56 @@ describe('videoValidation', () => {
     const mockUri = 'file:///test/video.mp4';
 
     it('should get video duration successfully', async () => {
-      const mockSound = {
-        unloadAsync: jest.fn().mockResolvedValue(undefined),
-      };
-
-      (Audio.Sound.createAsync as jest.Mock).mockResolvedValue({
-        sound: mockSound,
-        status: {
-          isLoaded: true,
-          durationMillis: 45000, // 45 seconds
-        },
-      });
+      const expoVideo = require('expo-video');
+      mockPlayer.duration = 45;
+      (expoVideo.createVideoPlayer as jest.Mock).mockReturnValue(mockPlayer);
 
       const duration = await getVideoDuration(mockUri);
 
       expect(duration).toBe(45);
-      expect(mockSound.unloadAsync).toHaveBeenCalled();
+      expect(mockPlayer.release).toHaveBeenCalled();
     });
 
     it('should throw error when video cannot be loaded', async () => {
-      (Audio.Sound.createAsync as jest.Mock).mockRejectedValue(new Error('Load failed'));
+      const expoVideo = require('expo-video');
+      mockPlayer.duration = 0;
+      mockPlayer.status = 'error';
+      (expoVideo.createVideoPlayer as jest.Mock).mockReturnValue(mockPlayer);
 
       await expect(getVideoDuration(mockUri)).rejects.toThrow('Failed to load video metadata');
     });
 
     it('should throw error when duration is not available', async () => {
-      const mockSound = {
-        unloadAsync: jest.fn().mockResolvedValue(undefined),
-      };
+      const expoVideo = require('expo-video');
+      mockPlayer.duration = 0;
+      mockPlayer.status = 'readyToPlay';
+      (expoVideo.createVideoPlayer as jest.Mock).mockReturnValue(mockPlayer);
 
-      (Audio.Sound.createAsync as jest.Mock).mockResolvedValue({
-        sound: mockSound,
-        status: {
-          isLoaded: true,
-          durationMillis: null, // No duration
-        },
-      });
-
-      await expect(getVideoDuration(mockUri)).rejects.toThrow('Failed to load video metadata');
-      expect(mockSound.unloadAsync).toHaveBeenCalled();
+      // This will timeout because duration is 0 and never becomes positive
+      // We need to test the timeout case
+      jest.useFakeTimers();
+      const durationPromise = getVideoDuration(mockUri);
+      
+      // Fast-forward time to trigger timeout
+      jest.advanceTimersByTime(11000);
+      
+      await expect(durationPromise).rejects.toThrow();
+      jest.useRealTimers();
     });
 
-    it('should throw error when status is not loaded', async () => {
-      const mockSound = {
-        unloadAsync: jest.fn().mockResolvedValue(undefined),
-      };
-
-      (Audio.Sound.createAsync as jest.Mock).mockResolvedValue({
-        sound: mockSound,
-        status: {
-          isLoaded: false,
-        },
-      });
+    it('should throw error when status is error', async () => {
+      const expoVideo = require('expo-video');
+      mockPlayer.duration = 0;
+      mockPlayer.status = 'error';
+      (expoVideo.createVideoPlayer as jest.Mock).mockReturnValue(mockPlayer);
 
       await expect(getVideoDuration(mockUri)).rejects.toThrow('Failed to load video metadata');
-      expect(mockSound.unloadAsync).toHaveBeenCalled();
     });
 
-    it('should convert milliseconds to seconds correctly', async () => {
-      const mockSound = {
-        unloadAsync: jest.fn().mockResolvedValue(undefined),
-      };
-
-      (Audio.Sound.createAsync as jest.Mock).mockResolvedValue({
-        sound: mockSound,
-        status: {
-          isLoaded: true,
-          durationMillis: 90500, // 90.5 seconds
-        },
-      });
+    it('should return duration in seconds (expo-video returns seconds directly)', async () => {
+      const expoVideo = require('expo-video');
+      mockPlayer.duration = 90.5; // expo-video returns duration in seconds
+      (expoVideo.createVideoPlayer as jest.Mock).mockReturnValue(mockPlayer);
 
       const duration = await getVideoDuration(mockUri);
 

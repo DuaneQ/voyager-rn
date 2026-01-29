@@ -26,7 +26,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { RecyclerListView, DataProvider, LayoutProvider } from 'recyclerlistview';
-import { Audio } from 'expo-av';
+import { setAudioModeAsync } from 'expo-audio';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { VideoCard } from '../components/video/VideoCard';
@@ -127,11 +127,10 @@ const VideoFeedPage: React.FC = () => {
   useEffect(() => {
     const setupAudio = async () => {
       try {
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: false,
-          staysActiveInBackground: false,
-          shouldDuckAndroid: false,
-          playThroughEarpieceAndroid: false,
+        await setAudioModeAsync({
+          shouldPlayInBackground: false,
+          interruptionMode: 'doNotMix',
+          shouldRouteThroughEarpiece: false,
         });
       } catch (e) {
         console.warn('⚠️ Audio.setAudioModeAsync failed:', e);
