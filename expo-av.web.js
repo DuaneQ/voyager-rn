@@ -6,15 +6,48 @@
  * so we stub it out entirely on web where we use expo-audio and expo-video instead.
  */
 
-// Export empty stubs that match the expo-av API
+// Import React for proper component definition
+import React from 'react';
+
+// Minimal stub matching the common AVPlaybackStatus shape from expo-av
+export const AVPlaybackStatus = {
+  isLoaded: false,
+  uri: undefined,
+  positionMillis: 0,
+  durationMillis: 0,
+  isPlaying: false,
+  isBuffering: false,
+  rate: 1,
+  shouldCorrectPitch: false,
+  volume: 1,
+  isMuted: false,
+  isLooping: false,
+  didJustFinish: false,
+};
+
+// Audio stub with proper Sound object structure
 export const Audio = {
   setAudioModeAsync: () => Promise.resolve(),
   Sound: {
-    createAsync: () => Promise.resolve({ sound: {}, status: {} }),
+    createAsync: () => Promise.resolve({
+      sound: {
+        unloadAsync: () => Promise.resolve(),
+        playAsync: () => Promise.resolve(),
+        pauseAsync: () => Promise.resolve(),
+        stopAsync: () => Promise.resolve(),
+        setPositionAsync: () => Promise.resolve(),
+        setIsMutedAsync: () => Promise.resolve(),
+        setVolumeAsync: () => Promise.resolve(),
+        getStatusAsync: () => Promise.resolve({ isLoaded: true }),
+      },
+      status: { isLoaded: true },
+    }),
   },
 };
 
-export const Video = () => null;
+// Video component stub - proper React component that accepts props and refs
+export const Video = React.forwardRef((props, ref) => null);
+Video.displayName = 'Video';
 
 export const ResizeMode = {
   CONTAIN: 'contain',
@@ -22,9 +55,7 @@ export const ResizeMode = {
   STRETCH: 'stretch',
 };
 
-export const AVPlaybackStatus = {};
-
-// Default export
+// Default export for CommonJS compatibility
 export default {
   Audio,
   Video,

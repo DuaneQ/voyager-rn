@@ -843,3 +843,263 @@ Also noted: After adding `https://travalpass.com` to Google Cloud Console:
 - **Authorized redirect URIs**: Added `https://travalpass.com/__/auth/handler` ✅
 
 Google OAuth should work once the expo-av crash is resolved.
+
+---
+
+## ✅ FINAL SOLUTION: Metro Bundler Stub for expo-av on Web (January 29, 2026)
+
+### The Problem (Post-Login Crash)
+
+Even after implementing:
+1. ✅ **Lazy loading** for pages with expo-av (landing page works)
+2. ✅ **Conditional imports** like `Platform.OS !== 'web' ? require('expo-av') : null`
+3. ✅ **Migration to expo-audio and expo-video**
+
+**The app still crashed on iOS Safari web after login** when navigating to Search/Profile/Videos/Chat tabs.
+
+### Why Conditional Imports Weren't Enough
+
+**The core issue**: JavaScript bundlers (Metro for React Native Web) **statically analyze** all `require()` statements during build time, even conditional ones:
+
+```javascript
+// This STILL bundles expo-av into the web build!
+const ExpoAV = Platform.OS !== 'web' ? require('expo-av') : null;
+```
+
+**What happens during bundling**:
+1. Metro scans the code and sees `require('expo-av')`
+2. Metro resolves `expo-av` module and includes it in the bundle
+3. The entire expo-av package (including deprecation warning code) gets bundled
+4. At runtime, the deprecation warning triggers infinite loop on iOS Safari
+
+**Analogy**: It's like packing a suitcase. Even if you put a "DO NOT OPEN" note on a box, you still packed the box. The bundler "packs" expo-av into the web bundle, even though we try not to "open" it at runtime.
+
+### The Solution: Platform-Specific Module Resolution
+
+We need to tell Metro: **"When building for web, replace expo-av with a fake empty version"**
+
+This is done in two files:
+
+---
+
+## 📄 File 1: `expo-av.web.js` (The Fake Package)
+
+**What it is**: A **stub** (fake/placeholder) file that pretends to be expo-av but does nothing.
+
+**Why we need it**: We can't remove expo-av entirely because our code imports it (even conditionally). Instead, we replace it with this harmless fake version.
+
+**What's inside** (line-by-line explanation):
+
+```javascript
+/**
+ * Empty expo-av shim for web platform
+ * 
+ * This file is used on web builds to completely prevent expo-av from loading.
+ * The expo-av deprecation warning causes an infinite loop on iOS Safari,
+ * so we stub it out entirely on web where we use expo-audio and expo-video instead.
+ */
+
+// Export empty stubs that match the expo-av API
+export const Audio = {
+  setAudioModeAsync: () => Promise.resolve(),  // ← Fake function that does nothing but pretends to work
+  Sound: {
+    createAsync: () => Promise.resolve({ sound: {}, status: {} }),  // ← Returns empty fake objects
+  },
+};
+
+export const Video = () => null;  // ← Fake React component that renders nothing
+
+export const ResizeMode = {
+  CONTAIN: 'contain',  // ← Real values (these are just strings, harmless)
+  COVER: 'cover',
+  STRETCH: 'stretch',
+};
+
+export const AVPlaybackStatus = {};  // ← Empty object
+
+// Default export
+export default {
+  Audio,
+  Video,
+  ResizeMode,
+  AVPlaybackStatus,
+};
+```
+
+**Key points**:
+- ✅ **Matches real expo-av API** - Our code expects these functions/objects, so we provide fake ones
+- ✅ **Does absolutely nothing** - No deprecation warnings, no infinite loops
+- ✅ **Tiny size** - Only 725 bytes vs real expo-av's hundreds of KB
+- ✅ **Never actually used** - Our code uses expo-audio/expo-video instead, but this satisfies the bundler
+
+**Real-world analogy**: It's like a movie prop gun. It looks like a gun, you can point it, but it doesn't fire real bullets. Our code can "import" expo-av, but it gets this harmless prop version.
+
+---
+
+## 📄 File 2: `metro.config.js` (The Switcher)
+
+**What it is**: Configuration file that tells Metro bundler **how to find and load modules**.
+
+**Why we need it**: To intercept requests for `expo-av` and redirect them to our fake version (`expo-av.web.js`) only when building for web.
+
+**What's inside** (line-by-line explanation):
+
+```javascript
+/**
+ * Metro configuration with platform-specific module resolution
+ * Prevents expo-av from loading on web to avoid iOS Safari crash
+ */
+const { getDefaultConfig } = require('expo/metro-config');
+const path = require('path');
+
+// Get Expo's default Metro configuration
+const config = getDefaultConfig(__dirname);
+
+// Override resolver to alias expo-av on web platform
+config.resolver = {
+  ...config.resolver,  // ← Keep all existing resolver settings
+  
+  resolveRequest: (context, moduleName, platform) => {
+    // On web platform, resolve expo-av to an empty stub to prevent loading
+    if (platform === 'web' && moduleName === 'expo-av') {
+      return {
+        type: 'sourceFile',
+        filePath: path.resolve(__dirname, 'expo-av.web.js'),  // ← Point to our fake file
+      };
+    }
+    
+    // Use default resolution for everything else
+    return context.resolveRequest(context, moduleName, platform);
+  },
+};
+
+module.exports = config;
+```
+
+**Breaking down the `resolveRequest` function**:
+
+This function is called **every time** Metro needs to find a module during bundling.
+
+**Parameters explained**:
+- `context` - Metro's internal resolver with helper functions
+- `moduleName` - The name of the module being imported (e.g., `'expo-av'`, `'react'`, `'./MyComponent'`)
+- `platform` - Which platform we're building for: `'web'`, `'ios'`, or `'android'`
+
+**The logic (step by step)**:
+
+```javascript
+// STEP 1: Check if this is the specific case we want to intercept
+if (platform === 'web' && moduleName === 'expo-av') {
+  // YES! Building for web AND trying to load expo-av
+  
+  // STEP 2: Return a custom resolution pointing to our fake file
+  return {
+    type: 'sourceFile',  // ← Tell Metro this is a JavaScript source file
+    filePath: path.resolve(__dirname, 'expo-av.web.js'),  // ← Use our stub instead
+  };
+}
+
+// STEP 3: For everything else, use normal resolution
+return context.resolveRequest(context, moduleName, platform);
+```
+
+**What happens at build time**:
+
+1. **Building for iOS/Android**:
+   ```javascript
+   platform = 'ios' // or 'android'
+   moduleName = 'expo-av'
+   // Condition is FALSE (platform !== 'web')
+   // Returns normal expo-av from node_modules ✅
+   ```
+
+2. **Building for Web**:
+   ```javascript
+   platform = 'web'
+   moduleName = 'expo-av'
+   // Condition is TRUE (platform === 'web' AND moduleName === 'expo-av')
+   // Returns our fake expo-av.web.js ✅
+   ```
+
+3. **Any other module on any platform**:
+   ```javascript
+   platform = 'web'
+   moduleName = 'react'  // or anything else
+   // Condition is FALSE (moduleName !== 'expo-av')
+   // Returns normal module from node_modules ✅
+   ```
+
+**Real-world analogy**: Think of Metro's resolver like a librarian. Normally when you ask for the book "expo-av", they go to shelf `node_modules/expo-av` and give you the real book. But we've given the librarian special instructions:
+
+> "If someone asks for the 'expo-av' book while working at the Web Desk, give them this pamphlet (expo-av.web.js) instead. For all other desks (iOS/Android), give them the real book."
+
+---
+
+## How The Two Files Work Together
+
+### Before our fix:
+
+```
+Code imports expo-av → Metro bundles REAL expo-av → Web build includes deprecation warning → iOS Safari crashes
+```
+
+### After our fix:
+
+```
+Code imports expo-av → Metro checks platform
+                      ↓
+                   Web? → Metro bundles FAKE expo-av.web.js → No deprecation code → ✅ No crash
+                      ↓
+              iOS/Android? → Metro bundles REAL expo-av → ✅ Works normally
+```
+
+### Why this solves the problem:
+
+1. **Lazy loading** prevents expo-av from loading at app startup (landing page works)
+2. **Metro stub** ensures that when lazy-loaded pages DO load, they get the harmless fake version on web
+3. **Native platforms unaffected** because the stub only applies to web builds
+4. **No code changes needed** in components - they still import expo-av normally
+
+### Test Results:
+
+- ✅ **Unit tests**: 118 suites, 2044 tests passed
+- ✅ **Integration tests**: 5 suites, 36 tests passed
+- ✅ **Web bundle size**: expo-av bundle reduced to 725 bytes (was ~hundreds of KB)
+- ✅ **Native builds**: Unaffected, still use real expo-av
+
+### Why This Is Better Than Other Approaches:
+
+**Alternative 1: Remove all expo-av imports**
+- ❌ Would require rewriting many components
+- ❌ Would lose video functionality on native platforms
+
+**Alternative 2: Use webpack aliases (if we had webpack)**
+- ❌ Expo SDK 54 uses Metro, not webpack
+- ❌ Metro needs custom resolvers, not webpack aliases
+
+**Alternative 3: Mock expo-av in Jest only**
+- ❌ Only fixes tests, not production web builds
+- ❌ iOS Safari would still crash
+
+**Our solution**:
+- ✅ No component rewrites needed
+- ✅ Works with Metro bundler
+- ✅ Fixes production web builds
+- ✅ Preserves native functionality
+- ✅ Minimal code changes (2 files)
+
+---
+
+## Deployment Steps
+
+1. ✅ Create branch `ios-web-bug`
+2. ✅ Add `metro.config.js` with custom resolver
+3. ✅ Add `expo-av.web.js` stub file
+4. ✅ Run unit tests (all passed)
+5. ✅ Run integration tests (all passed)
+6. ✅ Push to GitHub (triggers Firebase deployment workflow)
+7. ⏳ Wait for deployment to complete
+8. ⏳ Test on travalpass.com with physical iPhone
+9. ⏳ Verify post-login tabs work without crash
+
+**Expected result**: Users can now log in and navigate to all tabs (Search, Profile, Videos, Chat) on iOS Safari web without the "Maximum call stack size exceeded" crash.

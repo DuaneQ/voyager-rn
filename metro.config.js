@@ -20,6 +20,7 @@ config.resolver = {
     }
     
     // Use default resolution for everything else
+    // Note: context.resolveRequest is Metro's default resolver function
     return context.resolveRequest(context, moduleName, platform);
   },
 };
