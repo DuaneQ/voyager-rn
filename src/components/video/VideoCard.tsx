@@ -29,8 +29,8 @@ import * as firebaseConfig from '../../config/firebaseConfig';
 import { videoPlaybackManager } from '../../services/video/VideoPlaybackManager';
 import { AndroidVideoPlayerRNV } from './AndroidVideoPlayerRNV';
 
-// Import expo-av normally
-import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
+// Import via adapter (provides web stub automatically)
+import { Video, ResizeMode, AVPlaybackStatus } from '../../adapters/expo-av';
 
 const { width, height } = Dimensions.get('window');
 

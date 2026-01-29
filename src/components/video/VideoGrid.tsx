@@ -27,8 +27,8 @@ import { Video as VideoType } from '../../types/Video';
 import { useVideoUpload } from '../../hooks/video/useVideoUpload';
 import { VideoUploadModal } from '../modals/VideoUploadModal';
 
-// Import expo-av normally - Metro will replace with stub on web platform
-import { Video, ResizeMode } from 'expo-av';
+// Import via adapter (provides web stub automatically)
+import { Video, ResizeMode } from '../../adapters/expo-av';
 
 const { width, height } = Dimensions.get('window');
 const GRID_COLUMNS = 3;

@@ -33,8 +33,8 @@ import {
   Platform,
 } from 'react-native';
 
-// Import expo-av normally - Metro will replace with stub on web platform
-import { Video, ResizeMode } from 'expo-av';
+// Import via adapter (provides web stub automatically)
+import { Video, ResizeMode } from '../../adapters/expo-av';
 
 import {
   getFirestore,

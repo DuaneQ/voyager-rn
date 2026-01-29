@@ -3,9 +3,6 @@
   "version": "1.2.3",
   "description": "React Native Expo version of voyager-pwa with identical functionality",
   "main": "node_modules/expo/AppEntry.js",
-  "browser": {
-    "expo-av": "./expo-av.web.js"
-  },
   "scripts": {
     "# === APP LAUNCH ===": "",
     "start": "expo start",
