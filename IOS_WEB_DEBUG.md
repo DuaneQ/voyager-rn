@@ -103,7 +103,76 @@ These use HTTPS and will work on physical iOS devices.
 
 ---
 
-## NEW ISSUE: Production App White Screen on iOS
+## ✅ SOLUTION IMPLEMENTED: Lazy Load expo-av Dependent Pages (January 29, 2026)
+
+### Root Cause Identified
+
+The "Maximum call stack size exceeded" error on iOS Safari was caused by **expo-av** being loaded at app startup through eager imports:
+
+1. **expo-av deprecation warning** triggers on all platforms, but on iOS Safari the error handling causes an infinite loop
+2. All pages that import expo-av (directly or transitively) were eagerly loaded at bundle initialization
+3. This happened before the app even rendered - during module evaluation
+
+### Import Chain Analysis
+
+| Page | expo-av Dependency Chain |
+|------|-------------------------|
+| VideoFeedPage | Direct: `Audio`, `Video` |
+| ProfilePage | VideoGrid → `Video` |
+| SearchPage | ItineraryCard → ViewProfileModal → `Video` |
+| ChatThreadScreen | ViewProfileModal → `Video` |
+| AuthPage | ❌ None |
+| ChatPage | ❌ None |
+| LandingPage.web | ❌ None |
+
+### Fix Applied
+
+Modified `src/navigation/AppNavigator.tsx` to use **React.lazy()** for all pages with expo-av dependencies:
+
+```tsx
+// Pages - Lazy imports (have expo-av dependency through import chain)
+const VideoFeedPage = lazy(() => import('../pages/VideoFeedPage'));
+const ChatThreadScreen = lazy(() => import('../pages/ChatThreadScreen'));
+const ProfilePage = lazy(() => import('../pages/ProfilePage'));
+const SearchPage = lazy(() => import('../pages/SearchPage'));
+
+// Wrapper components with Suspense fallback
+const SearchPageWrapper: React.FC = () => (
+  <Suspense fallback={<LazyLoadFallback />}>
+    <SearchPage />
+  </Suspense>
+);
+// ... similar for other pages
+```
+
+### Why This Fixes iOS Safari
+
+1. **Deferred module loading**: expo-av is not loaded until user navigates to a page that uses it
+2. **Landing page works**: LandingPage and AuthPage have NO expo-av dependency, load immediately
+3. **No bundle initialization crash**: The expo-av deprecation code path is never hit during initial load
+
+### Pages That Are Safe (Eagerly Loaded)
+- AuthPage ✅
+- ChatPage ✅  
+- LandingPage.web ✅
+
+### Pages That Are Lazy Loaded
+- VideoFeedPage (expo-av direct)
+- ProfilePage (via VideoGrid)
+- SearchPage (via ItineraryCard → ViewProfileModal)
+- ChatThreadScreen (via ViewProfileModal)
+
+### Testing Checklist
+- [ ] Deploy to preview/production
+- [ ] Test on physical iOS device - landing page should load
+- [ ] Test on physical iOS device - login should work
+- [ ] Test on physical iOS device - navigate to Search tab (lazy loads)
+- [ ] Test on physical iOS device - navigate to Videos tab (lazy loads)
+- [ ] Test on Mac/Android - verify no regressions
+
+---
+
+## Previous Investigation (for reference)
 
 **Reports**:
 - Friend reports white screen on production `travalpass.com` on iOS

@@ -4,21 +4,67 @@
  * Uses React Navigation instead of React Router
  */
 
-import React, { useEffect, useRef } from 'react';
-import { Platform } from 'react-native';
+import React, { useEffect, useRef, Suspense, lazy, ComponentType } from 'react';
+import { Platform, View, ActivityIndicator, StyleSheet } from 'react-native';
 import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 
-// Pages
+// Pages - Direct imports (no expo-av dependency)
 import AuthPage from '../pages/AuthPage';
-import ProfilePage from '../pages/ProfilePage';
-import SearchPage from '../pages/SearchPage';
 import ChatPage from '../pages/ChatPage';
-import ChatThreadScreen from '../pages/ChatThreadScreen';
-import VideoFeedPage from '../pages/VideoFeedPage';
 import LandingPage from '../pages/LandingPage.web';
+
+// WEB-ONLY lazy loading for pages with expo-av dependency
+// WHY: On iOS Safari web, loading expo-av at app startup causes
+// "Maximum call stack size exceeded" errors due to deprecation warning handler.
+// By lazy loading these pages, expo-av only loads when user navigates to them.
+// 
+// MOBILE: Direct imports work fine - no lazy loading overhead
+// 
+// Dependency chains (expo-av):
+// - VideoFeedPage -> expo-av (Audio, Video directly)
+// - ProfilePage -> VideoGrid -> expo-av (Video)
+// - SearchPage -> ItineraryCard -> ViewProfileModal -> expo-av (Video)
+// - ChatThreadScreen -> ViewProfileModal -> expo-av (Video)
+
+// For WEB: Use React.lazy to defer expo-av loading
+// For MOBILE: Direct imports (Metro doesn't do code splitting anyway)
+let VideoFeedPage: ComponentType<any>;
+let ChatThreadScreen: ComponentType<any>;
+let ProfilePage: ComponentType<any>;
+let SearchPage: ComponentType<any>;
+
+if (Platform.OS === 'web') {
+  // Web: Lazy load to avoid expo-av crash on iOS Safari
+  VideoFeedPage = lazy(() => import('../pages/VideoFeedPage'));
+  ChatThreadScreen = lazy(() => import('../pages/ChatThreadScreen'));
+  ProfilePage = lazy(() => import('../pages/ProfilePage'));
+  SearchPage = lazy(() => import('../pages/SearchPage'));
+} else {
+  // Mobile: Direct imports (no lazy loading needed or beneficial)
+  VideoFeedPage = require('../pages/VideoFeedPage').default;
+  ChatThreadScreen = require('../pages/ChatThreadScreen').default;
+  ProfilePage = require('../pages/ProfilePage').default;
+  SearchPage = require('../pages/SearchPage').default;
+}
+
+// Loading fallback for lazy-loaded screens (web only)
+const LazyLoadFallback: React.FC = () => (
+  <View style={lazyStyles.container}>
+    <ActivityIndicator size="large" color="#007AFF" />
+  </View>
+);
+
+const lazyStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#000',
+  },
+});
 
 // Guards
 import { TermsGuard } from '../components/auth/TermsGuard';
@@ -34,6 +80,52 @@ import { validateProfileForItinerary } from '../utils/profileValidation';
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
+// Wrapper components - Suspense only needed on web for React.lazy
+// On mobile, components are directly imported so no Suspense needed
+const VideoFeedPageWrapper: React.FC = () => {
+  if (Platform.OS === 'web') {
+    return (
+      <Suspense fallback={<LazyLoadFallback />}>
+        <VideoFeedPage />
+      </Suspense>
+    );
+  }
+  return <VideoFeedPage />;
+};
+
+const ChatThreadScreenWrapper: React.FC<any> = (props) => {
+  if (Platform.OS === 'web') {
+    return (
+      <Suspense fallback={<LazyLoadFallback />}>
+        <ChatThreadScreen {...props} />
+      </Suspense>
+    );
+  }
+  return <ChatThreadScreen {...props} />;
+};
+
+const ProfilePageWrapper: React.FC = () => {
+  if (Platform.OS === 'web') {
+    return (
+      <Suspense fallback={<LazyLoadFallback />}>
+        <ProfilePage />
+      </Suspense>
+    );
+  }
+  return <ProfilePage />;
+};
+
+const SearchPageWrapper: React.FC = () => {
+  if (Platform.OS === 'web') {
+    return (
+      <Suspense fallback={<LazyLoadFallback />}>
+        <SearchPage />
+      </Suspense>
+    );
+  }
+  return <SearchPage />;
+};
+
 // Bottom Tab Navigator (replicates BottomNav from PWA)
 const MainTabNavigator: React.FC = () => {
   return (
@@ -46,7 +138,7 @@ const MainTabNavigator: React.FC = () => {
     >
       <Tab.Screen 
         name="Search" 
-        component={SearchPage}
+        component={SearchPageWrapper}
         options={{ 
           title: 'TravalMatch',
           tabBarIcon: ({ focused, color, size }) => (
@@ -60,7 +152,7 @@ const MainTabNavigator: React.FC = () => {
       />
       <Tab.Screen 
         name="Videos" 
-        component={VideoFeedPage}
+        component={VideoFeedPageWrapper}
         options={{ 
           title: 'Travals',
           tabBarIcon: ({ focused, color, size }) => (
@@ -94,7 +186,7 @@ const MainTabNavigator: React.FC = () => {
       />
       <Tab.Screen 
         name="Profile" 
-        component={ProfilePage}
+        component={ProfilePageWrapper}
         options={{ 
           title: 'Profile',
           tabBarIcon: ({ focused, color, size }) => (
@@ -156,7 +248,7 @@ const RootNavigator: React.FC = () => {
         // User is authenticated and verified - check terms acceptance before showing main app
         <>
           <Stack.Screen name="MainApp" component={GuardedMainTabNavigator} />
-          <Stack.Screen name="ChatThread" component={ChatThreadScreen} />
+          <Stack.Screen name="ChatThread" component={ChatThreadScreenWrapper} />
         </>
       ) : showLandingPage ? (
         // Web only: Show landing page for completely unauthenticated users (no Firebase user)

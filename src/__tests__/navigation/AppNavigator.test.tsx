@@ -3,6 +3,46 @@
  * Tests navigation structure and conditional rendering based on auth state
  */
 
+// Mock React.lazy and Suspense to work synchronously in Jest
+// This prevents "dynamic import callback was invoked without --experimental-vm-modules" errors
+// and allows the mocked page components to be used directly
+jest.mock('react', () => {
+  const actualReact = jest.requireActual('react');
+  return {
+    ...actualReact,
+    lazy: (importFn: () => Promise<{ default: React.ComponentType<any> }>) => {
+      // Extract the module path from the import function and require it synchronously
+      // The pages are already mocked above, so this will return the mock
+      let Component: React.ComponentType<any> | null = null;
+      
+      // Execute the import function to get the module path pattern
+      const importStr = importFn.toString();
+      
+      // Map import paths to mock modules
+      if (importStr.includes('VideoFeedPage')) {
+        Component = require('../../pages/VideoFeedPage').default || require('../../pages/VideoFeedPage');
+      } else if (importStr.includes('ChatThreadScreen')) {
+        Component = require('../../pages/ChatThreadScreen').default || require('../../pages/ChatThreadScreen');
+      } else if (importStr.includes('ProfilePage')) {
+        Component = require('../../pages/ProfilePage').default || require('../../pages/ProfilePage');
+      } else if (importStr.includes('SearchPage')) {
+        Component = require('../../pages/SearchPage').default || require('../../pages/SearchPage');
+      }
+      
+      // Return the component or a fallback
+      if (Component) {
+        return Component;
+      }
+      
+      // Fallback placeholder for unknown lazy imports
+      return actualReact.forwardRef((props: any, ref: any) => {
+        return actualReact.createElement('div', { 'data-testid': 'lazy-placeholder' });
+      });
+    },
+    Suspense: ({ children }: any) => children,
+  };
+});
+
 // Mock navigation components
 jest.mock('@react-navigation/native', () => {
   const actualNav = jest.requireActual('@react-navigation/native');
@@ -35,53 +75,60 @@ jest.mock('@react-navigation/bottom-tabs', () => ({
   }),
 }));
 
-// Mock pages
+// Mock pages - all pages need to export with { __esModule: true, default: Component }
+// because AppNavigator uses require().default for mobile imports
 jest.mock('../../pages/AuthPage', () => {
   const React = require('react');
   const { Text } = require('react-native');
-  return function AuthPage() {
+  const AuthPage = function AuthPage() {
     return React.createElement(Text, { testID: 'auth-page' }, 'Auth Page');
   };
+  return { __esModule: true, default: AuthPage };
 });
 
 jest.mock('../../pages/ProfilePage', () => {
   const React = require('react');
   const { Text } = require('react-native');
-  return function ProfilePage() {
+  const ProfilePage = function ProfilePage() {
     return React.createElement(Text, { testID: 'profile-page' }, 'Profile Page');
   };
+  return { __esModule: true, default: ProfilePage };
 });
 
 jest.mock('../../pages/SearchPage', () => {
   const React = require('react');
   const { Text } = require('react-native');
-  return function SearchPage() {
+  const SearchPage = function SearchPage() {
     return React.createElement(Text, { testID: 'search-page' }, 'Search Page');
   };
+  return { __esModule: true, default: SearchPage };
 });
 
 jest.mock('../../pages/ChatPage', () => {
   const React = require('react');
   const { Text } = require('react-native');
-  return function ChatPage() {
+  const ChatPage = function ChatPage() {
     return React.createElement(Text, { testID: 'chat-page' }, 'Chat Page');
   };
+  return { __esModule: true, default: ChatPage };
 });
 
 jest.mock('../../pages/ChatThreadScreen', () => {
   const React = require('react');
   const { Text } = require('react-native');
-  return function ChatThreadScreen() {
+  const ChatThreadScreen = function ChatThreadScreen() {
     return React.createElement(Text, { testID: 'chat-thread-screen' }, 'Chat Thread');
   };
+  return { __esModule: true, default: ChatThreadScreen };
 });
 
 jest.mock('../../pages/VideoFeedPage', () => {
   const React = require('react');
   const { Text } = require('react-native');
-  return function VideoFeedPage() {
+  const VideoFeedPage = function VideoFeedPage() {
     return React.createElement(Text, { testID: 'video-feed-page' }, 'Video Feed');
   };
+  return { __esModule: true, default: VideoFeedPage };
 });
 
 // Mock context providers
