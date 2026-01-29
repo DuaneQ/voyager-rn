@@ -27,15 +27,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { Video as VideoType } from '../../types/Video';
 import * as firebaseConfig from '../../config/firebaseConfig';
 import { videoPlaybackManager } from '../../services/video/VideoPlaybackManager';
+import { AndroidVideoPlayerRNV } from './AndroidVideoPlayerRNV';
 
-// Import expo-av normally - Metro will replace with stub on web platform
+// Import expo-av normally
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
-
-// Conditionally import AndroidVideoPlayerRNV only on native platforms
-// On web, this import is skipped to prevent Metro from bundling expo-av
-const AndroidVideoPlayerRNV = Platform.OS !== 'web' 
-  ? require('./AndroidVideoPlayerRNV').AndroidVideoPlayerRNV 
-  : null;
 
 const { width, height } = Dimensions.get('window');
 
@@ -576,7 +571,7 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
                 setError(true);
               }}
             />
-          ) : Platform.OS === 'android' && AndroidVideoPlayerRNV ? (
+          ) : Platform.OS === 'android' ? (
             <AndroidVideoPlayerRNV
               video={video}
               isActive={isActive}
