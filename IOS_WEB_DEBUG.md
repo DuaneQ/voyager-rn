@@ -1103,3 +1103,129 @@ Code imports expo-av → Metro checks platform
 9. ⏳ Verify post-login tabs work without crash
 
 **Expected result**: Users can now log in and navigate to all tabs (Search, Profile, Videos, Chat) on iOS Safari web without the "Maximum call stack size exceeded" crash.
+
+---
+
+## ❌ ATTEMPT 1 FAILED: Metro Resolver with Conditional Requires (January 29, 2026 - 3:43 PM)
+
+### What We Tried:
+- Created `expo-av.web.js` stub file (725 bytes)
+- Added `metro.config.js` with custom `resolveRequest` function
+- Kept conditional `require()` statements in components:
+  ```javascript
+  const ExpoAV = Platform.OS !== 'web' ? require('expo-av') : null;
+  ```
+
+### Why It Failed:
+- **Video component issue**: Stub returned `() => null` instead of proper React component with refs
+- **AVPlaybackStatus missing**: Components expected properties like `isLoaded`, `positionMillis`, etc.
+- **Sound methods missing**: `Audio.Sound.createAsync` needed to return object with control methods
+
+### Test Result:
+❌ **FAILED** - Preview URL crashed with errors about missing Video ref and incomplete stub API
+
+---
+
+## ❌ ATTEMPT 2 FAILED: Improved Stub API Surface (January 29, 2026 - 4:22 PM)
+
+### What We Changed:
+- Enhanced `expo-av.web.js` to 1.31 kB with complete API:
+  - `Video` = `React.forwardRef((props, ref) => null)` for ref support
+  - Complete `AVPlaybackStatus` object with all properties
+  - `Sound` object with all methods (`unloadAsync`, `playAsync`, etc.)
+- Still kept conditional `require()` statements
+
+### Why It Failed:
+**Root cause discovered**: JavaScript bundlers (Metro) **statically analyze** code and bundle ALL `require()` statements, even conditional ones:
+
+```javascript
+// Metro sees this require() and bundles expo-av anyway!
+const ExpoAV = Platform.OS !== 'web' ? require('expo-av') : null;
+```
+
+The bundler "packs" expo-av into the web bundle even though we try not to "open" it at runtime.
+
+### Test Result:
+❌ **FAILED** - Still getting "Maximum call stack size exceeded" on iOS Safari. Real expo-av deprecation code was still in the bundle.
+
+---
+
+## ❌ ATTEMPT 3 FAILED: Direct ES6 Imports with Metro Resolver (January 29, 2026 - 4:48 PM)
+
+### What We Changed:
+- **Removed ALL conditional `require()` statements**
+- Changed to normal ES6 imports:
+  ```javascript
+  import { Video, ResizeMode } from 'expo-av';
+  ```
+- Relied entirely on Metro's `resolveRequest` to substitute stub at build time
+
+### Theory:
+Metro should intercept the import during bundling and replace with our stub:
+```javascript
+// metro.config.js
+if (platform === 'web' && moduleName === 'expo-av') {
+  return {
+    type: 'sourceFile',
+    filePath: path.resolve(__dirname, 'expo-av.web.js'),
+  };
+}
+```
+
+### Why It Failed:
+**Metro resolver not working as expected for web builds**. Possible reasons:
+1. Metro for web might not respect custom `resolveRequest` the same way as native
+2. Build order or timing issue where real expo-av loads before stub
+3. Expo's web bundler configuration might override our Metro config
+4. The resolver might only work for Metro (native) but not for web exports
+
+### Test Result:
+❌ **FAILED** - Same crash pattern:
+- "Maximum call stack size exceeded" 
+- Firestore channel errors repeating infinitely
+- Real expo-av deprecation warning code still executing
+
+### Evidence:
+- Web bundle NO LONGER has separate `expo-av-xxx.js` file (good sign)
+- BUT the crash still happens (bad sign - real code still loading somehow)
+
+---
+
+## 🔍 ROOT CAUSE ANALYSIS - Why Metro Resolver Isn't Working
+
+### The Problem:
+Expo's web export process might be using a **different bundler or configuration** than what our `metro.config.js` affects:
+
+1. **`npx expo export --platform web`** may use Webpack or different bundler
+2. Metro's `resolveRequest` might only work for native platforms (iOS/Android)
+3. Web builds might have separate resolution logic we're not hooking into
+
+### Evidence:
+- Local tests pass (Jest uses our mocks)
+- Native builds would work (Metro resolver would apply)
+- **Web builds fail** (different bundler/config path)
+
+---
+
+## 🎯 NEXT APPROACH TO TRY
+
+We need to find where Expo configures the **web bundler** (likely Webpack) and add aliases there instead of Metro config.
+
+### Option 1: Webpack Config Override
+Check if there's a way to customize Expo's web webpack config with module aliases.
+
+### Option 2: Package.json Browser Field
+Use package.json's `"browser"` field to alias expo-av for web:
+```json
+"browser": {
+  "expo-av": "./expo-av.web.js"
+}
+```
+
+### Option 3: Remove Lazy Loading, Use Different Strategy
+Since lazy loading works for landing page, maybe fully remove expo-av from lazy-loaded pages entirely and use alternative components.
+
+### Option 4: Fork Expo-AV
+Create a forked version without the deprecation warning and use that.
+
+**USER INPUT NEEDED**: Which approach should we try next?
