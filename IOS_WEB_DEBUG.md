@@ -1229,3 +1229,60 @@ Since lazy loading works for landing page, maybe fully remove expo-av from lazy-
 Create a forked version without the deprecation warning and use that.
 
 **USER INPUT NEEDED**: Which approach should we try next?
+
+---
+
+## ❌ ATTEMPT 4 FAILED: Package.json Browser Field (January 29, 2026 - 5:06 PM)
+
+### What We Tried:
+Added `"browser"` field to package.json:
+```json
+"browser": {
+  "expo-av": "./expo-av.web.js"
+}
+```
+
+This is the standard way web bundlers (Webpack, Rollup, Browserify) handle platform-specific module resolution.
+
+### Why It Failed:
+Browser field also didn't work. Same crash pattern on iOS Safari.
+
+**Evidence**: The crash is STILL happening with "Maximum call stack size exceeded" even after 4 different approaches.
+
+### Test Result:
+❌ **FAILED** - Identical crash on preview URL
+
+---
+
+## 🔍 RESEARCHING PROVEN SOLUTIONS
+
+Searching Stack Overflow, GitHub issues, and React Native forums for working solutions...
+
+### FOUND THE ISSUE! (January 29, 2026 - 5:15 PM)
+
+**Source**: [Expo Metro Customization Docs](https://docs.expo.dev/guides/customizing-metro/#aliases)
+
+Our Metro resolver was INCORRECTLY implemented. We were returning `{ type: 'sourceFile', filePath: ... }` but the correct pattern from Expo docs is:
+
+```javascript
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (platform === 'web' && ALIASES[moduleName]) {
+    // Pass the ALIAS PATH to resolveRequest, not return a custom object!
+    return context.resolveRequest(context, ALIASES[moduleName], platform);
+  }
+  return context.resolveRequest(context, moduleName, platform);
+};
+```
+
+We were breaking Metro's resolution chain by returning a custom object instead of letting Metro resolve the aliased path.
+
+---
+
+## 🔧 ATTEMPT 5: Correct Metro Alias Pattern (January 29, 2026 - 5:16 PM)
+
+### What We're Fixing:
+Following the EXACT pattern from Expo's official documentation for Metro aliases.
+
+**Key change**: Pass the alias to `context.resolveRequest()` instead of returning a custom resolution object.
+
+### Testing now...
