@@ -29,21 +29,8 @@ import * as firebaseConfig from '../../config/firebaseConfig';
 import { videoPlaybackManager } from '../../services/video/VideoPlaybackManager';
 import { AndroidVideoPlayerRNV } from './AndroidVideoPlayerRNV'; // TEST 8: react-native-video migration
 
-// Conditionally import expo-av only on iOS to avoid iOS Safari crash
-// The expo-av deprecation warning causes infinite loop on iOS Safari web
-const ExpoAV = Platform.OS === 'ios' ? require('expo-av') : null;
-const Video = ExpoAV?.Video;
-const ResizeMode = ExpoAV?.ResizeMode ?? { CONTAIN: 'contain', COVER: 'cover', STRETCH: 'stretch' };
-
-// Type definition for AVPlaybackStatus (used regardless of platform)
-type AVPlaybackStatus = {
-  isLoaded: boolean;
-  didJustFinish?: boolean;
-  positionMillis?: number;
-  durationMillis?: number;
-  isPlaying?: boolean;
-  error?: any;
-};
+// Import expo-av normally - Metro will replace with stub on web platform
+import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 
 const { width, height } = Dimensions.get('window');
 

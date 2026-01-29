@@ -33,10 +33,8 @@ import {
   Platform,
 } from 'react-native';
 
-// Conditionally import expo-av only on native platforms
-const ExpoAV = Platform.OS !== 'web' ? require('expo-av') : null;
-const Video = ExpoAV?.Video;
-const ResizeMode = ExpoAV?.ResizeMode ?? { CONTAIN: 'contain', COVER: 'cover', STRETCH: 'stretch' };
+// Import expo-av normally - Metro will replace with stub on web platform
+import { Video, ResizeMode } from 'expo-av';
 
 import {
   getFirestore,

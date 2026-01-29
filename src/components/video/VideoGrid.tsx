@@ -27,10 +27,8 @@ import { Video as VideoType } from '../../types/Video';
 import { useVideoUpload } from '../../hooks/video/useVideoUpload';
 import { VideoUploadModal } from '../modals/VideoUploadModal';
 
-// Conditionally import expo-av only on native platforms
-const ExpoAV = Platform.OS !== 'web' ? require('expo-av') : null;
-const Video = ExpoAV?.Video;
-const ResizeMode = ExpoAV?.ResizeMode ?? { CONTAIN: 'contain', COVER: 'cover', STRETCH: 'stretch' };
+// Import expo-av normally - Metro will replace with stub on web platform
+import { Video, ResizeMode } from 'expo-av';
 
 const { width, height } = Dimensions.get('window');
 const GRID_COLUMNS = 3;
