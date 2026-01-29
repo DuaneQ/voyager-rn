@@ -132,17 +132,7 @@ export const CrossPlatformDatePicker: React.FC<CrossPlatformDatePickerProps> = (
               WebkitAppearance: 'none',
             } as any}
           />
-          {/* Add a wrapper with CSS to hide browser calendar icon */}
-          <style>{`
-            input[type="date"]::-webkit-calendar-picker-indicator {
-              opacity: 0;
-              position: absolute;
-              right: 0;
-              width: 100%;
-              height: 100%;
-              cursor: pointer;
-            }
-          `}</style>
+          {/* Custom calendar icon overlay - CSS for hiding native icon is in global styles */}
           <Text style={styles.webCalendarIcon}>📅</Text>
         </View>
         {error && errorMessage && (

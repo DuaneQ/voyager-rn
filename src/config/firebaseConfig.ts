@@ -27,7 +27,11 @@ const devConfig = {
 
 const prodConfig = {
   apiKey: "AIzaSyBzRHcKiuCj7vvqJxGDELs2zEXQ0QvQhbk",
-  authDomain: "mundo1-1.firebaseapp.com",
+  // CRITICAL FIX for iOS Safari: Use travalpass.com as authDomain
+  // Safari blocks third-party storage from firebaseapp.com, causing infinite re-render loops.
+  // Using the same domain as hosting makes the auth iframe same-origin.
+  // See: https://firebase.google.com/docs/auth/web/redirect-best-practices
+  authDomain: Platform.OS === 'web' ? "travalpass.com" : "mundo1-1.firebaseapp.com",
   databaseURL: "https://mundo1-1.firebaseio.com",
   projectId: "mundo1-1",
   storageBucket: "mundo1-1.appspot.com",
