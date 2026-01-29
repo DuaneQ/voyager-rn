@@ -21,7 +21,7 @@
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
-import { Video, AVPlaybackStatus, ResizeMode } from 'expo-av';
+import { Video, AVPlaybackStatus, ResizeMode } from '../../adapters/expo-av';
 import { Video as VideoType } from '../../types/Video';
 
 const CLEANUP_TIMEOUT_MS = 500;

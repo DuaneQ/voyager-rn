@@ -10,7 +10,7 @@
 
 import React, { forwardRef, useImperativeHandle, useRef } from 'react';
 import { StyleSheet } from 'react-native';
-import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
+import { Video, ResizeMode, AVPlaybackStatus } from '../../adapters/expo-av';
 
 export interface IOSVideoPlayerProps {
   videoUrl: string;
@@ -96,4 +96,4 @@ const styles = StyleSheet.create({
 });
 
 // Re-export types for convenience
-export { AVPlaybackStatus, ResizeMode } from 'expo-av';
+export { AVPlaybackStatus, ResizeMode } from '../../adapters/expo-av';

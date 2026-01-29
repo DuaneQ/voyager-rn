@@ -16,24 +16,36 @@ import AuthPage from '../pages/AuthPage';
 import ChatPage from '../pages/ChatPage';
 import LandingPage from '../pages/LandingPage.web';
 
-// Pages with expo-av dependency - Use lazy imports
+// Pages with expo-av dependency - Platform-specific loading strategy
 // WHY: On iOS Safari web, loading expo-av at app startup causes
 // "Maximum call stack size exceeded" errors due to deprecation warning handler.
-// By lazy loading these pages, expo-av only loads when user navigates to them.
-// 
-// This works on BOTH web and mobile:
-// - WEB: True code splitting, improves Lighthouse score
-// - MOBILE: Metro bundles everything, but component initialization is deferred
-// 
+//
+// WEB: Lazy load to defer expo-av until navigation (improves Lighthouse score)
+// MOBILE: Direct import for best performance (Metro bundles everything anyway)
+//
 // Dependency chains (expo-av):
 // - VideoFeedPage -> expo-av (Audio, Video directly)
 // - ProfilePage -> VideoGrid -> expo-av (Video)
 // - SearchPage -> ItineraryCard -> ViewProfileModal -> expo-av (Video)
 // - ChatThreadScreen -> ViewProfileModal -> expo-av (Video)
-const VideoFeedPage = lazy(() => import('../pages/VideoFeedPage'));
-const ChatThreadScreen = lazy(() => import('../pages/ChatThreadScreen'));
-const ProfilePage = lazy(() => import('../pages/ProfilePage'));
-const SearchPage = lazy(() => import('../pages/SearchPage'));
+
+// On WEB: Lazy load (code splitting + deferred initialization)
+// On MOBILE: Direct import (no performance penalty from lazy loading)
+const VideoFeedPage = Platform.OS === 'web'
+  ? lazy(() => import('../pages/VideoFeedPage'))
+  : require('../pages/VideoFeedPage').default;
+
+const ChatThreadScreen = Platform.OS === 'web'
+  ? lazy(() => import('../pages/ChatThreadScreen'))
+  : require('../pages/ChatThreadScreen').default;
+
+const ProfilePage = Platform.OS === 'web'
+  ? lazy(() => import('../pages/ProfilePage'))
+  : require('../pages/ProfilePage').default;
+
+const SearchPage = Platform.OS === 'web'
+  ? lazy(() => import('../pages/SearchPage'))
+  : require('../pages/SearchPage').default;
 
 // Loading fallback for lazy-loaded screens
 const LazyLoadFallback: React.FC = () => (
@@ -65,31 +77,44 @@ import { validateProfileForItinerary } from '../utils/profileValidation';
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// Wrapper components for lazy-loaded screens (Suspense is required for React.lazy)
-const VideoFeedPageWrapper: React.FC = () => (
-  <Suspense fallback={<LazyLoadFallback />}>
+// Wrapper components for lazy-loaded screens
+// ONLY use Suspense on web (where lazy loading is actually lazy)
+// On mobile, components are already loaded, so Suspense is unnecessary overhead
+const VideoFeedPageWrapper: React.FC = () =>
+  Platform.OS === 'web' ? (
+    <Suspense fallback={<LazyLoadFallback />}>
+      <VideoFeedPage />
+    </Suspense>
+  ) : (
     <VideoFeedPage />
-  </Suspense>
-);
+  );
 
-// ChatThreadScreen uses useRoute() internally to get params, so no props needed
-const ChatThreadScreenWrapper: React.FC = () => (
-  <Suspense fallback={<LazyLoadFallback />}>
+const ChatThreadScreenWrapper: React.FC = () =>
+  Platform.OS === 'web' ? (
+    <Suspense fallback={<LazyLoadFallback />}>
+      <ChatThreadScreen />
+    </Suspense>
+  ) : (
     <ChatThreadScreen />
-  </Suspense>
-);
+  );
 
-const ProfilePageWrapper: React.FC = () => (
-  <Suspense fallback={<LazyLoadFallback />}>
+const ProfilePageWrapper: React.FC = () =>
+  Platform.OS === 'web' ? (
+    <Suspense fallback={<LazyLoadFallback />}>
+      <ProfilePage />
+    </Suspense>
+  ) : (
     <ProfilePage />
-  </Suspense>
-);
+  );
 
-const SearchPageWrapper: React.FC = () => (
-  <Suspense fallback={<LazyLoadFallback />}>
+const SearchPageWrapper: React.FC = () =>
+  Platform.OS === 'web' ? (
+    <Suspense fallback={<LazyLoadFallback />}>
+      <SearchPage />
+    </Suspense>
+  ) : (
     <SearchPage />
-  </Suspense>
-);
+  );
 
 // Bottom Tab Navigator (replicates BottomNav from PWA)
 const MainTabNavigator: React.FC = () => {
