@@ -62,6 +62,11 @@ const ExpoAVFallbackPlayer: React.FC<AndroidVideoPlayerProps> = ({
   onError,
   onPlaybackStatusUpdate,
 }) => {
+  const expoVideoRef = useRef<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isBuffering, setIsBuffering] = useState(false);
+
   // On web, don't render anything (prevents expo-av from loading)
   if (Platform.OS === 'web') {
     return (
@@ -71,12 +76,19 @@ const ExpoAVFallbackPlayer: React.FC<AndroidVideoPlayerProps> = ({
     );
   }
 
-  // expo-av is only used on native platforms
-  const ExpoAV = require('expo-av');
-  const expoVideoRef = useRef<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isBuffering, setIsBuffering] = useState(false);
+  // expo-av is only used on native platforms - loaded here after web check
+  // to prevent Metro from bundling it in web builds
+  let ExpoAV: any;
+  try {
+    ExpoAV = require('expo-av');
+  } catch (e) {
+    console.error('[AndroidVideoPlayerRNV] Failed to load expo-av:', e);
+    return (
+      <View style={styles.container}>
+        <Text style={styles.errorText}>Video player unavailable</Text>
+      </View>
+    );
+  }
 
   const handlePlaybackStatusUpdate = useCallback((status: any) => {
     if (status.isLoaded) {
