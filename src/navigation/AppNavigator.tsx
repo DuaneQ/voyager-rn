@@ -72,9 +72,10 @@ const VideoFeedPageWrapper: React.FC = () => (
   </Suspense>
 );
 
-const ChatThreadScreenWrapper: React.FC<any> = (props) => (
+// ChatThreadScreen uses useRoute() internally to get params, so no props needed
+const ChatThreadScreenWrapper: React.FC = () => (
   <Suspense fallback={<LazyLoadFallback />}>
-    <ChatThreadScreen {...props} />
+    <ChatThreadScreen />
   </Suspense>
 );
 

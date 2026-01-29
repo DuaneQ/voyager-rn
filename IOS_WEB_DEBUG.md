@@ -490,3 +490,255 @@ After deploying with the new config:
 - [ ] Test on Mac Safari → Should still work
 - [ ] Re-enable OAuth and test Google Sign-In on iOS → Should work with popup
 - [ ] Re-enable OAuth and test Apple Sign-In on iOS → Should work
+
+---
+
+## FINAL FIX: React.lazy() for expo-av Pages (January 29, 2026)
+
+**Status**: ✅ **DEPLOYED TO WEB** | ⚠️ **ANDROID REQUIRES FURTHER TESTING**
+
+### Summary
+
+The `authDomain` fix resolved part of the issue, but the app still crashed on iOS Safari due to **expo-av** being loaded at startup. The deprecation warning handler in expo-av causes an infinite recursion loop specifically on iOS Safari physical devices.
+
+### Solution: Lazy Loading
+
+Changed `src/navigation/AppNavigator.tsx` to use `React.lazy()` for all pages that import expo-av:
+
+```typescript
+// BEFORE (caused crash on iOS Safari)
+import VideoFeedPage from '../pages/VideoFeedPage';
+import ProfilePage from '../pages/ProfilePage';
+import SearchPage from '../pages/SearchPage';
+import ChatThreadScreen from '../pages/ChatThreadScreen';
+
+// AFTER (fixed)
+const VideoFeedPage = lazy(() => import('../pages/VideoFeedPage'));
+const ChatThreadScreen = lazy(() => import('../pages/ChatThreadScreen'));
+const ProfilePage = lazy(() => import('../pages/ProfilePage'));
+const SearchPage = lazy(() => import('../pages/SearchPage'));
+```
+
+### Web Performance Result
+
+| Metric | Before | After |
+|--------|--------|-------|
+| Lighthouse Performance | Crashed | **93** |
+| Landing Page Load | ❌ White screen | ✅ Works |
+
+---
+
+## ⚠️ ANDROID DEPLOYMENT BLOCKED - Performance Issues
+
+**Date**: January 29, 2026  
+**Branch**: `ios-web`  
+**Status**: DO NOT DEPLOY TO ANDROID until performance is resolved
+
+### Observed Android Issues
+
+#### Issue 1: Long Spinner Delay
+
+| Test Device | Connection | Spinner Duration | Result |
+|-------------|------------|------------------|--------|
+| Samsung Galaxy A03s | WiFi | **~28 seconds** | Eventually works |
+| (More testing needed) | | | |
+
+The loading spinner displays for an unacceptable duration on lower-end Android devices before the app becomes navigable.
+
+#### Issue 2: RCTVideo Error (Now has fallback)
+
+**Error**: `Invariant Violation: View config not found for component 'RCTVideo'`
+
+**Status**: Mitigated with fallback to expo-av in `AndroidVideoPlayerRNV.tsx`
+
+The component now detects if `react-native-video` native module is available and falls back to `expo-av` if not:
+
+```typescript
+// AndroidVideoPlayerRNV.tsx - Added fallback detection
+let RNVideo: any = null;
+let useRNVideo = false;
+
+try {
+  const hasNativeModule = UIManager.getViewManagerConfig?.('RCTVideo') != null;
+  if (hasNativeModule) {
+    RNVideo = require('react-native-video').default;
+    useRNVideo = true;
+  }
+} catch (e) {
+  // Fall back to expo-av
+}
+```
+
+### Possible Causes of Android Delay
+
+1. **Firebase/Firestore initialization** - Multiple `Listen/channel` requests observed
+2. **React.lazy on Metro** - Metro doesn't do true code splitting; may be deferring component initialization in a way that's slow
+3. **Network latency** - WiFi-only testing, no cellular
+4. **Device memory constraints** - Samsung A03s has 192MB heap limit
+5. **expo-av deprecation warning** - May still be causing issues on Android
+
+### Logs During Android Delay
+
+```
+[Patched XHR] Opening request: {"isGooglePlaces": true, "method": "POST", 
+  "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?VER=8&database=project"}
+```
+This request repeated 8+ times during the delay.
+
+---
+
+## Files Changed in This Fix
+
+### 1. `src/navigation/AppNavigator.tsx`
+
+**Change**: Converted eager imports to React.lazy() for pages with expo-av dependency
+
+| Line | Before | After |
+|------|--------|-------|
+| Import | `import VideoFeedPage from '...'` | `const VideoFeedPage = lazy(() => import('...'))` |
+| Import | `import ProfilePage from '...'` | `const ProfilePage = lazy(() => import('...'))` |
+| Import | `import SearchPage from '...'` | `const SearchPage = lazy(() => import('...'))` |
+| Import | `import ChatThreadScreen from '...'` | `const ChatThreadScreen = lazy(() => import('...'))` |
+
+Added wrapper components with Suspense:
+```typescript
+const SearchPageWrapper: React.FC = () => (
+  <Suspense fallback={<LazyLoadFallback />}>
+    <SearchPage />
+  </Suspense>
+);
+```
+
+### 2. `src/components/video/AndroidVideoPlayerRNV.tsx`
+
+**Change**: Added expo-av fallback when react-native-video native module unavailable
+
+- Added runtime detection of `RCTVideo` via `UIManager.getViewManagerConfig()`
+- Added complete expo-av Video component as fallback implementation
+- Component gracefully degrades instead of crashing
+
+### 3. `src/__tests__/navigation/AppNavigator.test.tsx`
+
+**Change**: Updated test mocks to work with lazy imports
+
+- All page mocks now return `{ __esModule: true, default: Component }` format
+- Works with both `React.lazy()` and `require().default` patterns
+
+---
+
+## Pre-Android-Deployment Checklist
+
+### Performance Testing Required
+
+| Device Tier | Example Device | Network | Target Spinner | Tested? |
+|-------------|----------------|---------|----------------|---------|
+| Low-end | Samsung A03s | WiFi | < 10 seconds | ❌ |
+| Low-end | Samsung A03s | 4G | < 8 seconds | ❌ |
+| Mid-range | Pixel 4a | WiFi | < 5 seconds | ❌ |
+| Mid-range | Pixel 4a | 4G | < 4 seconds | ❌ |
+| High-end | Pixel 7 | WiFi | < 3 seconds | ❌ |
+
+### Functionality Testing Required
+
+- [ ] App loads without crash
+- [ ] Navigation between all tabs works
+- [ ] Video playback works (with expo-av fallback)
+- [ ] Profile page loads
+- [ ] Search page loads and filters work
+- [ ] Chat functionality works
+- [ ] Firebase auth works
+
+### Investigation Required
+
+- [ ] Profile Firebase initialization time
+- [ ] Profile Firestore listener setup time
+- [ ] Compare performance: Expo Go vs native build (`npx expo run:android`)
+- [ ] Memory profiling on low-memory devices
+- [ ] Test offline/poor network scenarios
+
+---
+
+## Rollback Instructions
+
+### If Web Deployment Fails
+
+1. Revert `src/navigation/AppNavigator.tsx` to eager imports:
+```typescript
+import VideoFeedPage from '../pages/VideoFeedPage';
+import ChatThreadScreen from '../pages/ChatThreadScreen';
+import ProfilePage from '../pages/ProfilePage';
+import SearchPage from '../pages/SearchPage';
+// Remove Suspense wrappers, use components directly in Tab.Screen
+```
+
+2. Git revert:
+```bash
+git log --oneline -10  # Find commit before lazy loading
+git revert <commit-hash>
+```
+
+### If Android Needs Different Approach
+
+**Option 1**: Platform-conditional imports (requires build-time splitting)
+- Would need separate webpack config for web vs mobile
+- Not achievable with current setup (webpack bundles both if/else branches)
+
+**Option 2**: Optimize Firebase/Firestore initialization
+- Lazy initialize Firestore listeners
+- Defer auth state resolution until needed
+
+**Option 3**: Native Android build
+```bash
+npx expo run:android  # Compiles native modules properly
+```
+This properly links react-native-video and may have better performance.
+
+---
+
+## Technical Notes
+
+### Why Platform.OS Conditional Imports Don't Work for Web
+
+Attempted approach that FAILED:
+```typescript
+if (Platform.OS === 'web') {
+  VideoFeedPage = lazy(() => import('../pages/VideoFeedPage'));
+} else {
+  VideoFeedPage = require('../pages/VideoFeedPage').default;
+}
+```
+
+**Why it failed**: Webpack statically analyzes BOTH branches during build time and includes all `require()` calls in the web bundle. The `Platform.OS` check only happens at runtime, after the bundle is already built with both code paths.
+
+### React.lazy() Behavior by Platform
+
+| Platform | Bundler | Bundle Behavior | Runtime Behavior |
+|----------|---------|-----------------|------------------|
+| Web | Webpack | True code splitting | Loads chunk on navigation |
+| iOS/Android | Metro | Single bundle (no splitting) | Defers component initialization |
+
+### expo-av Deprecation
+
+The `expo-av` package is deprecated as of Expo SDK 54:
+```
+[expo-av]: Expo AV has been deprecated and will be removed in SDK 54. 
+Use the `expo-audio` and `expo-video` packages to replace the required functionality.
+```
+
+**Long-term fix**: Migrate to `expo-video` and `expo-audio` packages.
+
+---
+
+## Timeline
+
+| Date | Action | Result |
+|------|--------|--------|
+| Jan 28, 2026 | Identified iOS Safari crash | Stack overflow error |
+| Jan 28, 2026 | Fixed authDomain for Firebase | Partial fix |
+| Jan 29, 2026 | Identified expo-av as root cause | Root cause found |
+| Jan 29, 2026 | Implemented React.lazy() | Web fixed, score 93 |
+| Jan 29, 2026 | Tested Android | 28-second delay observed |
+| Jan 29, 2026 | Added expo-av fallback for Android | RCTVideo crash fixed |
+| Jan 29, 2026 | **Deployed to web** | ✅ Pending verification |
+| TBD | Android performance investigation | ⚠️ BLOCKED |
+| TBD | Android deployment | ⚠️ BLOCKED |
