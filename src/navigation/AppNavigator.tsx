@@ -4,21 +4,52 @@
  * Uses React Navigation instead of React Router
  */
 
-import React, { useEffect, useRef } from 'react';
-import { Platform } from 'react-native';
+import React, { useEffect, useRef, Suspense, lazy } from 'react';
+import { Platform, View, ActivityIndicator, StyleSheet } from 'react-native';
 import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 
-// Pages
+// Pages - Direct imports (no expo-av dependency)
 import AuthPage from '../pages/AuthPage';
-import ProfilePage from '../pages/ProfilePage';
-import SearchPage from '../pages/SearchPage';
 import ChatPage from '../pages/ChatPage';
-import ChatThreadScreen from '../pages/ChatThreadScreen';
-import VideoFeedPage from '../pages/VideoFeedPage';
 import LandingPage from '../pages/LandingPage.web';
+
+// Pages with expo-av dependency - Use lazy imports
+// WHY: On iOS Safari web, loading expo-av at app startup causes
+// "Maximum call stack size exceeded" errors due to deprecation warning handler.
+// By lazy loading these pages, expo-av only loads when user navigates to them.
+// 
+// This works on BOTH web and mobile:
+// - WEB: True code splitting, improves Lighthouse score
+// - MOBILE: Metro bundles everything, but component initialization is deferred
+// 
+// Dependency chains (expo-av):
+// - VideoFeedPage -> expo-av (Audio, Video directly)
+// - ProfilePage -> VideoGrid -> expo-av (Video)
+// - SearchPage -> ItineraryCard -> ViewProfileModal -> expo-av (Video)
+// - ChatThreadScreen -> ViewProfileModal -> expo-av (Video)
+const VideoFeedPage = lazy(() => import('../pages/VideoFeedPage'));
+const ChatThreadScreen = lazy(() => import('../pages/ChatThreadScreen'));
+const ProfilePage = lazy(() => import('../pages/ProfilePage'));
+const SearchPage = lazy(() => import('../pages/SearchPage'));
+
+// Loading fallback for lazy-loaded screens
+const LazyLoadFallback: React.FC = () => (
+  <View style={lazyStyles.container}>
+    <ActivityIndicator size="large" color="#007AFF" />
+  </View>
+);
+
+const lazyStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#000',
+  },
+});
 
 // Guards
 import { TermsGuard } from '../components/auth/TermsGuard';
@@ -34,6 +65,32 @@ import { validateProfileForItinerary } from '../utils/profileValidation';
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
+// Wrapper components for lazy-loaded screens (Suspense is required for React.lazy)
+const VideoFeedPageWrapper: React.FC = () => (
+  <Suspense fallback={<LazyLoadFallback />}>
+    <VideoFeedPage />
+  </Suspense>
+);
+
+// ChatThreadScreen uses useRoute() internally to get params, so no props needed
+const ChatThreadScreenWrapper: React.FC = () => (
+  <Suspense fallback={<LazyLoadFallback />}>
+    <ChatThreadScreen />
+  </Suspense>
+);
+
+const ProfilePageWrapper: React.FC = () => (
+  <Suspense fallback={<LazyLoadFallback />}>
+    <ProfilePage />
+  </Suspense>
+);
+
+const SearchPageWrapper: React.FC = () => (
+  <Suspense fallback={<LazyLoadFallback />}>
+    <SearchPage />
+  </Suspense>
+);
+
 // Bottom Tab Navigator (replicates BottomNav from PWA)
 const MainTabNavigator: React.FC = () => {
   return (
@@ -46,7 +103,7 @@ const MainTabNavigator: React.FC = () => {
     >
       <Tab.Screen 
         name="Search" 
-        component={SearchPage}
+        component={SearchPageWrapper}
         options={{ 
           title: 'TravalMatch',
           tabBarIcon: ({ focused, color, size }) => (
@@ -60,7 +117,7 @@ const MainTabNavigator: React.FC = () => {
       />
       <Tab.Screen 
         name="Videos" 
-        component={VideoFeedPage}
+        component={VideoFeedPageWrapper}
         options={{ 
           title: 'Travals',
           tabBarIcon: ({ focused, color, size }) => (
@@ -94,7 +151,7 @@ const MainTabNavigator: React.FC = () => {
       />
       <Tab.Screen 
         name="Profile" 
-        component={ProfilePage}
+        component={ProfilePageWrapper}
         options={{ 
           title: 'Profile',
           tabBarIcon: ({ focused, color, size }) => (
@@ -156,7 +213,7 @@ const RootNavigator: React.FC = () => {
         // User is authenticated and verified - check terms acceptance before showing main app
         <>
           <Stack.Screen name="MainApp" component={GuardedMainTabNavigator} />
-          <Stack.Screen name="ChatThread" component={ChatThreadScreen} />
+          <Stack.Screen name="ChatThread" component={ChatThreadScreenWrapper} />
         </>
       ) : showLandingPage ? (
         // Web only: Show landing page for completely unauthenticated users (no Firebase user)

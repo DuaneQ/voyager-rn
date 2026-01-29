@@ -2,160 +2,158 @@
  * AndroidVideoPlayerRNV.tsx
  * 
  * react-native-video v6 implementation for Android video feeds
+ * WITH FALLBACK to expo-av when native module isn't available
  * 
- * TEST 9: Downgraded from v7 beta to v6.19.0 stable (January 22, 2026)
+ * ARCHITECTURE:
+ * - Detects react-native-video availability at module load time
+ * - Uses composition pattern (not conditional hooks) to avoid Rules of Hooks violation
+ * - expo-av is dynamically imported ONLY when needed (preserves lazy loading benefit)
  * 
  * Why react-native-video v6:
- * - v7 beta has completely different API (useVideoPlayer + VideoView)
- * - v6 uses familiar <Video> component with onLoad, onBuffer, paused props
- * - v6.19.0 is stable, released Jan 2026, used by 32k+ projects
  * - Better MediaCodec/ExoPlayer memory management than expo-av
  * - Explicit pause control via `paused` prop
- * 
- * Key differences from expo-av:
- * - Uses `paused` prop (not `shouldPlay`)
- * - Uses `onLoad` (not `onPlaybackStatusUpdate` for load)
- * - Uses `onBuffer` for buffering states
- * - `bufferConfig` for memory optimization
- * - Better native cleanup on unmount
+ * - v6.19.0 is stable, used by 32k+ projects
  * 
  * Device Target: Samsung Galaxy A03s (192MB heap limit)
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
-import Video from 'react-native-video';
-import type { VideoRef, OnLoadData, OnBufferData, OnProgressData } from 'react-native-video';
+import { View, ActivityIndicator, Text, StyleSheet, UIManager } from 'react-native';
 import { Video as VideoType } from '../../types/Video';
+
+// Detect if react-native-video is available at module load time
+let RNVideo: any = null;
+let useRNVideo = false;
+
+try {
+  const hasNativeModule = UIManager.getViewManagerConfig?.('RCTVideo') != null;
+  if (hasNativeModule) {
+    RNVideo = require('react-native-video').default;
+    useRNVideo = true;
+    console.log('[AndroidVideoPlayerRNV] Using react-native-video');
+  } else {
+    console.log('[AndroidVideoPlayerRNV] RCTVideo not found, will use expo-av fallback');
+  }
+} catch (e) {
+  console.log('[AndroidVideoPlayerRNV] react-native-video not available, will use expo-av fallback');
+}
 
 interface AndroidVideoPlayerProps {
   video: VideoType;
   isActive: boolean;
   isMuted: boolean;
-  isPaused?: boolean; // User tap-to-pause control (separate from isActive scroll control)
+  isPaused?: boolean;
   onLoad?: () => void;
   onError?: (error: string) => void;
   onPlaybackStatusUpdate?: (status: any) => void;
 }
 
-export const AndroidVideoPlayerRNV: React.FC<AndroidVideoPlayerProps> = ({
+// ============================================
+// FALLBACK COMPONENT: expo-av implementation
+// Separate component to avoid Rules of Hooks violation
+// expo-av is dynamically imported to preserve lazy loading benefit
+// ============================================
+const ExpoAVFallbackPlayer: React.FC<AndroidVideoPlayerProps> = ({
   video,
   isActive,
   isMuted,
-  isPaused = false, // Default to not paused
+  isPaused = false,
   onLoad,
   onError,
   onPlaybackStatusUpdate,
 }) => {
-  const videoRef = useRef<VideoRef>(null);
+  // Dynamic import of expo-av - only loads when this component renders
+  const [ExpoVideo, setExpoVideo] = useState<any>(null);
+  const [ResizeMode, setResizeMode] = useState<any>(null);
+  const expoVideoRef = useRef<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isBuffering, setIsBuffering] = useState(false);
 
-  /**
-   * Cleanup on unmount
-   * react-native-video handles MediaCodec cleanup internally
-   */
+  // Load expo-av dynamically
   useEffect(() => {
-    return () => {
-      // Reset position for when component is recycled
-      videoRef.current?.seek(0);
-    };
-  }, [video.id]);
-
-  /**
-   * Handle buffer events
-   */
-  const handleBuffer = useCallback((data: OnBufferData) => {
-    setIsBuffering(data.isBuffering);
+    let mounted = true;
+    import('expo-av').then((module) => {
+      if (mounted) {
+        setExpoVideo(() => module.Video);
+        setResizeMode(module.ResizeMode);
+      }
+    }).catch((err) => {
+      console.error('[ExpoAV Fallback] Failed to load expo-av:', err);
+      if (mounted) {
+        setError('Failed to load video player');
+        setIsLoading(false);
+      }
+    });
+    return () => { mounted = false; };
   }, []);
 
-  /**
-   * Handle video load
-   */
-  const handleLoad = useCallback((data: OnLoadData) => {
-    setIsLoading(false);
-    setError(null);
-    onLoad?.();
-  }, [onLoad]);
+  const handlePlaybackStatusUpdate = useCallback((status: any) => {
+    if (status.isLoaded) {
+      setIsLoading(false);
+      setIsBuffering(status.isBuffering || false);
+      onPlaybackStatusUpdate?.(status);
+    }
+  }, [onPlaybackStatusUpdate]);
 
-  /**
-   * Handle playback progress
-   */
-  const handleProgress = useCallback((data: OnProgressData) => {
-    // Pass progress to parent if needed
-    onPlaybackStatusUpdate?.({
-      isLoaded: true,
-      isPlaying: !data.playableDuration || data.currentTime < data.playableDuration,
-      positionMillis: data.currentTime * 1000,
-      durationMillis: data.playableDuration * 1000,
-      shouldPlay: isActive,
-    } as any);
-  }, [isActive, onPlaybackStatusUpdate]);
-
-  /**
-   * Handle errors
-   */
-  const handleError = useCallback((err: any) => {
-    const errorMsg = err?.error?.errorString || err?.error?.localizedDescription || 'Unknown error';
-    console.error(`[RNV] ❌ ERROR: ${video.id}`, errorMsg);
+  const handleExpoError = useCallback((errorMsg: string) => {
+    console.error(`[ExpoAV Fallback] ❌ ERROR: ${video.id}`, errorMsg);
     setError(errorMsg);
     setIsLoading(false);
     onError?.(errorMsg);
   }, [video.id, onError]);
 
-  /**
-   * Handle video end - reset position for potential replay
-   */
-  const handleEnd = useCallback(() => {
-    // Reset to beginning for potential replay
-    videoRef.current?.seek(0);
-  }, []);
+  const handleExpoLoad = useCallback(() => {
+    setIsLoading(false);
+    setError(null);
+    onLoad?.();
+  }, [onLoad]);
+
+  // Control playback
+  useEffect(() => {
+    if (expoVideoRef.current) {
+      if (isActive && !isPaused) {
+        expoVideoRef.current.playAsync?.();
+      } else {
+        expoVideoRef.current.pauseAsync?.();
+      }
+    }
+  }, [isActive, isPaused]);
+
+  // Show loading while expo-av is being imported
+  if (!ExpoVideo || !ResizeMode) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#FFFFFF" />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container} pointerEvents="none">
-      <Video
-        ref={videoRef}
+      <ExpoVideo
+        ref={expoVideoRef}
         source={{ uri: video.videoUrl }}
         style={styles.video}
-        resizeMode="cover"
-        // CRITICAL: Pause when not active OR user manually paused
-        paused={!isActive || isPaused}
-        repeat={false}
-        muted={isMuted}
-        // Event handlers
-        onBuffer={handleBuffer}
-        onLoad={handleLoad}
-        onProgress={handleProgress}
-        onError={handleError}
-        onEnd={handleEnd}
-        // Poster image while loading
-        poster={video.thumbnailUrl}
-        posterResizeMode="cover"
-        // Memory optimization
-        playInBackground={false}
-        playWhenInactive={false}
-        // CRITICAL: Buffer configuration for memory management on low-memory devices
-        bufferConfig={{
-          minBufferMs: 10000,          // 10s minimum buffer (reduced for memory)
-          maxBufferMs: 20000,          // 20s maximum buffer (reduced for memory)
-          bufferForPlaybackMs: 2000,   // 2s before starting playback
-          bufferForPlaybackAfterRebufferMs: 3000,  // 3s after rebuffer
-        }}
-        // Disable controls (we have our own UI)
-        controls={false}
-        // Progress interval for onProgress callback
-        progressUpdateInterval={500}
+        resizeMode={ResizeMode.COVER}
+        shouldPlay={isActive && !isPaused}
+        isLooping
+        isMuted={isMuted}
+        onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
+        onLoad={handleExpoLoad}
+        onError={(err: any) => handleExpoError(err || 'Unknown error')}
+        usePoster
+        posterSource={{ uri: video.thumbnailUrl || '' }}
       />
       
-      {/* Loading indicator */}
       {(isLoading || isBuffering) && (
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color="#FFFFFF" />
         </View>
       )}
 
-      {/* Error state */}
       {error && !isLoading && (
         <View style={styles.errorOverlay}>
           <Text style={styles.errorText}>Failed to load video</Text>
@@ -164,6 +162,121 @@ export const AndroidVideoPlayerRNV: React.FC<AndroidVideoPlayerProps> = ({
       )}
     </View>
   );
+};
+
+// ============================================
+// PRIMARY COMPONENT: react-native-video implementation
+// ============================================
+const RNVideoPlayer: React.FC<AndroidVideoPlayerProps> = ({
+  video,
+  isActive,
+  isMuted,
+  isPaused = false,
+  onLoad,
+  onError,
+  onPlaybackStatusUpdate,
+}) => {
+  const videoRef = useRef<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isBuffering, setIsBuffering] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      videoRef.current?.seek?.(0);
+    };
+  }, [video.id]);
+
+  const handleBuffer = useCallback((data: any) => {
+    setIsBuffering(data?.isBuffering || false);
+  }, []);
+
+  const handleLoad = useCallback((data: any) => {
+    setIsLoading(false);
+    setError(null);
+    onLoad?.();
+  }, [onLoad]);
+
+  const handleProgress = useCallback((data: any) => {
+    onPlaybackStatusUpdate?.({
+      isLoaded: true,
+      isPlaying: !data?.playableDuration || data?.currentTime < data?.playableDuration,
+      positionMillis: (data?.currentTime || 0) * 1000,
+      durationMillis: (data?.playableDuration || 0) * 1000,
+      shouldPlay: isActive,
+    });
+  }, [isActive, onPlaybackStatusUpdate]);
+
+  const handleError = useCallback((err: any) => {
+    const errorMsg = err?.error?.errorString || err?.error?.localizedDescription || 'Unknown error';
+    console.error(`[RNV] ❌ ERROR: ${video.id}`, errorMsg);
+    setError(errorMsg);
+    setIsLoading(false);
+    onError?.(errorMsg);
+  }, [video.id, onError]);
+
+  const handleEnd = useCallback(() => {
+    videoRef.current?.seek?.(0);
+  }, []);
+
+  const VideoComponent = RNVideo;
+
+  return (
+    <View style={styles.container} pointerEvents="none">
+      <VideoComponent
+        ref={videoRef}
+        source={{ uri: video.videoUrl }}
+        style={styles.video}
+        resizeMode="cover"
+        paused={!isActive || isPaused}
+        repeat={false}
+        muted={isMuted}
+        onBuffer={handleBuffer}
+        onLoad={handleLoad}
+        onProgress={handleProgress}
+        onError={handleError}
+        onEnd={handleEnd}
+        poster={video.thumbnailUrl}
+        posterResizeMode="cover"
+        playInBackground={false}
+        playWhenInactive={false}
+        bufferConfig={{
+          minBufferMs: 10000,
+          maxBufferMs: 20000,
+          bufferForPlaybackMs: 2000,
+          bufferForPlaybackAfterRebufferMs: 3000,
+        }}
+        controls={false}
+        progressUpdateInterval={500}
+      />
+      
+      {(isLoading || isBuffering) && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#FFFFFF" />
+        </View>
+      )}
+
+      {error && !isLoading && (
+        <View style={styles.errorOverlay}>
+          <Text style={styles.errorText}>Failed to load video</Text>
+          <Text style={styles.errorDetails}>{error}</Text>
+        </View>
+      )}
+    </View>
+  );
+};
+
+// ============================================
+// MAIN EXPORT: Chooses implementation based on availability
+// No conditional hooks - just renders the appropriate component
+// ============================================
+export const AndroidVideoPlayerRNV: React.FC<AndroidVideoPlayerProps> = (props) => {
+  // Composition pattern: render one component or the other
+  // This avoids the Rules of Hooks violation
+  if (useRNVideo) {
+    return <RNVideoPlayer {...props} />;
+  }
+  return <ExpoAVFallbackPlayer {...props} />;
 };
 
 const styles = StyleSheet.create({
