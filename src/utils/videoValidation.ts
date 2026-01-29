@@ -4,7 +4,7 @@
  */
 
 import { Platform } from 'react-native';
-import { Audio } from 'expo-av';
+import { createVideoPlayer } from 'expo-video';
 import * as VideoThumbnails from 'expo-video-thumbnails';
 import * as FileSystem from 'expo-file-system/legacy';
 import { VideoValidationResult, VIDEO_CONSTRAINTS } from '../types/Video';
@@ -62,21 +62,53 @@ export const validateVideoFile = async (
 
 /**
  * Gets the duration of a video file
- * Uses expo-av for React Native
+ * Uses expo-video createVideoPlayer for React Native
+ * Falls back to a simple check on web
  */
 export const getVideoDuration = async (uri: string): Promise<number> => {
-  try {
-    const { sound, status } = await Audio.Sound.createAsync(
-      { uri },
-      { shouldPlay: false }
-    );
+  // On web, we can't easily get duration without a DOM element
+  // The validation will be skipped on web (see validateVideoFile)
+  if (Platform.OS === 'web') {
+    // Return a default duration to pass validation on web
+    // Server-side validation will catch any issues
+    return 30;
+  }
 
-    if (status.isLoaded && status.durationMillis) {
-      await sound.unloadAsync();
-      return status.durationMillis / 1000; // Convert to seconds
+  try {
+    const player = createVideoPlayer({ uri });
+    
+    // Wait for the player to load and provide duration
+    // The player needs a brief moment to load metadata
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Timeout waiting for video metadata'));
+      }, 10000); // 10 second timeout
+
+      const checkDuration = () => {
+        if (player.duration > 0) {
+          clearTimeout(timeout);
+          resolve();
+        } else if (player.status === 'error') {
+          clearTimeout(timeout);
+          reject(new Error('Failed to load video'));
+        } else {
+          // Check again in 100ms
+          setTimeout(checkDuration, 100);
+        }
+      };
+      
+      checkDuration();
+    });
+
+    const duration = player.duration;
+    
+    // Clean up the player
+    player.release();
+
+    if (duration > 0) {
+      return duration;
     }
 
-    await sound.unloadAsync();
     throw new Error('Could not load video duration');
   } catch (error) {
     throw new Error('Failed to load video metadata');

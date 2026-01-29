@@ -71,7 +71,8 @@
     ],
     "plugins": [
       "./plugins/withGooglePlacesAndroid",
-      "expo-video"
+      "expo-video",
+      "expo-audio"
     ],
     "extra": {
       "eas": {

@@ -14,9 +14,10 @@
  */
 
 import { Platform } from 'react-native';
-import { Video } from 'expo-av';
 
-export type VideoPlayerRef = Video | null;
+// Type-only import to avoid loading expo-av on web
+// The actual Video ref is only used on native platforms
+export type VideoPlayerRef = any;
 
 export interface VideoPlaybackRegistration {
   videoId: string;

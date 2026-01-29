@@ -11,6 +11,9 @@
  * - Videos tab: video gallery
  * - Block user: updates blocked list, removes connections
  * - Report user: sends report to Firestore
+ * 
+ * PLATFORM NOTES:
+ * - expo-av is NOT imported on web to avoid iOS Safari crash
  */
 
 import React, { useState, useEffect, useContext } from 'react';
@@ -27,8 +30,14 @@ import {
   Dimensions,
   SafeAreaView,
   TextInput,
+  Platform,
 } from 'react-native';
-import { Video, ResizeMode } from 'expo-av';
+
+// Conditionally import expo-av only on native platforms
+const ExpoAV = Platform.OS !== 'web' ? require('expo-av') : null;
+const Video = ExpoAV?.Video;
+const ResizeMode = ExpoAV?.ResizeMode ?? { CONTAIN: 'contain', COVER: 'cover', STRETCH: 'stretch' };
+
 import {
   getFirestore,
   doc,

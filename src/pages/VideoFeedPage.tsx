@@ -16,7 +16,7 @@ import {
   SafeAreaView,
   Platform,
 } from 'react-native';
-import { Audio } from 'expo-av';
+import { setAudioModeAsync } from 'expo-audio';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { VideoCard } from '../components/video/VideoCard';
@@ -99,23 +99,19 @@ const VideoFeedPage: React.FC = () => {
       try {
         if (Platform.OS === 'ios') {
           // iOS: Set audio category to play even when silent switch is on
-          await Audio.setAudioModeAsync({
-            playsInSilentModeIOS: true,  // 🔑 KEY FIX for iOS physical devices!
-            staysActiveInBackground: false,
-            shouldDuckAndroid: false,
-            allowsRecordingIOS: false,
-            interruptionModeIOS: 2, // Duck other audio (standard for video apps)
+          await setAudioModeAsync({
+            playsInSilentMode: true,  // 🔑 KEY FIX for iOS physical devices!
+            shouldPlayInBackground: false,
+            allowsRecording: false,
+            interruptionMode: 'duckOthers', // Duck other audio (standard for video apps)
           });
           
         } else if (Platform.OS === 'android') {
-          await Audio.setAudioModeAsync({
-            allowsRecordingIOS: false,
-            staysActiveInBackground: false,
-            // Avoid referencing interruptionModeAndroid constants directly
-            // (SDK differences). Keep shouldDuckAndroid false to avoid
-            // silent ducking on emulator images.
-            shouldDuckAndroid: false,
-            playThroughEarpieceAndroid: false,
+          await setAudioModeAsync({
+            shouldPlayInBackground: false,
+            // Keep interruptionMode to doNotMix to avoid ducking issues
+            interruptionMode: 'doNotMix',
+            shouldRouteThroughEarpiece: false,
           });
           
         }

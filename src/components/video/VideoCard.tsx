@@ -2,6 +2,14 @@
  * VideoCard Component
  * Displays a single video with player, overlay info, and interaction buttons
  * Optimized for mobile vertical feed (TikTok-style)
+ * 
+ * PLATFORM NOTES:
+ * - Web: Uses native HTML5 <video> element (no expo-av)
+ * - Android: Uses AndroidVideoPlayerRNV (react-native-video with expo-av fallback)
+ * - iOS: Uses expo-av Video component
+ * 
+ * IMPORTANT: expo-av is NOT imported on web to avoid iOS Safari crash
+ * caused by the deprecation warning infinite loop bug.
  */
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -15,12 +23,27 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { Video as VideoType } from '../../types/Video';
 import * as firebaseConfig from '../../config/firebaseConfig';
 import { videoPlaybackManager } from '../../services/video/VideoPlaybackManager';
 import { AndroidVideoPlayerRNV } from './AndroidVideoPlayerRNV'; // TEST 8: react-native-video migration
+
+// Conditionally import expo-av only on iOS to avoid iOS Safari crash
+// The expo-av deprecation warning causes infinite loop on iOS Safari web
+const ExpoAV = Platform.OS === 'ios' ? require('expo-av') : null;
+const Video = ExpoAV?.Video;
+const ResizeMode = ExpoAV?.ResizeMode ?? { CONTAIN: 'contain', COVER: 'cover', STRETCH: 'stretch' };
+
+// Type definition for AVPlaybackStatus (used regardless of platform)
+type AVPlaybackStatus = {
+  isLoaded: boolean;
+  didJustFinish?: boolean;
+  positionMillis?: number;
+  durationMillis?: number;
+  isPlaying?: boolean;
+  error?: any;
+};
 
 const { width, height } = Dimensions.get('window');
 
@@ -47,7 +70,8 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
   onReport,
   onViewTracked,
 }) => {
-  const videoRef = useRef<Video>(null);
+  // Video ref - typed as 'any' because expo-av is conditionally loaded
+  const videoRef = useRef<any>(null);
   const webVideoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   // Track if user manually paused (vs auto-pause during scroll)
