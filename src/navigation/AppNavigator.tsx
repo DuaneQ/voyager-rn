@@ -143,11 +143,10 @@ const RootNavigator: React.FC = () => {
   // Check if user exists but is not verified (signed up but needs to verify email)
   const hasUnverifiedUser = user && !user.emailVerified;
   
-  // TEMPORARILY DISABLED LANDING PAGE FOR iOS DEBUGGING
   // On web, show landing page for completely unauthenticated users (no user at all)
   // If user exists but is unverified, show Auth page directly (not landing page)
   // On mobile (iOS/Android), always go directly to auth page
-  const showLandingPage = false; // Platform.OS === 'web' && !user;
+  const showLandingPage = Platform.OS === 'web' && !user;
   
   return (
     <Stack.Navigator
@@ -174,7 +173,7 @@ const RootNavigator: React.FC = () => {
           {Platform.OS === 'web' && <Stack.Screen name="Landing" component={LandingPage} />}
         </>
       ) : (
-        // Mobile (iOS/Android) AND WEB (temporary): Show auth page directly
+        // Mobile (iOS/Android): Show auth page directly
         <Stack.Screen name="Auth" component={AuthPage} />
       )}
     </Stack.Navigator>

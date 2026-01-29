@@ -10,8 +10,8 @@ import AppleSignInButton from '../buttons/AppleSignInButton';
 
 interface LoginFormProps {
   onSubmit: (email: string, password: string) => Promise<void>;
-  onGoogleSignIn?: () => void; // Optional
-  onAppleSignIn?: () => void;  // Optional
+  onGoogleSignIn: () => void;
+  onAppleSignIn: () => void;
   onForgotPassword: () => void;
   onResendVerification: () => void;
   onSignUpPress: () => void;
@@ -131,40 +131,31 @@ const LoginForm: React.FC<LoginFormProps> = ({
         </TouchableOpacity>
       </View>
 
-      {/* Divider and OAuth buttons - only show if handlers provided */}
-      {(onGoogleSignIn || onAppleSignIn) && (
-        <>
-          <View style={styles.dividerContainer}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or</Text>
-            <View style={styles.dividerLine} />
-          </View>
+      <View style={styles.dividerContainer}>
+        <View style={styles.dividerLine} />
+        <Text style={styles.dividerText}>or</Text>
+        <View style={styles.dividerLine} />
+      </View>
 
-          {onGoogleSignIn && (
-            <TouchableOpacity testID="google-signin-button" style={[styles.button, styles.googleButton]} onPress={onGoogleSignIn} disabled={isLoading}>
-              <View style={styles.googleButtonContent}>
-                <GoogleIcon size={18} />
-                <Text style={styles.googleButtonText}>Sign in with Google</Text>
-              </View>
-            </TouchableOpacity>
-          )}
+      <TouchableOpacity testID="google-signin-button" style={[styles.button, styles.googleButton]} onPress={onGoogleSignIn} disabled={isLoading}>
+        <View style={styles.googleButtonContent}>
+          <GoogleIcon size={18} />
+          <Text style={styles.googleButtonText}>Sign in with Google</Text>
+        </View>
+      </TouchableOpacity>
 
-          {/* Apple Sign-In Button - iOS Only */}
-          {onAppleSignIn && (
-            <AppleSignInButton 
-              onPress={onAppleSignIn}
-              buttonType="sign-in"
-              isLoading={isLoading}
-            />
-          )}
+      {/* Apple Sign-In Button - iOS Only */}
+      <AppleSignInButton 
+        onPress={onAppleSignIn}
+        buttonType="sign-in"
+        isLoading={isLoading}
+      />
 
-          <View style={styles.dividerContainer}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or</Text>
-            <View style={styles.dividerLine} />
-          </View>
-        </>
-      )}
+      <View style={styles.dividerContainer}>
+        <View style={styles.dividerLine} />
+        <Text style={styles.dividerText}>or</Text>
+        <View style={styles.dividerLine} />
+      </View>
 
       <View style={styles.signupContainer}>
         <Text style={styles.signupText}>Don't have an account? </Text>

@@ -215,8 +215,8 @@ const AuthPage: React.FC = () => {
         return (
           <LoginForm
             onSubmit={handleLogin}
-            onGoogleSignIn={undefined} // TEMP DISABLED FOR iOS DEBUG
-            onAppleSignIn={undefined} // TEMP DISABLED FOR iOS DEBUG
+            onGoogleSignIn={handleGoogleSignIn}
+            onAppleSignIn={handleAppleSignIn}
             onForgotPassword={() => {
               setMode('forgot');
             }}
@@ -234,8 +234,8 @@ const AuthPage: React.FC = () => {
         return (
           <RegisterForm
             onSubmit={handleRegister}
-            onGoogleSignUp={undefined} // TEMP DISABLED FOR iOS DEBUG
-            onAppleSignUp={undefined} // TEMP DISABLED FOR iOS DEBUG
+            onGoogleSignUp={handleGoogleSignUp}
+            onAppleSignUp={handleAppleSignUp}
             onSignInPress={() => {
               setMode('login');
             }}

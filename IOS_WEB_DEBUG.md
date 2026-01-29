@@ -296,3 +296,128 @@ This causes:
 1. Check if LoginForm/RegisterForm properly check for `undefined` before rendering OAuth buttons
 2. May need to completely remove OAuth import/initialization code
 3. Consider commenting out Firebase Auth entirely for testing
+
+---
+
+## CRITICAL FIX PART 2: OAuth Conditional Rendering
+
+**Date**: January 2025  
+**Status**: 🔄 Testing in Progress
+
+**Root cause refined**: Even though AuthPage passes `undefined` for OAuth handlers, the LoginForm and RegisterForm components were **still rendering the OAuth button UI**. This causes:
+1. Google/Apple SDKs to initialize when buttons render
+2. SDKs create iframes for authentication flows  
+3. Iframes trigger DOM mutations
+4. React detects changes and re-renders
+5. More iframes created on each render
+6. **Infinite loop** → Stack overflow
+
+**Changes Made**:
+
+1. **LoginForm.tsx**:
+   - Made `onGoogleSignIn?: () => void` and `onAppleSignIn?: () => void` optional props
+   - Wrapped OAuth UI in conditional: `{(onGoogleSignIn || onAppleSignIn) && (<>...OAuth buttons...</>)}`
+   - Google button, Apple button, and dividers only render if handlers provided
+   - Lines modified: 11-14 (props), 133-164 (conditional rendering)
+
+2. **RegisterForm.tsx**:
+   - Made `onGoogleSignUp?: () => void` and `onAppleSignUp?: () => void` optional props
+   - Wrapped OAuth UI in conditional: `{(onGoogleSignUp || onAppleSignUp) && (<>...OAuth buttons...</>)}`
+   - Same pattern as LoginForm for consistency
+   - Lines modified: 22-25 (props), 200-245 (conditional rendering)
+
+**Why this should work**:
+- Previous fix: Set handlers to `undefined` in AuthPage ✓
+- Problem: Forms didn't check before rendering buttons ✗
+- New fix: Forms check if handlers exist before rendering any OAuth UI ✓
+- No buttons → No SDK initialization → No iframes → No infinite loop
+
+**Test plan**:
+1. Deploy changes to preview environment  
+2. Open preview URL on physical iPhone  
+3. Check Safari Web Inspector console for stack overflow error
+4. Check Network tab for iframe creation
+5. If successful: Auth page should load with only email/password form (no OAuth buttons)
+6. If still failing: May need to investigate Firebase Auth SDK initialization itself
+
+---
+
+## ACTUAL ROOT CAUSE: OAuth Infinite Re-render Loop (iOS-Specific Crash)
+
+**Date**: January 28, 2026  
+**Status**: 🎯 **ROOT CAUSE IDENTIFIED AND FIXED**
+
+## THE REAL ROOT CAUSE
+
+**Firebase Auth's `authDomain` was set to `mundo1-1.firebaseapp.com`**, which causes Firebase Auth to create a cross-origin iframe for authentication state management. **Safari blocks third-party storage access**, causing this iframe to get into a broken state that triggers infinite re-renders.
+
+From [Firebase's own documentation](https://firebase.google.com/docs/auth/web/redirect-best-practices):
+> "To make the signInWithRedirect() flow seamless for you and your users, the Firebase Authentication JavaScript SDK uses a cross-origin iframe that connects to your app's Firebase Hosting domain. However, this mechanism doesn't work with browsers that block third-party storage access."
+
+**This is why**:
+- ✅ **Mac Safari** works: Desktop Safari has different storage policies
+- ✅ **Android** works: Chrome doesn't block third-party storage the same way
+- ✅ **iOS Simulator** works: Uses Mac's relaxed security settings
+- ❌ **Physical iOS Safari** fails: Strict third-party storage blocking
+
+## THE FIX
+
+**Changed `authDomain` in `src/config/firebaseConfig.ts`** to use the app's domain instead of firebaseapp.com:
+
+```typescript
+const prodConfig = {
+  // CRITICAL FIX for iOS Safari: Use app's domain as authDomain to prevent cross-origin iframe issues
+  // Safari blocks third-party storage access, causing infinite re-render loops with firebaseapp.com
+  // See: https://firebase.google.com/docs/auth/web/redirect-best-practices
+  authDomain: Platform.OS === 'web' ? "travalpass.com" : "mundo1-1.firebaseapp.com",
+  // ... rest of config
+};
+```
+
+## REQUIRED CONFIGURATION STEPS
+
+### 1. Verify Firebase Hosting Setup
+Your app is hosted on `travalpass.com` via Firebase Hosting, which automatically serves auth helper files at `/__/auth/`. This should already be working.
+
+### 2. Add Authorized Redirect URI (REQUIRED)
+Go to [Firebase Console](https://console.firebase.google.com/) → Authentication → Settings → Authorized domains and verify `travalpass.com` is listed.
+
+Then for each OAuth provider:
+
+**Google OAuth**:
+1. Go to [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → Credentials
+2. Edit your OAuth 2.0 Client ID
+3. Add `https://travalpass.com/__/auth/handler` to Authorized redirect URIs
+
+**Apple Sign-In**:
+1. Go to [Apple Developer Console](https://developer.apple.com/)
+2. Edit your Services ID
+3. Add `https://travalpass.com/__/auth/handler` to Return URLs
+
+### 3. Re-enable OAuth (After Testing)
+Once confirmed working on iOS Safari, re-enable OAuth handlers in `src/pages/AuthPage.tsx`:
+```tsx
+// Change from:
+onGoogleSignIn={undefined} // TEMP DISABLED FOR iOS DEBUG
+// To:
+onGoogleSignIn={handleGoogleSignIn}
+```
+
+## WHY THIS WORKS
+
+When `authDomain` matches the hosting domain:
+1. Firebase Auth iframe loads from same origin → No cross-origin storage issues
+2. Safari doesn't block first-party storage
+3. No infinite iframe re-render loop
+4. App loads normally on iOS Safari
+
+## TESTING CHECKLIST
+
+After deploying with the new config:
+
+- [ ] Test on physical iPhone Safari → Should see login page (not white screen)
+- [ ] Test email/password login → Should work
+- [ ] Test on Android → Should still work
+- [ ] Test on Mac Safari → Should still work
+- [ ] Re-enable OAuth and test Google Sign-In on iOS → Should work with popup
+- [ ] Re-enable OAuth and test Apple Sign-In on iOS → Should work

@@ -15,10 +15,47 @@ import { getFunctions } from 'firebase/functions';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+/**
+ * CRITICAL FIX for iOS Safari: Dynamic authDomain based on current hostname
+ * 
+ * Firebase Auth creates a cross-origin iframe to authDomain for session management.
+ * Safari blocks third-party storage access, causing infinite re-render loops when
+ * authDomain doesn't match the hosting domain.
+ * 
+ * Solution: On web, use the current hostname as authDomain so the iframe is same-origin.
+ * This works for:
+ * - Production: travalpass.com
+ * - Firebase Hosting preview URLs: mundo1-dev--pr48-*.web.app
+ * - Dev server: localhost
+ * 
+ * See: https://firebase.google.com/docs/auth/web/redirect-best-practices
+ */
+const getWebAuthDomain = (fallbackDomain: string): string => {
+  if (Platform.OS !== 'web') {
+    return fallbackDomain;
+  }
+  
+  // On web, use current hostname to avoid cross-origin iframe issues on iOS Safari
+  if (typeof window !== 'undefined' && window.location?.hostname) {
+    const hostname = window.location.hostname;
+    
+    // For localhost dev server, use the default firebaseapp.com domain
+    // (cross-origin issues don't affect localhost the same way)
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return fallbackDomain;
+    }
+    
+    // For any Firebase Hosting domain (including preview URLs), use current hostname
+    // This includes: travalpass.com, mundo1-dev.web.app, mundo1-dev--pr48-*.web.app, etc.
+    return hostname;
+  }
+  
+  return fallbackDomain;
+};
+
 const devConfig = {
   apiKey: "AIzaSyCbckV9cMuKUM4ZnvYDJZUvfukshsZfvM0",
-  // Use firebaseapp.com for native apps, app domain for web (fixes iOS Safari iframe issue)
-  authDomain: Platform.OS === 'web' ? "mundo1-dev.web.app" : "mundo1-dev.firebaseapp.com",
+  authDomain: getWebAuthDomain("mundo1-dev.firebaseapp.com"),
   projectId: "mundo1-dev",
   storageBucket: "mundo1-dev.firebasestorage.app",
   messagingSenderId: "296095212837",
@@ -28,10 +65,7 @@ const devConfig = {
 
 const prodConfig = {
   apiKey: "AIzaSyBzRHcKiuCj7vvqJxGDELs2zEXQ0QvQhbk",
-  // CRITICAL FIX for iOS Safari: Use app's domain as authDomain to prevent cross-origin iframe issues
-  // Safari blocks third-party storage access, causing infinite re-render loops with firebaseapp.com
-  // See: https://firebase.google.com/docs/auth/web/redirect-best-practices
-  authDomain: Platform.OS === 'web' ? "travalpass.com" : "mundo1-1.firebaseapp.com",
+  authDomain: getWebAuthDomain("mundo1-1.firebaseapp.com"),
   databaseURL: "https://mundo1-1.firebaseio.com",
   projectId: "mundo1-1",
   storageBucket: "mundo1-1.appspot.com",
