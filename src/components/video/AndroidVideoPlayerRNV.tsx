@@ -7,7 +7,7 @@
  * ARCHITECTURE:
  * - Detects react-native-video availability at module load time
  * - Uses composition pattern (not conditional hooks) to avoid Rules of Hooks violation
- * - expo-av is statically imported (Metro resolves to stub on web)
+ * - expo-av fallback is disabled on web platform to prevent crash
  * 
  * Why react-native-video v6:
  * - Better MediaCodec/ExoPlayer memory management than expo-av
@@ -18,8 +18,7 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, ActivityIndicator, Text, StyleSheet, UIManager } from 'react-native';
-import { Video as ExpoVideo, ResizeMode as ExpoResizeMode } from 'expo-av';
+import { View, ActivityIndicator, Text, StyleSheet, UIManager, Platform } from 'react-native';
 import { Video as VideoType } from '../../types/Video';
 
 // Detect if react-native-video is available at module load time
@@ -52,7 +51,7 @@ interface AndroidVideoPlayerProps {
 // ============================================
 // FALLBACK COMPONENT: expo-av implementation
 // Separate component to avoid Rules of Hooks violation
-// expo-av is statically imported (Metro resolves to stub on web)
+// DISABLED ON WEB to prevent expo-av crash
 // ============================================
 const ExpoAVFallbackPlayer: React.FC<AndroidVideoPlayerProps> = ({
   video,
@@ -63,7 +62,17 @@ const ExpoAVFallbackPlayer: React.FC<AndroidVideoPlayerProps> = ({
   onError,
   onPlaybackStatusUpdate,
 }) => {
-  // expo-av is statically imported - Metro resolver will substitute web stub
+  // On web, don't render anything (prevents expo-av from loading)
+  if (Platform.OS === 'web') {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.errorText}>Video playback not supported on web</Text>
+      </View>
+    );
+  }
+
+  // expo-av is only used on native platforms
+  const ExpoAV = require('expo-av');
   const expoVideoRef = useRef<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -103,11 +112,11 @@ const ExpoAVFallbackPlayer: React.FC<AndroidVideoPlayerProps> = ({
 
   return (
     <View style={styles.container} pointerEvents="none">
-      <ExpoVideo
+      <ExpoAV.Video
         ref={expoVideoRef}
         source={{ uri: video.videoUrl }}
         style={styles.video}
-        resizeMode={ExpoResizeMode.COVER}
+        resizeMode={ExpoAV.ResizeMode.COVER}
         shouldPlay={isActive && !isPaused}
         isLooping
         isMuted={isMuted}
