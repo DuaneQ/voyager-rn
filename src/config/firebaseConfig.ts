@@ -17,7 +17,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const devConfig = {
   apiKey: "AIzaSyCbckV9cMuKUM4ZnvYDJZUvfukshsZfvM0",
-  authDomain: "mundo1-dev.firebaseapp.com",
+  // Use firebaseapp.com for native apps, app domain for web (fixes iOS Safari iframe issue)
+  authDomain: Platform.OS === 'web' ? "mundo1-dev.web.app" : "mundo1-dev.firebaseapp.com",
   projectId: "mundo1-dev",
   storageBucket: "mundo1-dev.firebasestorage.app",
   messagingSenderId: "296095212837",
@@ -27,7 +28,10 @@ const devConfig = {
 
 const prodConfig = {
   apiKey: "AIzaSyBzRHcKiuCj7vvqJxGDELs2zEXQ0QvQhbk",
-  authDomain: "mundo1-1.firebaseapp.com",
+  // CRITICAL FIX for iOS Safari: Use app's domain as authDomain to prevent cross-origin iframe issues
+  // Safari blocks third-party storage access, causing infinite re-render loops with firebaseapp.com
+  // See: https://firebase.google.com/docs/auth/web/redirect-best-practices
+  authDomain: Platform.OS === 'web' ? "travalpass.com" : "mundo1-1.firebaseapp.com",
   databaseURL: "https://mundo1-1.firebaseio.com",
   projectId: "mundo1-1",
   storageBucket: "mundo1-1.appspot.com",
