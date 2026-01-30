@@ -123,8 +123,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Initialize Firebase Web SDK auth (PWA pattern - simple!)
   useEffect(() => {
+    let isMounted = true;
+    
     // Listen to Firebase Auth SDK state changes (same as PWA)
     const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
+      // CRITICAL: Check if component is still mounted before updating state
+      // This prevents iOS Safari from entering infinite loops due to rapid auth state changes
+      if (!isMounted) return;
+      
       if (firebaseUser) {
         // User is signed in
         const user: FirebaseUser = {
@@ -134,7 +140,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           displayName: firebaseUser.displayName || null,
           photoURL: firebaseUser.photoURL || null,
         };
-        setUser(user);
         
         // CRITICAL: Only mark as authenticated if email is verified
         // (unless it's a social provider like Google/Apple which auto-verifies)
@@ -142,22 +147,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           (provider) => provider.providerId === 'google.com' || provider.providerId === 'apple.com'
         ) || false;
         
-        if (firebaseUser.emailVerified || isSocialProvider) {
-          setStatus('authenticated');
-        } else {
-          // User exists but email not verified - keep status as 'idle' or 'error'
-          setStatus('idle');
+        const newStatus: AuthStatus = (firebaseUser.emailVerified || isSocialProvider) ? 'authenticated' : 'idle';
+        
+        // Batch state updates to prevent cascading re-renders
+        if (isMounted) {
+          setUser(user);
+          setStatus(newStatus);
+          setIsInitializing(false);
         }
       } else {
-        // User is signed out
-        setUser(null);
-        setStatus('idle');
+        // User is signed out - batch state updates
+        if (isMounted) {
+          setUser(null);
+          setStatus('idle');
+          setIsInitializing(false);
+        }
       }
-      setIsInitializing(false);
     });
 
     // Cleanup subscription on unmount
-    return unsubscribe;
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, []);
 
   const signIn = async (email: string, password: string): Promise<void> => {
