@@ -30,7 +30,19 @@ interface UserProfileProviderProps {
   children: ReactNode;
 }
 
+let profileProviderRenderCount = 0;
+
 const UserProfileProvider: React.FC<UserProfileProviderProps> = ({ children }) => {
+  profileProviderRenderCount++;
+  console.log(`[UserProfileProvider] 🔵 Rendering (count: ${profileProviderRenderCount})`);
+  
+  if (profileProviderRenderCount > 50) {
+    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.error('🚨 INFINITE LOOP IN USERPROFILEPROVIDER');
+    console.error(`Rendered ${profileProviderRenderCount} times`);
+    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  }
+  
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   

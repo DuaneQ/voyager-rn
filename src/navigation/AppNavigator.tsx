@@ -147,15 +147,28 @@ const videosTabBarStyle = {
 };
 
 // Bottom Tab Navigator (replicates BottomNav from PWA)
+let mainTabRenderCount = 0;
+
 const MainTabNavigator: React.FC = React.memo(() => {
-  console.log('[MainTabNavigator] 🔵 Rendering MainTabNavigator');
+  mainTabRenderCount++;
+  console.log(`[MainTabNavigator] 🔵 Rendering MainTabNavigator (count: ${mainTabRenderCount})`);
+  
+  if (mainTabRenderCount > 50) {
+    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.error('🚨 INFINITE LOOP IN MAINTABNAVIGATOR');
+    console.error(`Rendered ${mainTabRenderCount} times`);
+    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  }
   
   // Memoize ALL options objects to prevent infinite re-renders
-  const screenOptions = React.useMemo(() => ({
-    tabBarActiveTintColor: '#1976d2',
-    tabBarInactiveTintColor: 'gray',
-    headerShown: false,
-  }), []);
+  const screenOptions = React.useMemo(() => {
+    console.log('[MainTabNavigator] 📝 Creating screenOptions');
+    return {
+      tabBarActiveTintColor: '#1976d2',
+      tabBarInactiveTintColor: 'gray',
+      headerShown: false,
+    };
+  }, []);
   
   const searchOptions = React.useMemo(() => ({ 
     title: 'TravalMatch',
@@ -217,11 +230,23 @@ const GuardedMainTabNavigator: React.FC = () => {
 };
 
 // Main Stack Navigator with conditional rendering based on auth state
+let rootNavigatorRenderCount = 0;
+
 const RootNavigator: React.FC = () => {
-  console.log('[RootNavigator] 🔵 Rendering RootNavigator');
+  rootNavigatorRenderCount++;
+  console.log(`[RootNavigator] 🔵 Rendering RootNavigator (count: ${rootNavigatorRenderCount})`);
+  
+  if (rootNavigatorRenderCount > 50) {
+    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.error('🚨 INFINITE LOOP IN ROOTNAVIGATOR');
+    console.error(`Rendered ${rootNavigatorRenderCount} times`);
+    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  }
+  
+  console.log('[RootNavigator] 📞 Calling useAuth()');
   const { user, status, isInitializing } = useAuth();
   
-  console.log('[RootNavigator] Auth state:', { 
+  console.log('[RootNavigator] 🔐 Auth state:', { 
     hasUser: !!user, 
     status, 
     isInitializing,

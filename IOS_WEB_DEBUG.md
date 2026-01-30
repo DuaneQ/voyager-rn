@@ -1382,3 +1382,115 @@ Change AndroidVideoPlayerRNV.tsx from dynamic import to static import so Metro c
 ## 🔧 ATTEMPT 6: Fix Dynamic Import in AndroidVideoPlayerRNV (January 29, 2026 - 5:43 PM)
 
 Changing runtime `import()` to build-time `import` statement...
+
+---
+
+## 📱 LATEST TEST RESULTS (January 30, 2026 - 8:52 AM)
+
+### Environment:
+- Testing on: Web build (expo-av stubbing in place)
+- Platform: iOS Safari web deployment
+- Build: mundo1-dev--pr53-ios-web-bug-kluzm842.web.app
+
+### Observed Issues:
+
+#### 1. ⚠️ OAuth Domain Authorization Warning
+```
+The current domain is not authorized for OAuth operations. 
+This will prevent signInWithPopup, signInWithRedirect, linkWithPopup 
+and linkWithRedirect from working. 
+Add your domain (mundo1-dev--pr53-ios-web-bug-kluzm842.web.app) to the 
+OAuth redirect domains list in the Firebase console
+-> Authentication -> Settings -> Authorized domains tab.
+```
+
+**Impact:** 
+- May affect social auth (Google/Apple Sign-In) on this preview deployment
+- Does not affect email/password authentication (which is currently working)
+
+**Fix Required:**
+- Add `mundo1-dev--pr53-ios-web-bug-kluzm842.web.app` to Firebase Console → Authentication → Settings → Authorized domains
+- Note: This is a preview domain, may change with each deployment
+
+#### 2. 🔴 Firestore Connection Errors (Intermittent)
+```
+[2026-01-30T13:52:35.678Z] @firebase/firestore: Firestore (12.6.0): 
+WebChannelConnection - RPC 'Listen' stream 0x34344b91 transport error
+
+[2026-01-30T13:52:35.792Z] @firebase/firestore: 
+Could not reach Cloud Firestore backend. Connection failed 1 times.
+Most recent error: FirebaseError: [code=unavailable]: 
+Failed to get document because the client is offline.
+```
+
+**Pattern:**
+- Occurs at app startup
+- Connection recovers automatically
+- User profile loads successfully after retry
+
+**Possible Causes:**
+- Network latency during initial load
+- Firestore SDK initializing before network fully available
+- Preview deployment environment networking
+
+**Current Status:** ✅ Self-healing (app continues to function after initial errors)
+
+#### 3. 🚨 CRITICAL: RangeError - Maximum Call Stack Size Exceeded
+```
+🔴 RangeError: Maximum call stack size exceeded
+   at reportError
+```
+
+**Status:** ⚠️ **STILL OCCURRING**
+
+**When:** After app initialization and authentication
+
+**Analysis:**
+- Despite all expo-av stubbing attempts, the error persists
+- May not be expo-av related
+- Could be:
+  - Infinite render loop in a component
+  - Recursive function without base case
+  - Circular dependency
+  - Event listener recursion
+
+**Next Steps Required:**
+1. Add source map to get exact stack trace location
+2. Binary search: disable features one by one to isolate
+3. Check for:
+   - useEffect dependencies causing infinite loops
+   - State updates triggering re-renders in loops
+   - Navigation listeners causing recursion
+   - Context provider re-renders
+
+### Successful Authentication Flow:
+✅ App renders and RootNavigator loads
+✅ Auth state initializes
+✅ User authentication succeeds (email: administrator@travalpass.com)
+✅ Profile loads from Firestore
+✅ Navigation tabs render (MainTabNavigator)
+
+### App State After Errors:
+- Auth: ✅ Working (user authenticated)
+- Navigation: ✅ Working (tabs render)
+- Firestore: ✅ Working (profile loaded)
+- UI: ⚠️ Functional but RangeError present
+
+### Recommendations:
+
+**High Priority:**
+1. **Debug RangeError:** Add source maps and error boundary logging to identify exact recursion source
+2. **Add OAuth domain:** If social auth needed on preview deployments
+
+**Medium Priority:**
+3. **Firestore connection:** Add retry logic with exponential backoff for initial loads
+4. **Error monitoring:** Implement Sentry or similar to catch these in production
+
+**Low Priority:**
+5. **Preview domain management:** Document process for adding new preview domains to Firebase
+
+### Test Coverage Needed:
+- [ ] Add E2E test for web deployment OAuth flows
+- [ ] Add monitoring for RangeError patterns
+- [ ] Add Firestore connection resilience tests
+- [ ] Test web build with source maps enabled

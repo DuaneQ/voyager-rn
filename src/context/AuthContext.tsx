@@ -96,7 +96,19 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+let authProviderRenderCount = 0;
+
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  authProviderRenderCount++;
+  console.log(`[AuthProvider] 🔵 Rendering (count: ${authProviderRenderCount})`);
+  
+  if (authProviderRenderCount > 50) {
+    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.error('🚨 INFINITE LOOP IN AUTHPROVIDER');
+    console.error(`Rendered ${authProviderRenderCount} times`);
+    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  }
+  
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [status, setStatus] = useState<AuthStatus>('idle');
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
@@ -174,8 +186,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Batch state updates to prevent cascading re-renders
         if (isMounted) {
+          console.log('[AuthContext] 💾 Setting user state:', { uid: user.uid, email: user.email });
           setUser(user);
+          console.log('[AuthContext] 💾 Setting status:', newStatus);
           setStatus(newStatus);
+          console.log('[AuthContext] 💾 Setting isInitializing: false');
           setIsInitializing(false);
         }
       } else {
@@ -183,8 +198,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // User is signed out - batch state updates
         if (isMounted) {
+          console.log('[AuthContext] 💾 Setting user: null');
           setUser(null);
+          console.log('[AuthContext] 💾 Setting status: idle');
           setStatus('idle');
+          console.log('[AuthContext] 💾 Setting isInitializing: false');
           setIsInitializing(false);
         }
       }

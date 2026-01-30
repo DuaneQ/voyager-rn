@@ -36,6 +36,7 @@ import useSearchItineraries from '../hooks/useSearchItineraries';
 import { useUsageTracking } from '../hooks/useUsageTracking';
 import { useUpdateItinerary } from '../hooks/useUpdateItinerary';
 import { useAlert } from '../context/AlertContext';
+import { useAuth } from '../context/AuthContext';
 import { useUserProfile } from '../context/UserProfileContext';
 import { useAllItineraries } from '../hooks/useAllItineraries';
 import { connectionRepository } from '../repositories/ConnectionRepository';
@@ -44,31 +45,54 @@ import AddItineraryModal from '../components/search/AddItineraryModal';
 import { FeedbackButton } from '../components/utilities/FeedbackButton';
 import SubscriptionCard from '../components/common/SubscriptionCard';
 
+let searchPageRenderCount = 0;
+
 const SearchPage: React.FC = () => {
-  console.log('[SearchPage] 🔵 Component rendering');
+  searchPageRenderCount++;
+  console.log(`[SearchPage] 🔵 Component rendering (count: ${searchPageRenderCount})`);
+  
+  if (searchPageRenderCount > 50) {
+    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.error('🚨 INFINITE LOOP DETECTED IN SEARCHPAGE');
+    console.error(`Rendered ${searchPageRenderCount} times`);
+    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  }
   
   const [currentMockIndex, setCurrentMockIndex] = useState(0);
   const [selectedItineraryId, setSelectedItineraryId] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   // Stripe checkout result status (Web only)
   const [checkoutStatus, setCheckoutStatus] = useState<'success' | 'cancel' | null>(null);
+  
+  console.log('[SearchPage] 📞 Calling useAlert()');
   const { showAlert } = useAlert();
-  const { userProfile } = useUserProfile();
+  
+  console.log('[SearchPage] 📞 Calling useUserProfile()');
+  const { userProfile, isLoading } = useUserProfile();
+  console.log('[SearchPage] 👤 UserProfile state:', { hasProfile: !!userProfile, isLoading });
   
   // Get user from AuthContext instead of setting up duplicate listener
+  console.log('[SearchPage] 📞 Calling useAuth()');
   const { user } = useAuth();
   const userId = user?.uid || null;
+  console.log('[SearchPage] 🔐 Auth state:', { hasUser: !!user, userId });
   
   // Usage tracking hook
+  console.log('[SearchPage] 📞 Calling useUsageTracking()');
   const { hasReachedLimit, trackView, dailyViewCount, refreshProfile } = useUsageTracking();
+  console.log('[SearchPage] 📊 Usage tracking:', { hasReachedLimit, dailyViewCount });
   
   // Update itinerary hook (for persisting likes)
+  console.log('[SearchPage] 📞 Calling useUpdateItinerary()');
   const { updateItinerary } = useUpdateItinerary();
   
   // Fetch all itineraries (AI + manual) from PostgreSQL
+  console.log('[SearchPage] 📞 Calling useAllItineraries()');
   const { itineraries, loading: itinerariesLoading, error: itinerariesError, refreshItineraries } = useAllItineraries();
+  console.log('[SearchPage] 🗺️ Itineraries:', { count: itineraries?.length || 0, loading: itinerariesLoading, hasError: !!itinerariesError });
   
   // Search hook for finding matching itineraries
+  console.log('[SearchPage] 📞 Calling useSearchItineraries()');
   const { 
     matchingItineraries, 
     searchItineraries, 
@@ -77,6 +101,7 @@ const SearchPage: React.FC = () => {
     hasMore, 
     error: searchError 
   } = useSearchItineraries();
+  console.log('[SearchPage] 🔍 Search state:', { matchCount: matchingItineraries?.length || 0, searchLoading, hasMore, hasError: !!searchError });
 
   // Mock itineraries shown only when user has no real itineraries
   const mockItineraries = [
@@ -105,31 +130,47 @@ const SearchPage: React.FC = () => {
 
   // Detect Stripe checkout result from URL query param (Web only)
   useEffect(() => {
-    if (Platform.OS !== 'web') return;
+    console.log('[SearchPage] 🔄 useEffect[checkout detection] running');
+    if (Platform.OS !== 'web') {
+      console.log('[SearchPage] ⏭️ Skipping checkout detection (not web)');
+      return;
+    }
     
     const urlParams = new URLSearchParams(window.location.search);
     const checkout = urlParams.get('checkout');
+    console.log('[SearchPage] 🔍 Checkout param:', checkout);
     
     if (checkout === 'success' || checkout === 'cancel') {
+      console.log('[SearchPage] ✅ Setting checkout status:', checkout);
       setCheckoutStatus(checkout);
       // Remove the query param from URL without page reload
       const newUrl = window.location.pathname;
       window.history.replaceState({}, '', newUrl);
       
       // Auto-clear the status message after 5 seconds
-      const timeoutId = setTimeout(() => setCheckoutStatus(null), 5000);
+      const timeoutId = setTimeout(() => {
+        console.log('[SearchPage] 🧹 Clearing checkout status');
+        setCheckoutStatus(null);
+      }, 5000);
       
       // Cleanup timeout if component unmounts
-      return () => clearTimeout(timeoutId);
+      return () => {
+        console.log('[SearchPage] 🧹 Cleaning up checkout timeout');
+        clearTimeout(timeoutId);
+      };
     }
   }, []);
 
   // Refresh itineraries whenever user navigates to this screen
   useFocusEffect(
     React.useCallback(() => {
+      console.log('[SearchPage] 🎯 useFocusEffect triggered', { userId });
       if (userId) {
+        console.log('[SearchPage] 🔄 Refreshing itineraries and profile');
         refreshItineraries();
         refreshProfile(); // Refresh usage tracking too
+      } else {
+        console.log('[SearchPage] ⏭️ Skipping refresh (no userId)');
       }
     }, [userId, refreshItineraries, refreshProfile])
   );
@@ -320,6 +361,7 @@ const SearchPage: React.FC = () => {
   };
 
   if (isLoading) {
+    console.log('[SearchPage] ⏳ Rendering loading state');
     return (
       <ImageBackground 
         source={require('../../assets/images/login-image.jpeg')}
@@ -335,6 +377,8 @@ const SearchPage: React.FC = () => {
       </ImageBackground>
     );
   }
+  
+  console.log('[SearchPage] 🎨 Rendering main UI');
 
   return (
     <ImageBackground 

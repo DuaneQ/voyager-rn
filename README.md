@@ -542,6 +542,12 @@ The integration tests validate the **most important feature** - comprehensive tr
 - [Firebase React Native](https://rnfirebase.io/)
 - [TypeScript React Native](https://reactnative.dev/docs/typescript)
 
+### Known Issues & Troubleshooting
+- [QUICK_REFERENCE.md](QUICK_REFERENCE.md) - Quick reference for commands and known issues
+- [docs/web/KNOWN_ISSUES_WEB.md](docs/web/KNOWN_ISSUES_WEB.md) - Web platform specific issues
+- [docs/web/RANGEERROR_DEBUGGING_GUIDE.md](docs/web/RANGEERROR_DEBUGGING_GUIDE.md) - Guide for debugging infinite loops
+- [IOS_WEB_DEBUG.md](IOS_WEB_DEBUG.md) - Complete iOS Safari debugging history
+
 ### Development Tools
 - [React Native Debugger](https://github.com/jhen0409/react-native-debugger)
 - [Flipper](https://fbflipper.com/) - Desktop debugging platform

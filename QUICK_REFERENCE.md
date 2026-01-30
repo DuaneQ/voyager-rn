@@ -140,6 +140,30 @@ npm run e2e:android:3x           # If fails even once → investigate
 
 ---
 
+## 🚨 Known Issues
+
+### Web Platform (January 30, 2026)
+
+**RangeError: Maximum call stack size exceeded** 🔴 CRITICAL
+- Occurs on iOS Safari web builds after authentication
+- App remains functional but indicates underlying instability
+- **Debugging in progress** - See [docs/web/KNOWN_ISSUES_WEB.md](docs/web/KNOWN_ISSUES_WEB.md)
+
+**OAuth Domain Warning** 🟡 HIGH PRIORITY
+- Preview deployments need domains added to Firebase Console
+- Blocks Google/Apple Sign-In on preview builds
+- Email/password auth works fine
+- **Fix:** Add domain in Firebase Console → Authentication → Authorized domains
+
+**Firestore Connection Failures** 🟢 SELF-HEALING
+- Intermittent at startup, automatically recovers
+- Causes ~1-2 second delay in profile loading
+- No user action required
+
+See [docs/web/KNOWN_ISSUES_WEB.md](docs/web/KNOWN_ISSUES_WEB.md) for full details.
+
+---
+
 **💡 Tip:** Bookmark this page for quick reference!
 
-**Last Updated:** October 25, 2025
+**Last Updated:** January 30, 2026
