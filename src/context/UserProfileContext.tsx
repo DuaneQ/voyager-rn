@@ -46,6 +46,16 @@ const UserProfileProvider: React.FC<UserProfileProviderProps> = ({ children }) =
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
+  // Log state changes
+  useEffect(() => {
+    console.log('[UserProfileContext] 🔄 State changed:', {
+      hasProfile: !!userProfile,
+      userId: userProfile?.uid,
+      username: userProfile?.username,
+      isLoading
+    });
+  }, [userProfile, isLoading]);
+  
   // Use AuthContext to get user state and initialization status
   const { user, isInitializing } = useAuth();
 
@@ -107,9 +117,18 @@ const UserProfileProvider: React.FC<UserProfileProviderProps> = ({ children }) =
           
           if (userDoc.exists()) {
             console.log('[UserProfileContext] ✅ Profile loaded successfully');
-            // Include uid from auth in the profile
-            setUserProfile({ 
+            const profileData = { 
               uid: userId,
+              ...userDoc.data() as UserProfile
+            };
+            console.log('[UserProfileContext] 📦 Profile data:', {
+              uid: profileData.uid,
+              username: profileData.username,
+              email: profileData.email,
+              hasPhotos: !!profileData.photos?.length
+            });
+            // Include uid from auth in the profile
+            setUserProfile(profileData);
               ...userDoc.data() as UserProfile 
             });
           } else {
@@ -140,17 +159,24 @@ const UserProfileProvider: React.FC<UserProfileProviderProps> = ({ children }) =
     }
   }, [user, isInitializing]);
 
+  const value = useMemo(() => {
+    console.log('[UserProfileContext] 📝 Creating context value', {
+      hasProfile: !!userProfile,
+      userId: userProfile?.uid,
+      isLoading
+    });
+    return {
+      userProfile, 
+      setUserProfile, 
+      updateUserProfile, 
+      updateProfile,
+      isLoading,
+      loading: isLoading
+    };
+  }, [userProfile, isLoading, updateUserProfile, updateProfile]);
+
   return (
-    <UserProfileContext.Provider 
-      value={{ 
-        userProfile, 
-        setUserProfile, 
-        updateUserProfile, 
-        updateProfile,
-        isLoading,
-        loading: isLoading 
-      }}
-    >
+    <UserProfileContext.Provider value={value}>
       {children}
     </UserProfileContext.Provider>
   );

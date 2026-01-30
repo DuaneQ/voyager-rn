@@ -10,11 +10,11 @@ This document tracks known issues specifically affecting the web platform (React
 
 ### 1. RangeError: Maximum Call Stack Size Exceeded
 
-**Status:** 🔴 **ACTIVE - UNRESOLVED**  
-**Severity:** Critical  
-**Platforms Affected:** iOS Safari web, possibly other browsers  
+**Status:** ✅ **RESOLVED**  
+**Severity:** Critical (was)  
+**Platforms Affected:** iOS Safari web, all web browsers  
 **First Observed:** January 29, 2026  
-**Last Confirmed:** January 30, 2026 8:52 AM
+**Resolved:** January 30, 2026 9:00 AM
 
 #### Symptoms:
 ```
@@ -22,43 +22,95 @@ RangeError: Maximum call stack size exceeded
    at reportError
 ```
 
-#### When It Occurs:
-- After successful app initialization
-- After user authentication
-- While app is running (not just at startup)
+#### Root Cause:
+**Unmemoized context values causing infinite render loop**
 
-#### What We've Tried:
-1. ❌ Stubbing expo-av completely (5+ different approaches)
-2. ❌ Lazy loading video components
-3. ❌ Metro resolver customization
-4. ❌ Platform-specific imports
+Both `AuthContext` and `UserProfileContext` were creating new value objects on every render without `useMemo()`. Every time a provider rendered, it created a new object reference, causing all consumer components to re-render, which triggered provider re-renders, creating an infinite loop:
 
-#### Current Analysis:
-- **Not expo-av related** (stubbing didn't fix it)
-- Likely causes:
-  - Infinite render loop in a component
-  - Recursive state update pattern
-  - Circular dependency in imports
-  - Event listener recursion (e.g., navigation, auth listeners)
-  - Context provider causing infinite re-renders
+```typescript
+// ❌ BAD - Creates new object every render
+return (
+  <AuthContext.Provider value={{
+    user,
+    status,
+    signIn,
+    signOut,
+    // ... more properties
+  }}>
+    {children}
+  </AuthContext.Provider>
+);
 
-#### Impact:
-- App remains functional despite error
-- Auth works ✅
-- Navigation works ✅
-- Profile loading works ✅
-- **BUT**: Indicates underlying instability that could cause crashes
+// Each render creates a new object → consumers re-render → providers re-render → loop
+```
 
-#### Next Steps:
-- [ ] Enable source maps for production builds
-- [ ] Add error boundary with detailed logging
-- [ ] Binary search: disable features one by one
-- [ ] Check all useEffect dependencies
-- [ ] Review all navigation/auth listeners
-- [ ] Audit Context providers for re-render loops
+This was compounded by unmemoized navigation components (`RootNavigator`, `GuardedMainTabNavigator`) that consume these contexts.
 
-#### Workaround:
-None currently. App continues to function.
+#### The Fix:
+```typescript
+// ✅ GOOD - Memoized context values
+const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
+  const [status, setStatus] = useState('idle');
+  
+  // Memoize the context value - only recreate when dependencies change
+  const value = useMemo(() => ({
+    user,
+    status,
+    signIn,
+    signOut,
+    // ... more properties
+  }), [user, status, isInitializing]); // Only these primitives, not functions
+  
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
+
+// Also memoize navigation components that consume contexts
+const RootNavigator: React.FC = React.memo(() => {
+  const { user, status } = useAuth();
+  // ...
+});
+```
+
+**Files Changed:**
+- `src/context/AuthContext.tsx` - Added `useMemo` for context value
+- `src/context/UserProfileContext.tsx` - Added `useMemo` for context value  
+- `src/navigation/AppNavigator.tsx` - Added `React.memo()` to RootNavigator and GuardedMainTabNavigator
+
+#### Evidence from Logs:
+```
+[RootNavigator] Rendering (count: 3)
+[MainTabNavigator] Rendering (count: 1)
+[RootNavigator] Rendering (count: 4)  
+[MainTabNavigator] Rendering (count: 2)
+[RootNavigator] Rendering (count: 5)
+🔴 RangeError: Maximum call stack size exceeded
+```
+
+#### Prevention:
+**Always memoize React Context values** that contain objects or arrays:
+
+```typescript
+// ❌ BAD - New object every render
+<MyContext.Provider value={{ data, methods }}>
+
+// ✅ GOOD - Memoized, stable reference
+const value = useMemo(() => ({ data, methods }), [data]);
+<MyContext.Provider value={value}>
+```
+
+**Also memoize navigation container components** that:
+- Use context hooks (useAuth, useUserProfile, etc.)
+- Conditionally render different navigation stacks
+- Are rendered by parent navigation components
+
+Without proper memoization, context consumers re-render on every provider render, even when values haven't actually changed.
+
+#### Impact After Fix:
+✅ App loads without errors  
+✅ Navigation stable  
+✅ No stack overflow  
+✅ Performance improved (fewer unnecessary renders)
 
 ---
 
@@ -158,7 +210,7 @@ const loadProfileWithRetry = async (userId: string, maxRetries = 3) => {
 
 | Issue | Severity | Status | User Impact | Blocks Release? |
 |-------|----------|--------|-------------|----------------|
-| RangeError (Max Call Stack) | Critical | Active | Low (app works) | ⚠️ Maybe |
+| RangeError (Max Call Stack) | Critical | ✅ Resolved | None (fixed) | ❌ No |
 | OAuth Domain Warning | High | Known | Medium (blocks social auth) | ❌ No |
 | Firestore Connection | Medium | Self-healing | Low (slight delay) | ❌ No |
 

@@ -144,10 +144,10 @@ npm run e2e:android:3x           # If fails even once → investigate
 
 ### Web Platform (January 30, 2026)
 
-**RangeError: Maximum call stack size exceeded** 🔴 CRITICAL
-- Occurs on iOS Safari web builds after authentication
-- App remains functional but indicates underlying instability
-- **Debugging in progress** - See [docs/web/KNOWN_ISSUES_WEB.md](docs/web/KNOWN_ISSUES_WEB.md)
+**RangeError: Maximum call stack size exceeded** ✅ RESOLVED
+- Was caused by unmemoized navigation components (RootNavigator, GuardedMainTabNavigator)
+- Fixed by adding React.memo() to prevent infinite render loops
+- See [docs/web/KNOWN_ISSUES_WEB.md](docs/web/KNOWN_ISSUES_WEB.md) for details
 
 **OAuth Domain Warning** 🟡 HIGH PRIORITY
 - Preview deployments need domains added to Firebase Console

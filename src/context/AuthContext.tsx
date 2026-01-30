@@ -13,7 +13,7 @@
  * See: docs/auth/SIMPLE_AUTH_FLOW.md
  */
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, useMemo, useCallback, ReactNode } from 'react';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth, db } from '../config/firebaseConfig';
@@ -113,6 +113,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [status, setStatus] = useState<AuthStatus>('idle');
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
 
+  // Log state changes
+  useEffect(() => {
+    console.log('[AuthContext] 🔄 State changed:', { 
+      hasUser: !!user, 
+      uid: user?.uid,
+      status, 
+      isInitializing 
+    });
+  }, [user, status, isInitializing]);
+
   // Initialize Google Sign-In configuration (one-time setup)
   useEffect(() => {
     if (Platform.OS !== 'web' && SafeGoogleSignin.isAvailable()) {
@@ -187,6 +197,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Batch state updates to prevent cascading re-renders
         if (isMounted) {
           console.log('[AuthContext] 💾 Setting user state:', { uid: user.uid, email: user.email });
+          console.log('[AuthContext] 💾 Previous user:', { 
+            hadUser: !!firebaseUser, 
+            prevUid: firebaseUser?.uid 
+          });
           setUser(user);
           console.log('[AuthContext] 💾 Setting status:', newStatus);
           setStatus(newStatus);
@@ -710,22 +724,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const value: AuthContextValue = {
-    user,
-    status,
-    isInitializing,
-    signIn,
-    signUp,
-    signOut: signOutUser,
-    sendPasswordReset,
-    resendVerification,
-    refreshAuthState,
-    hasUnverifiedUser,
-    signInWithGoogle,
-    signUpWithGoogle,
-    signInWithApple,
-    signUpWithApple,
-  };
+  const value: AuthContextValue = useMemo(() => {
+    console.log('[AuthContext] 📝 Creating context value', {
+      user: user ? { uid: user.uid, email: user.email, emailVerified: user.emailVerified } : null,
+      status,
+      isInitializing
+    });
+    return {
+      user,
+      status,
+      isInitializing,
+      signIn,
+      signUp,
+      signOut: signOutUser,
+      sendPasswordReset,
+      resendVerification,
+      refreshAuthState,
+      hasUnverifiedUser,
+      signInWithGoogle,
+      signUpWithGoogle,
+      signInWithApple,
+      signUpWithApple,
+    };
+  }, [user, status, isInitializing]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

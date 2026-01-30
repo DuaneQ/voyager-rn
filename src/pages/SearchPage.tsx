@@ -75,12 +75,12 @@ const SearchPage: React.FC = () => {
   console.log('[SearchPage] 📞 Calling useAuth()');
   const { user } = useAuth();
   const userId = user?.uid || null;
-  console.log('[SearchPage] 🔐 Auth state:', { hasUser: !!user, userId });
+  console.log('[SearchPage] 🔐 Auth state:', { hasUser: !!user, userId, timestamp: Date.now() });
   
   // Usage tracking hook
   console.log('[SearchPage] 📞 Calling useUsageTracking()');
   const { hasReachedLimit, trackView, dailyViewCount, refreshProfile } = useUsageTracking();
-  console.log('[SearchPage] 📊 Usage tracking:', { hasReachedLimit, dailyViewCount });
+  console.log('[SearchPage] 📊 Usage tracking:', { hasReachedLimit, dailyViewCount, timestamp: Date.now() });
   
   // Update itinerary hook (for persisting likes)
   console.log('[SearchPage] 📞 Calling useUpdateItinerary()');

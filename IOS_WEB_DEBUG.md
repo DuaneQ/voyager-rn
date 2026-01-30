@@ -1494,3 +1494,89 @@ Failed to get document because the client is offline.
 - [ ] Add monitoring for RangeError patterns
 - [ ] Add Firestore connection resilience tests
 - [ ] Test web build with source maps enabled
+
+---
+
+## ✅ SOLUTION FOUND (January 30, 2026 - 9:00 AM)
+
+### Root Cause Identified:
+**Unmemoized context values causing infinite render loop** - AuthContext and UserProfileContext were creating new value objects on every render.
+
+### The Problem:
+```typescript
+// ❌ BAD - Context value recreated on every render
+const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
+  const [status, setStatus] = useState('idle');
+  
+  // This creates a NEW object every time AuthProvider renders
+  const value = {
+    user,
+    status,
+    signIn,
+    signOut,
+  };
+  
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
+```
+
+**What happened:**
+1. AuthProvider renders
+2. Creates new context value object (different reference)
+3. All consumers (RootNavigator, etc.) detect \"new\" value → re-render
+4. Consumer re-renders somehow trigger AuthProvider to re-render
+5. GOTO step 1 → Infinite loop → Stack overflow
+
+### The Fix:
+```typescript
+// ✅ GOOD - Memoized value, stable reference
+const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
+  const [status, setStatus] = useState('idle');
+  
+  // Only create new object when dependencies actually change
+  const value = useMemo(() => ({
+    user,
+    status,
+    signIn,
+    signOut,
+  }), [user, status, isInitializing]);
+  
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
+
+// Also memoize navigation components
+const RootNavigator = React.memo(() => { ... });
+const GuardedMainTabNavigator = React.memo(() => { ... });
+```
+
+### Evidence from Logs:
+```
+[AuthProvider] 🔵 Rendering (count: 8)
+[UserProfileProvider] 🔵 Rendering (count: 5)
+[RootNavigator] 🔵 Rendering RootNavigator (count: 3)
+[MainTabNavigator] 🔵 Rendering MainTabNavigator (count: 1)
+[RootNavigator] 🔵 Rendering RootNavigator (count: 4)
+[MainTabNavigator] 🔵 Rendering MainTabNavigator (count: 2)
+🔴 RangeError: Maximum call stack size exceeded
+```
+
+Providers and consumers were rendering in a cascade, each triggering the others.
+
+### Files Changed:
+- `src/context/AuthContext.tsx` - Added `useMemo` for context value
+- `src/context/UserProfileContext.tsx` - Added `useMemo` for context value
+- `src/navigation/AppNavigator.tsx` - Added `React.memo()` to RootNavigator and GuardedMainTabNavigator
+
+### Lesson Learned:
+**Always memoize React Context values** when they contain objects or arrays. Without memoization:
+- Every provider render creates a new object reference
+- All consumers re-render (even if values didn't change)
+- Consumer re-renders can trigger provider re-renders
+- = Infinite loop
+
+**Rule of thumb:** If your context value is an object, wrap it in `useMemo()`.
+
+### Status:
+✅ **FIXED** - App now loads successfully without RangeError

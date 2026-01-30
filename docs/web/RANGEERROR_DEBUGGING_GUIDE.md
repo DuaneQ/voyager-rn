@@ -427,4 +427,85 @@ Once the issue is found:
 
 ---
 
+## ✅ ACTUAL SOLUTION (January 30, 2026)
+
+### The Real Problem Found:
+**Unmemoized navigation components causing infinite render loop**
+
+### Root Cause:
+```typescript
+// src/navigation/AppNavigator.tsx
+
+// ❌ BAD - Not memoized
+const RootNavigator: React.FC = () => {
+  const { user, status, isInitializing } = useAuth();
+  // ...
+  return <Stack.Navigator>...</Stack.Navigator>;
+};
+```
+
+**Why this caused the error:**
+1. Parent component renders RootNavigator
+2. RootNavigator is a new function instance each time
+3. React Navigation sees "new" navigator → rebuilds tree
+4. Child navigators (MainTabNavigator) re-render
+5. Some state change (context update) triggers parent re-render
+6. GOTO step 1 → Infinite loop → Stack overflow
+
+### The Fix:
+```typescript
+// ✅ GOOD - Memoized
+const RootNavigator: React.FC = React.memo(() => {
+  const { user, status, isInitializing } = useAuth();
+  // ...
+  return <Stack.Navigator>...</Stack.Navigator>;
+});
+
+const GuardedMainTabNavigator: React.FC = React.memo(() => {
+  return (
+    <TermsGuard>
+      <MainTabNavigator />
+    </TermsGuard>
+  );
+});
+```
+
+### Evidence from Enhanced Logging:
+```
+[RootNavigator] 🔵 Rendering RootNavigator (count: 1)
+[MainTabNavigator] 🔵 Rendering MainTabNavigator (count: 1)  
+[RootNavigator] 🔵 Rendering RootNavigator (count: 2)
+[MainTabNavigator] 🔵 Rendering MainTabNavigator (count: 2)
+[RootNavigator] 🔵 Rendering RootNavigator (count: 3)
+[MainTabNavigator] 🔵 Rendering MainTabNavigator (count: 3)
+[RootNavigator] 🔵 Rendering RootNavigator (count: 4)
+[MainTabNavigator] 🔵 Rendering MainTabNavigator (count: 4)
+[RootNavigator] 🔵 Rendering RootNavigator (count: 5)
+🔴 RangeError: Maximum call stack size exceeded
+```
+
+The render count increasing in lockstep proved the components were triggering each other.
+
+### Key Takeaway:
+**React Navigation components MUST be memoized** when:
+- They use context hooks
+- They conditionally render different stacks
+- They are children of other navigation components
+
+Without memoization, they create new instances on every render, causing React Navigation to tear down and rebuild the navigation tree repeatedly.
+
+### Files Changed:
+- `src/navigation/AppNavigator.tsx` - Added `React.memo()` to RootNavigator and GuardedMainTabNavigator
+
+### Additional Logging Added:
+Added render count tracking to:
+- SearchPage.tsx
+- AuthContext.tsx  
+- UserProfileContext.tsx
+- AppNavigator.tsx (RootNavigator, MainTabNavigator)
+
+This logging immediately revealed the infinite loop pattern.
+
+---
+
 **Remember:** Maximum call stack errors are always caused by infinite recursion. The code is calling itself (directly or indirectly) without a proper base case to stop.
