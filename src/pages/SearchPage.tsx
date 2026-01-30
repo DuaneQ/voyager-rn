@@ -45,6 +45,8 @@ import { FeedbackButton } from '../components/utilities/FeedbackButton';
 import SubscriptionCard from '../components/common/SubscriptionCard';
 
 const SearchPage: React.FC = () => {
+  console.log('[SearchPage] 🔵 Component rendering');
+  
   const [isLoading, setIsLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   const [currentMockIndex, setCurrentMockIndex] = useState(0);
@@ -100,21 +102,28 @@ const SearchPage: React.FC = () => {
   ];
 
   useEffect(() => {
+    console.log('[SearchPage] 🔵 Auth useEffect running');
     // Simple auth check
     const authInstance = typeof getAuthInstance === 'function' ? getAuthInstance() : null;
     
     if (!authInstance?.onAuthStateChanged) {
+      console.log('[SearchPage] ⚠️ No auth instance available');
       // No auth available - set loading to false immediately
       setIsLoading(false);
       return () => {};
     }
     
+    console.log('[SearchPage] 📞 Setting up onAuthStateChanged listener');
     const unsubscribe = authInstance.onAuthStateChanged((user) => {
+      console.log('[SearchPage] 📞 onAuthStateChanged callback', { hasUser: !!user, userId: user?.uid });
       setUserId(user?.uid || null);
       setIsLoading(false);
     });
 
-    return unsubscribe;
+    return () => {
+      console.log('[SearchPage] 🔴 Cleaning up onAuthStateChanged');
+      unsubscribe();
+    };
   }, []);
 
   // Detect Stripe checkout result from URL query param (Web only)

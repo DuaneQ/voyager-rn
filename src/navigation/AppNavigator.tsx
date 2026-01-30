@@ -118,6 +118,8 @@ const SearchPageWrapper: React.FC = () =>
 
 // Bottom Tab Navigator (replicates BottomNav from PWA)
 const MainTabNavigator: React.FC = () => {
+  console.log('[MainTabNavigator] 🔵 Rendering MainTabNavigator');
+  
   return (
     <Tab.Navigator
       screenOptions={{
