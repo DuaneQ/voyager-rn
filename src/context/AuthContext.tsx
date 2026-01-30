@@ -124,12 +124,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Initialize Firebase Web SDK auth (PWA pattern - simple!)
   useEffect(() => {
     let isMounted = true;
+    let callCount = 0;
+    const maxCalls = 10;
+    
+    console.log('[AuthContext] 🔵 Setting up onAuthStateChanged listener');
     
     // Listen to Firebase Auth SDK state changes (same as PWA)
     const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
+      callCount++;
+      console.log(`[AuthContext] 📞 onAuthStateChanged called (${callCount}/${maxCalls})`, {
+        isMounted,
+        hasUser: !!firebaseUser,
+        email: firebaseUser?.email,
+        emailVerified: firebaseUser?.emailVerified,
+      });
+      
+      // CRITICAL: Detect infinite loop and bail out
+      if (callCount > maxCalls) {
+        console.error(`[AuthContext] 🚨 INFINITE LOOP DETECTED! onAuthStateChanged called ${callCount} times. Stopping.`);
+        return;
+      }
+      
       // CRITICAL: Check if component is still mounted before updating state
       // This prevents iOS Safari from entering infinite loops due to rapid auth state changes
-      if (!isMounted) return;
+      if (!isMounted) {
+        console.log('[AuthContext] ⚠️ Component unmounted, skipping state update');
+        return;
+      }
       
       if (firebaseUser) {
         // User is signed in
@@ -149,6 +170,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         const newStatus: AuthStatus = (firebaseUser.emailVerified || isSocialProvider) ? 'authenticated' : 'idle';
         
+        console.log('[AuthContext] ✅ Updating state (signed in)', { newStatus, isSocialProvider });
+        
         // Batch state updates to prevent cascading re-renders
         if (isMounted) {
           setUser(user);
@@ -156,6 +179,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setIsInitializing(false);
         }
       } else {
+        console.log('[AuthContext] 🔓 Updating state (signed out)');
+        
         // User is signed out - batch state updates
         if (isMounted) {
           setUser(null);
@@ -167,6 +192,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     // Cleanup subscription on unmount
     return () => {
+      console.log('[AuthContext] 🔴 Cleaning up onAuthStateChanged listener');
       isMounted = false;
       unsubscribe();
     };
