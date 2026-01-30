@@ -138,6 +138,14 @@ const renderProfileIcon = ({ focused, color, size }: any) => (
   <Ionicons name={focused ? 'person' : 'person-outline'} size={size} color={color} />
 );
 
+// Define tabBarStyle outside to prevent recreation
+const videosTabBarStyle = {
+  position: 'absolute' as const,
+  backgroundColor: 'transparent',
+  borderTopWidth: 0,
+  elevation: 0,
+};
+
 // Bottom Tab Navigator (replicates BottomNav from PWA)
 const MainTabNavigator: React.FC = React.memo(() => {
   console.log('[MainTabNavigator] 🔵 Rendering MainTabNavigator');
@@ -157,12 +165,7 @@ const MainTabNavigator: React.FC = React.memo(() => {
   const videosOptions = React.useMemo(() => ({ 
     title: 'Travals',
     tabBarIcon: renderVideosIcon,
-    tabBarStyle: {
-      position: 'absolute' as const,
-      backgroundColor: 'transparent',
-      borderTopWidth: 0,
-      elevation: 0,
-    }
+    tabBarStyle: videosTabBarStyle,
   }), []);
   
   const chatOptions = React.useMemo(() => ({ 
