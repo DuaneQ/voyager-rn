@@ -121,23 +121,6 @@ const SearchPageWrapper: React.FC = React.memo(() =>
   )
 );
 
-// Tab bar icon renderers - defined outside to prevent recreation
-const renderSearchIcon = ({ focused, color, size }: any) => (
-  <Ionicons name={focused ? 'search' : 'search-outline'} size={size} color={color} />
-);
-
-const renderVideosIcon = ({ focused, color, size }: any) => (
-  <Ionicons name={focused ? 'play-circle' : 'play-circle-outline'} size={size} color={color} />
-);
-
-const renderChatIcon = ({ focused, color, size }: any) => (
-  <Ionicons name={focused ? 'chatbubble' : 'chatbubble-outline'} size={size} color={color} />
-);
-
-const renderProfileIcon = ({ focused, color, size }: any) => (
-  <Ionicons name={focused ? 'person' : 'person-outline'} size={size} color={color} />
-);
-
 // Define tabBarStyle outside to prevent recreation
 const videosTabBarStyle = {
   position: 'absolute' as const,
@@ -153,35 +136,50 @@ const MainTabNavigator: React.FC = () => {
   mainTabRenderCount++;
   console.log(`[MainTabNavigator] 🔵 Rendering (count: ${mainTabRenderCount})`);
   
-  // Memoize ALL options objects to prevent infinite re-renders
-  const screenOptions = React.useMemo(() => {
-    return {
-      tabBarActiveTintColor: '#1976d2',
-      tabBarInactiveTintColor: 'gray',
-      headerShown: false,
-    };
-  }, []);
+  // Memoize ALL options objects AND tabBarIcon functions to prevent infinite re-renders
+  // CRITICAL: tabBarIcon functions must be useCallback, not just module-level functions
+  const searchIcon = React.useCallback(({ focused, color, size }: any) => (
+    <Ionicons name={focused ? 'search' : 'search-outline'} size={size} color={color} />
+  ), []);
+  
+  const videosIcon = React.useCallback(({ focused, color, size }: any) => (
+    <Ionicons name={focused ? 'play-circle' : 'play-circle-outline'} size={size} color={color} />
+  ), []);
+  
+  const chatIcon = React.useCallback(({ focused, color, size }: any) => (
+    <Ionicons name={focused ? 'chatbubble' : 'chatbubble-outline'} size={size} color={color} />
+  ), []);
+  
+  const profileIcon = React.useCallback(({ focused, color, size }: any) => (
+    <Ionicons name={focused ? 'person' : 'person-outline'} size={size} color={color} />
+  ), []);
+  
+  const screenOptions = React.useMemo(() => ({
+    tabBarActiveTintColor: '#1976d2',
+    tabBarInactiveTintColor: 'gray',
+    headerShown: false,
+  }), []);
   
   const searchOptions = React.useMemo(() => ({ 
     title: 'TravalMatch',
-    tabBarIcon: renderSearchIcon,
-  }), []);
+    tabBarIcon: searchIcon,
+  }), [searchIcon]);
   
   const videosOptions = React.useMemo(() => ({ 
     title: 'Travals',
-    tabBarIcon: renderVideosIcon,
+    tabBarIcon: videosIcon,
     tabBarStyle: videosTabBarStyle,
-  }), []);
+  }), [videosIcon]);
   
   const chatOptions = React.useMemo(() => ({ 
     title: 'Chat',
-    tabBarIcon: renderChatIcon,
-  }), []);
+    tabBarIcon: chatIcon,
+  }), [chatIcon]);
   
   const profileOptions = React.useMemo(() => ({ 
     title: 'Profile',
-    tabBarIcon: renderProfileIcon,
-  }), []);
+    tabBarIcon: profileIcon,
+  }), [profileIcon]);
   
   return (
     <Tab.Navigator screenOptions={screenOptions}>
