@@ -17,7 +17,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const devConfig = {
   apiKey: "AIzaSyCbckV9cMuKUM4ZnvYDJZUvfukshsZfvM0",
-  authDomain: "mundo1-dev.firebaseapp.com",
+  // For dev/preview: Use .web.app domain to match Firebase Hosting preview URLs
+  // Preview URLs are mundo1-dev--pr*.web.app, so authDomain must be mundo1-dev.web.app
+  authDomain: Platform.OS === 'web' ? "mundo1-dev.web.app" : "mundo1-dev.firebaseapp.com",
   projectId: "mundo1-dev",
   storageBucket: "mundo1-dev.firebasestorage.app",
   messagingSenderId: "296095212837",
