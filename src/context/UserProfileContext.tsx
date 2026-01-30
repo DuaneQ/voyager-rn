@@ -65,7 +65,23 @@ const UserProfileProvider: React.FC<UserProfileProviderProps> = ({ children }) =
 
   // Load user profile data from Firestore
   useEffect(() => {
+    let callCount = 0;
+    const maxCalls = 5;
+    
     const loadUserProfile = async () => {
+      callCount++;
+      console.log(`[UserProfileContext] 📞 loadUserProfile called (${callCount}/${maxCalls})`, {
+        hasUser: !!user,
+        userId: user?.uid,
+        emailVerified: user?.emailVerified,
+        isInitializing,
+      });
+      
+      if (callCount > maxCalls) {
+        console.error('[UserProfileContext] 🚨 INFINITE LOOP DETECTED in loadUserProfile!');
+        return;
+      }
+      
       setIsLoading(true);
       try {
         const userId = user?.uid;
@@ -73,30 +89,40 @@ const UserProfileProvider: React.FC<UserProfileProviderProps> = ({ children }) =
 
         // Only load profile if user exists AND email is verified
         if (userId && emailVerified) {
+          console.log('[UserProfileContext] 🔍 Fetching profile from Firestore');
           // Get profile data from Firestore
           const userDoc = await getDoc(doc(db, 'users', userId));
           
           if (userDoc.exists()) {
+            console.log('[UserProfileContext] ✅ Profile loaded successfully');
             // Include uid from auth in the profile
             setUserProfile({ 
               uid: userId,
               ...userDoc.data() as UserProfile 
             });
           } else {
+            console.log('[UserProfileContext] ⚠️ Profile document does not exist');
           }
         }
       } catch (error) {
-        console.error('[UserProfileContext] Error loading profile:', error);
+        console.error('[UserProfileContext] ❌ Error loading profile:', error);
         // If profile doesn't exist, that's okay - will be created during onboarding
       } finally {
+        console.log('[UserProfileContext] 🏁 Setting isLoading to false');
         setIsLoading(false);
       }
     };
+
+    console.log('[UserProfileContext] 🔵 useEffect triggered', {
+      hasUser: !!user,
+      isInitializing,
+    });
 
     // Wait for auth initialization before loading profile
     if (user && !isInitializing) {
       loadUserProfile();
     } else {
+      console.log('[UserProfileContext] ⏭️ Skipping profile load (no user or still initializing)');
       setIsLoading(false);
       setUserProfile(null);
     }
