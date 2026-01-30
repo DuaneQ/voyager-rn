@@ -117,17 +117,18 @@ const SearchPageWrapper: React.FC = () =>
   );
 
 // Bottom Tab Navigator (replicates BottomNav from PWA)
-const MainTabNavigator: React.FC = () => {
+const MainTabNavigator: React.FC = React.memo(() => {
   console.log('[MainTabNavigator] 🔵 Rendering MainTabNavigator');
   
+  // Memoize screen options to prevent infinite re-renders
+  const screenOptions = React.useMemo(() => ({
+    tabBarActiveTintColor: '#1976d2',
+    tabBarInactiveTintColor: 'gray',
+    headerShown: false,
+  }), []);
+  
   return (
-    <Tab.Navigator
-      screenOptions={{
-        tabBarActiveTintColor: '#1976d2',
-        tabBarInactiveTintColor: 'gray',
-        headerShown: false,
-      }}
-    >
+    <Tab.Navigator screenOptions={screenOptions}>
       <Tab.Screen 
         name="Search" 
         component={SearchPageWrapper}
@@ -192,7 +193,7 @@ const MainTabNavigator: React.FC = () => {
       />
     </Tab.Navigator>
   );
-};
+});
 
 // Removed: Old AuthStackNavigator with separate Login/Register screens
 // Now using single AuthScreen that handles all auth flows internally
