@@ -10,126 +10,39 @@ This document tracks known issues specifically affecting the web platform (React
 
 ### 1. RangeError: Maximum Call Stack Size Exceeded
 
-**Status:** ✅ **RESOLVED**  
-**Severity:** Critical (was)  
+**Status:** � **RESOLVED** (January 30, 2026)  
+**Severity:** Was Critical - Now Fixed  
 **Platforms Affected:** iOS Safari web, all web browsers  
 **First Observed:** January 29, 2026  
-**Resolved:** January 30, 2026 9:00 AM
+**Resolved:** January 30, 2026
 
-#### Symptoms:
-```
-RangeError: Maximum call stack size exceeded
-   at reportError
-```
+#### Solution Summary:
+**Removed ALL memoization** from AuthContext - the over-use of `useCallback`/`useMemo`/`React.memo` was CAUSING the infinite loop, not preventing it.
 
-#### Root Cause:
-**Unmemoized context values AND function references causing infinite render loop**
+**What was done:**
+1. ✅ Switched from multiple `useState` to single `useReducer` (batched state updates)
+2. ✅ Removed all `useCallback` wrappers from auth functions
+3. ✅ Removed `useMemo` from context value object
+4. ✅ Removed `React.memo` from navigation components
+5. ✅ Let React handle re-renders naturally
 
-Both `AuthContext` and `UserProfileContext` had two problems:
-1. Context value objects were created new on every render (fixed with `useMemo`)
-2. **Functions inside the context were not wrapped in `useCallback`**, so they had new references on every render
+**Why it works:** React Context already optimizes re-renders. Components only re-render when the values they actually USE change. Over-memoization created stale closures and fought against React's natural behavior.
 
-Even with `useMemo` on the context value object, if the functions inside have new references, components that use those functions as dependencies (in `useEffect`, `useCallback`, etc.) will re-render:
+#### For Future Reference - What NOT To Do:
 
+❌ **Don't wrap everything in useCallback/useMemo "just in case"**
 ```typescript
-// ❌ BAD - Functions recreated on every render
-const AuthProvider = ({ children }) => {
-  const signIn = async (email, password) => { ... }; // New reference each render
-  const signOut = async () => { ... }; // New reference each render
-  
-  // useMemo prevents new object wrapper, but functions inside are still new!
-  const value = useMemo(() => ({
-    user,
-    status,
-    signIn,  // ← New reference!
-    signOut, // ← New reference!
-  }), [user, status]);
-  
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
+// BAD - Creates stale closures
+const fn = useCallback(() => { /* uses state */ }, []); 
 ```
 
-This creates infinite loops when:
-1. Provider renders → new function references created
-2. Components with these functions in dependency arrays detect "change"
-3. Components re-render → somehow trigger provider re-render
-4. Loop continues
-
-#### The Fix:
+✅ **Keep it simple - let React do its job**
 ```typescript
-// ✅ GOOD - Both value object AND functions are memoized
-const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [status, setStatus] = useState('idle');
-  
-  // Wrap ALL functions in useCallback for stable references
-  const signIn = useCallback(async (email, password) => {
-    // Implementation...
-  }, []); // Empty deps = function never changes
-  
-  const signOut = useCallback(async () => {
-    // Implementation...
-  }, []);
-  
-  // Memoize the context value - only recreate when primitives change
-  const value = useMemo(() => ({
-    user,
-    status,
-    signIn,  // ← Stable reference from useCallback
-    signOut, // ← Stable reference from useCallback
-  }), [user, status, isInitializing, signIn, signOut]);
-  
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
-
-// Also memoize navigation components that consume contexts
-const RootNavigator: React.FC = React.memo(() => {
-  const { user, status } = useAuth();
-  // ...
-});
+// GOOD - Direct function
+const fn = () => { /* uses state directly */ };
 ```
 
-**Files Changed:**
-- `src/context/AuthContext.tsx` - Added `useMemo` for context value + `useCallback` for ALL functions
-- `src/context/UserProfileContext.tsx` - Added `useMemo` for context value  
-- `src/navigation/AppNavigator.tsx` - Added `React.memo()` to RootNavigator and GuardedMainTabNavigator
 
-#### Evidence from Logs:
-```
-[RootNavigator] Rendering (count: 3)
-[MainTabNavigator] Rendering (count: 1)
-[RootNavigator] Rendering (count: 4)  
-[MainTabNavigator] Rendering (count: 2)
-[RootNavigator] Rendering (count: 5)
-🔴 RangeError: Maximum call stack size exceeded
-```
-
-#### Prevention:
-**Always memoize React Context values AND their functions**:
-
-```typescript
-// ❌ BAD - New object and new function references
-<MyContext.Provider value={{ data, onClick: () => {} }}>
-
-// ✅ GOOD - Memoized value with stable function references
-const onClick = useCallback(() => { ... }, []);
-const value = useMemo(() => ({ data, onClick }), [data, onClick]);
-<MyContext.Provider value={value}>
-```
-
-**Rules:**
-1. **Wrap context value in `useMemo`** - Prevents new object on every render
-2. **Wrap ALL functions in `useCallback`** - Prevents new function references
-3. **Include memoized functions in `useMemo` deps** - Ensures they're tracked
-4. **Memoize navigation components** that consume contexts
-
-Without proper memoization, context consumers re-render unnecessarily, even when actual values haven't changed, leading to cascading re-renders and potential infinite loops.
-
-#### Impact After Fix:
-✅ App loads without errors  
-✅ Navigation stable  
-✅ No stack overflow  
-✅ Performance improved (fewer unnecessary renders)
 
 ---
 

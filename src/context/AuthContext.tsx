@@ -13,7 +13,7 @@
  * See: docs/auth/SIMPLE_AUTH_FLOW.md
  */
 
-import React, { createContext, useContext, useEffect, useState, useMemo, useCallback, useRef, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, useReducer, useRef, ReactNode } from 'react';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth, db } from '../config/firebaseConfig';
@@ -98,76 +98,54 @@ interface AuthProviderProps {
 
 let authProviderRenderCount = 0;
 
+// Reducer for state management (single state object = single reference)
+type AuthState = {
+  user: FirebaseUser | null;
+  status: AuthStatus;
+  isInitializing: boolean;
+};
+
+type AuthAction =
+  | { type: 'SET_USER'; user: FirebaseUser | null }
+  | { type: 'SET_STATUS'; status: AuthStatus }
+  | { type: 'SET_INITIALIZING'; isInitializing: boolean }
+  | { type: 'SET_ALL'; user: FirebaseUser | null; status: AuthStatus; isInitializing: boolean };
+
+function authReducer(state: AuthState, action: AuthAction): AuthState {
+  switch (action.type) {
+    case 'SET_USER':
+      return { ...state, user: action.user };
+    case 'SET_STATUS':
+      return { ...state, status: action.status };
+    case 'SET_INITIALIZING':
+      return { ...state, isInitializing: action.isInitializing };
+    case 'SET_ALL':
+      return { user: action.user, status: action.status, isInitializing: action.isInitializing };
+    default:
+      return state;
+  }
+}
+
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   authProviderRenderCount++;
   console.log(`[AuthProvider] 🔵 Rendering (count: ${authProviderRenderCount})`);
   
-  if (authProviderRenderCount > 10) {
-    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.error('🚨 AUTH PROVIDER: STOPPING AT 10 RENDERS');
-    console.error(`Rendered ${authProviderRenderCount} times`);
-    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    // Return a frozen version to stop the loop
-    return <AuthContext.Provider value={{
-      user: null,
-      status: 'error' as AuthStatus,
-      isInitializing: false,
-      signIn: async () => {},
-      signUp: async () => {},
-      signOut: async () => {},
-      sendPasswordReset: async () => {},
-      resendVerification: async () => {},
-      refreshAuthState: async () => {},
-      hasUnverifiedUser: () => false,
-      signInWithGoogle: async () => {},
-      signUpWithGoogle: async () => {},
-      signInWithApple: async () => {},
-      signUpWithApple: async () => {},
-    }}>{children}</AuthContext.Provider>;
-  }
+  // Use reducer for state management
+  const [authState, dispatch] = useReducer(authReducer, {
+    user: null,
+    status: 'idle',
+    isInitializing: true,
+  });
   
-  const [user, setUser] = useState<FirebaseUser | null>(null);
-  const [status, setStatus] = useState<AuthStatus>('idle');
-  const [isInitializing, setIsInitializing] = useState<boolean>(true);
-
   // Log state changes
   useEffect(() => {
     console.log('[AuthContext] 🔄 State changed:', { 
-      hasUser: !!user, 
-      uid: user?.uid,
-      status, 
-      isInitializing 
+      hasUser: !!authState.user, 
+      uid: authState.user?.uid,
+      status: authState.status, 
+      isInitializing: authState.isInitializing 
     });
-  }, [user, status, isInitializing]);
-
-  // Track useMemo dependency changes
-  const prevUserRef = useRef(user);
-  const prevStatusRef = useRef(status);
-  const prevInitRef = useRef(isInitializing);
-  
-  useEffect(() => {
-    const userChanged = prevUserRef.current !== user;
-    const statusChanged = prevStatusRef.current !== status;
-    const initChanged = prevInitRef.current !== isInitializing;
-    
-    if (userChanged || statusChanged || initChanged) {
-      console.log('[AuthContext] 🔍 useMemo will recreate value because:', {
-        userChanged,
-        statusChanged, 
-        initChanged,
-        prevUser: prevUserRef.current?.uid,
-        newUser: user?.uid,
-        prevStatus: prevStatusRef.current,
-        newStatus: status,
-        prevInit: prevInitRef.current,
-        newInit: isInitializing
-      });
-    }
-    
-    prevUserRef.current = user;
-    prevStatusRef.current = status;
-    prevInitRef.current = isInitializing;
-  }, [user, status, isInitializing]);
+  }, [authState]);
 
   // Initialize Google Sign-In configuration (one-time setup)
   useEffect(() => {
@@ -240,30 +218,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         console.log('[AuthContext] ✅ Updating state (signed in)', { newStatus, isSocialProvider });
         
-        // Batch state updates to prevent cascading re-renders
+        // Batch state updates to prevent cascading re-renders - USE SINGLE DISPATCH
         if (isMounted) {
-          console.log('[AuthContext] 💾 Setting user state:', { uid: user.uid, email: user.email });
-          console.log('[AuthContext] 💾 Previous user:', { 
-            hadUser: !!firebaseUser, 
-            prevUid: firebaseUser?.uid 
+          dispatch({ 
+            type: 'SET_ALL', 
+            user, 
+            status: newStatus, 
+            isInitializing: false 
           });
-          setUser(user);
-          console.log('[AuthContext] 💾 Setting status:', newStatus);
-          setStatus(newStatus);
-          console.log('[AuthContext] 💾 Setting isInitializing: false');
-          setIsInitializing(false);
         }
       } else {
         console.log('[AuthContext] 🔓 Updating state (signed out)');
         
-        // User is signed out - batch state updates
+        // User is signed out - batch state updates - USE SINGLE DISPATCH
         if (isMounted) {
-          console.log('[AuthContext] 💾 Setting user: null');
-          setUser(null);
-          console.log('[AuthContext] 💾 Setting status: idle');
-          setStatus('idle');
-          console.log('[AuthContext] 💾 Setting isInitializing: false');
-          setIsInitializing(false);
+          dispatch({ 
+            type: 'SET_ALL', 
+            user: null, 
+            status: 'idle', 
+            isInitializing: false 
+          });
         }
       }
     });
@@ -276,10 +250,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
   }, []);
 
-  const signIn = useCallback(async (email: string, password: string): Promise<void> => {
+  // Define auth functions directly - no memoization needed
+  // React Context already prevents unnecessary re-renders for consumers that don't use changing values
+  const signIn = async (email: string, password: string): Promise<void> => {
     console.log('[AuthContext] 🔑 signIn called');
     try {
-      setStatus('loading');
+      dispatch({ type: 'SET_STATUS', status: 'loading' });
 
       // CRITICAL FIX: If user is already signed in from signup, sign them out first
       // This ensures we get fresh verification status from Firebase servers
@@ -301,7 +277,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (!user.emailVerified) {
         // Sign out the user immediately so onAuthStateChanged doesn't authenticate them
         await signOut(auth);
-        setStatus('error');
+        dispatch({ type: 'SET_STATUS', status: 'error' });
         throw new Error('Email not verified. Please check your email and verify your account.');
       }
       
@@ -321,7 +297,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // This matches PWA pattern that uses window.location.href = '/'
       // Without this, the navigator may not properly update after email verification
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
-        setStatus('authenticated');
+        dispatch({ type: 'SET_STATUS', status: 'authenticated' });
         window.location.reload();
         return;
       }
@@ -331,14 +307,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // The listener will fire immediately and set status to 'authenticated'
     } catch (error: any) {
       console.error('❌ Sign in error:', error);
-      setStatus('error');
+      dispatch({ type: 'SET_STATUS', status: 'error' });
       throw error;
     }
   };
 
-  const signUp = useCallback(async (username: string, email: string, password: string): Promise<void> => {
+  const signUp = async (username: string, email: string, password: string): Promise<void> => {
     try {
-      setStatus('loading');
+      dispatch({ type: 'SET_STATUS', status: 'loading' });
 
       // Use Firebase Web SDK EVERYWHERE (works on web, iOS, Android)
       
@@ -389,16 +365,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       };
       await AsyncStorage.setItem('USER_CREDENTIALS', JSON.stringify(userCredentials));
       
-      setStatus('idle');
+      dispatch({ type: 'SET_STATUS', status: 'idle' });
       
     } catch (error: any) {
       console.error('❌ Sign up error:', error);
-      setStatus('error');
+      dispatch({ type: 'SET_STATUS', status: 'error' });
       throw error;
     }
   }, []);
 
-  const signOutUser = useCallback(async (): Promise<void> => {
+  const signOutUser = async (): Promise<void> => {
     try {
       // Use Firebase Web SDK signOut (works everywhere)
       await signOut(auth);
@@ -407,14 +383,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await AsyncStorage.multiRemove(['USER_CREDENTIALS', 'PROFILE_INFO']);
       
       // Auth state will be cleared by onAuthStateChanged listener
-      setStatus('idle');
+      dispatch({ type: 'SET_STATUS', status: 'idle' });
     } catch (error: any) {
       console.error('❌ Sign out error:', error);
       throw error;
     }
   }, []);
 
-  const sendPasswordReset = useCallback(async (email: string): Promise<void> => {
+  const sendPasswordReset = async (email: string): Promise<void> => {
     try {
       // Use Firebase Web SDK (works everywhere)
       await sendPasswordResetEmail(auth, email);
@@ -424,7 +400,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, []);
 
-  const resendVerification = useCallback(async (email?: string): Promise<void> => {
+  const resendVerification = async (email?: string): Promise<void> => {
     try {
       // Use Firebase Web SDK (works everywhere)
       
@@ -440,7 +416,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, []);
 
-  const refreshAuthState = useCallback(async (): Promise<void> => {
+  const refreshAuthState = async (): Promise<void> => {
     try {
       if (!auth.currentUser) {
         throw new Error('No user signed in');
@@ -455,13 +431,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, []);
 
-  const hasUnverifiedUser = useCallback((): boolean => {
+  const hasUnverifiedUser = (): boolean => {
     return user !== null && !user.emailVerified;
   }, [user]);
 
-  const signInWithGoogle = useCallback(async (): Promise<any> => {
+  const signInWithGoogle = async (): Promise<any> => {
     try {
-      setStatus('loading');
+      dispatch({ type: 'SET_STATUS', status: 'loading' });
 
       if (Platform.OS === 'web') {
         // Use Web SDK popup flow
@@ -475,11 +451,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (!userDoc.exists()) {
           // No profile - new user trying to sign in
           await signOut(auth);
-          setStatus('idle');
+          dispatch({ type: 'SET_STATUS', status: 'idle' });
           throw new Error('ACCOUNT_NOT_FOUND');
         }
         
-        setStatus('authenticated');
+        dispatch({ type: 'SET_STATUS', status: 'authenticated' });
         return user;
       }
 
@@ -504,22 +480,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (!userDoc.exists()) {
         // Profile doesn't exist - new user trying to sign in
         await signOut(auth);
-        setStatus('idle');
+        dispatch({ type: 'SET_STATUS', status: 'idle' });
         throw new Error('ACCOUNT_NOT_FOUND');
       }
 
-      setStatus('authenticated');
+      dispatch({ type: 'SET_STATUS', status: 'authenticated' });
       return user;
     } catch (error: any) {
-      setStatus('idle');
+      dispatch({ type: 'SET_STATUS', status: 'idle' });
       console.error('❌ Google sign-in error:', error);
       throw error;
     }
   }, []);
 
-  const signUpWithGoogle = useCallback(async (): Promise<any> => {
+  const signUpWithGoogle = async (): Promise<any> => {
     try {
-      setStatus('loading');
+      dispatch({ type: 'SET_STATUS', status: 'loading' });
 
       if (Platform.OS === 'web') {
         // Use Web SDK popup flow
@@ -533,7 +509,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         if (userDoc.exists()) {
           // Existing user - just sign them in
-          setStatus('authenticated');
+          dispatch({ type: 'SET_STATUS', status: 'authenticated' });
           return user;
         }
         
@@ -562,7 +538,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         };
         
         await setDoc(doc(db, 'users', user.uid), userProfile);
-        setStatus('authenticated');
+        dispatch({ type: 'SET_STATUS', status: 'authenticated' });
         return user;
       }
 
@@ -587,7 +563,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       if (userDoc.exists()) {
         // Existing user - just sign them in
-        setStatus('authenticated');
+        dispatch({ type: 'SET_STATUS', status: 'authenticated' });
         return user;
       }
 
@@ -618,10 +594,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await setDoc(doc(db, 'users', user.uid), userProfile);
       // Wait briefly for Firestore write to complete
       await new Promise(resolve => setTimeout(resolve, 500));
-      setStatus('authenticated');
+      dispatch({ type: 'SET_STATUS', status: 'authenticated' });
       return user;
     } catch (error: any) {
-      setStatus('idle');
+      dispatch({ type: 'SET_STATUS', status: 'idle' });
       console.error('❌ Google sign-up error:', error);
       throw error;
     }
@@ -632,14 +608,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
    * Scenario 1: New user tries to sign in → redirect to sign up
    * Scenario 4: Existing user signs in → success
    */
-  const signInWithApple = useCallback(async (): Promise<any> => {
+  const signInWithApple = async (): Promise<any> => {
     // Only available on iOS
     if (Platform.OS !== 'ios') {
       throw new Error('Apple Sign-In is only available on iOS');
     }
 
     try {
-      setStatus('loading');
+      dispatch({ type: 'SET_STATUS', status: 'loading' });
 
       const credential = await AppleAuthentication.signInAsync({
         requestedScopes: [
@@ -665,21 +641,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (!userDoc.exists()) {
         // New user trying to sign in - need to sign up first
         await signOut(auth);
-        setStatus('idle');
+        dispatch({ type: 'SET_STATUS', status: 'idle' });
         throw new Error('ACCOUNT_NOT_FOUND');
       }
       
       // Existing user - success
-      setStatus('authenticated');
+      dispatch({ type: 'SET_STATUS', status: 'authenticated' });
       return user;
       
     } catch (error: any) {
       if (error.code === 'ERR_REQUEST_CANCELED') {
         // User canceled - don't throw error
-        setStatus('idle');
+        dispatch({ type: 'SET_STATUS', status: 'idle' });
         return;
       }
-      setStatus('idle');
+      dispatch({ type: 'SET_STATUS', status: 'idle' });
       console.error('[AuthContext] Apple sign-in failed:', error);
       throw error;
     }
@@ -690,14 +666,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
    * Scenario 2: Existing user tries to sign up → sign them in
    * Scenario 3: New user signs up → create profile and sign in
    */
-  const signUpWithApple = useCallback(async (): Promise<any> => {
+  const signUpWithApple = async (): Promise<any> => {
     // Only available on iOS
     if (Platform.OS !== 'ios') {
       throw new Error('Apple Sign-In is only available on iOS');
     }
 
     try {
-      setStatus('loading');
+      dispatch({ type: 'SET_STATUS', status: 'loading' });
 
       const credential = await AppleAuthentication.signInAsync({
         requestedScopes: [
@@ -722,7 +698,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       if (userDoc.exists()) {
         // Existing user trying to sign up - just sign them in
-        setStatus('authenticated');
+        dispatch({ type: 'SET_STATUS', status: 'authenticated' });
         return user;
       }
       
@@ -757,44 +733,38 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       };
 
       await setDoc(userRef, userProfile);
-      setStatus('authenticated');
+      dispatch({ type: 'SET_STATUS', status: 'authenticated' });
       return user;
       
     } catch (error: any) {
       if (error.code === 'ERR_REQUEST_CANCELED') {
-        setStatus('idle');
+        dispatch({ type: 'SET_STATUS', status: 'idle' });
         return;
       }
-      setStatus('idle');
+      dispatch({ type: 'SET_STATUS', status: 'idle' });
       console.error('[AuthContext] Apple sign-up failed:', error);
       throw error;
     }
   }, []);
 
-  const value: AuthContextValue = useMemo(() => {
-    console.log('[AuthContext] 📝 Creating context value', {
-      user: user ? { uid: user.uid, email: user.email, emailVerified: user.emailVerified } : null,
-      status,
-      isInitializing,
-      functionsAreStable: true // All wrapped in useCallback with empty deps
-    });
-    return {
-      user,
-      status,
-      isInitializing,
-      signIn,
-      signUp,
-      signOut: signOutUser,
-      sendPasswordReset,
-      resendVerification,
-      refreshAuthState,
-      hasUnverifiedUser,
-      signInWithGoogle,
-      signUpWithGoogle,
-      signInWithApple,
-      signUpWithApple,
-    };
-  }, [user, status, isInitializing]);
+  //  Simply return the value - no memoization needed
+  // Context consumers only re-render when the values they USE actually change
+  const value: AuthContextValue = {
+    user: authState.user,
+    status: authState.status,
+    isInitializing: authState.isInitializing,
+    signIn,
+    signUp,
+    signOut: signOutUser,
+    sendPasswordReset,
+    resendVerification,
+    refreshAuthState,
+    hasUnverifiedUser,
+    signInWithGoogle,
+    signUpWithGoogle,
+    signInWithApple,
+    signUpWithApple,
+  };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

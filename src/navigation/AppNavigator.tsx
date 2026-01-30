@@ -149,20 +149,12 @@ const videosTabBarStyle = {
 // Bottom Tab Navigator (replicates BottomNav from PWA)
 let mainTabRenderCount = 0;
 
-const MainTabNavigator: React.FC = React.memo(() => {
+const MainTabNavigator: React.FC = () => {
   mainTabRenderCount++;
-  console.log(`[MainTabNavigator] 🔵 Rendering MainTabNavigator (count: ${mainTabRenderCount})`);
-  
-  if (mainTabRenderCount > 50) {
-    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.error('🚨 INFINITE LOOP IN MAINTABNAVIGATOR');
-    console.error(`Rendered ${mainTabRenderCount} times`);
-    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  }
+  console.log(`[MainTabNavigator] 🔵 Rendering (count: ${mainTabRenderCount})`);
   
   // Memoize ALL options objects to prevent infinite re-renders
   const screenOptions = React.useMemo(() => {
-    console.log('[MainTabNavigator] 📝 Creating screenOptions');
     return {
       tabBarActiveTintColor: '#1976d2',
       tabBarInactiveTintColor: 'gray',
@@ -215,37 +207,27 @@ const MainTabNavigator: React.FC = React.memo(() => {
       />
     </Tab.Navigator>
   );
-});
+};
 
 // Removed: Old AuthStackNavigator with separate Login/Register screens
 // Now using single AuthScreen that handles all auth flows internally
 
 // Main Tab Navigator wrapped with TermsGuard
-const GuardedMainTabNavigator: React.FC = React.memo(() => {
-  console.log('[GuardedMainTabNavigator] 🔵 Rendering');
+const GuardedMainTabNavigator: React.FC = () => {
   return (
     <TermsGuard>
       <MainTabNavigator />
     </TermsGuard>
   );
-});
+};
 
 // Main Stack Navigator with conditional rendering based on auth state
 let rootNavigatorRenderCount = 0;
 
 const RootNavigator: React.FC = () => {
   rootNavigatorRenderCount++;
-  console.log(`[RootNavigator] 🔵 Rendering RootNavigator (count: ${rootNavigatorRenderCount})`);
+  console.log(`[RootNavigator] 🔵 Rendering (count: ${rootNavigatorRenderCount})`);
   
-  if (rootNavigatorRenderCount > 10) {
-    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.error('🚨 STOPPING AT 10 RENDERS TO PREVENT CRASH');
-    console.error(`Rendered ${rootNavigatorRenderCount} times`);
-    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    return null; // Stop rendering to prevent crash
-  }
-  
-  console.log('[RootNavigator] 📞 Calling useAuth()');
   const { user, status, isInitializing } = useAuth();
   
   console.log('[RootNavigator] 🔐 Auth state:', { 
