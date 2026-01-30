@@ -47,8 +47,6 @@ import SubscriptionCard from '../components/common/SubscriptionCard';
 const SearchPage: React.FC = () => {
   console.log('[SearchPage] 🔵 Component rendering');
   
-  const [isLoading, setIsLoading] = useState(true);
-  const [userId, setUserId] = useState<string | null>(null);
   const [currentMockIndex, setCurrentMockIndex] = useState(0);
   const [selectedItineraryId, setSelectedItineraryId] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
@@ -56,6 +54,10 @@ const SearchPage: React.FC = () => {
   const [checkoutStatus, setCheckoutStatus] = useState<'success' | 'cancel' | null>(null);
   const { showAlert } = useAlert();
   const { userProfile } = useUserProfile();
+  
+  // Get user from AuthContext instead of setting up duplicate listener
+  const { user } = useAuth();
+  const userId = user?.uid || null;
   
   // Usage tracking hook
   const { hasReachedLimit, trackView, dailyViewCount, refreshProfile } = useUsageTracking();
