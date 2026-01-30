@@ -10,14 +10,33 @@ This document tracks known issues specifically affecting the web platform (React
 
 ### 1. RangeError: Maximum Call Stack Size Exceeded
 
-**Status:** � **RESOLVED** (January 30, 2026)  
-**Severity:** Was Critical - Now Fixed  
+**Status:** 🔴 **ACTIVE INVESTIGATION** (Attempt #7)  
+**Severity:** Critical  
 **Platforms Affected:** iOS Safari web, all web browsers  
 **First Observed:** January 29, 2026  
-**Resolved:** January 30, 2026
+**Last Attempt:** January 30, 2026 12:00 PM
 
-#### Solution Summary:
-**Removed ALL memoization** from AuthContext - the over-use of `useCallback`/`useMemo`/`React.memo` was CAUSING the infinite loop, not preventing it.
+#### Latest Findings (Attempt #7 - tabBarIcon fix):
+**Failed.** Logs show:
+- AuthProvider: 2 renders ✅ (normal)
+- UserProfileProvider: 5 renders ❌
+- RootNavigator: 5 renders ❌
+- MainTabNavigator: 4 renders ❌
+- Pattern: After MainTabNavigator mounts, something triggers RootNavigator to re-render, which re-renders MainTabNavigator, creating loop
+
+**Root Cause Found:** The `linking` configuration object was being created INSIDE AppNavigator component, causing NavigationContainer to receive a new object reference on every render. React Navigation sees this as a config change and re-renders the entire tree.
+
+#### Next Attempt (#8):
+Move `linking` object to module level (outside component) so it's created once and has a stable reference. This is the same pattern as fixing the tabBarIcon functions.
+
+**ALSO adding exhaustive logging:**
+- AlertProvider render count
+- AppNavigator render count + navigation state changes
+- ProfileValidationWrapper render count + all useEffect triggers
+- UserProfileContext render dependencies + all useEffect triggers
+- Detailed logs showing WHAT triggers each render/effect
+
+**Goal:** Stop guessing. See the ACTUAL chain of events that causes the loop.
 
 **What was done:**
 1. ✅ Switched from multiple `useState` to single `useReducer` (batched state updates)

@@ -289,34 +289,56 @@ const RootNavigator: React.FC = () => {
   );
 };
 
-// Main App Navigator (replicates Routes from PWA)
-const AppNavigator: React.FC = () => {
-  const navigationRef = useRef<NavigationContainerRef<any>>(null);
-
-  // Linking configuration for web URL routing
-  const linking = {
-    prefixes: ['https://travalpass.com'],
-    config: {
-      screens: {
-        Landing: '',  // Root URL shows landing page
-        Auth: 'auth', // /auth for authentication
-        MainApp: {
-          path: 'app',
-          screens: {
-            Search: 'search',
-            Videos: 'videos',
-            Chat: 'chat',
-            Profile: 'profile',
-          },
+// Linking configuration for web URL routing - MUST be module-level to prevent recreation
+const linking = {
+  prefixes: ['https://travalpass.com'],
+  config: {
+    screens: {
+      Landing: '',  // Root URL shows landing page
+      Auth: 'auth', // /auth for authentication
+      MainApp: {
+        path: 'app',
+        screens: {
+          Search: 'search',
+          Videos: 'videos',
+          Chat: 'chat',
+          Profile: 'profile',
         },
-        ChatThread: 'chat/:connectionId',
       },
+      ChatThread: 'chat/:connectionId',
     },
-  };
+  },
+};
+
+// Main App Navigator (replicates Routes from PWA)
+let appNavigatorRenderCount = 0;
+
+const AppNavigator: React.FC = () => {
+  appNavigatorRenderCount++;
+  console.log(`[AppNavigator] 🔵 Rendering (count: ${appNavigatorRenderCount})`);
+  
+  const navigationRef = useRef<NavigationContainerRef<any>>(null);
+  
+  console.log('[AppNavigator] 📍 Navigation setup:', {
+    hasNavigationRef: !!navigationRef.current,
+    linkingConfigStable: linking === linking, // Should always be true
+  });
+  
+  const onNavigationStateChange = React.useCallback((state: any) => {
+    console.log('[AppNavigator] 🧭 Navigation state changed:', {
+      routeNames: state?.routeNames,
+      index: state?.index,
+      currentRoute: state?.routes?.[state?.index]?.name
+    });
+  }, []);
 
   return (
     <AlertProvider>
-      <NavigationContainer ref={navigationRef} linking={linking}>
+      <NavigationContainer 
+        ref={navigationRef} 
+        linking={linking}
+        onStateChange={onNavigationStateChange}
+      >
         <ProfileValidationWrapper navigationRef={navigationRef}>
           <RootNavigator />
         </ProfileValidationWrapper>
@@ -326,15 +348,33 @@ const AppNavigator: React.FC = () => {
 };
 
 // Profile Validation Wrapper - checks profile completeness after login
+let profileValidationRenderCount = 0;
+
 const ProfileValidationWrapper: React.FC<{ 
   children: React.ReactNode; 
   navigationRef: React.RefObject<NavigationContainerRef<any>>; 
 }> = ({ children, navigationRef }) => {
+  profileValidationRenderCount++;
+  console.log(`[ProfileValidationWrapper] 🔵 Rendering (count: ${profileValidationRenderCount})`);
+  
   const { userProfile, isLoading } = useUserProfile();
   const { user } = useAuth();
   const hasPromptedUser = useRef(false); // Track if we've shown the prompt this session
+  
+  console.log('[ProfileValidationWrapper] 📊 Render state:', {
+    hasUser: !!user,
+    hasProfile: !!userProfile,
+    isLoading,
+    hasPromptedUser: hasPromptedUser.current,
+    navigationRefReady: !!navigationRef.current
+  });
 
   useEffect(() => {
+    console.log('[ProfileValidationWrapper] 🔍 useEffect[user] triggered:', {
+      hasUser: !!user,
+      userId: user?.uid,
+      action: 'Reset hasPromptedUser if no user'
+    });
     // Reset flag when user changes (logout/login)
     if (!user) {
       hasPromptedUser.current = false;
@@ -342,8 +382,22 @@ const ProfileValidationWrapper: React.FC<{
   }, [user]);
 
   useEffect(() => {
+    console.log('[ProfileValidationWrapper] 🔍 useEffect[validation] triggered:', {
+      isLoading,
+      hasProfile: !!userProfile,
+      hasUser: !!user,
+      hasNavRef: !!navigationRef.current,
+      hasPromptedUser: hasPromptedUser.current
+    });
+    
     if (!isLoading && userProfile && user && navigationRef.current) {
       const validationResult = validateProfileForItinerary(userProfile);
+      
+      console.log('[ProfileValidationWrapper] ✅ Validation result:', {
+        isValid: validationResult.isValid,
+        hasPromptedUser: hasPromptedUser.current,
+        willNavigate: !validationResult.isValid && !hasPromptedUser.current
+      });
       
       // Only show prompt ONCE per session when profile is invalid
       // Once user has been prompted (either saves or dismisses), don't prompt again

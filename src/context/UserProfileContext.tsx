@@ -79,8 +79,34 @@ const UserProfileProvider: React.FC<UserProfileProviderProps> = ({ children }) =
     prevLoadingRef.current = isLoading;
   }, [userProfile, isLoading]);
   
+  // Track what triggers profile loading
+  useEffect(() => {
+    console.log('[UserProfileContext] 🔍 useEffect[user] triggered:', {
+      hasUser: !!user,
+      userId: user?.uid,
+      isInitializing,
+      action: 'Will attempt to load profile if user exists'
+    });
+  }, [user]);
+  
+  useEffect(() => {
+    console.log('[UserProfileContext] 🔍 useEffect[isInitializing] triggered:', {
+      isInitializing,
+      hasUser: !!user,
+      action: 'Initialization state changed'
+    });
+  }, [isInitializing]);
+  
   // Use AuthContext to get user state and initialization status
   const { user, isInitializing } = useAuth();
+  
+  console.log('[UserProfileContext] 📊 Render dependencies:', {
+    hasUser: !!user,
+    userId: user?.uid,
+    isInitializing,
+    currentProfile: userProfile?.uid,
+    isLoading
+  });
 
   const updateUserProfile = useCallback((newProfile: UserProfile) => {
     setUserProfile(newProfile);

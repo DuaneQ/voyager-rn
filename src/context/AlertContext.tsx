@@ -17,7 +17,11 @@ interface AlertProviderProps {
   children: ReactNode;
 }
 
+let alertProviderRenderCount = 0;
+
 const AlertProvider: React.FC<AlertProviderProps> = ({ children }) => {
+  alertProviderRenderCount++;
+  console.log(`[AlertProvider] 🔵 Rendering (count: ${alertProviderRenderCount})`);
   const showAlert = (severity: string, message: string, actionUrl?: string, actionLabel?: string) => {
     // Map severity to Alert types
     const title = severity === 'error' ? 'Error' : 
