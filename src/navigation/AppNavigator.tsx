@@ -233,15 +233,16 @@ const GuardedMainTabNavigator: React.FC = React.memo(() => {
 // Main Stack Navigator with conditional rendering based on auth state
 let rootNavigatorRenderCount = 0;
 
-const RootNavigator: React.FC = React.memo(() => {
+const RootNavigator: React.FC = () => {
   rootNavigatorRenderCount++;
   console.log(`[RootNavigator] 🔵 Rendering RootNavigator (count: ${rootNavigatorRenderCount})`);
   
-  if (rootNavigatorRenderCount > 50) {
+  if (rootNavigatorRenderCount > 10) {
     console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.error('🚨 INFINITE LOOP IN ROOTNAVIGATOR');
+    console.error('🚨 STOPPING AT 10 RENDERS TO PREVENT CRASH');
     console.error(`Rendered ${rootNavigatorRenderCount} times`);
     console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    return null; // Stop rendering to prevent crash
   }
   
   console.log('[RootNavigator] 📞 Calling useAuth()');
@@ -306,7 +307,7 @@ const RootNavigator: React.FC = React.memo(() => {
       )}
     </Stack.Navigator>
   );
-});
+};
 
 // Main App Navigator (replicates Routes from PWA)
 const AppNavigator: React.FC = () => {

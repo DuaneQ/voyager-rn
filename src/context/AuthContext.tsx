@@ -102,11 +102,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   authProviderRenderCount++;
   console.log(`[AuthProvider] 🔵 Rendering (count: ${authProviderRenderCount})`);
   
-  if (authProviderRenderCount > 50) {
+  if (authProviderRenderCount > 10) {
     console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.error('🚨 INFINITE LOOP IN AUTHPROVIDER');
+    console.error('🚨 AUTH PROVIDER: STOPPING AT 10 RENDERS');
     console.error(`Rendered ${authProviderRenderCount} times`);
     console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    // Return a frozen version to stop the loop
+    return <AuthContext.Provider value={{
+      user: null,
+      status: 'error' as AuthStatus,
+      isInitializing: false,
+      signIn: async () => {},
+      signUp: async () => {},
+      signOut: async () => {},
+      sendPasswordReset: async () => {},
+      resendVerification: async () => {},
+      refreshAuthState: async () => {},
+      hasUnverifiedUser: () => false,
+      signInWithGoogle: async () => {},
+      signUpWithGoogle: async () => {},
+      signInWithApple: async () => {},
+      signUpWithApple: async () => {},
+    }}>{children}</AuthContext.Provider>;
   }
   
   const [user, setUser] = useState<FirebaseUser | null>(null);
