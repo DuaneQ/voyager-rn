@@ -80,51 +80,106 @@ const Tab = createBottomTabNavigator();
 // Wrapper components for lazy-loaded screens
 // ONLY use Suspense on web (where lazy loading is actually lazy)
 // On mobile, components are already loaded, so Suspense is unnecessary overhead
-const VideoFeedPageWrapper: React.FC = () =>
+// CRITICAL: Memoize these to prevent new component references on every render
+const VideoFeedPageWrapper: React.FC = React.memo(() =>
   Platform.OS === 'web' ? (
     <Suspense fallback={<LazyLoadFallback />}>
       <VideoFeedPage />
     </Suspense>
   ) : (
     <VideoFeedPage />
-  );
+  )
+);
 
-const ChatThreadScreenWrapper: React.FC = () =>
+const ChatThreadScreenWrapper: React.FC = React.memo(() =>
   Platform.OS === 'web' ? (
     <Suspense fallback={<LazyLoadFallback />}>
       <ChatThreadScreen />
     </Suspense>
   ) : (
     <ChatThreadScreen />
-  );
+  )
+);
 
-const ProfilePageWrapper: React.FC = () =>
+const ProfilePageWrapper: React.FC = React.memo(() =>
   Platform.OS === 'web' ? (
     <Suspense fallback={<LazyLoadFallback />}>
       <ProfilePage />
     </Suspense>
   ) : (
     <ProfilePage />
-  );
+  )
+);
 
-const SearchPageWrapper: React.FC = () =>
+const SearchPageWrapper: React.FC = React.memo(() =>
   Platform.OS === 'web' ? (
     <Suspense fallback={<LazyLoadFallback />}>
       <SearchPage />
     </Suspense>
   ) : (
     <SearchPage />
-  );
+  )
+);
 
 // Bottom Tab Navigator (replicates BottomNav from PWA)
 const MainTabNavigator: React.FC = React.memo(() => {
   console.log('[MainTabNavigator] 🔵 Rendering MainTabNavigator');
   
-  // Memoize screen options to prevent infinite re-renders
+  // Memoize ALL options objects to prevent infinite re-renders
   const screenOptions = React.useMemo(() => ({
     tabBarActiveTintColor: '#1976d2',
     tabBarInactiveTintColor: 'gray',
     headerShown: false,
+  }), []);
+  
+  const searchOptions = React.useMemo(() => ({ 
+    title: 'TravalMatch',
+    tabBarIcon: ({ focused, color, size }: any) => (
+      <Ionicons 
+        name={focused ? 'search' : 'search-outline'} 
+        size={size} 
+        color={color} 
+      />
+    ),
+  }), []);
+  
+  const videosOptions = React.useMemo(() => ({ 
+    title: 'Travals',
+    tabBarIcon: ({ focused, color, size }: any) => (
+      <Ionicons 
+        name={focused ? 'play-circle' : 'play-circle-outline'} 
+        size={size} 
+        color={color} 
+      />
+    ),
+    tabBarStyle: {
+      position: 'absolute' as const,
+      backgroundColor: 'transparent',
+      borderTopWidth: 0,
+      elevation: 0,
+    }
+  }), []);
+  
+  const chatOptions = React.useMemo(() => ({ 
+    title: 'Chat',
+    tabBarIcon: ({ focused, color, size }: any) => (
+      <Ionicons 
+        name={focused ? 'chatbubble' : 'chatbubble-outline'} 
+        size={size} 
+        color={color} 
+      />
+    ),
+  }), []);
+  
+  const profileOptions = React.useMemo(() => ({ 
+    title: 'Profile',
+    tabBarIcon: ({ focused, color, size }: any) => (
+      <Ionicons 
+        name={focused ? 'person' : 'person-outline'} 
+        size={size} 
+        color={color} 
+      />
+    ),
   }), []);
   
   return (
@@ -132,64 +187,22 @@ const MainTabNavigator: React.FC = React.memo(() => {
       <Tab.Screen 
         name="Search" 
         component={SearchPageWrapper}
-        options={{ 
-          title: 'TravalMatch',
-          tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons 
-              name={focused ? 'search' : 'search-outline'} 
-              size={size} 
-              color={color} 
-            />
-          ),
-        }} 
+        options={searchOptions} 
       />
       <Tab.Screen 
         name="Videos" 
         component={VideoFeedPageWrapper}
-        options={{ 
-          title: 'Travals',
-          tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons 
-              name={focused ? 'play-circle' : 'play-circle-outline'} 
-              size={size} 
-              color={color} 
-            />
-          ),
-          tabBarStyle: {
-            position: 'absolute',
-            backgroundColor: 'transparent',
-            borderTopWidth: 0,
-            elevation: 0,
-          }
-        }} 
+        options={videosOptions} 
       />
       <Tab.Screen 
         name="Chat" 
         component={ChatPage}
-        options={{ 
-          title: 'Chat',
-          tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons 
-              name={focused ? 'chatbubble' : 'chatbubble-outline'} 
-              size={size} 
-              color={color} 
-            />
-          ),
-        }} 
+        options={chatOptions} 
       />
       <Tab.Screen 
         name="Profile" 
         component={ProfilePageWrapper}
-        options={{ 
-          title: 'Profile',
-          tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons 
-              name={focused ? 'person' : 'person-outline'} 
-              size={size} 
-              color={color} 
-            />
-          ),
-        }} 
+        options={profileOptions} 
       />
     </Tab.Navigator>
   );
