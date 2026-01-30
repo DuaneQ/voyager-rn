@@ -121,6 +121,23 @@ const SearchPageWrapper: React.FC = React.memo(() =>
   )
 );
 
+// Tab bar icon renderers - defined outside to prevent recreation
+const renderSearchIcon = ({ focused, color, size }: any) => (
+  <Ionicons name={focused ? 'search' : 'search-outline'} size={size} color={color} />
+);
+
+const renderVideosIcon = ({ focused, color, size }: any) => (
+  <Ionicons name={focused ? 'play-circle' : 'play-circle-outline'} size={size} color={color} />
+);
+
+const renderChatIcon = ({ focused, color, size }: any) => (
+  <Ionicons name={focused ? 'chatbubble' : 'chatbubble-outline'} size={size} color={color} />
+);
+
+const renderProfileIcon = ({ focused, color, size }: any) => (
+  <Ionicons name={focused ? 'person' : 'person-outline'} size={size} color={color} />
+);
+
 // Bottom Tab Navigator (replicates BottomNav from PWA)
 const MainTabNavigator: React.FC = React.memo(() => {
   console.log('[MainTabNavigator] 🔵 Rendering MainTabNavigator');
@@ -134,24 +151,12 @@ const MainTabNavigator: React.FC = React.memo(() => {
   
   const searchOptions = React.useMemo(() => ({ 
     title: 'TravalMatch',
-    tabBarIcon: ({ focused, color, size }: any) => (
-      <Ionicons 
-        name={focused ? 'search' : 'search-outline'} 
-        size={size} 
-        color={color} 
-      />
-    ),
+    tabBarIcon: renderSearchIcon,
   }), []);
   
   const videosOptions = React.useMemo(() => ({ 
     title: 'Travals',
-    tabBarIcon: ({ focused, color, size }: any) => (
-      <Ionicons 
-        name={focused ? 'play-circle' : 'play-circle-outline'} 
-        size={size} 
-        color={color} 
-      />
-    ),
+    tabBarIcon: renderVideosIcon,
     tabBarStyle: {
       position: 'absolute' as const,
       backgroundColor: 'transparent',
@@ -162,24 +167,12 @@ const MainTabNavigator: React.FC = React.memo(() => {
   
   const chatOptions = React.useMemo(() => ({ 
     title: 'Chat',
-    tabBarIcon: ({ focused, color, size }: any) => (
-      <Ionicons 
-        name={focused ? 'chatbubble' : 'chatbubble-outline'} 
-        size={size} 
-        color={color} 
-      />
-    ),
+    tabBarIcon: renderChatIcon,
   }), []);
   
   const profileOptions = React.useMemo(() => ({ 
     title: 'Profile',
-    tabBarIcon: ({ focused, color, size }: any) => (
-      <Ionicons 
-        name={focused ? 'person' : 'person-outline'} 
-        size={size} 
-        color={color} 
-      />
-    ),
+    tabBarIcon: renderProfileIcon,
   }), []);
   
   return (
