@@ -221,18 +221,19 @@ const MainTabNavigator: React.FC = React.memo(() => {
 // Now using single AuthScreen that handles all auth flows internally
 
 // Main Tab Navigator wrapped with TermsGuard
-const GuardedMainTabNavigator: React.FC = () => {
+const GuardedMainTabNavigator: React.FC = React.memo(() => {
+  console.log('[GuardedMainTabNavigator] 🔵 Rendering');
   return (
     <TermsGuard>
       <MainTabNavigator />
     </TermsGuard>
   );
-};
+});
 
 // Main Stack Navigator with conditional rendering based on auth state
 let rootNavigatorRenderCount = 0;
 
-const RootNavigator: React.FC = () => {
+const RootNavigator: React.FC = React.memo(() => {
   rootNavigatorRenderCount++;
   console.log(`[RootNavigator] 🔵 Rendering RootNavigator (count: ${rootNavigatorRenderCount})`);
   
@@ -305,7 +306,7 @@ const RootNavigator: React.FC = () => {
       )}
     </Stack.Navigator>
   );
-};
+});
 
 // Main App Navigator (replicates Routes from PWA)
 const AppNavigator: React.FC = () => {
