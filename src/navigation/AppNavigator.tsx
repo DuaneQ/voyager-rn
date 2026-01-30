@@ -218,7 +218,15 @@ const GuardedMainTabNavigator: React.FC = () => {
 
 // Main Stack Navigator with conditional rendering based on auth state
 const RootNavigator: React.FC = () => {
+  console.log('[RootNavigator] 🔵 Rendering RootNavigator');
   const { user, status, isInitializing } = useAuth();
+  
+  console.log('[RootNavigator] Auth state:', { 
+    hasUser: !!user, 
+    status, 
+    isInitializing,
+    emailVerified: user?.emailVerified 
+  });
 
   // Show loading state while checking authentication
   // CRITICAL: Also check isInitializing to prevent landing page flash on web refresh
