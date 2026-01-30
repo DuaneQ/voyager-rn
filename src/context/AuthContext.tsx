@@ -13,7 +13,7 @@
  * See: docs/auth/SIMPLE_AUTH_FLOW.md
  */
 
-import React, { createContext, useContext, useEffect, useState, useMemo, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, useMemo, useCallback, useRef, ReactNode } from 'react';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth, db } from '../config/firebaseConfig';
@@ -123,6 +123,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     });
   }, [user, status, isInitializing]);
 
+  // Track useMemo dependency changes
+  const prevUserRef = useRef(user);
+  const prevStatusRef = useRef(status);
+  const prevInitRef = useRef(isInitializing);
+  
+  useEffect(() => {
+    const userChanged = prevUserRef.current !== user;
+    const statusChanged = prevStatusRef.current !== status;
+    const initChanged = prevInitRef.current !== isInitializing;
+    
+    if (userChanged || statusChanged || initChanged) {
+      console.log('[AuthContext] 🔍 useMemo will recreate value because:', {
+        userChanged,
+        statusChanged, 
+        initChanged,
+        prevUser: prevUserRef.current?.uid,
+        newUser: user?.uid,
+        prevStatus: prevStatusRef.current,
+        newStatus: status,
+        prevInit: prevInitRef.current,
+        newInit: isInitializing
+      });
+    }
+    
+    prevUserRef.current = user;
+    prevStatusRef.current = status;
+    prevInitRef.current = isInitializing;
+  }, [user, status, isInitializing]);
+
   // Initialize Google Sign-In configuration (one-time setup)
   useEffect(() => {
     if (Platform.OS !== 'web' && SafeGoogleSignin.isAvailable()) {
@@ -230,7 +259,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
   }, []);
 
-  const signIn = async (email: string, password: string): Promise<void> => {
+  const signIn = useCallback(async (email: string, password: string): Promise<void> => {
+    console.log('[AuthContext] 🔑 signIn called');
     try {
       setStatus('loading');
 
@@ -289,7 +319,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const signUp = async (username: string, email: string, password: string): Promise<void> => {
+  const signUp = useCallback(async (username: string, email: string, password: string): Promise<void> => {
     try {
       setStatus('loading');
 
@@ -349,9 +379,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setStatus('error');
       throw error;
     }
-  };
+  }, []);
 
-  const signOutUser = async (): Promise<void> => {
+  const signOutUser = useCallback(async (): Promise<void> => {
     try {
       // Use Firebase Web SDK signOut (works everywhere)
       await signOut(auth);
@@ -365,9 +395,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.error('❌ Sign out error:', error);
       throw error;
     }
-  };
+  }, []);
 
-  const sendPasswordReset = async (email: string): Promise<void> => {
+  const sendPasswordReset = useCallback(async (email: string): Promise<void> => {
     try {
       // Use Firebase Web SDK (works everywhere)
       await sendPasswordResetEmail(auth, email);
@@ -375,9 +405,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.error('❌ Password reset error:', error);
       throw error;
     }
-  };
+  }, []);
 
-  const resendVerification = async (email?: string): Promise<void> => {
+  const resendVerification = useCallback(async (email?: string): Promise<void> => {
     try {
       // Use Firebase Web SDK (works everywhere)
       
@@ -391,9 +421,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.error('❌ Resend verification error:', error);
       throw error;
     }
-  };
+  }, []);
 
-  const refreshAuthState = async (): Promise<void> => {
+  const refreshAuthState = useCallback(async (): Promise<void> => {
     try {
       if (!auth.currentUser) {
         throw new Error('No user signed in');
@@ -406,13 +436,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.error('❌ Refresh auth state error:', error);
       throw error;
     }
-  };
+  }, []);
 
-  const hasUnverifiedUser = (): boolean => {
+  const hasUnverifiedUser = useCallback((): boolean => {
     return user !== null && !user.emailVerified;
-  };
+  }, [user]);
 
-  const signInWithGoogle = async (): Promise<any> => {
+  const signInWithGoogle = useCallback(async (): Promise<any> => {
     try {
       setStatus('loading');
 
@@ -468,9 +498,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.error('❌ Google sign-in error:', error);
       throw error;
     }
-  };
+  }, []);
 
-  const signUpWithGoogle = async (): Promise<any> => {
+  const signUpWithGoogle = useCallback(async (): Promise<any> => {
     try {
       setStatus('loading');
 
@@ -585,7 +615,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
    * Scenario 1: New user tries to sign in → redirect to sign up
    * Scenario 4: Existing user signs in → success
    */
-  const signInWithApple = async (): Promise<any> => {
+  const signInWithApple = useCallback(async (): Promise<any> => {
     // Only available on iOS
     if (Platform.OS !== 'ios') {
       throw new Error('Apple Sign-In is only available on iOS');
@@ -636,14 +666,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.error('[AuthContext] Apple sign-in failed:', error);
       throw error;
     }
-  };
+  }, []);
 
   /**
    * Apple Sign-Up
    * Scenario 2: Existing user tries to sign up → sign them in
    * Scenario 3: New user signs up → create profile and sign in
    */
-  const signUpWithApple = async (): Promise<any> => {
+  const signUpWithApple = useCallback(async (): Promise<any> => {
     // Only available on iOS
     if (Platform.OS !== 'ios') {
       throw new Error('Apple Sign-In is only available on iOS');
@@ -722,13 +752,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.error('[AuthContext] Apple sign-up failed:', error);
       throw error;
     }
-  };
+  }, []);
 
   const value: AuthContextValue = useMemo(() => {
     console.log('[AuthContext] 📝 Creating context value', {
       user: user ? { uid: user.uid, email: user.email, emailVerified: user.emailVerified } : null,
       status,
-      isInitializing
+      isInitializing,
+      functionsAreStable: true // All wrapped in useCallback with empty deps
     });
     return {
       user,

@@ -6,7 +6,7 @@
  * Profile is loaded after authentication via onAuthStateChanged.
  */
 
-import React, { createContext, useState, useContext, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback, useMemo, useRef, ReactNode } from 'react';
 import { getDoc, updateDoc, doc } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 import { db } from '../config/firebaseConfig';
@@ -54,6 +54,29 @@ const UserProfileProvider: React.FC<UserProfileProviderProps> = ({ children }) =
       username: userProfile?.username,
       isLoading
     });
+  }, [userProfile, isLoading]);
+  
+  // Track useMemo dependency changes
+  const prevProfileRef = useRef(userProfile);
+  const prevLoadingRef = useRef(isLoading);
+  
+  useEffect(() => {
+    const profileChanged = prevProfileRef.current !== userProfile;
+    const loadingChanged = prevLoadingRef.current !== isLoading;
+    
+    if (profileChanged || loadingChanged) {
+      console.log('[UserProfileContext] 🔍 useMemo will recreate value because:', {
+        profileChanged,
+        loadingChanged,
+        prevUserId: prevProfileRef.current?.uid,
+        newUserId: userProfile?.uid,
+        prevLoading: prevLoadingRef.current,
+        newLoading: isLoading
+      });
+    }
+    
+    prevProfileRef.current = userProfile;
+    prevLoadingRef.current = isLoading;
   }, [userProfile, isLoading]);
   
   // Use AuthContext to get user state and initialization status

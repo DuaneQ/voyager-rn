@@ -23,44 +23,61 @@ RangeError: Maximum call stack size exceeded
 ```
 
 #### Root Cause:
-**Unmemoized context values causing infinite render loop**
+**Unmemoized context values AND function references causing infinite render loop**
 
-Both `AuthContext` and `UserProfileContext` were creating new value objects on every render without `useMemo()`. Every time a provider rendered, it created a new object reference, causing all consumer components to re-render, which triggered provider re-renders, creating an infinite loop:
+Both `AuthContext` and `UserProfileContext` had two problems:
+1. Context value objects were created new on every render (fixed with `useMemo`)
+2. **Functions inside the context were not wrapped in `useCallback`**, so they had new references on every render
+
+Even with `useMemo` on the context value object, if the functions inside have new references, components that use those functions as dependencies (in `useEffect`, `useCallback`, etc.) will re-render:
 
 ```typescript
-// ❌ BAD - Creates new object every render
-return (
-  <AuthContext.Provider value={{
+// ❌ BAD - Functions recreated on every render
+const AuthProvider = ({ children }) => {
+  const signIn = async (email, password) => { ... }; // New reference each render
+  const signOut = async () => { ... }; // New reference each render
+  
+  // useMemo prevents new object wrapper, but functions inside are still new!
+  const value = useMemo(() => ({
     user,
     status,
-    signIn,
-    signOut,
-    // ... more properties
-  }}>
-    {children}
-  </AuthContext.Provider>
-);
-
-// Each render creates a new object → consumers re-render → providers re-render → loop
+    signIn,  // ← New reference!
+    signOut, // ← New reference!
+  }), [user, status]);
+  
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
 ```
 
-This was compounded by unmemoized navigation components (`RootNavigator`, `GuardedMainTabNavigator`) that consume these contexts.
+This creates infinite loops when:
+1. Provider renders → new function references created
+2. Components with these functions in dependency arrays detect "change"
+3. Components re-render → somehow trigger provider re-render
+4. Loop continues
 
 #### The Fix:
 ```typescript
-// ✅ GOOD - Memoized context values
+// ✅ GOOD - Both value object AND functions are memoized
 const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [status, setStatus] = useState('idle');
   
-  // Memoize the context value - only recreate when dependencies change
+  // Wrap ALL functions in useCallback for stable references
+  const signIn = useCallback(async (email, password) => {
+    // Implementation...
+  }, []); // Empty deps = function never changes
+  
+  const signOut = useCallback(async () => {
+    // Implementation...
+  }, []);
+  
+  // Memoize the context value - only recreate when primitives change
   const value = useMemo(() => ({
     user,
     status,
-    signIn,
-    signOut,
-    // ... more properties
-  }), [user, status, isInitializing]); // Only these primitives, not functions
+    signIn,  // ← Stable reference from useCallback
+    signOut, // ← Stable reference from useCallback
+  }), [user, status, isInitializing, signIn, signOut]);
   
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
@@ -73,7 +90,7 @@ const RootNavigator: React.FC = React.memo(() => {
 ```
 
 **Files Changed:**
-- `src/context/AuthContext.tsx` - Added `useMemo` for context value
+- `src/context/AuthContext.tsx` - Added `useMemo` for context value + `useCallback` for ALL functions
 - `src/context/UserProfileContext.tsx` - Added `useMemo` for context value  
 - `src/navigation/AppNavigator.tsx` - Added `React.memo()` to RootNavigator and GuardedMainTabNavigator
 
@@ -88,23 +105,25 @@ const RootNavigator: React.FC = React.memo(() => {
 ```
 
 #### Prevention:
-**Always memoize React Context values** that contain objects or arrays:
+**Always memoize React Context values AND their functions**:
 
 ```typescript
-// ❌ BAD - New object every render
-<MyContext.Provider value={{ data, methods }}>
+// ❌ BAD - New object and new function references
+<MyContext.Provider value={{ data, onClick: () => {} }}>
 
-// ✅ GOOD - Memoized, stable reference
-const value = useMemo(() => ({ data, methods }), [data]);
+// ✅ GOOD - Memoized value with stable function references
+const onClick = useCallback(() => { ... }, []);
+const value = useMemo(() => ({ data, onClick }), [data, onClick]);
 <MyContext.Provider value={value}>
 ```
 
-**Also memoize navigation container components** that:
-- Use context hooks (useAuth, useUserProfile, etc.)
-- Conditionally render different navigation stacks
-- Are rendered by parent navigation components
+**Rules:**
+1. **Wrap context value in `useMemo`** - Prevents new object on every render
+2. **Wrap ALL functions in `useCallback`** - Prevents new function references
+3. **Include memoized functions in `useMemo` deps** - Ensures they're tracked
+4. **Memoize navigation components** that consume contexts
 
-Without proper memoization, context consumers re-render on every provider render, even when values haven't actually changed.
+Without proper memoization, context consumers re-render unnecessarily, even when actual values haven't changed, leading to cascading re-renders and potential infinite loops.
 
 #### Impact After Fix:
 ✅ App loads without errors  
