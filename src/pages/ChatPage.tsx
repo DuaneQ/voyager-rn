@@ -157,7 +157,6 @@ const ChatPage: React.FC = () => {
           
           (navigation.navigate as any)('ChatThread', {
             connectionId: item.id,
-            otherUserName: otherUserNames,
           });
         }}
       >

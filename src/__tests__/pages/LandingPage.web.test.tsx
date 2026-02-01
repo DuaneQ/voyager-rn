@@ -17,18 +17,10 @@ import { Platform } from 'react-native';
 import { LandingPage } from '../../pages/LandingPage.web';
 
 // Mock window.location for navigation tests
-const originalLocation = window.location;
-let mockLocation: { href: string };
-
-beforeAll(() => {
-  mockLocation = { href: '' };
-  // @ts-ignore - mocking window.location
-  delete window.location;
-  window.location = mockLocation as any;
-});
-
-afterAll(() => {
-  window.location = originalLocation;
+const mockLocation = { href: '' };
+Object.defineProperty(window, 'location', {
+  writable: true,
+  value: mockLocation,
 });
 
 // Mock auth context

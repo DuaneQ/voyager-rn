@@ -53,7 +53,6 @@ if (Platform.OS !== 'web') {
 type ChatThreadRouteParams = {
   ChatThread: {
     connectionId: string;
-    otherUserName?: string;
   };
 };
 
@@ -62,7 +61,6 @@ const DEFAULT_AVATAR = 'https://via.placeholder.com/40';
 // Props for web usage (React Router passes connectionId as prop)
 interface ChatThreadScreenProps {
   connectionId?: string;
-  otherUserName?: string;
 }
 
 const ChatThreadScreen: React.FC<ChatThreadScreenProps> = (props) => {
@@ -72,7 +70,6 @@ const ChatThreadScreen: React.FC<ChatThreadScreenProps> = (props) => {
   // Support both props (web) and route params (native)
   // Props take precedence for web compatibility
   const connectionId = props.connectionId || route.params?.connectionId;
-  const otherUserName = props.otherUserName || route.params?.otherUserName;
   
   const { userProfile } = useContext(UserProfileContext);
   

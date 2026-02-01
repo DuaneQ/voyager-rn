@@ -50,7 +50,6 @@
     "@react-navigation/bottom-tabs": "^6.5.20",
     "@react-navigation/native": "^6.1.18",
     "@react-navigation/stack": "^6.3.29",
-    "@types/react-router-dom": "^5.3.3",
     "axios": "^1.13.2",
     "country-state-city": "^3.2.1",
     "date-fns": "^4.1.0",

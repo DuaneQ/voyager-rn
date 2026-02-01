@@ -30,8 +30,7 @@ import {
   useNavigate
 } from 'react-router-dom';
 
-// Context Providers
-import { AlertProvider } from '../context/AlertContext';
+// Context Providers (AlertProvider is provided by App.tsx)
 import { useUserProfile } from '../context/UserProfileContext';
 import { useAuth } from '../context/AuthContext';
 
@@ -241,9 +240,8 @@ const RootNavigator: React.FC = () => {
     return <LazyLoadFallback />;
   }
 
-  // Check auth states
+  // Check if user is authenticated with verified email
   const isAuthenticated = user && user.emailVerified;
-  const hasUnverifiedUser = user && !user.emailVerified;
 
   return (
     <Routes>
@@ -350,14 +348,13 @@ const RootNavigator: React.FC = () => {
 
 // ============================================================================
 // MAIN APP NAVIGATOR (Web Entry Point)
+// NOTE: AlertProvider is already provided by App.tsx - do not add here
 // ============================================================================
 const AppNavigator: React.FC = () => {
   return (
-    <AlertProvider>
-      <BrowserRouter>
-        <RootNavigator />
-      </BrowserRouter>
-    </AlertProvider>
+    <BrowserRouter>
+      <RootNavigator />
+    </BrowserRouter>
   );
 };
 
