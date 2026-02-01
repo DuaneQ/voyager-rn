@@ -26,6 +26,34 @@
 
 ---
 
+### 🚨 ALWAYS CONSIDER COST IMPLICATIONS 🚨
+
+**ABSOLUTE RULE**: Before recommending any new solution, refactor, or library, you MUST consider cost implications.
+
+**Cost considerations include**:
+- **External API costs**: Google Places, Maps, OpenAI, etc. - calculate per-call costs and estimate monthly usage
+- **Cloud function execution**: Firebase Functions billing (invocations, compute time, egress)
+- **Third-party services**: Stripe fees, push notification services, analytics platforms
+- **Build/CI costs**: EAS builds, GitHub Actions minutes, testing infrastructure
+- **New library dependencies**: Do they introduce paid services? Do they increase bundle size affecting CDN costs?
+
+**Before proposing solutions**:
+1. ✅ **Research pricing**: Look up actual API pricing tiers and calculate projected costs
+2. ✅ **Estimate usage**: How many calls per user? Per day? Per month?
+3. ✅ **Compare alternatives**: Is there a cheaper way to achieve the same result?
+4. ✅ **Present cost analysis**: Show the user projected costs BEFORE implementing
+5. ✅ **Get explicit consent**: Do NOT implement cost-impacting changes without user approval
+
+**Examples of cost-aware decisions**:
+- Prefer AI-generated data over expensive API enrichment when quality is acceptable
+- Use caching to reduce repeated API calls
+- Batch operations when possible to reduce invocation counts
+- Consider free tiers and rate limits in architecture decisions
+
+**If you recommend a solution without cost analysis, you may cause unexpected bills. NO EXCEPTIONS.**
+
+---
+
 ### 🚨 EAS BUILD WARNING - COSTS MONEY 🚨
 
 **ABSOLUTE RULE**: EAS Builds count against billing quota. **Test thoroughly BEFORE building.**

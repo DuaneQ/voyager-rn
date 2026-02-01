@@ -722,7 +722,7 @@ const styles = StyleSheet.create({
   },
   floatingUploadButton: {
     position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 330 : 480, // Android needs higher position (less bottom space)
+    bottom: Platform.OS === 'ios' ? 450 : 480, // iOS raised by ~15% (330 -> 380), Android unchanged
     right: 4, 
     width: 56,
     height: 56,

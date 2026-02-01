@@ -9,8 +9,8 @@ import { AIItineraryGenerationModal } from '../../components/modals/AIItineraryG
 import * as firebaseCfg from '../../config/firebaseConfig';
 
 // Mock dependencies
-jest.mock('../../hooks/useAIGeneration', () => ({
-  useAIGeneration: () => ({
+jest.mock('../../hooks/useAIGenerationV2', () => ({
+  useAIGenerationV2: () => ({
     generateItinerary: jest.fn().mockResolvedValue({ success: true, data: { id: 'test-id' } }),
     isGenerating: false,
     progress: null,
