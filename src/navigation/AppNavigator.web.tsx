@@ -19,7 +19,7 @@
  */
 
 import React, { Suspense, lazy, useEffect, useRef } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, TouchableOpacity } from 'react-native';
 import { 
   BrowserRouter, 
   Routes, 
@@ -119,11 +119,10 @@ const WebBottomTabBar: React.FC = () => {
         const isActive = location.pathname === tab.path || 
                         location.pathname.startsWith(tab.path + '/');
         return (
-          <View
+          <TouchableOpacity
             key={tab.name}
             style={styles.tabItem}
-            // @ts-ignore - onClick works on web
-            onClick={() => navigate(tab.path)}
+            onPress={() => navigate(tab.path)}
           >
             <span style={{ 
               fontSize: 24, 
@@ -140,7 +139,7 @@ const WebBottomTabBar: React.FC = () => {
             }}>
               {tab.label}
             </span>
-          </View>
+          </TouchableOpacity>
         );
       })}
     </View>
@@ -320,7 +319,7 @@ const RootNavigator: React.FC = () => {
 
       {/* Chat thread (no bottom tabs) */}
       <Route 
-        path="/chat/:connectionId" 
+        path="/app/chat/:connectionId" 
         element={
           <RequireAuth>
             <ChatThreadWrapper />
@@ -383,11 +382,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#ffffff',
     paddingVertical: 8,
     paddingBottom: 20, // Safe area for mobile browsers
     borderTopWidth: 1,
-    borderTopColor: '#333',
+    borderTopColor: '#e0e0e0',
   },
   tabItem: {
     alignItems: 'center',

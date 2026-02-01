@@ -18,7 +18,6 @@ import {
 } from 'react-native';
 import { setAudioModeAsync } from 'expo-audio';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
 import { VideoCard } from '../components/video/VideoCard';
 import { VideoCommentsModal } from '../components/video/VideoCommentsModal';
 import { VideoUploadModal } from '../components/modals/VideoUploadModal';
@@ -29,6 +28,19 @@ import { shareVideo } from '../utils/videoSharing';
 import { videoPlaybackManager } from '../services/video/VideoPlaybackManager';
 import { doc, getDocFromServer } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
+
+// Platform-safe useFocusEffect
+let useFocusEffect: (callback: () => void | (() => void)) => void;
+if (Platform.OS === 'web') {
+  useFocusEffect = (callback) => {
+    useEffect(() => {
+      const cleanup = callback();
+      return cleanup;
+    }, []);
+  };
+} else {
+  useFocusEffect = require('@react-navigation/native').useFocusEffect;
+}
 
 const { height } = Dimensions.get('window');
 

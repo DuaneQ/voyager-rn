@@ -22,12 +22,20 @@ import {
   StyleSheet,
   Dimensions,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { PrivacyPolicyModal } from '../components/modals/legal/PrivacyPolicyModal';
 import { TermsOfServiceModal } from '../components/modals/legal/TermsOfServiceModal';
 import { SafetyGuidelinesModal } from '../components/modals/legal/SafetyGuidelinesModal';
 import { CookiePolicyModal } from '../components/modals/legal/CookiePolicyModal';
+
+// Platform-safe useNavigation
+const useNavigation = () => ({
+  navigate: (screen: string) => {
+    if (screen === 'Auth') {
+      window.location.href = '/auth';
+    }
+  }
+});
 
 const { width } = Dimensions.get('window');
 

@@ -7,8 +7,8 @@ import {
   TouchableOpacity, 
   ScrollView,
   Alert,
+  Platform,
 } from 'react-native';
-import { useRoute, RouteProp } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
 import { useUserProfile } from '../context/UserProfileContext';
@@ -21,16 +21,36 @@ import { VideoGrid } from '../components/video/VideoGrid';
 import { AIItinerarySection } from '../components/profile/AIItinerarySection';
 import type { PhotoSlot } from '../types/Photo';
 
+// Platform-specific route param handling
+let useRouteParams: () => { openEditModal?: boolean; incompleteProfile?: boolean; missingFields?: string[] };
+
+if (Platform.OS === 'web') {
+  // Web: use URL search params
+  useRouteParams = () => {
+    const params = new URLSearchParams(window.location.search);
+    return {
+      openEditModal: params.get('edit') === 'true',
+      incompleteProfile: params.get('incomplete') === 'true',
+      missingFields: params.get('missingFields')?.split(',') || [],
+    };
+  };
+} else {
+  // Native: use React Navigation
+  const { useRoute } = require('@react-navigation/native');
+  useRouteParams = () => {
+    try {
+      const route = useRoute();
+      return route.params || {};
+    } catch {
+      return {};
+    }
+  };
+}
+
 type TabType = 'profile' | 'photos' | 'videos' | 'itinerary';
 
-type ProfilePageRouteParams = {
-  openEditModal?: boolean;
-  incompleteProfile?: boolean;
-  missingFields?: string[];
-};
-
 const ProfilePage: React.FC = () => {
-  const route = useRoute<RouteProp<{ Profile: ProfilePageRouteParams }, 'Profile'>>();
+  const routeParams = useRouteParams();
   const { showAlert } = useAlert();
   const { userProfile, updateProfile, isLoading } = useUserProfile();
   const { selectAndUploadPhoto, deletePhoto, uploadState } = usePhotoUpload();
@@ -41,7 +61,7 @@ const ProfilePage: React.FC = () => {
 
   // Check navigation params to auto-open EditProfileModal
   useEffect(() => {
-    if (route.params?.openEditModal && route.params?.incompleteProfile) {
+    if (routeParams?.openEditModal && routeParams?.incompleteProfile) {
       setEditModalVisible(true);
       
       // Calculate all missing fields for 100% completion (not just required fields for itinerary creation)
@@ -62,7 +82,7 @@ const ProfilePage: React.FC = () => {
         showAlert('warning', 'Please complete your profile to use all features');
       }
     }
-  }, [route.params?.openEditModal, route.params?.incompleteProfile]); // Only trigger when params change, not on every userProfile update
+  }, [routeParams?.openEditModal, routeParams?.incompleteProfile]); // Only trigger when params change, not on every userProfile update
 
   // Removed auto-opening modal when no profile exists
   // Profile completion will be prompted when user tries to create itineraries
