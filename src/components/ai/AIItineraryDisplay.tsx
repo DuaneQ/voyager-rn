@@ -874,10 +874,12 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                 })();
                 
                 // Get booking link (matching PWA)
+                // Priority: actual booking URL > website > Google Maps search
+                // Note: place_id URL format doesn't work reliably, use name+address search instead
                 const bookingLink = hotel.bookingUrl || 
                                   hotel.website || 
                                   hotel.vendorRaw?.website || 
-                                  (hotel.placeId ? `https://www.google.com/maps/place/?q=place_id:${hotel.placeId}` : null);
+                                  (hotel.name ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(hotel.name + (hotel.address ? ' ' + hotel.address : ''))}` : null);
                 
                 // Format price (matching PWA)
                 const formatPrice = (() => {
