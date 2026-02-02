@@ -17,7 +17,11 @@ import { useConnections } from '../../hooks/chat/useConnections';
 import { useAllItineraries } from '../../hooks/useAllItineraries';
 import { accountDeletionService } from '../../services/account/AccountDeletionService';
 
-export const ProfileTab: React.FC = () => {
+interface ProfileTabProps {
+  onEditPreferences?: () => void;
+}
+
+export const ProfileTab: React.FC<ProfileTabProps> = ({ onEditPreferences }) => {
   const { userProfile } = useUserProfile();
   const { signOut, user } = useAuth();
   const [ratingsModalVisible, setRatingsModalVisible] = useState(false);
@@ -67,7 +71,16 @@ export const ProfileTab: React.FC = () => {
   };
 
   const handleEditPreferences = () => {
-    Alert.alert('Coming Soon', 'Travel preferences editing is not yet implemented');
+    if (onEditPreferences) {
+      onEditPreferences();
+    } else {
+      // Fallback if no callback provided
+      if (Platform.OS === 'web') {
+        window.alert('Travel preferences editing is not yet configured');
+      } else {
+        Alert.alert('Coming Soon', 'Travel preferences editing is not yet configured');
+      }
+    }
   };
 
   const handleSignOut = () => {

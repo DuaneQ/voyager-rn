@@ -11,7 +11,14 @@ import { Video, VideoUploadData, VideoUploadState } from '../../types/Video';
 import { validateVideoFile, validateVideoMetadata, getFileSize } from '../../utils/videoValidation';
 import * as firebaseCfg from '../../config/firebaseConfig';
 
-export const useVideoUpload = () => {
+interface UseVideoUploadOptions {
+  onError?: (message: string, title?: string) => void;
+}
+
+export const useVideoUpload = (options?: UseVideoUploadOptions) => {
+  const showError = options?.onError || ((message: string, title?: string) => {
+    Alert.alert(title || 'Error', message);
+  });
   const [uploadState, setUploadState] = useState<VideoUploadState>({
     loading: false,
     progress: 0,
@@ -34,9 +41,9 @@ export const useVideoUpload = () => {
     setPermissionGranted(granted);
 
     if (!granted) {
-      Alert.alert(
-        'Permission Required',
-        'Please grant permission to access your photo library to upload videos.'
+      showError(
+        'Please grant permission to access your photo library to upload videos.',
+        'Permission Required'
       );
     }
 
@@ -72,7 +79,7 @@ export const useVideoUpload = () => {
       };
     } catch (error) {
       console.error('Error selecting video:', error);
-      Alert.alert('Error', 'Failed to select video');
+      showError('Failed to select video', 'Error');
       return null;
     }
   }, [requestPermission]);
@@ -88,7 +95,7 @@ export const useVideoUpload = () => {
   const effectiveAuth = tentative && tentative.currentUser ? tentative : (firebaseCfg as any).auth;
   const userId = effectiveAuth?.currentUser?.uid;
       if (!userId) {
-        Alert.alert('Error', 'You must be logged in to upload videos');
+        showError('You must be logged in to upload videos', 'Error');
         return null;
       }
 
@@ -158,7 +165,7 @@ export const useVideoUpload = () => {
           processingStatus: null,
         });
 
-        Alert.alert('Upload Failed', errorMessage);
+        showError(errorMessage, 'Upload Failed');
         return null;
       }
     },
@@ -175,7 +182,7 @@ export const useVideoUpload = () => {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Delete failed';
-      Alert.alert('Delete Failed', errorMessage);
+      showError(errorMessage, 'Delete Failed');
       return false;
     }
   }, []);

@@ -272,7 +272,7 @@ const ProfilePage: React.FC = () => {
   const renderTabContent = () => {
     switch (activeTab) {
       case 'profile':
-        return <ProfileTab />;
+        return <ProfileTab onEditPreferences={() => setActiveTab('itinerary')} />;
       
       case 'photos':
         return (

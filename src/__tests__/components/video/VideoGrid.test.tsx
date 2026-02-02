@@ -10,6 +10,7 @@ import { VideoGrid } from '../../../components/video/VideoGrid';
 import { useVideoUpload } from '../../../hooks/video/useVideoUpload';
 import { Video as VideoType } from '../../../types/Video';
 import { Timestamp } from 'firebase/firestore';
+import { AlertProvider } from '../../../context/AlertContext';
 
 // Mock dependencies
 jest.mock('../../../hooks/video/useVideoUpload');
@@ -89,6 +90,15 @@ describe('VideoGrid', () => {
   const mockDeleteVideo = jest.fn();
   const mockLoadUserVideos = jest.fn();
 
+  // Helper to render with AlertProvider
+  const renderWithProviders = (component: React.ReactElement) => {
+    return render(
+      <AlertProvider>
+        {component}
+      </AlertProvider>
+    );
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
     (Alert.alert as jest.Mock).mockClear();
@@ -106,14 +116,14 @@ describe('VideoGrid', () => {
 
   describe('Rendering', () => {
     it('should render the component', async () => {
-      const { getByText } = render(<VideoGrid />);
+      const { getByText } = renderWithProviders(<VideoGrid />);
       await waitFor(() => {
         expect(getByText('Add Video')).toBeTruthy();
       });
     });
 
     it('should show loading indicator when loading videos initially', () => {
-      const { getByText } = render(<VideoGrid />);
+      const { getByText } = renderWithProviders(<VideoGrid />);
       // During initial render before videos load
       expect(getByText('Loading videos...')).toBeTruthy();
     });
@@ -121,7 +131,7 @@ describe('VideoGrid', () => {
     it('should show empty state when no videos after loading', async () => {
       mockLoadUserVideos.mockResolvedValue([]);
 
-      const { getByText, queryByText } = render(<VideoGrid />);
+      const { getByText, queryByText } = renderWithProviders(<VideoGrid />);
 
       await waitFor(() => {
         expect(queryByText('Loading videos...')).toBeNull();
@@ -133,7 +143,7 @@ describe('VideoGrid', () => {
     it('should render video grid with videos', async () => {
       mockLoadUserVideos.mockResolvedValue(mockVideos);
 
-      const { UNSAFE_getAllByType } = render(<VideoGrid />);
+      const { UNSAFE_getAllByType } = renderWithProviders(<VideoGrid />);
 
       await waitFor(() => {
         const images = UNSAFE_getAllByType(Image);
@@ -144,7 +154,7 @@ describe('VideoGrid', () => {
     it('should render video with thumbnail image', async () => {
       mockLoadUserVideos.mockResolvedValue([mockVideos[0]]);
 
-      const { UNSAFE_getAllByType } = render(<VideoGrid />);
+      const { UNSAFE_getAllByType } = renderWithProviders(<VideoGrid />);
 
       await waitFor(() => {
         const images = UNSAFE_getAllByType(Image);
@@ -158,7 +168,7 @@ describe('VideoGrid', () => {
     it('should render video without thumbnail (placeholder icon)', async () => {
       mockLoadUserVideos.mockResolvedValue([mockVideos[1]]);
 
-      const { UNSAFE_queryAllByType } = render(<VideoGrid />);
+      const { UNSAFE_queryAllByType } = renderWithProviders(<VideoGrid />);
 
       await waitFor(() => {
         const views = UNSAFE_queryAllByType(View);
@@ -172,7 +182,7 @@ describe('VideoGrid', () => {
       mockSelectVideo.mockResolvedValue('file:///test/video.mp4');
       mockUploadVideo.mockResolvedValue(true);
 
-      const { getByText } = render(<VideoGrid />);
+      const { getByText } = renderWithProviders(<VideoGrid />);
 
       // Wait for initial load
       await waitFor(() => expect(getByText('Add Video')).toBeTruthy());
@@ -190,7 +200,7 @@ describe('VideoGrid', () => {
       mockSelectVideo.mockResolvedValue({ uri: 'file:///test/video.mp4', fileSize: 1024000 });
       mockUploadVideo.mockResolvedValue(true);
 
-      const { getByText, getByTestId } = render(<VideoGrid />);
+      const { getByText, getByTestId } = renderWithProviders(<VideoGrid />);
 
       await waitFor(() => expect(getByText('Add Video')).toBeTruthy());
 
@@ -223,7 +233,7 @@ describe('VideoGrid', () => {
       mockSelectVideo.mockResolvedValue({ uri: 'file:///test/video.mp4', fileSize: 1024000 });
       mockUploadVideo.mockResolvedValue(true);
 
-      const { getByText, getByTestId } = render(<VideoGrid />);
+      const { getByText, getByTestId } = renderWithProviders(<VideoGrid />);
 
       await waitFor(() => expect(getByText('Add Video')).toBeTruthy());
 
@@ -256,7 +266,7 @@ describe('VideoGrid', () => {
       mockSelectVideo.mockResolvedValue({ uri: 'file:///test/video.mp4', fileSize: 1024000 });
       mockUploadVideo.mockResolvedValue(null); // Upload failed
 
-      const { getByText, getByTestId } = render(<VideoGrid />);
+      const { getByText, getByTestId } = renderWithProviders(<VideoGrid />);
 
       await waitFor(() => expect(getByText('Add Video')).toBeTruthy());
 
@@ -290,7 +300,7 @@ describe('VideoGrid', () => {
       mockSelectVideo.mockResolvedValue({ uri: 'file:///test/video.mp4', fileSize: 1024000 });
       mockUploadVideo.mockRejectedValue(new Error('File size too large'));
 
-      const { getByText, getByTestId } = render(<VideoGrid />);
+      const { getByText, getByTestId } = renderWithProviders(<VideoGrid />);
 
       await waitFor(() => expect(getByText('Add Video')).toBeTruthy());
 
@@ -324,7 +334,7 @@ describe('VideoGrid', () => {
       mockUploadVideo.mockResolvedValue(true);
       mockLoadUserVideos.mockResolvedValueOnce([]).mockResolvedValueOnce(mockVideos);
 
-      const { getByText, getByTestId } = render(<VideoGrid />);
+      const { getByText, getByTestId } = renderWithProviders(<VideoGrid />);
 
       await waitFor(() => expect(mockLoadUserVideos).toHaveBeenCalledTimes(1));
 
@@ -350,7 +360,7 @@ describe('VideoGrid', () => {
     it('should not upload when video selection is cancelled', async () => {
       mockSelectVideo.mockResolvedValue(null);
 
-      const { getByText } = render(<VideoGrid />);
+      const { getByText } = renderWithProviders(<VideoGrid />);
 
       await waitFor(() => {
         const addButton = getByText('Add Video');
@@ -371,7 +381,7 @@ describe('VideoGrid', () => {
         loadUserVideos: mockLoadUserVideos,
       });
 
-      const { UNSAFE_getAllByType } = render(<VideoGrid />);
+      const { UNSAFE_getAllByType } = renderWithProviders(<VideoGrid />);
 
       await waitFor(() => {
         const touchables = UNSAFE_getAllByType(TouchableOpacity);
@@ -389,7 +399,7 @@ describe('VideoGrid', () => {
         loadUserVideos: mockLoadUserVideos,
       });
 
-      const { UNSAFE_getAllByType } = render(<VideoGrid />);
+      const { UNSAFE_getAllByType } = renderWithProviders(<VideoGrid />);
 
       const indicators = UNSAFE_getAllByType(ActivityIndicator);
       expect(indicators.length).toBeGreaterThan(0);
@@ -409,7 +419,7 @@ describe('VideoGrid', () => {
         loadUserVideos: mockLoadUserVideos,
       });
 
-      const { UNSAFE_getAllByType } = render(<VideoGrid />);
+      const { UNSAFE_getAllByType } = renderWithProviders(<VideoGrid />);
 
       // When uploading, should show ActivityIndicator
       const indicators = UNSAFE_getAllByType(ActivityIndicator);
@@ -421,7 +431,7 @@ describe('VideoGrid', () => {
     it('should show delete confirmation on long press', async () => {
       mockLoadUserVideos.mockResolvedValue(mockVideos);
 
-      const { UNSAFE_getAllByType } = render(<VideoGrid />);
+      const { UNSAFE_getAllByType } = renderWithProviders(<VideoGrid />);
 
       // Wait for videos to load
       await waitFor(() => {
@@ -458,7 +468,7 @@ describe('VideoGrid', () => {
         }
       });
 
-      const { UNSAFE_getAllByType } = render(<VideoGrid />);
+      const { UNSAFE_getAllByType } = renderWithProviders(<VideoGrid />);
 
       await waitFor(() => {
         const touchables = UNSAFE_getAllByType(TouchableOpacity);
@@ -492,7 +502,7 @@ describe('VideoGrid', () => {
         }
       });
 
-      const { UNSAFE_getAllByType } = render(<VideoGrid />);
+      const { UNSAFE_getAllByType } = renderWithProviders(<VideoGrid />);
 
       await waitFor(() => {
         const touchables = UNSAFE_getAllByType(TouchableOpacity);
@@ -537,7 +547,7 @@ describe('VideoGrid', () => {
         }
       });
 
-      const { UNSAFE_getAllByType } = render(<VideoGrid />);
+      const { UNSAFE_getAllByType } = renderWithProviders(<VideoGrid />);
 
       await waitFor(() => {
         const touchables = UNSAFE_getAllByType(TouchableOpacity);
@@ -554,7 +564,7 @@ describe('VideoGrid', () => {
     it('should open video player on video press', async () => {
       mockLoadUserVideos.mockResolvedValue(mockVideos);
 
-      const { UNSAFE_getAllByType } = render(<VideoGrid />);
+      const { UNSAFE_getAllByType } = renderWithProviders(<VideoGrid />);
 
       // Wait for videos to load
       await waitFor(() => {
@@ -579,7 +589,7 @@ describe('VideoGrid', () => {
     it('should display video info in player', async () => {
       mockLoadUserVideos.mockResolvedValue(mockVideos);
 
-      const { UNSAFE_getAllByType, getByText } = render(<VideoGrid />);
+      const { UNSAFE_getAllByType, getByText } = renderWithProviders(<VideoGrid />);
 
       // Wait for videos to load
       await waitFor(() => {
@@ -603,7 +613,7 @@ describe('VideoGrid', () => {
     it('should close video player when close button pressed', async () => {
       mockLoadUserVideos.mockResolvedValue(mockVideos);
 
-      const { UNSAFE_getAllByType } = render(<VideoGrid />);
+      const { UNSAFE_getAllByType } = renderWithProviders(<VideoGrid />);
 
       // Wait for videos to load
       await waitFor(() => {
@@ -643,7 +653,7 @@ describe('VideoGrid', () => {
     it('should handle video without description', async () => {
       mockLoadUserVideos.mockResolvedValue([mockVideos[1]]);
 
-      const { UNSAFE_getAllByType, getByText, queryByText } = render(<VideoGrid />);
+      const { UNSAFE_getAllByType, getByText, queryByText } = renderWithProviders(<VideoGrid />);
 
       // Wait for videos to load
       await waitFor(() => {
@@ -669,7 +679,7 @@ describe('VideoGrid', () => {
     it('should hide loading indicator after videos loaded', async () => {
       mockLoadUserVideos.mockResolvedValue(mockVideos);
 
-      const { queryByText } = render(<VideoGrid />);
+      const { queryByText } = renderWithProviders(<VideoGrid />);
 
       await waitFor(() => {
         expect(queryByText('Loading videos...')).toBeNull();

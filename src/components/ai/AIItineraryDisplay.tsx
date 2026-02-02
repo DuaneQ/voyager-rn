@@ -2194,6 +2194,7 @@ const styles = StyleSheet.create({
     color: '#BF360C',
     lineHeight: 18,
   },
+  },
   dietaryFitContainer: {
     backgroundColor: '#E3F2FD',
     padding: 10,

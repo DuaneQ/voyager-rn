@@ -219,7 +219,7 @@ export const useAIGenerationV2 = (): UseAIGenerationV2Return => {
       const selectedProfile = request.travelPreferences || request.preferenceProfile;
       const profileWithDefaults = applyProfileDefaults(selectedProfile);
       const transportType = profileWithDefaults?.transportation?.primaryMode || 'driving';
-      const transportTypeLower = (transportType as string).toLowerCase();
+      const transportTypeLower = String(transportType ?? '').toLowerCase();
       // Check for flight mode: explicit includeFlights flag OR airplane/flight/flights/air mode
       const includeFlights = profileWithDefaults?.transportation?.includeFlights === true ||
                              transportTypeLower === 'airplane' || 
@@ -360,7 +360,7 @@ export const useAIGenerationV2 = (): UseAIGenerationV2Return => {
             // Extract the inner object if present, otherwise use the parsed result directly
             transportationRecommendations = parsed.transportation || parsed;
           } catch (e) {
-            // Failed to parse transportation JSON - silently ignore
+            // Failed to parse transportation JSON - log warning and continue without transportation recommendations
             console.warn('[useAIGenerationV2] Failed to parse transportation JSON:', e);
           }
         }

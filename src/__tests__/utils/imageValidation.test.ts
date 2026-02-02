@@ -44,7 +44,7 @@ describe('imageValidation', () => {
       const result = await validateImage('file:///document.pdf', 'application/pdf');
 
       expect(result.isValid).toBe(false);
-      expect(result.error).toContain('Invalid image format');
+      expect(result.error).toContain('Invalid MIME type');
     });
 
     it('should flag HEIC for conversion', async () => {
@@ -244,7 +244,7 @@ describe('imageValidation', () => {
       const result = await prepareImageForUpload('file:///document.pdf', 'application/pdf');
 
       expect(result.error).toBeDefined();
-      expect(result.error).toContain('Invalid image format');
+      expect(result.error).toContain('Invalid MIME type');
     });
   });
 });

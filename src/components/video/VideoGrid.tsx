@@ -25,6 +25,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Video as VideoType } from '../../types/Video';
 import { useVideoUpload } from '../../hooks/video/useVideoUpload';
+import { useAlert } from '../../context/AlertContext';
 import { VideoUploadModal } from '../modals/VideoUploadModal';
 
 // Conditionally import expo-av only on native platforms
@@ -37,13 +38,19 @@ const GRID_COLUMNS = 3;
 const ITEM_SIZE = (width - 40) / GRID_COLUMNS;
 
 export const VideoGrid: React.FC = () => {
+  const { showAlert } = useAlert();
+  
   const {
     uploadState,
     selectVideo,
     uploadVideo,
     deleteVideo,
     loadUserVideos,
-  } = useVideoUpload();
+  } = useVideoUpload({
+    onError: (message, title) => {
+      showAlert('error', message);
+    },
+  });
 
   const [videos, setVideos] = useState<VideoType[]>([]);
   const [loading, setLoading] = useState(false);
@@ -102,25 +109,37 @@ export const VideoGrid: React.FC = () => {
     setSelectedVideoFileSize(undefined);
   }, []);
 
-  const handleDeleteVideo = (video: VideoType) => {
-    Alert.alert(
-      'Delete Video',
-      'Are you sure you want to delete this video?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            const success = await deleteVideo(video.id, video);
-            if (success) {
-              Alert.alert('Success', 'Video deleted successfully');
-              await refreshVideos();
-            }
+  const handleDeleteVideo = async (video: VideoType) => {
+    // On web, use window.confirm; on native, use Alert.alert
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('Are you sure you want to delete this video?');
+      if (confirmed) {
+        const success = await deleteVideo(video.id, video);
+        if (success) {
+          showAlert('success', 'Video deleted successfully');
+          await refreshVideos();
+        }
+      }
+    } else {
+      Alert.alert(
+        'Delete Video',
+        'Are you sure you want to delete this video?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: async () => {
+              const success = await deleteVideo(video.id, video);
+              if (success) {
+                showAlert('success', 'Video deleted successfully');
+                await refreshVideos();
+              }
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   };
 
   const renderVideoItem = (video: VideoType) => {

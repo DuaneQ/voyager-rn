@@ -397,18 +397,11 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
    * Toggle mute/unmute
    */
   const handleMuteToggle = async () => {
-    console.log('[VideoCard] handleMuteToggle called');
-    console.log('[VideoCard] Video ID:', video.id);
-    console.log('[VideoCard] Current isMuted:', isMuted);
-    console.log('[VideoCard] Platform:', Platform.OS);
-    
     const newMutedState = !isMuted;
-    console.log('[VideoCard] New muted state:', newMutedState);
     
     try {
       // Call parent callback to update global mute state
       onMuteToggle(newMutedState);
-      console.log('[VideoCard] onMuteToggle callback called');
       
       // Platform-specific muting
       if (Platform.OS === 'web') {
@@ -416,9 +409,6 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
         const webVideo = webVideoRef.current;
         if (webVideo) {
           webVideo.muted = newMutedState;
-          console.log('[VideoCard] Web video muted property set to:', newMutedState);
-        } else {
-          console.warn('[VideoCard] Web video ref is null');
         }
       } else {
         // For mobile: use expo-av API
@@ -562,7 +552,20 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
         <TouchableOpacity
           style={StyleSheet.absoluteFill}
           activeOpacity={1}
-          onPress={handlePlayPause}
+          onPress={(e) => {
+            // On web, check if the click target is the mute button or its children
+            if (Platform.OS === 'web' && e && (e as any).target) {
+              const target = (e as any).target as HTMLElement;
+              // Check if click is on mute button (look for volume icon or mute button container)
+              const isMuteButton = target.closest('[data-testid="mute-button"]') || 
+                                    target.closest('.mute-button-container');
+              if (isMuteButton) {
+                console.log('[VideoCard] Click on mute button detected, ignoring play/pause');
+                return; // Don't trigger play/pause
+              }
+            }
+            handlePlayPause();
+          }}
         >
           {Platform.OS === 'web' ? (
             <video
@@ -629,14 +632,11 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
       {/* Action buttons */}
       {renderActionButtons()}
       
-      {/* Mute button wrapper - same pattern as action buttons to allow touches on web */}
+      {/* Mute button - use same pattern as action buttons for consistency */}
       <View pointerEvents="box-none" style={styles.muteButtonWrapper}>
         <TouchableOpacity 
           style={styles.muteButton}
-          onPress={() => {
-            console.log('[VideoCard] Mute button PRESSED - Video ID:', video.id);
-            handleMuteToggle();
-          }}
+          onPress={handleMuteToggle}
           testID="mute-button"
           accessibilityLabel={isMuted ? 'Unmute video' : 'Mute video'}
           activeOpacity={0.7}
@@ -676,7 +676,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.3)',
   },
   muteButtonWrapper: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 0,
+    right: 0,
     zIndex: 50, // Highest z-index to ensure wrapper and button are on top
     pointerEvents: 'box-none' as any, // Pass through touches except to children
   },
@@ -685,7 +687,7 @@ const styles = StyleSheet.create({
     top: Platform.select({ 
       ios: 60, 
       android: 200, // Lower on Android to avoid tab bar overlap
-      web: 60, // Match iOS - keep it at top to avoid covering heart icon
+      web: 120, // Moved down on web for better touch handling
     }), 
     right: 16,
     backgroundColor: 'rgba(0,0,0,0.5)',
