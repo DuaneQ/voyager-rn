@@ -16,17 +16,11 @@ import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { Platform } from 'react-native';
 import { LandingPage } from '../../pages/LandingPage.web';
 
-// Mock navigation - NavigationContainer just returns children to avoid BackHandler issues
-const mockNavigate = jest.fn();
-jest.mock('@react-navigation/native', () => {
-  const actualNav = jest.requireActual('@react-navigation/native');
-  return {
-    ...actualNav,
-    NavigationContainer: ({ children }: any) => children,
-    useNavigation: () => ({
-      navigate: mockNavigate,
-    }),
-  };
+// Mock window.location for navigation tests
+const mockLocation = { href: '' };
+Object.defineProperty(window, 'location', {
+  writable: true,
+  value: mockLocation,
 });
 
 // Mock auth context
@@ -37,7 +31,7 @@ jest.mock('../../context/AuthContext', () => ({
   })),
 }));
 
-// No need for NavigationContainer wrapper since it's mocked to return children
+// No need for NavigationContainer wrapper since we use window.location for web
 const renderComponent = () => render(<LandingPage />);
 
 describe('LandingPage.web', () => {
@@ -157,7 +151,7 @@ describe('LandingPage.web', () => {
   describe('Navigation Actions', () => {
     beforeEach(() => {
       Platform.OS = 'web';
-      mockNavigate.mockClear();
+      mockLocation.href = '';
     });
 
     it('navigates to Auth page when Get Started Free is clicked', () => {
@@ -166,7 +160,7 @@ describe('LandingPage.web', () => {
       const getStartedButton = getByText('Get Started Free');
       fireEvent.press(getStartedButton);
       
-      expect(mockNavigate).toHaveBeenCalledWith('Auth');
+      expect(mockLocation.href).toBe('/auth');
     });
 
     it('navigates to Auth page when Sign In is clicked from hero', () => {
@@ -176,7 +170,7 @@ describe('LandingPage.web', () => {
       const signInButtons = getAllByText('Sign In');
       fireEvent.press(signInButtons[0]);
       
-      expect(mockNavigate).toHaveBeenCalledWith('Auth');
+      expect(mockLocation.href).toBe('/auth');
     });
 
     it('navigates to Auth page when Sign Up Now is clicked in footer CTA', () => {
@@ -185,7 +179,7 @@ describe('LandingPage.web', () => {
       const signUpButton = getByText('Sign Up Now');
       fireEvent.press(signUpButton);
       
-      expect(mockNavigate).toHaveBeenCalledWith('Auth');
+      expect(mockLocation.href).toBe('/auth');
     });
 
     it('navigates to Auth page when Sign In is clicked in footer CTA', () => {
@@ -195,7 +189,7 @@ describe('LandingPage.web', () => {
       const signInButtons = getAllByText('Sign In');
       fireEvent.press(signInButtons[signInButtons.length - 1]);
       
-      expect(mockNavigate).toHaveBeenCalledWith('Auth');
+      expect(mockLocation.href).toBe('/auth');
     });
   });
 
@@ -337,11 +331,13 @@ describe('LandingPage.web', () => {
       useAuthMock.mockReturnValue({
         user: null,
       });
+      mockLocation.href = '';
 
       const { getByText } = renderComponent();
       
       expect(getByText(/Find Your Perfect Travel Companion/i)).toBeTruthy();
-      expect(mockNavigate).not.toHaveBeenCalled();
+      // No navigation should have occurred
+      expect(mockLocation.href).toBe('');
     });
   });
 });

@@ -1,6 +1,5 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ImageBackground, FlatList, TouchableOpacity, ActivityIndicator, Platform, StatusBar, Image, Alert } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { UserProfileContext } from '../context/UserProfileContext';
 import { useConnections } from '../hooks/chat/useConnections';
@@ -8,6 +7,20 @@ import { useRemoveConnection } from '../hooks/useRemoveConnection';
 import { Connection } from '../types/Connection';
 import { getDoc, doc } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
+
+// Platform-safe useNavigation
+let useNavigation: () => { navigate: (screen: string, params?: any) => void };
+if (Platform.OS === 'web') {
+  useNavigation = () => ({
+    navigate: (screen: string, params?: any) => {
+      if (screen === 'ChatThread' && params?.connectionId) {
+        window.location.href = `/app/chat/${params.connectionId}`;
+      }
+    }
+  });
+} else {
+  useNavigation = require('@react-navigation/native').useNavigation;
+}
 
 const ChatPage: React.FC = () => {
   const { userProfile } = useContext(UserProfileContext);
@@ -144,7 +157,6 @@ const ChatPage: React.FC = () => {
           
           (navigation.navigate as any)('ChatThread', {
             connectionId: item.id,
-            otherUserName: otherUserNames,
           });
         }}
       >

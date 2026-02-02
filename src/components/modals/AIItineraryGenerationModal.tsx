@@ -18,7 +18,7 @@ import {
   Platform
 } from 'react-native';
 import { CrossPlatformDatePicker } from '../common/CrossPlatformDatePicker';
-import { CityPicker } from '../common/CityPicker';
+import { PlacesAutocomplete } from '../common/PlacesAutocomplete';
 import { City } from '../../types/City';
 import { format, addDays, parse } from 'date-fns';
 import * as firebaseCfg from '../../config/firebaseConfig';
@@ -27,8 +27,6 @@ import { useUsageTracking } from '../../hooks/useUsageTracking';
 import { AIGenerationRequest } from '../../types/AIGeneration';
 import ProfileValidationService from '../../services/ProfileValidationService';
 import AirportSelector from '../common/AirportSelector';
-
-// PlacesAutocomplete doesn't use VirtualizedList, so no warnings to suppress
 
 // Input limits matching PWA exactly
 const MAX_TAGS = 10;
@@ -97,8 +95,6 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
 
   // Usage tracking hook for AI creation limits
   const { hasReachedAILimit, trackAICreation } = useUsageTracking();
-
-  // PlacesAutocomplete uses value/onChangeText props instead of refs
 
   // Form state matching PWA exactly
   const [formData, setFormData] = useState<AIGenerationRequest>({
@@ -505,18 +501,16 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
                   <Text style={styles.sectionTitle}>Trip Details</Text>
                 </View>
 
-                {/* Destination - Uses static city database (no API calls, includes coordinates) */}
-                <View style={styles.field}>
-                  <Text style={styles.fieldLabel}>Destination City *</Text>
-                  <CityPicker
+                {/* Destination - Google Places for comprehensive coverage */}
+                <View style={[styles.field, { zIndex: 1000 }]}>
+                  <Text style={styles.fieldLabel}>Destination *</Text>
+                  <PlacesAutocomplete
                     testID="destination-input"
-                    placeholder="Select destination city"
+                    placeholder="Where do you want to go?"
                     value={formData.destination}
                     onChangeText={(text) => handleFieldChange('destination', text)}
-                    onCitySelected={(city: City, displayName: string) => {
-                      // Store both destination name AND coordinates (fixes Naples bug)
-                      handleFieldChange('destination', displayName);
-                      handleFieldChange('destinationLatLng', city.coordinates);
+                    onPlaceSelected={(description) => {
+                      handleFieldChange('destination', description);
                     }}
                     error={!!formErrors.destination}
                   />
@@ -545,17 +539,16 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
                   </View>
                 )}
 
-                {/* Departure - Uses static city database (no API calls) */}
-                <View style={styles.field}>
+                {/* Departure - Google Places */}
+                <View style={[styles.field, { zIndex: 999 }]}>
                   <Text style={styles.fieldLabel}>Departure City</Text>
-                  <CityPicker
+                  <PlacesAutocomplete
                     testID="departure-input"
-                    placeholder="Select departure city"
+                    placeholder="Where are you traveling from?"
                     value={formData.departure}
                     onChangeText={(text) => handleFieldChange('departure', text)}
-                    onCitySelected={(city: City, displayName: string) => {
-                      handleFieldChange('departure', displayName);
-                      handleFieldChange('departureLatLng', city.coordinates);
+                    onPlaceSelected={(description) => {
+                      handleFieldChange('departure', description);
                     }}
                   />
                 </View>
@@ -1187,6 +1180,17 @@ const styles = StyleSheet.create({
     color: '#111827',
     minHeight: 85,
     textAlignVertical: 'top'
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    backgroundColor: '#ffffff',
+    color: '#111827',
+    height: 42
   },
   inputError: {
     borderColor: '#EF4444'

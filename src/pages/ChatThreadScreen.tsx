@@ -25,7 +25,6 @@ import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { prepareImageForUpload, isValidHttpUrl } from '../utils/imageValidation';
-import { useRoute, useNavigation, useNavigationState, RouteProp, CommonActions } from '@react-navigation/native';
 import { getDoc, doc } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
 import { UserProfileContext } from '../context/UserProfileContext';
@@ -37,26 +36,59 @@ import { AddUserToChatModal } from '../components/modals/AddUserToChatModal';
 import { getChatService } from '../services/chat/ChatService';
 import { connectionRepository } from '../repositories/ConnectionRepository';
 
+// Conditionally import React Navigation (not available on web with React Router)
+let useRoute: any = () => ({ params: {} });
+let useNavigation: any = () => ({ goBack: () => {}, dispatch: () => {} });
+let useNavigationState: any = () => 1;
+let CommonActions: any = { reset: () => ({}) };
+
+if (Platform.OS !== 'web') {
+  const reactNavigation = require('@react-navigation/native');
+  useRoute = reactNavigation.useRoute;
+  useNavigation = reactNavigation.useNavigation;
+  useNavigationState = reactNavigation.useNavigationState;
+  CommonActions = reactNavigation.CommonActions;
+}
+
 type ChatThreadRouteParams = {
   ChatThread: {
     connectionId: string;
-    otherUserName?: string;
   };
 };
 
 const DEFAULT_AVATAR = 'https://via.placeholder.com/40';
 
-const ChatThreadScreen: React.FC = () => {
-  const route = useRoute<RouteProp<ChatThreadRouteParams, 'ChatThread'>>();
+// Props for web usage (React Router passes connectionId as prop)
+interface ChatThreadScreenProps {
+  connectionId?: string;
+}
+
+const ChatThreadScreen: React.FC<ChatThreadScreenProps> = (props) => {
+  const route = useRoute();
   const navigation = useNavigation();
-  const { connectionId, otherUserName } = route.params;
+  
+  // Support both props (web) and route params (native)
+  // Props take precedence for web compatibility
+  const connectionId = props.connectionId || route.params?.connectionId;
+  
   const { userProfile } = useContext(UserProfileContext);
   
-  // Check if we can go back in navigation history
-  const canGoBack = useNavigationState(state => state.routes.length > 1);
+  // Check if we can go back in navigation history (native) or browser history (web)
+  const canGoBack = Platform.OS === 'web' 
+    ? (typeof window !== 'undefined' && window.history.length > 1)
+    : useNavigationState(state => state?.routes?.length > 1);
   
   // Safe back handler - falls back to Chat tab if no history (e.g., direct URL navigation on web)
   const handleBack = () => {
+    if (Platform.OS === 'web') {
+      if (canGoBack) {
+        window.history.back();
+      } else {
+        window.location.href = '/app/chat';
+      }
+      return;
+    }
+    
     if (canGoBack) {
       navigation.goBack();
     } else {

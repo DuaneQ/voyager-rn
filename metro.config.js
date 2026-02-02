@@ -1,8 +1,27 @@
 /**
- * Minimal Metro configuration that delegates to Expo's default Metro config.
- * This file allows `npx react-native start` to find a Metro configuration
- * in environments where it's missing. It's safe to remove later if not needed.
+ * Metro configuration with platform-specific module resolution
+ * Prevents expo-av from loading on web to avoid iOS Safari crash
  */
 const { getDefaultConfig } = require('expo/metro-config');
+const path = require('path');
 
-module.exports = getDefaultConfig(__dirname);
+const config = getDefaultConfig(__dirname);
+
+// Override resolver to alias expo-av on web platform
+config.resolver = {
+  ...config.resolver,
+  resolveRequest: (context, moduleName, platform) => {
+    // On web platform, resolve expo-av to an empty stub to prevent loading
+    if (platform === 'web' && moduleName === 'expo-av') {
+      return {
+        type: 'sourceFile',
+        filePath: path.resolve(__dirname, 'expo-av.web.js'),
+      };
+    }
+    
+    // Use default resolution for everything else
+    return context.resolveRequest(context, moduleName, platform);
+  },
+};
+
+module.exports = config;

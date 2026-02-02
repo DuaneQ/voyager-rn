@@ -14,7 +14,7 @@
  * 5. Mutual likes create connection → chat enabled
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -27,8 +27,21 @@ import {
   ImageBackground,
   Platform,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
 import { getAuthInstance } from '../config/firebaseConfig';
+
+// Platform-safe useFocusEffect - on web, just use useEffect
+let useFocusEffect: (callback: () => void | (() => void)) => void;
+if (Platform.OS === 'web') {
+  useFocusEffect = (callback) => {
+    // On web, run on mount (no focus concept in React Router)
+    useEffect(() => {
+      const cleanup = callback();
+      return cleanup;
+    }, []);
+  };
+} else {
+  useFocusEffect = require('@react-navigation/native').useFocusEffect;
+}
 import { Itinerary } from '../types/Itinerary';
 import ItineraryCard from '../components/forms/ItineraryCard';
 import { ItinerarySelector } from '../components/search/ItinerarySelector';

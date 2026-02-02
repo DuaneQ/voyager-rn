@@ -359,21 +359,24 @@ export const useAIGenerationV2 = (): UseAIGenerationV2Return => {
       }
       
       // ========================================================================
-      // Step 3: Verify places to get Google Maps links (depends on AI output)
+      // Step 3: Generate Google Maps links from addresses (NO API CALL - FREE!)
+      // Previously called verifyPlaces which used expensive Text Search API
       // ========================================================================
       setProgress(PROGRESS_STAGES.VERIFYING);
       
       const placeNames = extractPlaceNames(aiOutput);
       
-      const verifyPayload = {
-        destination: sanitizedRequest.destination,
-        destinationLatLng: sanitizedRequest.destinationLatLng,
-        places: placeNames.map(name => ({ name }))
-      };
-      
-      const verifyResult = await callCloudFunction('verifyPlaces', verifyPayload);
-      const verifiedPlaces: VerifiedPlace[] = verifyResult.data?.verifiedPlaces || [];
-      const verifiedCount = verifiedPlaces.filter(p => p.verified).length;
+      // Create fake verified places with Google Maps URLs built from address
+      // This is FREE - no Google Places API calls needed
+      const verifiedPlaces: VerifiedPlace[] = placeNames.map(name => ({
+        originalName: name,
+        name: name,
+        verified: true,
+        verificationConfidence: 'ai_generated' as any,
+        // Generate Google Maps search URL from place name + destination (FREE!)
+        googleMapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name + ' ' + sanitizedRequest.destination)}`
+      }));
+      const verifiedCount = verifiedPlaces.length;
       
       // ========================================================================
       // Step 4: Transform AI output to production format

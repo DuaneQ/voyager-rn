@@ -45,36 +45,6 @@ jest.mock('react-native-google-places-autocomplete', () => {
   };
 });
 
-// Mock CityPicker component with TextInput for testing compatibility
-jest.mock('../../components/common/CityPicker', () => {
-  const React = require('react');
-  return {
-    CityPicker: ({ testID, placeholder, value, onChangeText, onCitySelected }: any) => {
-      return React.createElement(
-        require('react-native').TextInput,
-        {
-          testID: testID || 'city-picker-input',
-          value: value || '',
-          placeholder: placeholder,
-          onChangeText: (text: string) => {
-            onChangeText?.(text);
-            // Simulate city selection for testing
-            if (text) {
-              onCitySelected?.({
-                name: text,
-                countryCode: 'US',
-                country: 'United States',
-                stateCode: 'CA',
-                coordinates: { lat: 0, lng: 0 },
-              }, text);
-            }
-          },
-        }
-      );
-    },
-  };
-});
-
 // Mock CrossPlatformDatePicker
 jest.mock('../../components/common/CrossPlatformDatePicker', () => {
   const React = require('react');

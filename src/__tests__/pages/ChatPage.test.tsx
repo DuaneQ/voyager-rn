@@ -238,7 +238,6 @@ describe('ChatPage', () => {
       
       expect(mockNavigate).toHaveBeenCalledWith('ChatThread', {
         connectionId: 'conn-1',
-        otherUserName: 'traveler1',
       });
     });
   });

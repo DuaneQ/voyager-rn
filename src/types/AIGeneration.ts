@@ -48,6 +48,20 @@ export interface AIGenerationRequest {
   // Travel preference profile data (includes transportation mode)
   travelPreferences?: any;
   preferenceProfile?: any; // Full profile object for payload building
+  
+  // ==================================================================
+  // COST CONTROL: AI-First Mode
+  // ==================================================================
+  // When true, skips expensive Google Places API calls (searchActivities,
+  // searchAccommodations, verifyPlaces) and uses generateFullItinerary
+  // to create the entire itinerary using GPT-4o-mini AI.
+  // 
+  // Cost savings: ~$0.30-0.50 per itinerary (Google Places API costs)
+  // Trade-off: No verified place_ids or exact coordinates
+  // 
+  // DEFAULT: true (recommended for production)
+  // ==================================================================
+  useAIFirstMode?: boolean;
 }
 
 // Progress tracking for mobile UI feedback

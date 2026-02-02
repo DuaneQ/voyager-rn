@@ -14,7 +14,7 @@ import {
   Animated,
 } from 'react-native';
 import { CrossPlatformDatePicker } from '../common/CrossPlatformDatePicker';
-import { CityPicker } from '../common/CityPicker';
+import { PlacesAutocomplete } from '../common/PlacesAutocomplete';
 import { City } from '../../types/City';
 import RangeSlider from '../common/RangeSlider';
 import { AndroidPickerModal } from '../common/AndroidPickerModal';
@@ -122,7 +122,6 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
     if (!itinerary) return;
 
     setDestination(itinerary.destination);
-    // Custom PlacesAutocomplete uses value prop, so just setting state is enough
     setStartDate(new Date(itinerary.startDate));
     setEndDate(new Date(itinerary.endDate));
     setDescription(itinerary.description || '');
@@ -349,16 +348,15 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Trip Details</Text>
 
-            {/* Destination - Uses static city database (no API calls) */}
+            {/* Destination - Google Places for comprehensive coverage */}
             <Text style={styles.label}>Destination *</Text>
-            <CityPicker
+            <PlacesAutocomplete
               testID="google-places-input"
-              placeholder="Select destination city"
+              placeholder="Search for a destination"
               value={destination}
               onChangeText={setDestination}
-              onCitySelected={(city: City, displayName: string) => {
-                setDestination(displayName);
-                // Note: coordinates available in city.coordinates if needed
+              onPlaceSelected={(place: string) => {
+                setDestination(place);
               }}
               error={!!destination && destination.length === 0}
             />
@@ -653,6 +651,9 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
     backgroundColor: '#fff',
+  },
+  inputError: {
+    borderColor: '#ff4444',
   },
   textArea: {
     height: 100,
