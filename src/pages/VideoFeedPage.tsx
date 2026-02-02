@@ -282,14 +282,23 @@ const VideoFeedPage: React.FC = () => {
    * Handle video upload from modal
    */
   const handleVideoUpload = useCallback(async (videoData: any) => {
-    await uploadVideo(videoData);
-    // Close modal
+    const result = await uploadVideo(videoData);
+    
+    // Only close modal and refresh if upload succeeded
+    if (!result) {
+      // Upload failed - keep modal open, error already shown to user
+      return;
+    }
+    
+    // Success - close modal and refresh feed
     setUploadModalVisible(false);
     setSelectedVideoUri(null);
     setSelectedVideoFileSize(undefined);
-    // Refresh feed after upload
     await refreshVideos();
-  }, [uploadVideo, refreshVideos]);
+    
+    // Show success message
+    showAlert('success', 'Video uploaded successfully!');
+  }, [uploadVideo, refreshVideos, showAlert]);
 
   /**
    * Handle upload modal close
