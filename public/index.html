@@ -42,6 +42,15 @@
     
     <!-- Global Styles - Fix for CrossPlatformDatePicker iOS Safari issue -->
     <style>
+      /* Load Ionicons font for web */
+      @font-face {
+        font-family: 'Ionicons';
+        src: url('/fonts/Ionicons.ttf') format('truetype');
+        font-weight: normal;
+        font-style: normal;
+        font-display: block;
+      }
+      
       /* Hide browser's default calendar icon for date inputs */
       input[type="date"]::-webkit-calendar-picker-indicator {
         opacity: 0;
