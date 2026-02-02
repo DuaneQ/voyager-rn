@@ -10,6 +10,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Pressable,
   Linking,
   Image,
   Alert,
@@ -823,7 +824,9 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                       <View key={index} style={styles.providerCard}>
                         <Text style={styles.providerName}>{provider.name}</Text>
                         {provider._normalizedUrl && (
-                          <Text style={styles.providerUrl}>{provider._normalizedUrl}</Text>
+                          <Pressable onPress={() => Linking.openURL(provider._normalizedUrl)}>
+                            <Text style={styles.providerUrl}>{provider._normalizedUrl}</Text>
+                          </Pressable>
                         )}
                         {provider.notes && (
                           <Text style={styles.providerNotes}>{provider.notes}</Text>
@@ -1767,6 +1770,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#007AFF',
     marginBottom: 4,
+    textDecorationLine: 'underline',
   },
   providerNotes: {
     fontSize: 12,
@@ -2193,7 +2197,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#BF360C',
     lineHeight: 18,
-  },
   },
   dietaryFitContainer: {
     backgroundColor: '#E3F2FD',
