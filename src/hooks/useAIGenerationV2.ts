@@ -219,9 +219,13 @@ export const useAIGenerationV2 = (): UseAIGenerationV2Return => {
       const selectedProfile = request.travelPreferences || request.preferenceProfile;
       const profileWithDefaults = applyProfileDefaults(selectedProfile);
       const transportType = profileWithDefaults?.transportation?.primaryMode || 'driving';
-      const includeFlights = (transportType as string) === 'airplane' || 
-                             (transportType as string) === 'flight' || 
-                             (transportType as string) === 'air';
+      const transportTypeLower = String(transportType ?? '').toLowerCase();
+      // Check for flight mode: explicit includeFlights flag OR airplane/flight/flights/air mode
+      const includeFlights = profileWithDefaults?.transportation?.includeFlights === true ||
+                             transportTypeLower === 'airplane' || 
+                             transportTypeLower === 'flight' || 
+                             transportTypeLower === 'flights' ||
+                             transportTypeLower === 'air';
       
       // ========================================================================
       // Step 2: Run ALL independent API calls in PARALLEL
@@ -351,9 +355,13 @@ export const useAIGenerationV2 = (): UseAIGenerationV2Return => {
           transportationRecommendations = transportResult.data.transportation;
         } else if (transportResult.data?.assistant) {
           try {
-            transportationRecommendations = JSON.parse(transportResult.data.assistant);
+            const parsed = JSON.parse(transportResult.data.assistant);
+            // The OpenAI response wraps transportation in a "transportation" key: { "transportation": {...} }
+            // Extract the inner object if present, otherwise use the parsed result directly
+            transportationRecommendations = parsed.transportation || parsed;
           } catch (e) {
-            // Failed to parse transportation JSON - silently ignore
+            // Failed to parse transportation JSON - log warning and continue without transportation recommendations
+            console.warn('[useAIGenerationV2] Failed to parse transportation JSON:', e);
           }
         }
       }

@@ -254,6 +254,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
         }
       );
     } else {
+      // Android and Web use the modal picker
       setShowGenderPicker(true);
     }
   };
@@ -272,6 +273,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
         }
       );
     } else {
+      // Android and Web use the modal picker
       setShowStatusPicker(true);
     }
   };
@@ -290,6 +292,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
         }
       );
     } else {
+      // Android and Web use the modal picker
       setShowOrientationPicker(true);
     }
   };
@@ -441,7 +444,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
               <Text style={styles.selectionButtonText}>{gender}</Text>
               <Text style={styles.selectionArrow}>▼</Text>
             </TouchableOpacity>
-            {Platform.OS === 'android' && (
+            {(Platform.OS === 'android' || Platform.OS === 'web') && (
               <AndroidPickerModal
                 visible={showGenderPicker}
                 onClose={() => setShowGenderPicker(false)}
@@ -461,7 +464,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
               <Text style={styles.selectionButtonText}>{status}</Text>
               <Text style={styles.selectionArrow}>▼</Text>
             </TouchableOpacity>
-            {Platform.OS === 'android' && (
+            {(Platform.OS === 'android' || Platform.OS === 'web') && (
               <AndroidPickerModal
                 visible={showStatusPicker}
                 onClose={() => setShowStatusPicker(false)}
@@ -481,7 +484,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
               <Text style={styles.selectionButtonText}>{sexualOrientation}</Text>
               <Text style={styles.selectionArrow}>▼</Text>
             </TouchableOpacity>
-            {Platform.OS === 'android' && (
+            {(Platform.OS === 'android' || Platform.OS === 'web') && (
               <AndroidPickerModal
                 visible={showOrientationPicker}
                 onClose={() => setShowOrientationPicker(false)}

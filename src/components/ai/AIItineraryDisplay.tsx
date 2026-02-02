@@ -10,6 +10,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Pressable,
   Linking,
   Image,
   Alert,
@@ -823,7 +824,9 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                       <View key={index} style={styles.providerCard}>
                         <Text style={styles.providerName}>{provider.name}</Text>
                         {provider._normalizedUrl && (
-                          <Text style={styles.providerUrl}>{provider._normalizedUrl}</Text>
+                          <Pressable onPress={() => Linking.openURL(provider._normalizedUrl)}>
+                            <Text style={styles.providerUrl}>{provider._normalizedUrl}</Text>
+                          </Pressable>
                         )}
                         {provider.notes && (
                           <Text style={styles.providerNotes}>{provider.notes}</Text>
@@ -874,10 +877,12 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                 })();
                 
                 // Get booking link (matching PWA)
+                // Priority: actual booking URL > website > Google Maps search
+                // Note: place_id URL format doesn't work reliably, use name+address search instead
                 const bookingLink = hotel.bookingUrl || 
                                   hotel.website || 
                                   hotel.vendorRaw?.website || 
-                                  (hotel.placeId ? `https://www.google.com/maps/place/?q=place_id:${hotel.placeId}` : null);
+                                  (hotel.name ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(hotel.name + (hotel.address ? ' ' + hotel.address : ''))}` : null);
                 
                 // Format price (matching PWA)
                 const formatPrice = (() => {
@@ -1765,6 +1770,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#007AFF',
     marginBottom: 4,
+    textDecorationLine: 'underline',
   },
   providerNotes: {
     fontSize: 12,

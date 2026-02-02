@@ -11,10 +11,12 @@ import {
   Alert,
   Modal,
   TouchableWithoutFeedback,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { usePhotoUpload } from '../../hooks/photo/usePhotoUpload';
 import { UserProfileContext } from '../../context/UserProfileContext';
+import { useAlert } from '../../context/AlertContext';
 import type { PhotoSlot } from '../../types/Photo';
 
 const { width } = Dimensions.get('window');
@@ -23,6 +25,7 @@ const PHOTO_SIZE = (width - 48) / 3;
 export const PhotoGrid: React.FC<any> = ({ isOwnProfile = true, onUploadSuccess, onDeleteSuccess }) => {
   const { userProfile } = useContext(UserProfileContext);
   const { uploadState, selectAndUploadPhoto, deletePhoto } = usePhotoUpload();
+  const { showAlert } = useAlert();
   const [isPickerLoading, setIsPickerLoading] = useState(false);
   const [enlargedPhoto, setEnlargedPhoto] = useState<{ url: string; slot: number } | null>(null);
   const [showPhotoMenu, setShowPhotoMenu] = useState<{ url: string; slot: number } | null>(null);
@@ -44,7 +47,7 @@ export const PhotoGrid: React.FC<any> = ({ isOwnProfile = true, onUploadSuccess,
     const nextSlot = getNextAvailableSlot();
     
     if (nextSlot === null) {
-      Alert.alert('Limit Reached', 'You can only upload 9 photos. Please delete a photo first.');
+      showAlert('error', 'You can only upload 9 photos. Please delete a photo first.');
       return;
     }
 
@@ -86,32 +89,52 @@ export const PhotoGrid: React.FC<any> = ({ isOwnProfile = true, onUploadSuccess,
   const handleDeletePhoto = async () => {
     if (!showPhotoMenu) return;
 
-    Alert.alert(
-      'Delete Photo',
-      'Are you sure you want to delete this photo?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            const slotToDelete = `slot${showPhotoMenu.slot}` as PhotoSlot;
-            setShowPhotoMenu(null);
-            setIsDeleting(true);
+    // On web, use window.confirm; on native, use Alert.alert
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('Are you sure you want to delete this photo?');
+      if (confirmed) {
+        const slotToDelete = `slot${showPhotoMenu.slot}` as PhotoSlot;
+        setShowPhotoMenu(null);
+        setIsDeleting(true);
 
-            try {
-              await deletePhoto(slotToDelete);
-              onDeleteSuccess?.(slotToDelete);
-            } catch (error) {
-              console.error('[PhotoGrid] Delete error:', error);
-              Alert.alert('Error', 'Failed to delete photo');
-            } finally {
-              setIsDeleting(false);
-            }
+        try {
+          await deletePhoto(slotToDelete);
+          onDeleteSuccess?.(slotToDelete);
+        } catch (error) {
+          console.error('[PhotoGrid] Delete error:', error);
+          showAlert('error', 'Failed to delete photo');
+        } finally {
+          setIsDeleting(false);
+        }
+      }
+    } else {
+      Alert.alert(
+        'Delete Photo',
+        'Are you sure you want to delete this photo?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: async () => {
+              const slotToDelete = `slot${showPhotoMenu.slot}` as PhotoSlot;
+              setShowPhotoMenu(null);
+              setIsDeleting(true);
+
+              try {
+                await deletePhoto(slotToDelete);
+                onDeleteSuccess?.(slotToDelete);
+              } catch (error) {
+                console.error('[PhotoGrid] Delete error:', error);
+                showAlert('error', 'Failed to delete photo');
+              } finally {
+                setIsDeleting(false);
+              }
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   };
 
   const handleCloseEnlarged = () => {

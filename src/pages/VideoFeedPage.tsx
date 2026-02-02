@@ -24,6 +24,7 @@ import { VideoUploadModal } from '../components/modals/VideoUploadModal';
 import { ReportVideoModal } from '../components/modals/ReportVideoModal';
 import { useVideoFeed, VideoFilter } from '../hooks/video/useVideoFeed';
 import { useVideoUpload } from '../hooks/video/useVideoUpload';
+import { useAlert } from '../context/AlertContext';
 import { shareVideo } from '../utils/videoSharing';
 import { videoPlaybackManager } from '../services/video/VideoPlaybackManager';
 import { doc, getDocFromServer } from 'firebase/firestore';
@@ -45,6 +46,8 @@ if (Platform.OS === 'web') {
 const { height } = Dimensions.get('window');
 
 const VideoFeedPage: React.FC = () => {
+  const { showAlert } = useAlert();
+  
   const {
     videos,
     currentVideoIndex,
@@ -63,7 +66,11 @@ const VideoFeedPage: React.FC = () => {
     updateVideo,
   } = useVideoFeed();
 
-  const { uploadState, selectVideo, uploadVideo } = useVideoUpload();
+  const { uploadState, selectVideo, uploadVideo } = useVideoUpload({
+    onError: (message, title) => {
+      showAlert('error', message);
+    },
+  });
   
   // Get auth instance for user ID checks
   const resolvedAuth = typeof (require('../config/firebaseConfig') as any).getAuthInstance === 'function'
@@ -275,14 +282,23 @@ const VideoFeedPage: React.FC = () => {
    * Handle video upload from modal
    */
   const handleVideoUpload = useCallback(async (videoData: any) => {
-    await uploadVideo(videoData);
-    // Close modal
+    const result = await uploadVideo(videoData);
+    
+    // Only close modal and refresh if upload succeeded
+    if (!result) {
+      // Upload failed - keep modal open, error already shown to user
+      return;
+    }
+    
+    // Success - close modal and refresh feed
     setUploadModalVisible(false);
     setSelectedVideoUri(null);
     setSelectedVideoFileSize(undefined);
-    // Refresh feed after upload
     await refreshVideos();
-  }, [uploadVideo, refreshVideos]);
+    
+    // Show success message
+    showAlert('success', 'Video uploaded successfully!');
+  }, [uploadVideo, refreshVideos, showAlert]);
 
   /**
    * Handle upload modal close

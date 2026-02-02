@@ -241,7 +241,24 @@ describe('ProfileTab', () => {
   });
 
   describe('Travel Preferences', () => {
-    it('should show coming soon alert when edit preferences is pressed', async () => {
+    it('should call onEditPreferences when edit preferences button is pressed', async () => {
+      const mockOnEditPreferences = jest.fn();
+      const { getByText, getByTestId } = render(
+        <ProfileTab onEditPreferences={mockOnEditPreferences} />
+      );
+      
+      // First expand the Travel Preferences accordion
+      fireEvent.press(getByText('Travel Preferences'));
+      
+      // Then press the edit button
+      fireEvent.press(getByTestId('edit-preferences-button'));
+      
+      await waitFor(() => {
+        expect(mockOnEditPreferences).toHaveBeenCalled();
+      });
+    });
+
+    it('should show fallback alert when onEditPreferences not provided', async () => {
       const mockAlert = jest.spyOn(Alert, 'alert');
       const { getByText, getByTestId } = render(<ProfileTab />);
       
@@ -254,7 +271,7 @@ describe('ProfileTab', () => {
       await waitFor(() => {
         expect(mockAlert).toHaveBeenCalledWith(
           'Coming Soon',
-          'Travel preferences editing is not yet implemented'
+          'Travel preferences editing is not yet configured'
         );
       });
       

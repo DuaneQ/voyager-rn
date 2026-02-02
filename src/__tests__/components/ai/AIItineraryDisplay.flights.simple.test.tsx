@@ -12,6 +12,11 @@ jest.mock('@expo/vector-icons', () => ({
   Ionicons: 'Ionicons',
 }));
 
+jest.mock('../../../config/firebaseConfig', () => ({
+  db: {},
+  getCloudFunctionUrl: jest.fn((functionName) => `https://us-central1-mundo1-dev.cloudfunctions.net/${functionName}`),
+}));
+
 describe('AIItineraryDisplay - Critical Flight Regressions', () => {
   describe('Flight Data Reading from Correct Locations', () => {
     it('CRITICAL: should read flights from response.data.itinerary.flights (PRIMARY)', () => {

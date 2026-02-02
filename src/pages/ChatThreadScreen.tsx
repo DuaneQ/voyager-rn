@@ -19,7 +19,6 @@ import {
   ActivityIndicator,
   Image,
   StatusBar,
-  Alert,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,6 +27,7 @@ import { prepareImageForUpload, isValidHttpUrl } from '../utils/imageValidation'
 import { getDoc, doc } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
 import { UserProfileContext } from '../context/UserProfileContext';
+import { useAlert } from '../context/AlertContext';
 import { useMessages } from '../hooks/chat/useMessages';
 import { useConnections } from '../hooks/chat/useConnections';
 import { ViewProfileModal } from '../components/modals/ViewProfileModal';
@@ -72,6 +72,7 @@ const ChatThreadScreen: React.FC<ChatThreadScreenProps> = (props) => {
   const connectionId = props.connectionId || route.params?.connectionId;
   
   const { userProfile } = useContext(UserProfileContext);
+  const { showAlert } = useAlert();
   
   // Check if we can go back in navigation history (native) or browser history (web)
   const canGoBack = Platform.OS === 'web' 
@@ -210,7 +211,7 @@ const ChatThreadScreen: React.FC<ChatThreadScreenProps> = (props) => {
       
     } catch (error) {
       console.error('[ChatThread] Error sending message:', error);
-      Alert.alert('Error', 'Failed to send message');
+      showAlert('error', 'Failed to send message');
     } finally {
       setSending(false);
     }
@@ -222,7 +223,7 @@ const ChatThreadScreen: React.FC<ChatThreadScreenProps> = (props) => {
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
       
       if (!permissionResult.granted) {
-        Alert.alert('Permission Required', 'Please allow access to your photo library to send images.');
+        showAlert('warning', 'Please allow access to your photo library to send images.');
         return;
       }
 
@@ -239,7 +240,7 @@ const ChatThreadScreen: React.FC<ChatThreadScreenProps> = (props) => {
       }
     } catch (error) {
       console.error('[ChatThread] Error picking image:', error);
-      Alert.alert('Error', 'Failed to select image');
+      showAlert('error', 'Failed to select image');
     }
   };
 
@@ -253,7 +254,7 @@ const ChatThreadScreen: React.FC<ChatThreadScreenProps> = (props) => {
       const { uri: preparedUri, error } = await prepareImageForUpload(uri, mimeType);
       
       if (error) {
-        Alert.alert('Invalid Image', error);
+        showAlert('error', error);
         return;
       }
 
@@ -304,7 +305,7 @@ const ChatThreadScreen: React.FC<ChatThreadScreenProps> = (props) => {
       
     } catch (error) {
       console.error('[ChatThread] Error uploading image:', error);
-      Alert.alert('Upload Failed', 'Failed to upload image. Please try again.');
+      showAlert('error', 'Failed to upload image. Please try again.');
     } finally {
       setUploading(false);
     }
@@ -322,11 +323,11 @@ const ChatThreadScreen: React.FC<ChatThreadScreenProps> = (props) => {
         await chatService.addMember(connectionId, userId, currentUserId);
       }
 
-      Alert.alert('Success', `Added ${userIds.length} user${userIds.length !== 1 ? 's' : ''} to the chat`);
+      showAlert('success', `Added ${userIds.length} user${userIds.length !== 1 ? 's' : ''} to the chat`);
       setAddUsersVisible(false);
     } catch (error) {
       console.error('[ChatThread] Error adding members:', error);
-      Alert.alert('Error', 'Failed to add members to chat');
+      showAlert('error', 'Failed to add members to chat');
     }
   };
 
@@ -340,10 +341,10 @@ const ChatThreadScreen: React.FC<ChatThreadScreenProps> = (props) => {
       const chatService = getChatService();
       await chatService.removeMember(connectionId, userIdToRemove, currentUserId);
       
-      Alert.alert('Success', 'User removed from chat');
+      showAlert('success', 'User removed from chat');
     } catch (error) {
       console.error('[ChatThread] Error removing member:', error);
-      Alert.alert('Error', 'Failed to remove user from chat');
+      showAlert('error', 'Failed to remove user from chat');
     } finally {
       setRemoveLoading(null);
     }

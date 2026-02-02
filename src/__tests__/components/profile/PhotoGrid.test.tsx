@@ -73,6 +73,7 @@ import { render } from '@testing-library/react-native';
 import { Image, TouchableOpacity, Modal } from 'react-native';
 import { PhotoGrid } from '../../../components/profile/PhotoGrid';
 import { UserProfileContext } from '../../../context/UserProfileContext';
+import { AlertProvider } from '../../../context/AlertContext';
 
 describe('PhotoGrid', () => {
   const mockOnUploadSuccess = jest.fn();
@@ -98,13 +99,15 @@ describe('PhotoGrid', () => {
     };
 
     return render(
-      <UserProfileContext.Provider value={contextValue}>
-        <PhotoGrid 
-          isOwnProfile={isOwnProfile}
-          onUploadSuccess={mockOnUploadSuccess}
-          onDeleteSuccess={mockOnDeleteSuccess}
-        />
-      </UserProfileContext.Provider>
+      <AlertProvider>
+        <UserProfileContext.Provider value={contextValue}>
+          <PhotoGrid 
+            isOwnProfile={isOwnProfile}
+            onUploadSuccess={mockOnUploadSuccess}
+            onDeleteSuccess={mockOnDeleteSuccess}
+          />
+        </UserProfileContext.Provider>
+      </AlertProvider>
     );
   };
 

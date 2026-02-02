@@ -11,6 +11,7 @@ import ChatThreadScreen from '../../pages/ChatThreadScreen';
 import { useConnections } from '../../hooks/chat/useConnections';
 import { useMessages } from '../../hooks/chat/useMessages';
 import { UserProfileContext } from '../../context/UserProfileContext';
+import { AlertProvider } from '../../context/AlertContext';
 
 // Mock Firebase dependencies
 jest.mock('firebase/firestore', () => ({
@@ -67,9 +68,11 @@ const renderWithContext = (component: React.ReactElement) => {
   };
 
   return render(
-    <UserProfileContext.Provider value={userProfileValue}>
-      {component}
-    </UserProfileContext.Provider>
+    <AlertProvider>
+      <UserProfileContext.Provider value={userProfileValue}>
+        {component}
+      </UserProfileContext.Provider>
+    </AlertProvider>
   );
 };
 

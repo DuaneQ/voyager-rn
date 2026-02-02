@@ -12,6 +12,7 @@ import React from 'react';
 import { render, waitFor, act } from '@testing-library/react-native';
 import VideoFeedPage from '../../pages/VideoFeedPage';
 import { videoPlaybackManager } from '../../services/video/VideoPlaybackManager';
+import { AlertProvider } from '../../context/AlertContext';
 
 // Mock dependencies
 jest.mock('../../hooks/video/useVideoFeed', () => ({
@@ -98,12 +99,12 @@ describe('VideoFeedPage - Scroll Behavior (Fix A)', () => {
     it('should render without errors using isScrollingRef', () => {
       // This test verifies that the component renders successfully with isScrollingRef
       // If the ref implementation has issues, the component would fail to render
-      const result = render(<VideoFeedPage />);
+      const result = render(<AlertProvider><VideoFeedPage /></AlertProvider>);
       expect(result).toBeTruthy();
     });
 
     it('should have FlatList with scroll event handlers', () => {
-      const { UNSAFE_getByType } = render(<VideoFeedPage />);
+      const { UNSAFE_getByType } = render(<AlertProvider><VideoFeedPage /></AlertProvider>);
       const flatList = UNSAFE_getByType(require('react-native').FlatList);
 
       // Verify all scroll handlers are present (Fix A implementation)
@@ -114,7 +115,7 @@ describe('VideoFeedPage - Scroll Behavior (Fix A)', () => {
     });
 
     it('should handle scroll begin drag without errors', () => {
-      const { UNSAFE_getByType } = render(<VideoFeedPage />);
+      const { UNSAFE_getByType } = render(<AlertProvider><VideoFeedPage /></AlertProvider>);
       const flatList = UNSAFE_getByType(require('react-native').FlatList);
 
       // Should not throw when scrolling begins
@@ -128,7 +129,7 @@ describe('VideoFeedPage - Scroll Behavior (Fix A)', () => {
 
   describe('Scroll Event Handling', () => {
     it('should handle scroll begin drag', () => {
-      const { UNSAFE_getByType } = render(<VideoFeedPage />);
+      const { UNSAFE_getByType } = render(<AlertProvider><VideoFeedPage /></AlertProvider>);
       const flatList = UNSAFE_getByType(require('react-native').FlatList);
 
       // Should not throw
@@ -140,7 +141,7 @@ describe('VideoFeedPage - Scroll Behavior (Fix A)', () => {
     });
 
     it('should handle scroll end drag with timeout', () => {
-      const { UNSAFE_getByType } = render(<VideoFeedPage />);
+      const { UNSAFE_getByType } = render(<AlertProvider><VideoFeedPage /></AlertProvider>);
       const flatList = UNSAFE_getByType(require('react-native').FlatList);
 
       act(() => {
@@ -160,7 +161,7 @@ describe('VideoFeedPage - Scroll Behavior (Fix A)', () => {
     });
 
     it('should handle momentum scroll end', () => {
-      const { UNSAFE_getByType } = render(<VideoFeedPage />);
+      const { UNSAFE_getByType } = render(<AlertProvider><VideoFeedPage /></AlertProvider>);
       const flatList = UNSAFE_getByType(require('react-native').FlatList);
       const height = require('react-native').Dimensions.get('window').height;
 
@@ -181,7 +182,7 @@ describe('VideoFeedPage - Scroll Behavior (Fix A)', () => {
 
   describe('Race Condition Prevention', () => {
     it('should handle rapid scroll events without errors', () => {
-      const { UNSAFE_getByType } = render(<VideoFeedPage />);
+      const { UNSAFE_getByType } = render(<AlertProvider><VideoFeedPage /></AlertProvider>);
       const flatList = UNSAFE_getByType(require('react-native').FlatList);
       const height = require('react-native').Dimensions.get('window').height;
 
@@ -206,7 +207,7 @@ describe('VideoFeedPage - Scroll Behavior (Fix A)', () => {
 
   describe('Cleanup', () => {
     it('should handle cleanup on unmount', () => {
-      const { unmount } = render(<VideoFeedPage />);
+      const { unmount } = render(<AlertProvider><VideoFeedPage /></AlertProvider>);
 
       // Should not throw on unmount
       expect(() => {
@@ -215,7 +216,7 @@ describe('VideoFeedPage - Scroll Behavior (Fix A)', () => {
     });
 
     it('should clear scroll timeout on unmount', () => {
-      const { UNSAFE_getByType, unmount } = render(<VideoFeedPage />);
+      const { UNSAFE_getByType, unmount } = render(<AlertProvider><VideoFeedPage /></AlertProvider>);
       const flatList = UNSAFE_getByType(require('react-native').FlatList);
 
       // Start scroll to create timeout

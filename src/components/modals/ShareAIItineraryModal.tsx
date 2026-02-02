@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AIGeneratedItinerary } from '../../hooks/useAIGeneratedItineraries';
+import { getCloudFunctionUrl } from '../../config/firebaseConfig';
 
 interface ShareAIItineraryModalProps {
   visible: boolean;
@@ -32,14 +33,9 @@ export const ShareAIItineraryModal: React.FC<ShareAIItineraryModalProps> = ({
 }) => {
   const [copySuccess, setCopySuccess] = useState(false);
 
-  // Generate shareable URL - matching PWA logic exactly
-  const cloudFunctionDevBase = 'https://us-central1-mundo1-dev.cloudfunctions.net/itineraryShare';
-  const productionHost = 'travalpass.com';
-  
-  // Use production origin only when explicitly on production domain
-  // Otherwise default to dev cloud function share endpoint
-  const baseUrl = cloudFunctionDevBase; // RN always uses cloud function endpoint
-  const shareUrl = `${baseUrl.replace(/\/$/, '')}/share-itinerary/${itinerary.id}`;
+  // Generate shareable URL - use existing helper that matches Firebase environment
+  const baseUrl = getCloudFunctionUrl('itineraryShare');
+  const shareUrl = `${baseUrl}/share-itinerary/${itinerary.id}`;
   
   // Generate share text - matching PWA exactly
   const destination = itinerary.response?.data?.itinerary?.destination || itinerary.destination;
