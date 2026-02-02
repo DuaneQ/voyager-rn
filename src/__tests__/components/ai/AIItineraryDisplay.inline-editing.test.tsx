@@ -27,7 +27,8 @@ jest.mock('../../../hooks/useUpdateItinerary', () => ({
 
 jest.mock('../../../config/firebaseConfig', () => ({
   db: {},
-  functions: {}
+  functions: {},
+  getCloudFunctionUrl: jest.fn((functionName) => `https://us-central1-mundo1-dev.cloudfunctions.net/${functionName}`),
 }));
 
 jest.spyOn(Alert, 'alert');

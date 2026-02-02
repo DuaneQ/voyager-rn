@@ -1,6 +1,11 @@
 import React from 'react';
 import renderer, { ReactTestInstance, act } from 'react-test-renderer';
 
+jest.mock('../../config/firebaseConfig', () => ({
+  db: {},
+  getCloudFunctionUrl: jest.fn((functionName) => `https://us-central1-mundo1-dev.cloudfunctions.net/${functionName}`),
+}));
+
 describe('ShareAIItineraryModal - rtrender suite', () => {
   const Share = require('../../components/modals/ShareAIItineraryModal').default;
   // Prefer top-level react-native mocks to avoid instance divergence

@@ -16,6 +16,11 @@ jest.mock('react-native/Libraries/Components/Clipboard/Clipboard', () => ({
   setString: jest.fn(),
   getString: jest.fn(() => Promise.resolve('')),
 }));
+
+jest.mock('../../config/firebaseConfig', () => ({
+  db: {},
+  getCloudFunctionUrl: jest.fn((functionName) => `https://us-central1-mundo1-dev.cloudfunctions.net/${functionName}`),
+}));
 // Note: @expo/vector-icons is mocked in jest.setup.js to a functional stub
 
 import React from 'react';

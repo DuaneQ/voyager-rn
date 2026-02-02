@@ -15,6 +15,7 @@ jest.mock('../../../hooks/useAIGeneratedItineraries');
 jest.mock('../../../hooks/useUpdateItinerary');
 jest.mock('../../../config/firebaseConfig', () => ({
   db: {},
+  getCloudFunctionUrl: jest.fn((functionName) => `https://us-central1-mundo1-dev.cloudfunctions.net/${functionName}`),
 }));
 jest.mock('firebase/firestore', () => ({
   doc: jest.fn(),
