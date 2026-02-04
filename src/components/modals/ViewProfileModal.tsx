@@ -461,7 +461,6 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
           <View style={styles.headerActions}>
             <Pressable 
               onPress={() => {
-                console.log('[ViewProfileModal] Block Pressable pressed');
                 handleBlock();
               }}
               style={styles.actionButton}
@@ -470,7 +469,6 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
             </Pressable>
             <Pressable 
               onPress={() => {
-                console.log('[ViewProfileModal] Report Pressable pressed');
                 handleReport();
               }}
               style={styles.actionButton}
