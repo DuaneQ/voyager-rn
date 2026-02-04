@@ -596,11 +596,6 @@ All components use strict TypeScript:
 Enable debug logging by adding console.log statements:
 ```tsx
 // In TermsGuard
-console.log('[TermsGuard] State:', { userId, hasAcceptedTerms, isLoading });
-
-// In useTermsAcceptance
-console.log('[useTermsAcceptance] Checking for UID:', uid);
-console.log('[useTermsAcceptance] Result:', hasValidAcceptance);
 ```
 
 **Remember**: Remove all console.log statements before git push.

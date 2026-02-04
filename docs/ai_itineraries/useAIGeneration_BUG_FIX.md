@@ -44,7 +44,6 @@ Replaced the `else` block (lines 375-387) to **save flight-based itineraries** t
 ```typescript
 } else {
   // For flights, save flight search results without AI generation
-  console.log('Saving flight-based itinerary without AI generation...');
   
   const generationId = `gen_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   
@@ -96,9 +95,7 @@ Replaced the `else` block (lines 375-387) to **save flight-based itineraries** t
     }
 
     setProgress(PROGRESS_STAGES.DONE);
-    
-    console.log('Flight-based itinerary saved successfully with ID:', generationId);
-    
+        
     // Return the saved itinerary result
     return {
       id: generationId,

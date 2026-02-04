@@ -1,9 +1,5 @@
-/**
- * Metro configuration with platform-specific module resolution
- * Prevents expo-av from loading on web to avoid iOS Safari crash
- */
-const { getDefaultConfig } = require('expo/metro-config');
 const path = require('path');
+const { getDefaultConfig } = require('expo/metro-config');
 
 const config = getDefaultConfig(__dirname);
 

@@ -1025,7 +1025,7 @@ echo "✅ App should be fully initialized"
 // automation/src/pages/LoginPage.ts
 // iOS CI: Add extra wait for app to fully initialize
 if (driver.isIOS && process.env.CI) {
-  console.log('[LoginPage] iOS CI detected - waiting 10s for app initialization...');
+
   await browser.pause(10000);
 }
 

@@ -183,11 +183,6 @@ if (!await emailInputEl.isExisting()) {
 
 // iOS CI: Add extra wait for app to fully initialize
 // Native iOS apps need more time to load in CI environment
-if (driver.isIOS && process.env.CI) {
-  console.log('[LoginPage] iOS CI detected - waiting 10s for app initialization...');
-  await browser.pause(10000);
-  console.log('[LoginPage] iOS CI wait complete, proceeding with login...');
-}
 
 // Find email input with retry logic
 let emailInput = await this.findByTestID('login-email-input');

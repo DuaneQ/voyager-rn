@@ -26,6 +26,7 @@ import {
   sendEmailVerification,
   signOut,
   sendPasswordResetEmail,
+  deleteUser,
   GoogleAuthProvider,
   OAuthProvider,
   signInWithPopup,
@@ -47,6 +48,13 @@ interface FirebaseUser {
   emailVerified: boolean;
   displayName?: string | null;
   photoURL?: string | null;
+  providerData?: Array<{
+    providerId: string;
+    uid?: string;
+    displayName?: string | null;
+    email?: string | null;
+    photoURL?: string | null;
+  }>;
 }
 
 interface UserProfile {
@@ -126,13 +134,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Listen to Firebase Auth SDK state changes (same as PWA)
     const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
       if (firebaseUser) {
-        // User is signed in
+        // User is signed in - preserve providerData for delete account feature
         const user: FirebaseUser = {
           uid: firebaseUser.uid,
           email: firebaseUser.email || null,
           emailVerified: firebaseUser.emailVerified,
           displayName: firebaseUser.displayName || null,
           photoURL: firebaseUser.photoURL || null,
+          providerData: firebaseUser.providerData?.map(p => ({
+            providerId: p.providerId,
+            uid: p.uid,
+            displayName: p.displayName,
+            email: p.email,
+            photoURL: p.photoURL,
+          })),
         };
         setUser(user);
         
@@ -356,12 +371,39 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const userDoc = await getDoc(doc(db, 'users', user.uid));
         
         if (!userDoc.exists()) {
-          // No profile - new user trying to sign in
-          await signOut(auth);
-          setStatus('idle');
-          throw new Error('ACCOUNT_NOT_FOUND');
+          // No profile - new user, create one automatically
+          const userProfile = {
+            username: user.displayName || user.email?.split('@')[0] || 'newuser',
+            email: user.email || '',
+            bio: '',
+            gender: '',
+            sexualOrientation: '',
+            edu: '',
+            drinking: '',
+            smoking: '',
+            dob: '',
+            photos: ['', '', '', '', ''],
+            subscriptionType: 'free',
+            subscriptionStartDate: null,
+            subscriptionEndDate: null,
+            subscriptionCancelled: false,
+            stripeCustomerId: null,
+            dailyUsage: {
+              date: new Date().toISOString().split('T')[0],
+              viewCount: 0,
+            },
+            createdAt: serverTimestamp(),
+          };
+          
+          try {
+            await setDoc(doc(db, 'users', user.uid), userProfile);
+          } catch (firestoreError: any) {
+            console.error('❌ [AuthContext] signInWithGoogle - Profile creation failed:', firestoreError);
+            await signOut(auth);
+            setStatus('idle');
+            throw new Error(`Failed to create user profile: ${firestoreError.message}`);
+          }
         }
-        
         setStatus('authenticated');
         return user;
       }
@@ -385,10 +427,38 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       
       if (!userDoc.exists()) {
-        // Profile doesn't exist - new user trying to sign in
-        await signOut(auth);
-        setStatus('idle');
-        throw new Error('ACCOUNT_NOT_FOUND');
+        // No profile - new user, create one automatically
+        const userProfile = {
+          username: user.displayName || user.email?.split('@')[0] || 'newuser',
+          email: user.email || '',
+          bio: '',
+          gender: '',
+          sexualOrientation: '',
+          edu: '',
+          drinking: '',
+          smoking: '',
+          dob: '',
+          photos: ['', '', '', '', ''],
+          subscriptionType: 'free',
+          subscriptionStartDate: null,
+          subscriptionEndDate: null,
+          subscriptionCancelled: false,
+          stripeCustomerId: null,
+          dailyUsage: {
+            date: new Date().toISOString().split('T')[0],
+            viewCount: 0,
+          },
+          createdAt: serverTimestamp(),
+        };
+        
+        try {
+          await setDoc(doc(db, 'users', user.uid), userProfile);
+        } catch (firestoreError: any) {
+          console.error('❌ [AuthContext] signInWithGoogle - Profile creation failed:', firestoreError);
+          await signOut(auth);
+          setStatus('idle');
+          throw new Error(`Failed to create user profile: ${firestoreError.message}`);
+        }
       }
 
       setStatus('authenticated');
@@ -403,7 +473,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signUpWithGoogle = async (): Promise<any> => {
     try {
       setStatus('loading');
-
       if (Platform.OS === 'web') {
         // Use Web SDK popup flow
         
@@ -460,7 +529,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (!idToken) throw new Error('Google Sign-In failed to return an idToken');
 
       // Authenticate with Firebase using Google ID token
-      
       const credential = GoogleAuthProvider.credential(idToken);
       const result = await signInWithCredential(auth, credential);
       const user = result.user;
@@ -497,8 +565,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         },
         createdAt: serverTimestamp(),
       };
-
-      await setDoc(doc(db, 'users', user.uid), userProfile);
+      
+      try {
+        await setDoc(doc(db, 'users', user.uid), userProfile);
+      } catch (firestoreError: any) {
+        console.error('❌ [AuthContext] signUpWithGoogle - FIRESTORE WRITE FAILED:', {
+          error: firestoreError,
+          code: firestoreError.code,
+          message: firestoreError.message,
+          uid: user.uid
+        });
+        // Sign out the user since profile creation failed
+        await signOut(auth);
+        setStatus('idle');
+        throw new Error(`Failed to create user profile: ${firestoreError.message}`);
+      }
+      
       // Wait briefly for Firestore write to complete
       await new Promise(resolve => setTimeout(resolve, 500));
       setStatus('authenticated');
@@ -546,13 +628,45 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const userDoc = await getDoc(userRef);
       
       if (!userDoc.exists()) {
-        // New user trying to sign in - need to sign up first
-        await signOut(auth);
-        setStatus('idle');
-        throw new Error('ACCOUNT_NOT_FOUND');
+        // New user - create profile automatically
+        const displayName = user.displayName || user.email?.split('@')[0] || 'Apple User';
+        
+        const userProfile = {
+          username: displayName,
+          email: user.email || '',
+          bio: '',
+          gender: '',
+          sexualOrientation: '',
+          edu: '',
+          drinking: '',
+          smoking: '',
+          dob: '',
+          photos: ['', '', '', '', ''],
+          subscriptionType: 'free',
+          subscriptionStartDate: null,
+          subscriptionEndDate: null,
+          subscriptionCancelled: false,
+          stripeCustomerId: null,
+          emailVerified: true,
+          provider: 'apple',
+          dailyUsage: {
+            date: new Date().toISOString().split('T')[0],
+            viewCount: 0,
+          },
+          createdAt: serverTimestamp(),
+        };
+        
+        try {
+          await setDoc(userRef, userProfile);
+        } catch (firestoreError: any) {
+          console.error('❌ [AuthContext] signInWithApple - Profile creation failed:', firestoreError);
+          await signOut(auth);
+          setStatus('idle');
+          throw new Error(`Failed to create user profile: ${firestoreError.message}`);
+        }
       }
       
-      // Existing user - success
+      // Sign-in successful
       setStatus('authenticated');
       return user;
       
@@ -581,7 +695,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     try {
       setStatus('loading');
-
       const credential = await AppleAuthentication.signInAsync({
         requestedScopes: [
           AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
@@ -608,7 +721,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setStatus('authenticated');
         return user;
       }
-      
       // New user - create profile
       const displayName = credential.fullName 
         ? `${credential.fullName.givenName || ''} ${credential.fullName.familyName || ''}`.trim()
@@ -638,8 +750,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         },
         createdAt: serverTimestamp(),
       };
-
-      await setDoc(userRef, userProfile);
+      
+      try {
+        await setDoc(userRef, userProfile);
+      } catch (firestoreError: any) {
+        console.error('❌ [AuthContext] signUpWithApple - FIRESTORE WRITE FAILED:', {
+          error: firestoreError,
+          code: firestoreError.code,
+          message: firestoreError.message,
+          uid: user.uid
+        });
+        // Sign out the user since profile creation failed
+        await signOut(auth);
+        setStatus('idle');
+        throw new Error(`Failed to create user profile: ${firestoreError.message}`);
+      }
+      
       setStatus('authenticated');
       return user;
       

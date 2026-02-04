@@ -483,14 +483,18 @@ describe('AuthContext - Google Sign-In', () => {
     jest.clearAllMocks();
   });
 
-  it('uses signInWithPopup for web platform', async () => {
+  it('auto-creates Firestore profile for new users trying to sign in on web', async () => {
     // Mock getDoc to return false (user doesn't exist)
     (getDoc as jest.Mock).mockResolvedValueOnce({ exists: () => false });
+    (setDoc as jest.Mock).mockResolvedValueOnce(undefined);
     
     const wrapper = ({ children }: any) => <AuthProvider>{children}</AuthProvider>;
     const { result } = renderHook(() => useAuth(), { wrapper });
 
-    await expect(act(async () => { await result.current.signInWithGoogle(); })).rejects.toThrow('ACCOUNT_NOT_FOUND');
+    // Should auto-create profile instead of throwing ACCOUNT_NOT_FOUND
+    await act(async () => { await result.current.signInWithGoogle(); });
+    
+    expect(setDoc).toHaveBeenCalled();
   });
 
   it('signUpWithGoogle throws for web platform', async () => {

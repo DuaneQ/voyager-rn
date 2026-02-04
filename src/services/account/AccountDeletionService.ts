@@ -11,7 +11,14 @@
  * Note: Usage agreement acceptance record is preserved for legal compliance
  */
 
-import { deleteUser, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
+import { 
+  deleteUser, 
+  reauthenticateWithCredential, 
+  reauthenticateWithPopup,
+  EmailAuthProvider,
+  GoogleAuthProvider,
+  OAuthProvider,
+} from 'firebase/auth';
 import {
   collection,
   query,
@@ -25,26 +32,45 @@ import {
 } from 'firebase/firestore';
 import { ref, listAll, deleteObject } from 'firebase/storage';
 import { auth, db, storage } from '../../config/firebaseConfig';
+import { Platform } from 'react-native';
 
 export class AccountDeletionService {
   /**
+   * Get user's auth provider (email, google, apple)
+   * Checks ALL linked providers and prioritizes OAuth over password
+   */
+  private getAuthProvider(): string {
+    const user = auth.currentUser;
+    if (!user || !user.providerData || user.providerData.length === 0) {
+      return 'password';
+    }
+    
+    // Check all providers - a user can have multiple (e.g., Google + password)
+    const providers = user.providerData.map(p => p.providerId);
+    const hasGoogle = providers.includes('google.com');
+    const hasApple = providers.includes('apple.com');
+    
+    // Prioritize OAuth providers for reauthentication (more secure)
+    if (hasGoogle) return 'google';
+    if (hasApple) return 'apple';
+    return 'password';
+  }
+
+  /**
    * Delete user account and all associated data
-   * @param password - User's password for re-authentication
+   * @param password - User's password for re-authentication (only for email/password users)
    */
   async deleteAccount(password?: string): Promise<void> {
     const user = auth.currentUser;
     if (!user) {
-      throw new Error('No authenticated user found');
+      throw new Error('No user is currently logged in');
     }
 
     const userId = user.uid;
 
     try {
       // Step 1: Re-authenticate user (required by Firebase for account deletion)
-      if (password && user.email) {
-        const credential = EmailAuthProvider.credential(user.email, password);
-        await reauthenticateWithCredential(user, credential);
-      }
+      await this.reauthenticateUser(user, password);
 
       // Step 2: Mark account as deleted (preserve usage agreement record)
       await this.markAccountAsDeleted(userId);
@@ -73,6 +99,42 @@ export class AccountDeletionService {
       deleted: true,
       // hasAcceptedTerms is NOT removed - preserved for legal compliance
     });
+  }
+
+  /**
+   * Reauthenticate user based on their auth provider
+   */
+  private async reauthenticateUser(user: any, password?: string): Promise<void> {
+    const provider = this.getAuthProvider();
+
+    if (provider === 'password') {
+      // Email/password users
+      if (!password) {
+        throw new Error('Password required for email/password authentication');
+      }
+      const email = user.email;
+      if (!email) {
+        throw new Error('Email not found');
+      }
+      const credential = EmailAuthProvider.credential(email, password);
+      await reauthenticateWithCredential(user, credential);
+    } else if (provider === 'google') {
+      // Google users - on web use popup, on mobile skip (recent login required)
+      if (Platform.OS === 'web') {
+        const googleProvider = new GoogleAuthProvider();
+        await reauthenticateWithPopup(user, googleProvider);
+      }
+      // On mobile, user must have recently signed in (Firebase handles this)
+      // If login is not recent, Firebase will throw auth/requires-recent-login
+    } else if (provider === 'apple') {
+      // Apple users - on iOS use Apple Sign In, on web use popup
+      if (Platform.OS === 'web') {
+        const appleProvider = new OAuthProvider('apple.com');
+        await reauthenticateWithPopup(user, appleProvider);
+      }
+      // On iOS, user must have recently signed in (Firebase handles this)
+      // If login is not recent, Firebase will throw auth/requires-recent-login
+    }
   }
 
   /**

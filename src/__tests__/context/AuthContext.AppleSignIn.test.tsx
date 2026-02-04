@@ -94,7 +94,7 @@ describe('AuthContext - Apple Sign-In', () => {
       expect(getDoc).toHaveBeenCalled();
     });
 
-    it('throws ACCOUNT_NOT_FOUND for new users trying to sign in', async () => {
+    it('auto-creates Firestore profile for new users trying to sign in', async () => {
 
       (AppleAuthentication.signInAsync as jest.Mock).mockResolvedValue({
         identityToken: 'mock-id-token',
@@ -110,16 +110,23 @@ describe('AuthContext - Apple Sign-In', () => {
       (getDoc as jest.Mock).mockResolvedValue({
         exists: () => false,
       });
+      
+      (setDoc as jest.Mock).mockResolvedValue(undefined);
 
       const { result } = renderHook(() => useAuth(), {
         wrapper: AuthProvider,
       });
 
-      await expect(result.current.signInWithApple()).rejects.toThrow(
-        'ACCOUNT_NOT_FOUND'
-      );
-
-      expect(signOut).toHaveBeenCalled();
+      const user = await result.current.signInWithApple();
+      
+      expect(user).toEqual({
+        uid: 'new-apple-user',
+        email: 'newuser@appleid.com',
+      });
+      
+      // Should auto-create profile, not sign out
+      expect(setDoc).toHaveBeenCalled();
+      expect(signOut).not.toHaveBeenCalled();
     });
 
     it('handles user cancellation gracefully', async () => {

@@ -183,10 +183,9 @@ const SearchPage: React.FC = () => {
   const handleAddItinerary = () => {
     // Check profile completion before opening modal
     if (!userProfile?.dob || !userProfile?.gender) {
-      Alert.alert(
-        'Complete Your Profile',
-        'Please complete your profile (date of birth and gender) before creating an itinerary.',
-        [{ text: 'OK' }]
+      showAlert(
+        'warning',
+        'Please complete your profile (date of birth and gender) before creating an itinerary.'
       );
       return;
     }

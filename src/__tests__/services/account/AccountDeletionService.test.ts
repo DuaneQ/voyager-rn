@@ -77,6 +77,7 @@ describe('AccountDeletionService', () => {
     mockUser = {
       uid: 'test-user-123',
       email: 'test@example.com',
+      providerData: [{ providerId: 'password' }],
     };
     (auth as any).currentUser = mockUser;
 
@@ -94,6 +95,16 @@ describe('AccountDeletionService', () => {
     });
     mockDeleteObject.mockResolvedValue(undefined);
 
+    // Setup default successful reauthentication
+    const mockCredential = { providerId: 'password' };
+    mockEmailAuthProviderCredential.mockReturnValue(mockCredential);
+    mockReauthenticateWithCredential.mockResolvedValue({ user: mockUser });
+    
+    // Setup default successful Firestore operations
+    mockGetDocs.mockResolvedValue({ docs: [] });
+    mockUpdateDoc.mockResolvedValue(undefined);
+    mockDeleteUser.mockResolvedValue(undefined);
+
     // Create service instance
     service = new AccountDeletionService();
   });
@@ -102,7 +113,7 @@ describe('AccountDeletionService', () => {
     it('should throw error if no authenticated user', async () => {
       (auth as any).currentUser = null;
 
-      await expect(service.deleteAccount()).rejects.toThrow('No authenticated user found');
+      await expect(service.deleteAccount("test-password")).rejects.toThrow('No user is currently logged in');
     });
 
     it('should re-authenticate user with password', async () => {
@@ -123,7 +134,7 @@ describe('AccountDeletionService', () => {
       mockUpdateDoc.mockResolvedValue(undefined);
       mockDeleteUser.mockResolvedValue(undefined);
 
-      await service.deleteAccount();
+      await service.deleteAccount("test-password");
 
       expect(mockUpdateDoc).toHaveBeenCalledWith(
         expect.anything(),
@@ -138,7 +149,7 @@ describe('AccountDeletionService', () => {
       mockUpdateDoc.mockResolvedValue(undefined);
       mockDeleteUser.mockResolvedValue(undefined);
 
-      await service.deleteAccount();
+      await service.deleteAccount("test-password");
 
       expect(mockDeleteUser).toHaveBeenCalledWith(mockUser);
       // Verify it's called after other operations
@@ -165,7 +176,7 @@ describe('AccountDeletionService', () => {
       mockUpdateDoc.mockResolvedValue(undefined);
       mockDeleteUser.mockResolvedValue(undefined);
 
-      await service.deleteAccount();
+      await service.deleteAccount("test-password");
 
       expect(mockBatch.delete).toHaveBeenCalledTimes(mockItineraries.length + 1); // +1 for user profile
     });
@@ -193,7 +204,7 @@ describe('AccountDeletionService', () => {
       mockUpdateDoc.mockResolvedValue(undefined);
       mockDeleteUser.mockResolvedValue(undefined);
 
-      await service.deleteAccount();
+      await service.deleteAccount("test-password");
 
       // Should delete messages + connection + user profile
       expect(mockBatch.delete).toHaveBeenCalledTimes(mockMessages.length + mockConnections.length + 1);
@@ -214,7 +225,7 @@ describe('AccountDeletionService', () => {
       mockUpdateDoc.mockResolvedValue(undefined);
       mockDeleteUser.mockResolvedValue(undefined);
 
-      await service.deleteAccount();
+      await service.deleteAccount("test-password");
 
       expect(mockBatch.delete).toHaveBeenCalledTimes(mockVideos.length + 1); // +1 for user profile
     });
@@ -224,7 +235,7 @@ describe('AccountDeletionService', () => {
       mockUpdateDoc.mockResolvedValue(undefined);
       mockDeleteUser.mockResolvedValue(undefined);
 
-      await service.deleteAccount();
+      await service.deleteAccount("test-password");
 
       // User profile deletion should be in the batch
       expect(mockBatch.delete).toHaveBeenCalled();
@@ -243,7 +254,7 @@ describe('AccountDeletionService', () => {
       mockUpdateDoc.mockResolvedValue(undefined);
       mockDeleteUser.mockResolvedValue(undefined);
 
-      await service.deleteAccount();
+      await service.deleteAccount("test-password");
 
       // Should commit batch at least twice (once at 500, once for remaining)
       expect(mockBatch.commit).toHaveBeenCalledTimes(2);
@@ -266,7 +277,7 @@ describe('AccountDeletionService', () => {
       mockGetDocs.mockResolvedValue({ docs: [] });
       mockDeleteUser.mockResolvedValue(undefined);
 
-      await service.deleteAccount();
+      await service.deleteAccount("test-password");
 
       expect(mockDeleteObject).toHaveBeenCalledTimes(mockFiles.length + 1); // +1 for profile photo attempt
     });
@@ -293,7 +304,7 @@ describe('AccountDeletionService', () => {
       mockGetDocs.mockResolvedValue({ docs: [] });
       mockDeleteUser.mockResolvedValue(undefined);
 
-      await service.deleteAccount();
+      await service.deleteAccount("test-password");
 
       expect(mockDeleteObject).toHaveBeenCalledTimes(mockSubfolderFiles.length + 1); // +1 for profile photo
     });
@@ -307,7 +318,7 @@ describe('AccountDeletionService', () => {
       mockDeleteUser.mockResolvedValue(undefined);
 
       // Should not throw - deletion should continue
-      await expect(service.deleteAccount()).resolves.not.toThrow();
+      await expect(service.deleteAccount("test-password")).resolves.not.toThrow();
     });
 
     it('should attempt to delete profile photo', async () => {
@@ -317,7 +328,7 @@ describe('AccountDeletionService', () => {
       mockGetDocs.mockResolvedValue({ docs: [] });
       mockDeleteUser.mockResolvedValue(undefined);
 
-      await service.deleteAccount();
+      await service.deleteAccount("test-password");
 
       // Should attempt to delete profile photo
       expect(mockDeleteObject).toHaveBeenCalled();
@@ -330,7 +341,7 @@ describe('AccountDeletionService', () => {
       const firestoreError = new Error('Firestore error');
       mockUpdateDoc.mockRejectedValue(firestoreError);
 
-      await expect(service.deleteAccount()).rejects.toThrow('Firestore error');
+      await expect(service.deleteAccount("test-password")).rejects.toThrow('Firestore error');
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         '[AccountDeletion] Error deleting account:',
         firestoreError
@@ -343,7 +354,7 @@ describe('AccountDeletionService', () => {
       const firestoreError = new Error('Firestore failure');
       mockUpdateDoc.mockRejectedValue(firestoreError);
 
-      await expect(service.deleteAccount()).rejects.toThrow('Firestore failure');
+      await expect(service.deleteAccount("test-password")).rejects.toThrow('Firestore failure');
       expect(mockDeleteUser).not.toHaveBeenCalled();
     });
   });
@@ -354,7 +365,7 @@ describe('AccountDeletionService', () => {
       mockGetDocs.mockResolvedValue({ docs: [] });
       mockDeleteUser.mockResolvedValue(undefined);
 
-      await service.deleteAccount();
+      await service.deleteAccount("test-password");
 
       // Verify updateDoc doesn't remove hasAcceptedTerms
       const updateCall = mockUpdateDoc.mock.calls[0];
