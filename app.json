@@ -78,15 +78,7 @@
           "supportsPictureInPicture": false
         }
       ],
-      "expo-audio",
-      [
-        "@sentry/react-native/expo",
-        {
-          "url": "https://sentry.io/",
-          "project": "react-native",
-          "organization": "travalpass-llc"
-        }
-      ]
+      "expo-audio"
     ],
     "extra": {
       "eas": {

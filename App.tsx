@@ -12,26 +12,6 @@ import AppNavigator from './src/navigation/AppNavigator';
 import { AuthProvider } from './src/context/AuthContext';
 import { AlertProvider } from './src/context/AlertContext';
 import { UserProfileProvider } from './src/context/UserProfileContext';
-import * as Sentry from '@sentry/react-native';
-
-Sentry.init({
-  dsn: 'https://0d88754efcec4b4a8f8f9b07f2b2f8f6@o4510829247987712.ingest.us.sentry.io/4510829255196672',
-
-  // Disabled by default to avoid collecting PII without explicit user consent.
-  // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
-  sendDefaultPii: false,
-
-  // Enable Logs
-  enableLogs: true,
-
-  // Session Replay disabled for Apple App Store compliance.
-  // Screen recording requires explicit user consent and privacy disclosures.
-  replaysSessionSampleRate: 0,
-  replaysOnErrorSampleRate: 0,
-
-  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
-  // spotlight: __DEV__,
-});
 
 // Enable react-native-screens for better performance and compatibility with React 19
 enableScreens(true);
@@ -44,7 +24,7 @@ enableScreens(true);
  * 
  * NOTE: Font loading is critical for web builds to display icons properly
  */
-export default Sentry.wrap(function App() {
+export default function App() {
   const [fontsLoaded, setFontsLoaded] = useState(false);
 
   useEffect(() => {
@@ -90,7 +70,7 @@ export default Sentry.wrap(function App() {
       </AuthProvider>
     </SafeAreaProvider>
   );
-});
+}
 
 const styles = StyleSheet.create({
   loadingContainer: {
