@@ -12,16 +12,17 @@ const BASE_URL = 'https://travalpass.com'; // Production URL
 
 /**
  * Generate shareable URL for a video
+ * All videos use /video-share/ path which serves proper OG meta tags
  */
-export const generateVideoShareUrl = (videoId: string): string => {
-  return `${BASE_URL}/video/${videoId}`;
+export const generateVideoShareUrl = (video: Video): string => {
+  return `${BASE_URL}/video-share/${video.id}`;
 };
 
 /**
  * Generate video share message
  */
 export const generateShareMessage = (video: Video): string => {
-  const url = generateVideoShareUrl(video.id);
+  const url = generateVideoShareUrl(video);
   const title = video.title || 'Check out this video';
   return `${title}\n\n${url}\n\nWatch on TravalPass`;
 };
@@ -41,7 +42,7 @@ export const shareVideo = async (video: Video): Promise<boolean> => {
           await navigator.share({
             title: video.title || 'Check out this video on TravalPass',
             text: 'Watch this amazing travel video!',
-            url: generateVideoShareUrl(video.id),
+            url: generateVideoShareUrl(video),
           });
           return true;
         } catch (error: any) {
@@ -98,7 +99,7 @@ export const shareVideo = async (video: Video): Promise<boolean> => {
  */
 export const copyVideoLink = async (video: Video): Promise<boolean> => {
   try {
-    const url = generateVideoShareUrl(video.id);
+    const url = generateVideoShareUrl(video);
     await Clipboard.setStringAsync(url);
     return true;
   } catch (error) {
@@ -115,7 +116,7 @@ export const shareVideoToPlatform = async (
   video: Video,
   platform: 'facebook' | 'twitter' | 'whatsapp' | 'copy'
 ): Promise<boolean> => {
-  const url = generateVideoShareUrl(video.id);
+  const url = generateVideoShareUrl(video);
   const title = video.title || 'Check out this video';
 
   try {

@@ -44,15 +44,22 @@ jobs:
           # Generate audit report
           npm audit --audit-level=low > audit-report.txt || true
           
-          # Display critical and high vulnerabilities
-          echo "=== CRITICAL & HIGH VULNERABILITIES ==="
-          npm audit --audit-level=high || echo "No critical/high vulnerabilities found"
+          # Only fail on CRITICAL vulnerabilities (allows high/moderate/low to pass)
+          echo "=== CRITICAL VULNERABILITIES CHECK ==="
+          npm audit --audit-level=critical || {
+            echo "❌ CRITICAL vulnerabilities found - failing build"
+            exit 1
+          }
+          
+          # Display all vulnerabilities for informational purposes
+          echo "=== ALL VULNERABILITIES (informational) ==="
+          npm audit || echo "✅ No critical vulnerabilities - build passes"
           
           # Check automation dependencies (only if `automation/` exists)
           echo "=== AUTOMATION DEPENDENCIES ==="
           if [ -d automation ]; then
             cd automation
-            npm audit --audit-level=high || echo "No critical/high vulnerabilities in automation"
+            npm audit --audit-level=critical || echo "No critical vulnerabilities in automation"
             cd - > /dev/null
           else
             echo "automation/ directory not found; skipping automation audit"

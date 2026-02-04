@@ -179,7 +179,7 @@ export class AccountDeletionService {
       }
     } catch (error) {
       // Folder might not exist, which is fine
-      console.log('[AccountDeletion] No storage files found or error deleting:', error);
+      console.warn('[AccountDeletion] No storage files found or error deleting:', error);
     }
 
     // Also delete profile photo if exists
@@ -188,7 +188,7 @@ export class AccountDeletionService {
       await deleteObject(photoRef);
     } catch (error) {
       // Photo might not exist
-      console.log('[AccountDeletion] No profile photo found or error deleting');
+      console.warn('[AccountDeletion] No profile photo found or error deleting');
     }
   }
 

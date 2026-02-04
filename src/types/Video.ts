@@ -20,6 +20,13 @@ export interface Video {
   fileSize: number; // in bytes
   createdAt: Timestamp;
   updatedAt: Timestamp;
+  // Mux video processing fields
+  muxAssetId?: string; // Mux asset ID
+  muxPlaybackId?: string; // Mux playback ID
+  muxPlaybackUrl?: string; // HLS URL for universal playback
+  muxThumbnailUrl?: string; // Mux-generated thumbnail
+  muxStatus?: 'preparing' | 'ready' | 'errored'; // Processing status
+  muxError?: string; // Error message if processing failed
 }
 
 export interface VideoComment {
@@ -44,7 +51,7 @@ export interface VideoValidationResult {
 
 // Constants for video validation - matches PWA exactly
 export const VIDEO_CONSTRAINTS = {
-  MAX_FILE_SIZE: 100 * 1024 * 1024, // 100MB
+  MAX_FILE_SIZE: 150 * 1024 * 1024, // 150MB
   MAX_DURATION: 60, // seconds
   SUPPORTED_FORMATS: [
     'video/mp4',

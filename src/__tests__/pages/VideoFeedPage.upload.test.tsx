@@ -93,8 +93,8 @@ jest.mock('../../config/firebaseConfig', () => ({
   db: {},
 }));
 
-jest.mock('../../components/video/VideoCard', () => ({
-  VideoCard: () => null,
+jest.mock('../../components/video/VideoCardV2', () => ({
+  VideoCardV2: () => null,
 }));
 
 jest.mock('../../components/video/VideoCommentsModal', () => ({
@@ -121,8 +121,8 @@ jest.mock('../../components/modals/VideoUploadModal', () => ({
   },
 }));
 
-jest.mock('../../services/video/VideoPlaybackManager', () => ({
-  videoPlaybackManager: {
+jest.mock('../../services/video/VideoPlaybackManagerV2', () => ({
+  videoPlaybackManagerV2: {
     deactivateAll: jest.fn().mockResolvedValue(undefined),
   },
 }));

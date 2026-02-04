@@ -96,7 +96,7 @@ export const VideoGrid: React.FC = () => {
       Alert.alert('Success', 'Video uploaded successfully!');
       await refreshVideos();
     } else {
-      console.log('[VideoGrid] Upload returned null, not refreshing');
+      // upload returned null; no refresh
     }
   }, [uploadVideo, refreshVideos, videos.length]);
 

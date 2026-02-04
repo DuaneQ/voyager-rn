@@ -108,7 +108,7 @@ describe('videoValidation', () => {
     });
 
     it('should display file size in MB correctly', async () => {
-      const fileSize = 150 * 1024 * 1024; // 150MB
+      const fileSize = 151 * 1024 * 1024; // 151MB (exceeds 150MB limit)
 
       const result = await validateVideoFile(mockUri, fileSize);
 

@@ -18,7 +18,8 @@ import {
 } from 'react-native';
 import { setAudioModeAsync } from 'expo-audio';
 import { Ionicons } from '@expo/vector-icons';
-import { VideoCard } from '../components/video/VideoCard';
+// Using new expo-video implementation
+import { VideoCardV2 as VideoCard } from '../components/video/VideoCardV2';
 import { VideoCommentsModal } from '../components/video/VideoCommentsModal';
 import { VideoUploadModal } from '../components/modals/VideoUploadModal';
 import { ReportVideoModal } from '../components/modals/ReportVideoModal';
@@ -26,7 +27,7 @@ import { useVideoFeed, VideoFilter } from '../hooks/video/useVideoFeed';
 import { useVideoUpload } from '../hooks/video/useVideoUpload';
 import { useAlert } from '../context/AlertContext';
 import { shareVideo } from '../utils/videoSharing';
-import { videoPlaybackManager } from '../services/video/VideoPlaybackManager';
+import { videoPlaybackManagerV2 as videoPlaybackManager } from '../services/video/VideoPlaybackManagerV2';
 import { doc, getDocFromServer } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
 
@@ -80,7 +81,9 @@ const VideoFeedPage: React.FC = () => {
   const [uploadModalVisible, setUploadModalVisible] = useState(false);
   const [selectedVideoUri, setSelectedVideoUri] = useState<string | null>(null);
   const [selectedVideoFileSize, setSelectedVideoFileSize] = useState<number | undefined>(undefined);
-  const [isMuted, setIsMuted] = useState(false); // Videos play with audio by default (TikTok/Reels behavior)
+  // Web: Start muted to comply with browser autoplay policy (user can tap to unmute)
+  // Native: Start with audio (TikTok/Reels behavior)
+  const [isMuted, setIsMuted] = useState(Platform.OS === 'web');
   const [commentsModalVisible, setCommentsModalVisible] = useState(false);
   const [selectedVideoForComments, setSelectedVideoForComments] = useState<typeof videos[0] | null>(null);
   const [reportModalVisible, setReportModalVisible] = useState(false);
@@ -371,7 +374,8 @@ const VideoFeedPage: React.FC = () => {
       const currentUserId = resolvedAuth?.currentUser?.uid;
       const isOwnVideo = item.userId === currentUserId;
 
-      return (
+      // Web: wrap in View with scroll-snap-align for TikTok-style snapping
+      const videoCard = (
         <VideoCard
           video={item}
           isActive={index === currentVideoIndex && isScreenFocused}
@@ -384,6 +388,16 @@ const VideoFeedPage: React.FC = () => {
           onViewTracked={() => handleViewTracked(item.id)}
         />
       );
+
+      if (Platform.OS === 'web') {
+        return (
+          <View style={styles.webVideoCardWrapper}>
+            {videoCard}
+          </View>
+        );
+      }
+
+      return videoCard;
     },
     [currentVideoIndex, isScreenFocused, isMuted, handleLike, handleCommentPress, handleShare, handleReportPress, handleViewTracked, resolvedAuth]
   );
@@ -523,7 +537,7 @@ const VideoFeedPage: React.FC = () => {
         // FlatList fills available space via flex:1 in container
         // CRITICAL for Android: pagingEnabled ensures ONLY one video visible
         // snapToInterval can show partial views of multiple videos
-        pagingEnabled={Platform.OS === 'android'}
+        pagingEnabled={Platform.OS !== 'web'} // pagingEnabled doesn't work well on web
         snapToInterval={Platform.OS === 'ios' ? height : undefined}
         snapToAlignment="start"
         decelerationRate="fast"
@@ -543,6 +557,9 @@ const VideoFeedPage: React.FC = () => {
         getItemLayout={getItemLayout}
         // Prevent scroll during rapid events
         scrollEventThrottle={16}
+        // Web-specific: CSS scroll snap styles
+        style={Platform.OS === 'web' ? styles.webFlatList : undefined}
+        contentContainerStyle={Platform.OS === 'web' ? styles.webContentContainer : undefined}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -635,6 +652,24 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000',
   },
+  // Web-specific: Enable CSS scroll-snap for TikTok-style snapping
+  webFlatList: {
+    // @ts-ignore - Web-only CSS properties
+    scrollSnapType: 'y mandatory',
+    // @ts-ignore
+    scrollBehavior: 'smooth',
+  } as any,
+  webContentContainer: {
+    // No special styles needed here, individual items handle snap-align
+  },
+  // Web-specific: Each video card snaps to viewport
+  webVideoCardWrapper: {
+    height: height,
+    // @ts-ignore - Web-only CSS properties
+    scrollSnapAlign: 'start',
+    // @ts-ignore
+    scrollSnapStop: 'always',
+  } as any,
   header: {
     position: 'absolute',
     top: 0,
