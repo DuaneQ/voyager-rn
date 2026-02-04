@@ -23,6 +23,7 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  Pressable,
   Image,
   ScrollView,
   ActivityIndicator,
@@ -48,6 +49,7 @@ import {
   query,
   where,
   getDocs,
+  addDoc,
 } from 'firebase/firestore';
 import { getStorage, ref, getDownloadURL } from 'firebase/storage';
 import { UserProfileContext } from '../../context/UserProfileContext';
@@ -97,6 +99,9 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
   const [isVideoMuted, setIsVideoMuted] = useState(false); // Mute state for enlarged video
   const [reportVideoModalVisible, setReportVideoModalVisible] = useState(false);
   const [videoToReport, setVideoToReport] = useState<any | null>(null);
+  const [showBlockDialog, setShowBlockDialog] = useState(false);
+  const [showReportDialog, setShowReportDialog] = useState(false);
+  const [reportReason, setReportReason] = useState('');
   
   // Rating submission state
   const [ratingDialogVisible, setRatingDialogVisible] = useState(false);
@@ -336,69 +341,65 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
     }
   };
 
-  const handleBlock = async () => {
-    Alert.alert(
-      'Block User',
-      `Are you sure you want to block ${profile?.username || 'this user'}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Block',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              if (!currentUserId) return;
-              
-              // Update current user's blocked list
-              const userRef = doc(db, 'users', currentUserId);
-              await updateDoc(userRef, {
-                blocked: arrayUnion(userId),
-              });
+  const handleBlock = () => {
+    setShowBlockDialog(true);
+  };
 
-              // Refresh user profile from context
-              if (updateUserProfile && currentUserId) {
-                // Fetch fresh profile data after blocking
-                const userDoc = await getDoc(doc(db, 'users', currentUserId));
-                if (userDoc.exists()) {
-                  updateUserProfile(userDoc.data() as any);
-                }
-              }
+  const confirmBlock = async () => {
+    try {
+      if (!currentUserId) return;
+      
+      // Update current user's blocked list
+      const userRef = doc(db, 'users', currentUserId);
+      await updateDoc(userRef, {
+        blocked: arrayUnion(userId),
+      });
 
-              Alert.alert('Success', 'User blocked successfully');
-              onClose();
-            } catch (error) {
-              console.error('Error blocking user:', error);
-              Alert.alert('Error', 'Failed to block user');
-            }
-          },
-        },
-      ]
-    );
+      // Refresh user profile from context
+      if (updateUserProfile && currentUserId) {
+        // Fetch fresh profile data after blocking
+        const userDoc = await getDoc(doc(db, 'users', currentUserId));
+        if (userDoc.exists()) {
+          updateUserProfile(userDoc.data() as any);
+        }
+      }
+
+      setShowBlockDialog(false);
+      Alert.alert('Success', 'User blocked successfully');
+      onClose();
+    } catch (error) {
+      console.error('Error blocking user:', error);
+      Alert.alert('Error', 'Failed to block user');
+    }
   };
 
   const handleReport = () => {
-    Alert.prompt(
-      'Report User',
-      'Please describe why you are reporting this user',
-      async (text) => {
-        if (!text || text.trim().length === 0) return;
+    setShowReportDialog(true);
+  };
 
-        try {
-          const reportRef = collection(db, 'reports');
-          await updateDoc(doc(reportRef), {
-            reporterId: currentUserId,
-            reportedUserId: userId,
-            reason: text.trim(),
-            createdAt: new Date().toISOString(),
-          });
+  const submitReport = async () => {
+    if (!reportReason.trim()) {
+      Alert.alert('Error', 'Please provide a reason for reporting');
+      return;
+    }
 
-          Alert.alert('Success', 'Report submitted successfully');
-        } catch (error) {
-          console.error('Error reporting user:', error);
-          Alert.alert('Error', 'Failed to submit report');
-        }
-      }
-    );
+    try {
+      const reportRef = collection(db, 'reports');
+      await addDoc(reportRef, {
+        reporterId: currentUserId,
+        reportedUserId: userId,
+        reason: reportReason.trim(),
+        createdAt: new Date().toISOString(),
+      });
+
+      setShowReportDialog(false);
+      setReportReason('');
+      Alert.alert('Success', 'Report submitted successfully');
+      onClose();
+    } catch (error) {
+      console.error('Error reporting user:', error);
+      Alert.alert('Error', 'Failed to submit report');
+    }
   };
 
   const handleReportVideo = (video: any) => {
@@ -458,12 +459,24 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
             {profile?.username || 'Profile'}
           </Text>
           <View style={styles.headerActions}>
-            <TouchableOpacity onPress={handleBlock} style={styles.actionButton}>
+            <Pressable 
+              onPress={() => {
+                console.log('[ViewProfileModal] Block Pressable pressed');
+                handleBlock();
+              }}
+              style={styles.actionButton}
+            >
               <Text style={styles.actionButtonText}>🚫</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handleReport} style={styles.actionButton}>
+            </Pressable>
+            <Pressable 
+              onPress={() => {
+                console.log('[ViewProfileModal] Report Pressable pressed');
+                handleReport();
+              }}
+              style={styles.actionButton}
+            >
               <Text style={styles.actionButtonText}>🚩</Text>
-            </TouchableOpacity>
+            </Pressable>
           </View>
         </View>
 
@@ -992,6 +1005,84 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
           </View>
         </View>
       </Modal>
+
+      {/* Block User Confirmation Modal */}
+      <Modal
+        visible={showBlockDialog}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowBlockDialog(false)}
+      >
+        <View style={styles.dialogOverlay}>
+          <View style={styles.dialogContainer}>
+            <Text style={styles.dialogTitle}>Block User</Text>
+            <Text style={styles.dialogMessage}>
+              Are you sure you want to block {profile?.username || 'this user'}? You will no longer see their profile or content.
+            </Text>
+            <View style={styles.dialogButtons}>
+              <TouchableOpacity
+                style={[styles.dialogButton, styles.dialogCancelButton]}
+                onPress={() => setShowBlockDialog(false)}
+              >
+                <Text style={styles.dialogCancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.dialogButton, styles.dialogDestructiveButton]}
+                onPress={confirmBlock}
+              >
+                <Text style={styles.dialogDestructiveButtonText}>Block</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Report User Modal */}
+      <Modal
+        visible={showReportDialog}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setShowReportDialog(false);
+          setReportReason('');
+        }}
+      >
+        <View style={styles.dialogOverlay}>
+          <View style={styles.dialogContainer}>
+            <Text style={styles.dialogTitle}>Report User</Text>
+            <Text style={styles.dialogMessage}>
+              Please describe why you are reporting this user:
+            </Text>
+            <TextInput
+              style={styles.reportInput}
+              placeholder="Enter reason for report..."
+              value={reportReason}
+              onChangeText={setReportReason}
+              multiline
+              numberOfLines={4}
+              maxLength={500}
+              autoFocus
+            />
+            <View style={styles.dialogButtons}>
+              <TouchableOpacity
+                style={[styles.dialogButton, styles.dialogCancelButton]}
+                onPress={() => {
+                  setShowReportDialog(false);
+                  setReportReason('');
+                }}
+              >
+                <Text style={styles.dialogCancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.dialogButton, styles.dialogDestructiveButton]}
+                onPress={submitReport}
+              >
+                <Text style={styles.dialogDestructiveButtonText}>Submit</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </Modal>
   );
 };
@@ -1009,6 +1100,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
+    backgroundColor: '#fff',
+    zIndex: 1000,
+    elevation: 5,
   },
   closeButton: {
     width: 40,
@@ -1633,6 +1727,76 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     zIndex: 20,
     elevation: 5, // Android elevation for proper touch handling
+  },
+  // Block/Report Dialog Styles
+  dialogOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  dialogContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  dialogTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 12,
+    color: '#333',
+  },
+  dialogMessage: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 20,
+    lineHeight: 22,
+  },
+  reportInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    marginBottom: 20,
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  dialogButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+  },
+  dialogButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  dialogCancelButton: {
+    backgroundColor: '#f0f0f0',
+  },
+  dialogCancelButtonText: {
+    color: '#333',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  dialogDestructiveButton: {
+    backgroundColor: '#dc3545',
+  },
+  dialogDestructiveButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 
