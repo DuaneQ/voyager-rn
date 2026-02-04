@@ -53,10 +53,8 @@ const ItineraryGenerator: React.FC = () => {
     const result = await generateItinerary(request);
     
     if (result.success) {
-      console.log('Generated itinerary:', result.itinerary);
-      console.log('Saved with ID:', result.savedDocId);
+
     } else {
-      console.error('Generation failed:', result.error);
     }
   };
 
@@ -179,7 +177,6 @@ const MyScreen: React.FC = () => {
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
         onGenerated={(result) => {
-          console.log('Generated:', result);
           setModalVisible(false);
         }}
         userProfile={userProfile}

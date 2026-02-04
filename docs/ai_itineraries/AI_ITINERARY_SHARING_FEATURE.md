@@ -399,7 +399,6 @@ const handleNativeShare = async () => {
     });
 
     if (result.action === Share.sharedAction) {
-      console.log('Shared successfully');
     }
   } catch (error) {
     // User cancelled or error - fallback to clipboard
@@ -582,7 +581,6 @@ const handleNativeShare = async () => {
     });
 
     if (result.action === Share.sharedAction) {
-      console.log('Shared successfully');
     }
   } catch (error) {
     // Fallback to copy if share fails

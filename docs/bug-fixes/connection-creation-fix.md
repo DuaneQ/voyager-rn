@@ -69,13 +69,7 @@ const myItinerary = freshItineraries.find(itin => itin.id === selectedItineraryI
 Added comprehensive console logging at every step:
 
 ```tsx
-console.log('[SearchPage] handleLike called for itinerary:', itinerary.id);
-console.log('[SearchPage] Updating itinerary likes:', { itineraryId, existingLikes, newLikes });
-console.log('[SearchPage] ✅ Successfully updated itinerary likes:', updatedItinerary);
-console.log('[SearchPage] Fetching fresh itineraries to check mutual match...');
-console.log('[SearchPage] Checking mutual match:', { myItineraryId, myLikes, otherUserUid });
-console.log('[SearchPage] 🎉 MUTUAL MATCH detected!');
-console.log('[SearchPage] ✅ Connection created successfully!');
+
 ```
 
 ## Testing Instructions

@@ -42,7 +42,6 @@ export class AccountDeletionService {
   private getAuthProvider(): string {
     const user = auth.currentUser;
     if (!user || !user.providerData || user.providerData.length === 0) {
-      console.log('🔍 [AccountDeletionService] getAuthProvider: No user or provider data, defaulting to password');
       return 'password';
     }
     
@@ -50,14 +49,6 @@ export class AccountDeletionService {
     const providers = user.providerData.map(p => p.providerId);
     const hasGoogle = providers.includes('google.com');
     const hasApple = providers.includes('apple.com');
-    
-    console.log('🔍 [AccountDeletionService] getAuthProvider:', {
-      userId: user.uid,
-      allProviders: providers,
-      hasGoogle,
-      hasApple,
-      fullProviderData: user.providerData,
-    });
     
     // Prioritize OAuth providers for reauthentication (more secure)
     if (hasGoogle) return 'google';

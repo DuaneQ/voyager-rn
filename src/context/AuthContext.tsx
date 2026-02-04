@@ -358,30 +358,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const signInWithGoogle = async (): Promise<any> => {
-    console.log('🔵 [AuthContext] signInWithGoogle - Starting Google sign-in flow');
     try {
       setStatus('loading');
-      console.log('🔵 [AuthContext] signInWithGoogle - Status set to loading');
 
       if (Platform.OS === 'web') {
         // Use Web SDK popup flow
-        console.log('🔵 [AuthContext] signInWithGoogle - Platform: web');
         const provider = new GoogleAuthProvider();
         const result = await signInWithPopup(auth, provider);
         const user = result.user;
-        console.log('🔵 [AuthContext] signInWithGoogle - User authenticated:', {
-          uid: user.uid,
-          email: user.email
-        });
         
         // Check if profile exists
-        console.log('🔵 [AuthContext] signInWithGoogle - Checking if user profile exists');
         const userDoc = await getDoc(doc(db, 'users', user.uid));
-        console.log('🔵 [AuthContext] signInWithGoogle - Profile check:', { exists: userDoc.exists() });
         
         if (!userDoc.exists()) {
           // No profile - new user, create one automatically
-          console.log('🔵 [AuthContext] signInWithGoogle - New user, auto-creating profile');
           const userProfile = {
             username: user.displayName || user.email?.split('@')[0] || 'newuser',
             email: user.email || '',
@@ -407,7 +397,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           
           try {
             await setDoc(doc(db, 'users', user.uid), userProfile);
-            console.log('🟢 [AuthContext] signInWithGoogle - Profile created successfully');
           } catch (firestoreError: any) {
             console.error('❌ [AuthContext] signInWithGoogle - Profile creation failed:', firestoreError);
             await signOut(auth);
@@ -415,14 +404,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             throw new Error(`Failed to create user profile: ${firestoreError.message}`);
           }
         }
-        
-        console.log('🟢 [AuthContext] signInWithGoogle - Sign-in successful');
         setStatus('authenticated');
         return user;
       }
 
       // Mobile flow: use SafeGoogleSignin wrapper
-      console.log('🔵 [AuthContext] signInWithGoogle - Platform: mobile');
       if (!SafeGoogleSignin.isAvailable()) {
         throw new Error('Google Sign-In is not configured. Please rebuild the app after installing dependencies.');
       }
@@ -433,23 +419,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (!idToken) throw new Error('Google Sign-In failed to return an idToken');
 
       // Authenticate with Firebase using Google ID token
-      console.log('🔵 [AuthContext] signInWithGoogle - Authenticating with Firebase');
       const credential = GoogleAuthProvider.credential(idToken);
       const result = await signInWithCredential(auth, credential);
       const user = result.user;
-      console.log('🔵 [AuthContext] signInWithGoogle - User authenticated:', {
-        uid: user.uid,
-        email: user.email
-      });
 
       // Check if user profile exists in Firestore
-      console.log('🔵 [AuthContext] signInWithGoogle - Checking if user profile exists');
       const userDoc = await getDoc(doc(db, 'users', user.uid));
-      console.log('🔵 [AuthContext] signInWithGoogle - Profile check:', { exists: userDoc.exists() });
       
       if (!userDoc.exists()) {
         // No profile - new user, create one automatically
-        console.log('🔵 [AuthContext] signInWithGoogle - New user, auto-creating profile');
         const userProfile = {
           username: user.displayName || user.email?.split('@')[0] || 'newuser',
           email: user.email || '',
@@ -475,7 +453,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         try {
           await setDoc(doc(db, 'users', user.uid), userProfile);
-          console.log('🟢 [AuthContext] signInWithGoogle - Profile created successfully');
         } catch (firestoreError: any) {
           console.error('❌ [AuthContext] signInWithGoogle - Profile creation failed:', firestoreError);
           await signOut(auth);
@@ -484,7 +461,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       }
 
-      console.log('🟢 [AuthContext] signInWithGoogle - Sign-in successful');
       setStatus('authenticated');
       return user;
     } catch (error: any) {
@@ -495,14 +471,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const signUpWithGoogle = async (): Promise<any> => {
-    console.log('🔵 [AuthContext] signUpWithGoogle - Starting Google sign-up flow');
     try {
       setStatus('loading');
-      console.log('🔵 [AuthContext] signUpWithGoogle - Status set to loading');
-
       if (Platform.OS === 'web') {
         // Use Web SDK popup flow
-        console.log('🔵 [AuthContext] signUpWithGoogle - Platform: web');
         
         const provider = new GoogleAuthProvider();
         const result = await signInWithPopup(auth, provider);
@@ -557,30 +529,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (!idToken) throw new Error('Google Sign-In failed to return an idToken');
 
       // Authenticate with Firebase using Google ID token
-      console.log('🔵 [AuthContext] signUpWithGoogle - Creating Firebase credential');
       const credential = GoogleAuthProvider.credential(idToken);
-      console.log('🔵 [AuthContext] signUpWithGoogle - Signing in with credential');
       const result = await signInWithCredential(auth, credential);
       const user = result.user;
-      console.log('🔵 [AuthContext] signUpWithGoogle - User authenticated:', {
-        uid: user.uid,
-        email: user.email,
-        displayName: user.displayName
-      });
 
       // Check if profile already exists
-      console.log('🔵 [AuthContext] signUpWithGoogle - Checking if user profile exists in Firestore');
       const userDoc = await getDoc(doc(db, 'users', user.uid));
-      console.log('🔵 [AuthContext] signUpWithGoogle - Firestore check complete:', { exists: userDoc.exists() });
       
       if (userDoc.exists()) {
         // Existing user - just sign them in
-        console.log('🟢 [AuthContext] signUpWithGoogle - Existing user, signing in');
         setStatus('authenticated');
         return user;
       }
-
-      console.log('🔵 [AuthContext] signUpWithGoogle - New user, creating Firestore profile');
 
       // New user - create profile
       const userProfile = {
@@ -605,16 +565,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         },
         createdAt: serverTimestamp(),
       };
-
-      console.log('🔵 [AuthContext] signUpWithGoogle - Writing profile to Firestore:', {
-        uid: user.uid,
-        username: userProfile.username,
-        email: userProfile.email
-      });
       
       try {
         await setDoc(doc(db, 'users', user.uid), userProfile);
-        console.log('🟢 [AuthContext] signUpWithGoogle - Firestore profile created successfully');
       } catch (firestoreError: any) {
         console.error('❌ [AuthContext] signUpWithGoogle - FIRESTORE WRITE FAILED:', {
           error: firestoreError,
@@ -630,7 +583,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       // Wait briefly for Firestore write to complete
       await new Promise(resolve => setTimeout(resolve, 500));
-      console.log('🟢 [AuthContext] signUpWithGoogle - Sign-up complete, setting status to authenticated');
       setStatus('authenticated');
       return user;
     } catch (error: any) {
@@ -677,7 +629,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       if (!userDoc.exists()) {
         // New user - create profile automatically
-        console.log('🍎 [AuthContext] signInWithApple - New user, auto-creating profile');
         const displayName = user.displayName || user.email?.split('@')[0] || 'Apple User';
         
         const userProfile = {
@@ -707,7 +658,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         try {
           await setDoc(userRef, userProfile);
-          console.log('🟢 [AuthContext] signInWithApple - Profile created successfully');
         } catch (firestoreError: any) {
           console.error('❌ [AuthContext] signInWithApple - Profile creation failed:', firestoreError);
           await signOut(auth);
@@ -717,7 +667,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
       
       // Sign-in successful
-      console.log('🟢 [AuthContext] signInWithApple - Sign-in successful');
       setStatus('authenticated');
       return user;
       
@@ -739,7 +688,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
    * Scenario 3: New user signs up → create profile and sign in
    */
   const signUpWithApple = async (): Promise<any> => {
-    console.log('🍎 [AuthContext] signUpWithApple - Starting Apple sign-up flow');
     // Only available on iOS
     if (Platform.OS !== 'ios') {
       throw new Error('Apple Sign-In is only available on iOS');
@@ -747,9 +695,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     try {
       setStatus('loading');
-      console.log('🍎 [AuthContext] signUpWithApple - Status set to loading');
-      console.log('🍎 [AuthContext] signUpWithApple - Status set to loading');
-
       const credential = await AppleAuthentication.signInAsync({
         requestedScopes: [
           AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
@@ -764,29 +709,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       });
 
       // Sign in with Firebase
-      console.log('🍎 [AuthContext] signUpWithApple - Signing in with Firebase credential');
       const result = await signInWithCredential(auth, oauthCredential);
       const user = result.user;
-      console.log('🍎 [AuthContext] signUpWithApple - User authenticated:', {
-        uid: user.uid,
-        email: user.email,
-        displayName: user.displayName
-      });
       
       // Check if user profile exists
-      console.log('🍎 [AuthContext] signUpWithApple - Checking if user profile exists in Firestore');
       const userRef = doc(db, 'users', user.uid);
       const userDoc = await getDoc(userRef);
-      console.log('🍎 [AuthContext] signUpWithApple - Firestore check complete:', { exists: userDoc.exists() });
       
       if (userDoc.exists()) {
         // Existing user trying to sign up - just sign them in
-        console.log('🟢 [AuthContext] signUpWithApple - Existing user, signing in');
         setStatus('authenticated');
         return user;
       }
-      
-      console.log('🍎 [AuthContext] signUpWithApple - New user, creating Firestore profile');
       // New user - create profile
       const displayName = credential.fullName 
         ? `${credential.fullName.givenName || ''} ${credential.fullName.familyName || ''}`.trim()
@@ -816,16 +750,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         },
         createdAt: serverTimestamp(),
       };
-
-      console.log('🍎 [AuthContext] signUpWithApple - Writing profile to Firestore:', {
-        uid: user.uid,
-        username: userProfile.username,
-        email: userProfile.email
-      });
       
       try {
         await setDoc(userRef, userProfile);
-        console.log('🟢 [AuthContext] signUpWithApple - Firestore profile created successfully');
       } catch (firestoreError: any) {
         console.error('❌ [AuthContext] signUpWithApple - FIRESTORE WRITE FAILED:', {
           error: firestoreError,
@@ -839,7 +766,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw new Error(`Failed to create user profile: ${firestoreError.message}`);
       }
       
-      console.log('🟢 [AuthContext] signUpWithApple - Sign-up complete, setting status to authenticated');
       setStatus('authenticated');
       return user;
       

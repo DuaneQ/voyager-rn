@@ -38,18 +38,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onEditPreferences }) => 
   
   // Prioritize OAuth providers - if they have Google or Apple, use that for reauthentication
   const authProvider = hasGoogle ? 'google' : hasApple ? 'apple' : 'password';
-  
-  // 🔍 DEBUG LOGGING - Provider Detection
-  console.log('🔍 [ProfileTab] Provider Detection:', {
-    userId: user?.uid,
-    email: user?.email,
-    allProviders: providers,
-    hasGoogle,
-    hasApple,
-    hasPassword,
-    selectedAuthProvider: authProvider,
-    fullProviderData: user?.providerData,
-  });
+
   
   // Fetch real data using hooks
   const { connections: connectionsData } = useConnections(user?.uid || null);
@@ -224,7 +213,6 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onEditPreferences }) => 
         <TouchableOpacity
           style={styles.deleteAccountButton}
           onPress={() => {
-            console.log('🔍 [ProfileTab] Opening Delete Account Modal for provider:', authProvider);
             setDeleteAccountModalVisible(true);
           }}
           accessibilityRole="button"
