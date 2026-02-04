@@ -8,11 +8,14 @@ import { IVideoPlayer, VideoPlayerStatus } from '../../../interfaces/IVideoPlaye
 
 // Mock IVideoPlayer for testing
 class MockVideoPlayer implements IVideoPlayer {
-  private status: VideoPlayerStatus = {
-    isPlaying: false,
-    isMuted: false,
-    currentTime: 0,
-  };
+  public readonly id: string = 'mock-player-' + Math.random().toString(36).substr(2, 9);
+  
+  private _isPlaying = false;
+  private _isMuted = false;
+  private _isLoading = false;
+  private _currentTime = 0;
+  private _duration = 0;
+  private listeners: Array<(status: VideoPlayerStatus) => void> = [];
   
   public playCalled = false;
   public pauseCalled = false;
@@ -20,43 +23,73 @@ class MockVideoPlayer implements IVideoPlayer {
   public mutedValue = false;
   public releaseCalled = false;
 
+  // IVideoPlayer readonly properties
+  get isPlaying(): boolean { return this._isPlaying; }
+  get isMuted(): boolean { return this._isMuted; }
+  get isLoading(): boolean { return this._isLoading; }
+  get currentTime(): number { return this._currentTime; }
+  get duration(): number { return this._duration; }
+
   async play(): Promise<void> {
     this.playCalled = true;
-    this.status.isPlaying = true;
+    this._isPlaying = true;
+    this.notifyListeners();
   }
 
   async pause(): Promise<void> {
     this.pauseCalled = true;
-    this.status.isPlaying = false;
+    this._isPlaying = false;
+    this.notifyListeners();
   }
 
   async stop(): Promise<void> {
     this.stopCalled = true;
-    this.status.isPlaying = false;
-    this.status.currentTime = 0;
+    this._isPlaying = false;
+    this._currentTime = 0;
+    this.notifyListeners();
   }
 
   async seek(timeInSeconds: number): Promise<void> {
-    this.status.currentTime = timeInSeconds;
+    this._currentTime = timeInSeconds;
+    this.notifyListeners();
   }
 
   async setMuted(muted: boolean): Promise<void> {
     this.mutedValue = muted;
-    this.status.isMuted = muted;
-    return;
+    this._isMuted = muted;
+    this.notifyListeners();
   }
 
-  setStatusListener(listener: (status: VideoPlayerStatus) => void): void {
+  async setVolume(volume: number): Promise<void> {
     // Not needed for these tests
   }
 
-  getStatus(): VideoPlayerStatus {
-    return { ...this.status };
+  async setLooping(loop: boolean): Promise<void> {
+    // Not needed for these tests
+  }
+
+  addStatusListener(listener: (status: VideoPlayerStatus) => void): () => void {
+    this.listeners.push(listener);
+    return () => {
+      this.listeners = this.listeners.filter(l => l !== listener);
+    };
   }
 
   async release(): Promise<void> {
     this.releaseCalled = true;
-    return;
+    this.listeners = [];
+  }
+
+  private notifyListeners(): void {
+    const status: VideoPlayerStatus = {
+      isPlaying: this._isPlaying,
+      isMuted: this._isMuted,
+      isLoading: this._isLoading,
+      isBuffering: false,
+      currentTime: this._currentTime,
+      duration: this._duration,
+    };
+    this.listeners.forEach(listener => listener(status));
   }
 
   // Test helpers
@@ -66,11 +99,11 @@ class MockVideoPlayer implements IVideoPlayer {
     this.stopCalled = false;
     this.mutedValue = false;
     this.releaseCalled = false;
-    this.status = {
-      isPlaying: false,
-      isMuted: false,
-      currentTime: 0,
-    };
+    this._isPlaying = false;
+    this._isMuted = false;
+    this._isLoading = false;
+    this._currentTime = 0;
+    this._duration = 0;
   }
 }
 
@@ -79,18 +112,18 @@ describe('VideoPlaybackManagerV2', () => {
   let player2: MockVideoPlayer;
   let player3: MockVideoPlayer;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     player1 = new MockVideoPlayer();
     player2 = new MockVideoPlayer();
     player3 = new MockVideoPlayer();
     
     // Clear all registered players before each test
-    videoPlaybackManagerV2.cleanup();
+    await videoPlaybackManagerV2.cleanup();
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     // Cleanup after each test
-    videoPlaybackManagerV2.cleanup();
+    await videoPlaybackManagerV2.cleanup();
   });
 
   describe('Player Registration', () => {

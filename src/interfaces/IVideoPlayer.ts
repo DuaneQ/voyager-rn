@@ -117,17 +117,4 @@ export interface VideoPlayerConfig {
   loop?: boolean;
   muted?: boolean;
   autoPlay?: boolean;
-  /**
-   * Buffer options for Android to prevent OOM crashes with multiple players.
-   * Required when using multiple video players simultaneously.
-   * @see https://github.com/expo/expo/issues/42688
-   */
-  bufferOptions?: {
-    /** Maximum buffer size in bytes. Default is 5MB for Android. */
-    maxBufferBytes?: number;
-    /** Minimum duration in seconds required to start/resume playback. Default 2s. */
-    minBufferForPlayback?: number;
-    /** Whether to prioritize time over size when buffering. Default false. */
-    prioritizeTimeOverSizeThreshold?: boolean;
-  };
 }
