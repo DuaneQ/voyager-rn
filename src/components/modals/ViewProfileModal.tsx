@@ -455,9 +455,6 @@ export const ViewProfileModal: React.FC<ViewProfileModalProps> = ({
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
             <Text style={styles.closeButtonText}>✕</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>
-            {profile?.username || 'Profile'}
-          </Text>
           <View style={styles.headerActions}>
             <Pressable 
               onPress={() => {
@@ -1116,9 +1113,13 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
+    flex: 1,
+    textAlign: 'center',
+    marginHorizontal: 8,
   },
   headerActions: {
     flexDirection: 'row',
+    minWidth: 96,
   },
   actionButton: {
     width: 40,
