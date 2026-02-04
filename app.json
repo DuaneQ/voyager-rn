@@ -2,7 +2,7 @@
   "expo": {
     "name": "TravalPass",
     "slug": "voyager-rn",
-    "version": "1.4.0",
+    "version": "1.5.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "icon": "./assets/icon.png",
@@ -15,7 +15,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.travalpass.app",
-      "buildNumber": "23",
+      "buildNumber": "24",
       "googleServicesFile": "./GoogleService-Info.plist",
       "entitlements": {
         "com.apple.developer.applesignin": [
@@ -43,7 +43,7 @@
     },
     "android": {
       "package": "com.travalpass.app",
-      "versionCode": 13,
+      "versionCode": 14,
       "googleServicesFile": "./google-services.json",
       "icon": "./AppIcons/playstore.png",
       "softwareKeyboardLayoutMode": "resize",
@@ -78,7 +78,15 @@
           "supportsPictureInPicture": false
         }
       ],
-      "expo-audio"
+      "expo-audio",
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "react-native",
+          "organization": "travalpass-llc"
+        }
+      ]
     ],
     "extra": {
       "eas": {

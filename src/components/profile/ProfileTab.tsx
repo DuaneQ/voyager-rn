@@ -29,6 +29,28 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onEditPreferences }) => 
   const [deletePassword, setDeletePassword] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   
+  // Determine auth provider - check ALL providers, prioritize OAuth over password
+  // A user can have multiple providers (e.g., both Google and password)
+  const providers = user?.providerData?.map(p => p.providerId) || [];
+  const hasGoogle = providers.includes('google.com');
+  const hasApple = providers.includes('apple.com');
+  const hasPassword = providers.includes('password');
+  
+  // Prioritize OAuth providers - if they have Google or Apple, use that for reauthentication
+  const authProvider = hasGoogle ? 'google' : hasApple ? 'apple' : 'password';
+  
+  // 🔍 DEBUG LOGGING - Provider Detection
+  console.log('🔍 [ProfileTab] Provider Detection:', {
+    userId: user?.uid,
+    email: user?.email,
+    allProviders: providers,
+    hasGoogle,
+    hasApple,
+    hasPassword,
+    selectedAuthProvider: authProvider,
+    fullProviderData: user?.providerData,
+  });
+  
   // Fetch real data using hooks
   const { connections: connectionsData } = useConnections(user?.uid || null);
   const { itineraries } = useAllItineraries();
@@ -121,14 +143,19 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onEditPreferences }) => 
   };
 
   const handleDeleteAccount = async () => {
-    if (!deletePassword) {
+    // Email/password users need to provide their password
+    if (authProvider === 'password' && !deletePassword) {
       Alert.alert('Error', 'Please enter your password to confirm account deletion');
       return;
     }
 
     setIsDeleting(true);
     try {
-      await accountDeletionService.deleteAccount(deletePassword);
+      // For email/password users, pass the password for reauthentication
+      // For Google/Apple users, the service will use popup reauthentication
+      await accountDeletionService.deleteAccount(
+        authProvider === 'password' ? deletePassword : undefined
+      );
       Alert.alert('Success', 'Your account has been deleted. We hope to see you again!');
       // User will be automatically logged out
     } catch (error: any) {
@@ -137,6 +164,8 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onEditPreferences }) => 
         Alert.alert('Error', 'Incorrect password. Please try again.');
       } else if (error.code === 'auth/requires-recent-login') {
         Alert.alert('Error', 'For security, please log out and log back in before deleting your account.');
+      } else if (error.code === 'auth/popup-closed-by-user') {
+        Alert.alert('Cancelled', 'Account deletion was cancelled.');
       } else {
         Alert.alert('Error', 'Failed to delete account. Please try again or contact support.');
       }
@@ -194,7 +223,10 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onEditPreferences }) => 
         <Text style={styles.dangerZoneTitle}>Danger Zone</Text>
         <TouchableOpacity
           style={styles.deleteAccountButton}
-          onPress={() => setDeleteAccountModalVisible(true)}
+          onPress={() => {
+            console.log('🔍 [ProfileTab] Opening Delete Account Modal for provider:', authProvider);
+            setDeleteAccountModalVisible(true);
+          }}
           accessibilityRole="button"
           accessibilityLabel="Delete Account"
           testID="delete-account-button"
@@ -231,16 +263,28 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onEditPreferences }) => 
               Your usage agreement acceptance will be preserved for legal compliance.
             </Text>
             
-            <TextInput
-              testID="delete-password-input"
-              style={styles.passwordInput}
-              placeholder="Enter your password to confirm"
-              secureTextEntry
-              value={deletePassword}
-              onChangeText={setDeletePassword}
-              autoCapitalize="none"
-              editable={!isDeleting}
-            />
+            {/* Only show password field for email/password users */}
+            {authProvider === 'password' && (
+              <TextInput
+                testID="delete-password-input"
+                style={styles.passwordInput}
+                placeholder="Enter your password to confirm"
+                secureTextEntry
+                value={deletePassword}
+                onChangeText={setDeletePassword}
+                autoCapitalize="none"
+                editable={!isDeleting}
+              />
+            )}
+            
+            {/* Info message for Google/Apple users */}
+            {authProvider !== 'password' && (
+              <Text style={styles.oauthDeleteInfo}>
+                {authProvider === 'google' 
+                  ? 'You will be asked to sign in with Google to confirm.'
+                  : 'You will be asked to sign in with Apple to confirm.'}
+              </Text>
+            )}
             
             <View style={styles.modalButtons}>
               <TouchableOpacity
@@ -259,7 +303,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onEditPreferences }) => 
                 testID="confirm-delete-button"
                 style={[styles.modalButton, styles.confirmDeleteButton]}
                 onPress={handleDeleteAccount}
-                disabled={isDeleting || !deletePassword}
+                disabled={isDeleting || (authProvider === 'password' && !deletePassword)}
               >
                 <Text style={styles.confirmDeleteButtonText}>
                   {isDeleting ? 'Deleting...' : 'Delete Forever'}
@@ -363,6 +407,13 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 16,
     fontSize: 14,
+  },
+  oauthDeleteInfo: {
+    fontSize: 14,
+    marginBottom: 16,
+    color: '#007AFF',
+    textAlign: 'center',
+    fontWeight: '500',
   },
   modalButtons: {
     flexDirection: 'row',

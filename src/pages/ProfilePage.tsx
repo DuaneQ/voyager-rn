@@ -59,33 +59,9 @@ const ProfilePage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('profile');
   const [editModalVisible, setEditModalVisible] = useState(false);
 
-  // Check navigation params to auto-open EditProfileModal
-  useEffect(() => {
-    if (routeParams?.openEditModal && routeParams?.incompleteProfile) {
-      setEditModalVisible(true);
-      
-      // Calculate all missing fields for 100% completion (not just required fields for itinerary creation)
-      const allMissingFields: string[] = [];
-      
-      if (!userProfile?.username?.trim()) allMissingFields.push('Username');
-      if (!userProfile?.bio?.trim()) allMissingFields.push('Bio');
-      if (!userProfile?.dob?.trim()) allMissingFields.push('Date of Birth');
-      if (!userProfile?.gender?.trim()) allMissingFields.push('Gender');
-      if (!userProfile?.sexualOrientation?.trim()) allMissingFields.push('Sexual Orientation');
-      if (!userProfile?.status?.trim()) allMissingFields.push('Status');
-      if (!userProfile?.photoURL && !userProfile?.photos?.profile) allMissingFields.push('Profile Photo');
-      
-      if (allMissingFields.length > 0) {
-        const fieldsList = allMissingFields.join(', ');
-        showAlert('warning', `Complete your profile to reach 100%. Missing: ${fieldsList}`);
-      } else {
-        showAlert('warning', 'Please complete your profile to use all features');
-      }
-    }
-  }, [routeParams?.openEditModal, routeParams?.incompleteProfile]); // Only trigger when params change, not on every userProfile update
-
-  // Removed auto-opening modal when no profile exists
-  // Profile completion will be prompted when user tries to create itineraries
+  // Removed auto-opening of EditProfileModal
+  // Profile completion is now only enforced when creating itineraries
+  // Users can explore the app without being forced to complete their profile
 
   // Calculate profile completeness based on PWA fields
   const calculateCompleteness = (): number => {

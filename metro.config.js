@@ -1,11 +1,9 @@
-/**
- * Metro configuration with platform-specific module resolution
- * Prevents expo-av from loading on web to avoid iOS Safari crash
- */
-const { getDefaultConfig } = require('expo/metro-config');
 const path = require('path');
+const {
+  getSentryExpoConfig
+} = require("@sentry/react-native/metro");
 
-const config = getDefaultConfig(__dirname);
+const config = getSentryExpoConfig(__dirname);
 
 // Override resolver to alias expo-av on web platform
 config.resolver = {

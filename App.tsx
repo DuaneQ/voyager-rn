@@ -12,6 +12,26 @@ import AppNavigator from './src/navigation/AppNavigator';
 import { AuthProvider } from './src/context/AuthContext';
 import { AlertProvider } from './src/context/AlertContext';
 import { UserProfileProvider } from './src/context/UserProfileContext';
+import * as Sentry from '@sentry/react-native';
+
+Sentry.init({
+  dsn: 'https://0d88754efcec4b4a8f8f9b07f2b2f8f6@o4510829247987712.ingest.us.sentry.io/4510829255196672',
+
+  // Adds more context data to events (IP address, cookies, user, etc.)
+  // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
+  sendDefaultPii: true,
+
+  // Enable Logs
+  enableLogs: true,
+
+  // Configure Session Replay
+  replaysSessionSampleRate: 0.1,
+  replaysOnErrorSampleRate: 1,
+  integrations: [Sentry.mobileReplayIntegration(), Sentry.feedbackIntegration()],
+
+  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
+  // spotlight: __DEV__,
+});
 
 // Enable react-native-screens for better performance and compatibility with React 19
 enableScreens(true);
@@ -24,7 +44,7 @@ enableScreens(true);
  * 
  * NOTE: Font loading is critical for web builds to display icons properly
  */
-export default function App() {
+export default Sentry.wrap(function App() {
   const [fontsLoaded, setFontsLoaded] = useState(false);
 
   useEffect(() => {
@@ -70,7 +90,7 @@ export default function App() {
       </AuthProvider>
     </SafeAreaProvider>
   );
-}
+});
 
 const styles = StyleSheet.create({
   loadingContainer: {

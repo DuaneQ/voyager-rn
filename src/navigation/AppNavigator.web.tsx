@@ -208,21 +208,9 @@ const ProfileValidationWrapper: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   }, [user]);
 
-  useEffect(() => {
-    if (!isLoading && userProfile && user) {
-      const validationResult = validateProfileForItinerary(userProfile);
-      
-      // Only show prompt ONCE per session when profile is invalid
-      if (!validationResult.isValid && !hasPromptedUser.current) {
-        hasPromptedUser.current = true;
-        
-        // Navigate to profile with edit modal flag
-        setTimeout(() => {
-          navigate('/app/profile?edit=true&incomplete=true');
-        }, 100);
-      }
-    }
-  }, [isLoading, userProfile, user, navigate]);
+  // Removed auto-navigation to profile page with edit modal
+  // Profile validation now only happens when user tries to create itineraries
+  // This prevents annoying auto-popups while still enforcing profile completion for itinerary creation
 
   return <>{children}</>;
 };

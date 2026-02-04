@@ -242,30 +242,9 @@ const ProfileValidationWrapper: React.FC<{
     }
   }, [user]);
 
-  useEffect(() => {
-    if (!isLoading && userProfile && user && navigationRef.current) {
-      const validationResult = validateProfileForItinerary(userProfile);
-      
-      // Only show prompt ONCE per session when profile is invalid
-      // Once user has been prompted (either saves or dismisses), don't prompt again
-      // This prevents modal from reopening after user clicks Save or X
-      if (!validationResult.isValid && !hasPromptedUser.current) {
-        hasPromptedUser.current = true; // Mark as prompted immediately
-        
-        // Small delay to ensure navigation is ready
-        setTimeout(() => {
-          navigationRef.current?.navigate('MainApp', {
-            screen: 'Profile',
-            params: { 
-              openEditModal: true,
-              incompleteProfile: true,
-              missingFields: validationResult.missingFields
-            }
-          });
-        }, 100);
-      }
-    }
-  }, [isLoading, userProfile, user, navigationRef]);
+  // Removed auto-navigation to profile page with edit modal
+  // Profile validation now only happens when user tries to create itineraries
+  // This prevents annoying auto-popups while still enforcing profile completion for itinerary creation
 
   return <>{children}</>;
 };
