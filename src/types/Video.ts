@@ -51,7 +51,7 @@ export interface VideoValidationResult {
 
 // Constants for video validation - matches PWA exactly
 export const VIDEO_CONSTRAINTS = {
-  MAX_FILE_SIZE: 100 * 1024 * 1024, // 100MB
+  MAX_FILE_SIZE: 150 * 1024 * 1024, // 150MB
   MAX_DURATION: 60, // seconds
   SUPPORTED_FORMATS: [
     'video/mp4',

@@ -90,14 +90,21 @@ export class VideoPlaybackManagerV2 {
    * Will automatically deactivate the currently active video if different.
    * CRITICAL: Waits for deactivation to fully complete before activating new video.
    */
-  async setActiveVideo(videoId: string): Promise<void> {
+  async setActiveVideo(videoId: string, retryCount: number = 0): Promise<void> {
+    const MAX_RETRIES = 20; // 20 retries * 50ms = 1 second max wait
+    
     // debug log removed
     
-    // Prevent concurrent activation attempts
+    // Prevent concurrent activation attempts with retry limit
     if (this.isActivating) {
-      // debug log removed
-      await new Promise(resolve => setTimeout(resolve, 50));
-      return this.setActiveVideo(videoId);
+      if (retryCount >= MAX_RETRIES) {
+        console.error(`[VideoPlaybackManagerV2] Activation timeout after ${MAX_RETRIES} retries, forcing activation`);
+        this.isActivating = false; // Force clear the flag
+      } else {
+        // debug log removed
+        await new Promise(resolve => setTimeout(resolve, 50));
+        return this.setActiveVideo(videoId, retryCount + 1);
+      }
     }
     
     const registration = this.registrations.get(videoId);

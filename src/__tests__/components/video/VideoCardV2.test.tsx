@@ -9,6 +9,23 @@ import { VideoCardV2 } from '../../../components/video/VideoCardV2';
 import { VideoPlayerFactory } from '../../../services/video/VideoPlayerFactory';
 import { videoPlaybackManagerV2 } from '../../../services/video/VideoPlaybackManagerV2';
 import { trackVideoView } from '../../../utils/videoTracking';
+import { Timestamp } from 'firebase/firestore';
+
+// Mock Firebase Timestamp
+jest.mock('firebase/firestore', () => ({
+  Timestamp: {
+    now: jest.fn(() => ({
+      seconds: Math.floor(Date.now() / 1000),
+      nanoseconds: 0,
+      toDate: () => new Date(),
+    })),
+    fromDate: jest.fn((date: Date) => ({
+      seconds: Math.floor(date.getTime() / 1000),
+      nanoseconds: 0,
+      toDate: () => date,
+    })),
+  },
+}));
 
 // Mock dependencies
 jest.mock('../../../services/video/VideoPlayerFactory');
@@ -65,17 +82,22 @@ describe('VideoCardV2', () => {
   let mockFactory: any;
   let mockPlayer: any;
   
+  const now = Timestamp.now();
   const defaultVideo = {
     id: 'test-video-123',
+    userId: 'test-user-id',
     videoUrl: 'https://test.com/video.mp4',
     thumbnailUrl: 'https://test.com/thumb.jpg',
-    username: 'testuser',
-    caption: 'Test caption',
+    title: 'Test Video',
+    description: 'Test description',
+    isPublic: true,
     likes: [],
     comments: [],
-    likesCount: 42,
-    commentsCount: 10,
     viewCount: 0,
+    duration: 30,
+    fileSize: 1024000,
+    createdAt: now,
+    updatedAt: now,
   };
 
   const defaultProps = {
@@ -124,13 +146,13 @@ describe('VideoCardV2', () => {
     let registered: any = null;
     let activeId: string | null = null;
 
-    videoPlaybackManagerV2.register.mockImplementation((reg: any) => {
+    (videoPlaybackManagerV2.register as jest.Mock).mockImplementation((reg: any) => {
       registered = reg;
     });
-    videoPlaybackManagerV2.unregister.mockImplementation((id: string) => {
+    (videoPlaybackManagerV2.unregister as jest.Mock).mockImplementation((id: string) => {
       if (registered && registered.videoId === id) registered = null;
     });
-    videoPlaybackManagerV2.setActiveVideo.mockImplementation(async (id: string) => {
+    (videoPlaybackManagerV2.setActiveVideo as jest.Mock).mockImplementation(async (id: string) => {
       const prev = activeId;
       activeId = id;
       if (prev && registered && registered.videoId === prev) {
@@ -141,14 +163,14 @@ describe('VideoCardV2', () => {
         try { await registered.player.setMuted(false); } catch (e) {}
       }
     });
-    videoPlaybackManagerV2.deactivateAll.mockImplementation(async () => {
+    (videoPlaybackManagerV2.deactivateAll as jest.Mock).mockImplementation(async () => {
       if (registered) {
         try { await registered.player.pause(); } catch (e) {}
         try { await registered.player.setMuted(true); } catch (e) {}
       }
       activeId = null;
     });
-    videoPlaybackManagerV2.cleanup.mockImplementation(async () => {
+    (videoPlaybackManagerV2.cleanup as jest.Mock).mockImplementation(async () => {
       if (registered) {
         try { await registered.player.release(); } catch (e) {}
         registered = null;
@@ -528,16 +550,21 @@ describe('VideoCardV2', () => {
       const minimalProps = {
         video: {
           id: 'test',
+          userId: 'test-user',
           videoUrl: 'https://test.com/video.mp4',
           thumbnailUrl: '',
-          username: '',
-          caption: '',
+          isPublic: true,
           likes: [],
           comments: [],
           viewCount: 0,
+          duration: 0,
+          fileSize: 0,
+          createdAt: Timestamp.now(),
+          updatedAt: Timestamp.now(),
         },
         isActive: false,
         isMuted: true,
+        onMuteToggle: jest.fn(),
         onLike: jest.fn(),
         onComment: jest.fn(),
         onShare: jest.fn(),
@@ -551,23 +578,26 @@ describe('VideoCardV2', () => {
 
     it('should handle very long captions', () => {
       const longCaption = 'A'.repeat(1000);
+      const videoWithLongCaption = { ...defaultVideo, caption: longCaption };
       
       expect(() => {
-        render(<VideoCardV2 {...defaultProps} caption={longCaption} />);
+        render(<VideoCardV2 {...defaultProps} video={videoWithLongCaption} />);
       }).not.toThrow();
     });
 
     it('should handle special characters in username', () => {
       const specialUsername = '用户名@#$%^&*()';
+      const videoWithSpecialUsername = { ...defaultVideo, username: specialUsername };
       
       expect(() => {
-        render(<VideoCardV2 {...defaultProps} username={specialUsername} />);
+        render(<VideoCardV2 {...defaultProps} video={videoWithSpecialUsername} />);
       }).not.toThrow();
     });
 
     it('should handle zero or negative counts', () => {
+      const videoWithNegativeCounts = { ...defaultVideo, likesCount: -5, commentsCount: 0 };
       expect(() => {
-        render(<VideoCardV2 {...defaultProps} likesCount={-5} commentsCount={0} />);
+        render(<VideoCardV2 {...defaultProps} video={videoWithNegativeCounts} />);
       }).not.toThrow();
     });
   });

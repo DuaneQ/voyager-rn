@@ -100,19 +100,8 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
     const durationSec = video.duration || 'unknown';
     // video specs available; debug logs removed
     
-    // CRITICAL: Skip oversized videos on Android to prevent OOM crashes
-    // WITHOUT Mux transcoding: ExoPlayer tries to buffer entire video, causing OOM on large files
-    // WITH Mux transcoding: HLS adaptive streaming handles this automatically
-    // See: docs/videos/VIDEO_FEED_PROBLEM.md - Problem 5: Large File OOM Crashes
-    const MAX_VIDEO_SIZE_MB = 50; // 50 MB limit for non-Mux videos
-    const MAX_VIDEO_SIZE_BYTES = MAX_VIDEO_SIZE_MB * 1024 * 1024;
-    
-    // Only apply file size limit if NOT using Mux (Mux HLS handles large files via chunking)
-    if (Platform.OS === 'android' && !isMuxUrl && video.fileSize && video.fileSize > MAX_VIDEO_SIZE_BYTES) {
-      console.warn(`[VideoCardV2][android] Skipping oversized video ${video.id}: ${fileSizeMB} MB exceeds ${MAX_VIDEO_SIZE_MB} MB limit`);
-      setError(true);
-      return; // Don't create player - will show error UI
-    }
+    // All videos now use Mux HLS adaptive streaming - no size limits needed
+    // HLS handles large files automatically via chunking
     
     let playerInstance: IVideoPlayer | null = null;
     
@@ -216,12 +205,9 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
       
       // Release player resources - do this last
       if (playerInstance) {
-        // Small delay to ensure other cleanup completes first
-        setTimeout(() => {
-          playerInstance?.release().catch((err) => {
-            console.error(`[VideoCardV2][${Platform.OS}] Error releasing player for ${video.id}:`, err);
-          });
-        }, 100);
+        playerInstance.release().catch((err) => {
+          console.error(`[VideoCardV2][${Platform.OS}] Error releasing player for ${video.id}:`, err);
+        });
       }
       
       // Clear view timer

@@ -12,16 +12,9 @@ const BASE_URL = 'https://travalpass.com'; // Production URL
 
 /**
  * Generate shareable URL for a video
- * Uses /video-share/ path for public videos (serves proper social media meta tags)
- * Falls back to /video/ path for private videos (requires auth)
+ * All videos use /video-share/ path which serves proper OG meta tags
  */
 export const generateVideoShareUrl = (video: Video): string => {
-  // Use video-share path for public videos - this serves proper OG meta tags
-  // without requiring authentication
-  if (video.isPublic) {
-    return `${BASE_URL}/video-share/${video.id}`;
-  }
-  // Private videos still need auth, but social crawlers will get limited preview
   return `${BASE_URL}/video-share/${video.id}`;
 };
 

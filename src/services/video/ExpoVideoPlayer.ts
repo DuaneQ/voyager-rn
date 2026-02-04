@@ -5,8 +5,7 @@
  * Follows Single Responsibility Principle - only handles expo-video integration.
  */
 
-import { useVideoPlayer, VideoPlayer } from 'expo-video';
-import { useEvent } from 'expo';
+import { VideoPlayer } from 'expo-video';
 import { IVideoPlayer, VideoPlayerStatus, VideoPlayerConfig } from '../../interfaces/IVideoPlayer';
 
 export class ExpoVideoPlayer implements IVideoPlayer {
@@ -26,7 +25,6 @@ export class ExpoVideoPlayer implements IVideoPlayer {
     
     // Create player with initial configuration
     const { createVideoPlayer } = require('expo-video');
-    const { Platform } = require('react-native');
     this.player = createVideoPlayer(config.videoUrl);
     
     // Set initial properties
@@ -93,7 +91,7 @@ export class ExpoVideoPlayer implements IVideoPlayer {
 
       // Listen for source load (to get duration and check format support)
       const sourceSub = this.player.addListener('sourceLoad', (event: any) => {
-        const { duration, availableVideoTracks, availableAudioTracks } = event;
+        const { duration, availableVideoTracks } = event;
         this._duration = duration;
         this._isLoading = false;
         
