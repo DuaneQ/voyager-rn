@@ -560,7 +560,7 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
               const isMuteButton = target.closest('[data-testid="mute-button"]') || 
                                     target.closest('.mute-button-container');
               if (isMuteButton) {
-                console.log('[VideoCard] Click on mute button detected, ignoring play/pause');
+                // Click is on mute button; ignore play/pause
                 return; // Don't trigger play/pause
               }
             }

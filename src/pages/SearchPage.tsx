@@ -286,7 +286,7 @@ const SearchPage: React.FC = () => {
           showAlert('warning', 'Match detected but connection setup had issues. Please check Chats.');
         }
       } else {
-        console.log('[SearchPage] No mutual match yet - other user has not liked your itinerary');
+        // no mutual match yet
       }
       
       // Advance to next itinerary

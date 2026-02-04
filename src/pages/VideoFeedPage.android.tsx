@@ -29,7 +29,8 @@ import { RecyclerListView, DataProvider, LayoutProvider } from 'recyclerlistview
 import { setAudioModeAsync } from 'expo-audio';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import { VideoCard } from '../components/video/VideoCard';
+// Using new expo-video implementation
+import { VideoCardV2 as VideoCard } from '../components/video/VideoCardV2';
 import { VideoCommentsModal } from '../components/video/VideoCommentsModal';
 import { VideoUploadModal } from '../components/modals/VideoUploadModal';
 import { ReportVideoModal } from '../components/modals/ReportVideoModal';
@@ -37,7 +38,7 @@ import { useVideoFeed, VideoFilter } from '../hooks/video/useVideoFeed';
 import { useVideoUpload } from '../hooks/video/useVideoUpload';
 import { useAlert } from '../context/AlertContext';
 import { shareVideo } from '../utils/videoSharing';
-import { videoPlaybackManager } from '../services/video/VideoPlaybackManager';
+import { videoPlaybackManagerV2 as videoPlaybackManager } from '../services/video/VideoPlaybackManagerV2';
 import { doc, getDocFromServer } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
 
@@ -275,6 +276,8 @@ const VideoFeedPage: React.FC = () => {
     // Round to nearest index (video is active when >50% visible)
     const centeredIndex = Math.round(offsetY / height);
     
+    // debug logs removed
+
     if (centeredIndex !== currentVideoIndex && centeredIndex >= 0 && centeredIndex < videos.length) {
       // Deactivate all before activating new (prevent audio overlap)
       videoPlaybackManager.deactivateAll();

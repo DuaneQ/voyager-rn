@@ -20,6 +20,13 @@ export interface Video {
   fileSize: number; // in bytes
   createdAt: Timestamp;
   updatedAt: Timestamp;
+  // Mux video processing fields
+  muxAssetId?: string; // Mux asset ID
+  muxPlaybackId?: string; // Mux playback ID
+  muxPlaybackUrl?: string; // HLS URL for universal playback
+  muxThumbnailUrl?: string; // Mux-generated thumbnail
+  muxStatus?: 'preparing' | 'ready' | 'errored'; // Processing status
+  muxError?: string; // Error message if processing failed
 }
 
 export interface VideoComment {

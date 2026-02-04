@@ -217,7 +217,6 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onEditPreferences }) => 
         transparent
         animationType="fade"
         onRequestClose={() => {
-          console.log('[ProfileTab] Modal dismissed');
           setDeleteAccountModalVisible(false);
         }}
       >

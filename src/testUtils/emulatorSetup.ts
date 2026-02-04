@@ -285,10 +285,10 @@ export const waitForEmulator = async (
   for (let i = 0; i < maxRetries; i++) {
     const isRunning = await areEmulatorsRunning();
     if (isRunning) {
-      console.log(`✅ Emulator is ready (attempt ${i + 1}/${maxRetries})`);
+      console.info(`✅ Emulator is ready (attempt ${i + 1}/${maxRetries})`);
       return true;
     }
-    console.log(`⏳ Waiting for emulator... (attempt ${i + 1}/${maxRetries})`);
+    console.info(`⏳ Waiting for emulator... (attempt ${i + 1}/${maxRetries})`);
     await new Promise(resolve => setTimeout(resolve, retryDelay));
   }
   console.error('❌ Emulator did not become ready in time');

@@ -27,15 +27,15 @@ let useRNVideo = false;
 
 try {
   const hasNativeModule = UIManager.getViewManagerConfig?.('RCTVideo') != null;
-  if (hasNativeModule) {
+    if (hasNativeModule) {
     RNVideo = require('react-native-video').default;
     useRNVideo = true;
-    console.log('[AndroidVideoPlayerRNV] Using react-native-video');
+    console.warn('[AndroidVideoPlayerRNV] Using react-native-video');
   } else {
-    console.log('[AndroidVideoPlayerRNV] RCTVideo not found, will use expo-av fallback');
+    console.warn('[AndroidVideoPlayerRNV] RCTVideo not found, will use expo-av fallback');
   }
 } catch (e) {
-  console.log('[AndroidVideoPlayerRNV] react-native-video not available, will use expo-av fallback');
+  console.warn('[AndroidVideoPlayerRNV] react-native-video not available, will use expo-av fallback');
 }
 
 interface AndroidVideoPlayerProps {
