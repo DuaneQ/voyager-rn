@@ -17,17 +17,17 @@ import * as Sentry from '@sentry/react-native';
 Sentry.init({
   dsn: 'https://0d88754efcec4b4a8f8f9b07f2b2f8f6@o4510829247987712.ingest.us.sentry.io/4510829255196672',
 
-  // Adds more context data to events (IP address, cookies, user, etc.)
+  // Disabled by default to avoid collecting PII without explicit user consent.
   // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
-  sendDefaultPii: true,
+  sendDefaultPii: false,
 
   // Enable Logs
   enableLogs: true,
 
-  // Configure Session Replay
-  replaysSessionSampleRate: 0.1,
-  replaysOnErrorSampleRate: 1,
-  integrations: [Sentry.mobileReplayIntegration(), Sentry.feedbackIntegration()],
+  // Session Replay disabled for Apple App Store compliance.
+  // Screen recording requires explicit user consent and privacy disclosures.
+  replaysSessionSampleRate: 0,
+  replaysOnErrorSampleRate: 0,
 
   // uncomment the line below to enable Spotlight (https://spotlightjs.com)
   // spotlight: __DEV__,

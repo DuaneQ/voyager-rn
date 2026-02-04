@@ -34,7 +34,6 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onEditPreferences }) => 
   const providers = user?.providerData?.map(p => p.providerId) || [];
   const hasGoogle = providers.includes('google.com');
   const hasApple = providers.includes('apple.com');
-  const hasPassword = providers.includes('password');
   
   // Prioritize OAuth providers - if they have Google or Apple, use that for reauthentication
   const authProvider = hasGoogle ? 'google' : hasApple ? 'apple' : 'password';

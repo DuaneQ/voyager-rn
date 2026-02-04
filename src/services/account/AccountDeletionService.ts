@@ -67,7 +67,6 @@ export class AccountDeletionService {
     }
 
     const userId = user.uid;
-    const provider = this.getAuthProvider();
 
     try {
       // Step 1: Re-authenticate user (required by Firebase for account deletion)
@@ -126,6 +125,7 @@ export class AccountDeletionService {
         await reauthenticateWithPopup(user, googleProvider);
       }
       // On mobile, user must have recently signed in (Firebase handles this)
+      // If login is not recent, Firebase will throw auth/requires-recent-login
     } else if (provider === 'apple') {
       // Apple users - on iOS use Apple Sign In, on web use popup
       if (Platform.OS === 'web') {
@@ -133,6 +133,7 @@ export class AccountDeletionService {
         await reauthenticateWithPopup(user, appleProvider);
       }
       // On iOS, user must have recently signed in (Firebase handles this)
+      // If login is not recent, Firebase will throw auth/requires-recent-login
     }
   }
 
