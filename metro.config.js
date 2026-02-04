@@ -1,9 +1,7 @@
 const path = require('path');
-const {
-  getSentryExpoConfig
-} = require("@sentry/react-native/metro");
+const { getDefaultConfig } = require('expo/metro-config');
 
-const config = getSentryExpoConfig(__dirname);
+const config = getDefaultConfig(__dirname);
 
 // Override resolver to alias expo-av on web platform
 config.resolver = {
