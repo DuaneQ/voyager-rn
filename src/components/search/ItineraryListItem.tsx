@@ -18,14 +18,52 @@ const ItineraryListItem: React.FC<ItineraryListItemProps> = ({
   const isAI = itinerary.ai_status === 'completed' || itinerary.response?.success;
   const emoji = isAI ? '🤖' : '✈️';
 
+  /**
+   * Parse date string and format for display.
+   * Handles ISO strings (from Firestore) and YYYY-MM-DD strings.
+   * Always extracts the YYYY-MM-DD portion and parses as LOCAL date
+   * to avoid UTC timezone shift (e.g., Feb 5 UTC midnight → Feb 4 EST).
+   */
   const formatDate = (dateStr: string) => {
+    if (!dateStr) return 'No Date';
+    
     try {
-      return new Date(dateStr).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      });
-    } catch {
+      // Handle Firestore Timestamp objects
+      if (typeof dateStr === 'object' && dateStr !== null) {
+        const obj = dateStr as any;
+        if (obj.seconds !== undefined) {
+          const d = new Date(obj.seconds * 1000);
+          return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+        if (obj.toDate && typeof obj.toDate === 'function') {
+          const d = obj.toDate();
+          return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+        return 'Invalid Date';
+      }
+      
+      if (typeof dateStr !== 'string') return 'Invalid Date';
+      
+      // For ISO strings like '2026-02-05T00:00:00.000Z', extract the date part
+      // BEFORE 'T' to avoid UTC→local timezone shift
+      const dateOnly = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
+      
+      // Parse YYYY-MM-DD as local date
+      const parts = dateOnly.split('-');
+      if (parts.length !== 3) return dateStr;
+      
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10);
+      const day = parseInt(parts[2], 10);
+      
+      if (isNaN(year) || isNaN(month) || isNaN(day)) return dateStr;
+      
+      const date = new Date(year, month - 1, day);
+      if (isNaN(date.getTime())) return dateStr;
+      
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    } catch (err) {
+      console.warn('[ItineraryListItem] Date parse error:', dateStr, err);
       return dateStr;
     }
   };

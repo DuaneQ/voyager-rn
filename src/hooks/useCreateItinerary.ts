@@ -47,8 +47,16 @@ export const useCreateItinerary = () => {
 
     // Date validation
     if (formData.startDate && formData.endDate) {
-      const startDate = new Date(formData.startDate);
-      const endDate = new Date(formData.endDate);
+      // CRITICAL: Parse YYYY-MM-DD as local date, not UTC
+      // new Date('2026-02-05') interprets as UTC midnight → shifts to Feb 4 in EST
+      // Manual parsing creates Date in local timezone
+      const parseLocalDate = (dateString: string): Date => {
+        const [year, month, day] = dateString.split('-').map(Number);
+        return new Date(year, month - 1, day);
+      };
+      
+      const startDate = parseLocalDate(formData.startDate);
+      const endDate = parseLocalDate(formData.endDate);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       

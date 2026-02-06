@@ -697,9 +697,10 @@ describe('AddItineraryModal', () => {
       fireEvent.press(deleteButton);
 
       expect(Alert.alert).toHaveBeenCalledWith(
-        'Delete Itinerary',
-        'Are you sure you want to delete this itinerary?',
-        expect.any(Array)
+        'Delete Itinerary?',
+        'Are you sure you want to delete this itinerary? This action cannot be undone.',
+        expect.any(Array),
+        expect.any(Object)
       );
     });
 

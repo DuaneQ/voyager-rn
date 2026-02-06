@@ -32,7 +32,42 @@ export const ItinerarySelector: React.FC<ItinerarySelectorProps> = ({
   const formatItineraryLabel = (itinerary: Itinerary) => {
     const isAI = itinerary.ai_status === 'completed';
     const prefix = isAI ? '🤖 ' : '✈️ ';
-    return `${prefix}${itinerary.destination} - ${new Date(itinerary.startDate).toLocaleDateString()}`;
+    
+    let dateLabel = 'Invalid Date';
+    try {
+      if (itinerary.startDate && typeof itinerary.startDate === 'string') {
+        if (itinerary.startDate.includes('T')) {
+          // Extract date part before 'T' to avoid UTC→local timezone shift
+          const datePart = itinerary.startDate.split('T')[0];
+          const dtParts = datePart.split('-');
+          if (dtParts.length === 3) {
+            const y = parseInt(dtParts[0], 10);
+            const m = parseInt(dtParts[1], 10);
+            const d = parseInt(dtParts[2], 10);
+            if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+              dateLabel = new Date(y, m - 1, d).toLocaleDateString();
+            }
+          }
+        } else {
+          const parts = itinerary.startDate.split('-');
+          if (parts.length === 3) {
+            const year = parseInt(parts[0], 10);
+            const month = parseInt(parts[1], 10);
+            const day = parseInt(parts[2], 10);
+            if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+              const date = new Date(year, month - 1, day);
+              if (!isNaN(date.getTime())) {
+                dateLabel = date.toLocaleDateString();
+              }
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[ItinerarySelector] Date parse error:', itinerary.startDate, err);
+    }
+    
+    return `${prefix}${itinerary.destination} - ${dateLabel}`;
   };
 
   const pickerItems: PickerItem[] = itineraries.map(itin => ({

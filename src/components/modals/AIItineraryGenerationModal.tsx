@@ -209,8 +209,15 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
     }
 
     if (formData.startDate && formData.endDate) {
-      const start = new Date(formData.startDate);
-      const end = new Date(formData.endDate);
+      // CRITICAL: Parse YYYY-MM-DD as local date, not UTC
+      // new Date('2026-02-05') interprets as UTC midnight → shifts to Feb 4 in EST
+      const parseLocalDate = (dateString: string): Date => {
+        const [year, month, day] = dateString.split('-').map(Number);
+        return new Date(year, month - 1, day);
+      };
+      
+      const start = parseLocalDate(formData.startDate);
+      const end = parseLocalDate(formData.endDate);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
@@ -581,7 +588,19 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
                       testID="start-date-picker"
                       value={formData.startDate ? parse(formData.startDate, 'yyyy-MM-dd', new Date()) : new Date()}
                       onChange={(date) => {
-                        handleFieldChange('startDate', format(date, 'yyyy-MM-dd'));
+                        console.log('[DATE_DEBUG][AI_Modal] Start date onChange:', {
+                          dateInput: date,
+                          dateISO: date.toISOString(),
+                          dateLocal: date.toString(),
+                          dateComponents: {
+                            year: date.getFullYear(),
+                            month: date.getMonth(),
+                            day: date.getDate(),
+                          },
+                        });
+                        const formatted = format(date, 'yyyy-MM-dd');
+                        console.log('[DATE_DEBUG][AI_Modal] Formatted start date:', formatted);
+                        handleFieldChange('startDate', formatted);
                         // If end date is before new start date, update it
                         const currentEndDate = formData.endDate ? parse(formData.endDate, 'yyyy-MM-dd', new Date()) : null;
                         if (currentEndDate && currentEndDate < date) {
@@ -600,7 +619,14 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
                       testID="end-date-picker"
                       value={formData.endDate ? parse(formData.endDate, 'yyyy-MM-dd', new Date()) : addDays(new Date(), 7)}
                       onChange={(date) => {
-                        handleFieldChange('endDate', format(date, 'yyyy-MM-dd'));
+                        console.log('[DATE_DEBUG][AI_Modal] End date onChange:', {
+                          dateInput: date,
+                          dateISO: date.toISOString(),
+                          dateLocal: date.toString(),
+                        });
+                        const formatted = format(date, 'yyyy-MM-dd');
+                        console.log('[DATE_DEBUG][AI_Modal] Formatted end date:', formatted);
+                        handleFieldChange('endDate', formatted);
                       }}
                       minimumDate={formData.startDate ? parse(formData.startDate, 'yyyy-MM-dd', new Date()) : new Date()}
                       error={!!formErrors.endDate}
