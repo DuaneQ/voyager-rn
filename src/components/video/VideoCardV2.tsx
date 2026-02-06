@@ -164,9 +164,12 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
       statusUnsubscribeRef.current = unsubscribe;
       
       // Register with playback manager
+      // CRITICAL: Set expectedVideoId to handle FlatList component recycling
+      // When FlatList recycles a component, the player instance might have old video loaded
       videoPlaybackManagerV2.register({
         videoId: video.id,
         player: playerInstance,
+        expectedVideoId: video.id, // Track which video this player should have loaded
         onBecomeActive: () => {
           setUserPaused(false);
         },
@@ -230,15 +233,16 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
       return;
     }
     
-    // debug log removed
+    const timestamp = Date.now();
+    console.log(`[DIAG][${timestamp}][VideoCard][${video.id}] isActive changed to: ${isActive}, userPaused: ${userPaused}`);
     
     const managePlayback = async () => {
       if (isActive && !userPaused) {
-        // Requesting activation for ${video.id}
+        console.log(`[DIAG][${Date.now()}][VideoCard][${video.id}] Requesting activation`);
         // Request activation through manager (ensures only one plays)
         await videoPlaybackManagerV2.setActiveVideo(video.id);
       } else {
-        // pausing due to scroll or user pause
+        console.log(`[DIAG][${Date.now()}][VideoCard][${video.id}] Pausing (scrolled away or user paused)`);
         // Video scrolled away or user paused
         try {
           await player.pause();
@@ -306,9 +310,9 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
       // If autoplay was blocked, user tapping means they want to play
       // This tap counts as "user interaction" for browser autoplay policy
       if (autoplayBlocked) {
-        // user tapped after autoplay block
         setAutoplayBlocked(false);
         setUserPaused(false);
+        // Activate through manager (user interaction satisfies browser autoplay policy)
         await videoPlaybackManagerV2.setActiveVideo(video.id);
         return;
       }
@@ -316,6 +320,7 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
       if (userPaused) {
         // Resume playback
         setUserPaused(false);
+        // Re-activate through manager to ensure this video plays
         await videoPlaybackManagerV2.setActiveVideo(video.id);
       } else {
         // Manual pause
@@ -470,7 +475,7 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
             <VideoView
               player={expoPlayerRef.current}
               style={styles.video}
-              contentFit="cover"
+              contentFit="contain"
               nativeControls={false}
               // CRITICAL for Android: Use textureView to fix rendering issues in lists
               // surfaceView (default) causes problems with overlapping videos in RecyclerListView

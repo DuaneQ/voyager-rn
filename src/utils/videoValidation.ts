@@ -35,25 +35,6 @@ export const validateVideoFile = async (
     );
   }
 
-  // Check video duration if other validations pass
-  // Skip on web - expo-av doesn't support video duration on web
-  if (errors.length === 0 && Platform.OS !== 'web') {
-    try {
-      const duration = await getVideoDuration(uri);
-      if (duration > VIDEO_CONSTRAINTS.MAX_DURATION) {
-        errors.push(
-          `Video too long (${Math.round(duration)}s). Maximum duration: ${VIDEO_CONSTRAINTS.MAX_DURATION} seconds`
-        );
-      }
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : 'Unknown error reading video duration';
-      errors.push(`Unable to read video duration: ${errorMessage}`);
-    }
-  }
-
   return {
     isValid: errors.length === 0,
     errors,

@@ -80,33 +80,6 @@ describe('videoValidation', () => {
       expect(result.errors[0]).toContain('File size too large');
     });
 
-    it('should reject video exceeding max duration', async () => {
-      // Mock player with duration exceeding max
-      const expoVideo = require('expo-video');
-      mockPlayer.duration = VIDEO_CONSTRAINTS.MAX_DURATION + 10;
-      (expoVideo.createVideoPlayer as jest.Mock).mockReturnValue(mockPlayer);
-
-      const result = await validateVideoFile(mockUri, 10 * 1024 * 1024);
-
-      expect(result.isValid).toBe(false);
-      expect(result.errors.length).toBeGreaterThan(0);
-      expect(result.errors[0]).toContain('Video too long');
-    });
-
-    it('should handle duration check errors', async () => {
-      // Mock player with error status
-      const expoVideo = require('expo-video');
-      mockPlayer.duration = 0;
-      mockPlayer.status = 'error';
-      (expoVideo.createVideoPlayer as jest.Mock).mockReturnValue(mockPlayer);
-
-      const result = await validateVideoFile(mockUri, 10 * 1024 * 1024);
-
-      expect(result.isValid).toBe(false);
-      expect(result.errors.length).toBeGreaterThan(0);
-      expect(result.errors[0]).toContain('Unable to read video duration');
-    });
-
     it('should display file size in MB correctly', async () => {
       const fileSize = 151 * 1024 * 1024; // 151MB (exceeds 150MB limit)
 
