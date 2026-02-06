@@ -233,16 +233,12 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
       return;
     }
     
-    const timestamp = Date.now();
-    console.log(`[DIAG][${timestamp}][VideoCard][${video.id}] isActive changed to: ${isActive}, userPaused: ${userPaused}`);
-    
+    const timestamp = Date.now();    
     const managePlayback = async () => {
       if (isActive && !userPaused) {
-        console.log(`[DIAG][${Date.now()}][VideoCard][${video.id}] Requesting activation`);
         // Request activation through manager (ensures only one plays)
         await videoPlaybackManagerV2.setActiveVideo(video.id);
       } else {
-        console.log(`[DIAG][${Date.now()}][VideoCard][${video.id}] Pausing (scrolled away or user paused)`);
         // Video scrolled away or user paused
         try {
           await player.pause();

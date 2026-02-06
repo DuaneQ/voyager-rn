@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Itinerary } from '../../hooks/useAllItineraries';
+import { parseAndFormatItineraryDate } from '../../utils/formatDate';
 
 interface ItineraryListItemProps {
   itinerary: Itinerary;
@@ -77,7 +78,7 @@ const ItineraryListItem: React.FC<ItineraryListItemProps> = ({
             {itinerary.destination}
           </Text>
           <Text style={styles.dates}>
-            {formatDate(itinerary.startDate)} - {formatDate(itinerary.endDate)}
+            {parseAndFormatItineraryDate(itinerary.startDate)} - {parseAndFormatItineraryDate(itinerary.endDate)}
           </Text>
         </View>
       </View>

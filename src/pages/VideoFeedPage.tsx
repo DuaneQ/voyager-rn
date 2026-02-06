@@ -174,13 +174,10 @@ const VideoFeedPage: React.FC = () => {
    * Handle scroll begin - immediately deactivate to prevent audio overlap
    */
   const handleScrollBeginDrag = useCallback(() => {
-    const timestamp = Date.now();
-    console.log(`[DIAG][${timestamp}][VideoFeedPage] Scroll started - calling deactivateAll()`);
-    
+    const timestamp = Date.now();    
     // Immediately deactivate current video to stop audio
     videoPlaybackManager.deactivateAll().then(() => {
       const elapsed = Date.now() - timestamp;
-      console.log(`[DIAG][${Date.now()}][VideoFeedPage] deactivateAll() completed (${elapsed}ms)`);
     }).catch(err => {
       console.error(`[DIAG][${Date.now()}][VideoFeedPage] deactivateAll() error:`, err);
     });

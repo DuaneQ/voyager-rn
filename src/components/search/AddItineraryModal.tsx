@@ -20,7 +20,7 @@ import RangeSlider from '../common/RangeSlider';
 import { AndroidPickerModal } from '../common/AndroidPickerModal';
 import { useCreateItinerary } from '../../hooks/useCreateItinerary';
 import { useDeleteItinerary } from '../../hooks/useDeleteItinerary';
-import { formatDateLocal } from '../../utils/formatDate';
+import { formatDateLocal, parseLocalDate } from '../../utils/formatDate';
 import {
   ManualItineraryFormData,
   GENDER_OPTIONS,
@@ -60,12 +60,6 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
   // Defensive: ensure itineraries is an array in case parent passes undefined during async loads
   const safeItineraries = Array.isArray(itineraries) ? itineraries : [];
 
-  // Helper to parse YYYY-MM-DD as local date (not UTC) - same as EditProfileModal
-  const parseLocalDate = (dateString: string): Date => {
-    const [year, month, day] = dateString.split('-').map(Number);
-    return new Date(year, month - 1, day);
-  };
-
   // Helpful debug logging when modal opens to surface any unexpected shapes that could cause runtime errors
   React.useEffect(() => {
     if (visible) {
@@ -91,6 +85,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [deleteConfirmModalVisible, setDeleteConfirmModalVisible] = useState(false);
   const [itineraryToDelete, setItineraryToDelete] = useState<string | null>(null);
+  const [isDestinationValid, setIsDestinationValid] = useState(false);
   
   // Android picker modal states
   const [showGenderPicker, setShowGenderPicker] = useState(false);
@@ -122,6 +117,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
     setUpperRange(45);
     setEditingItineraryId(null);
     setValidationErrors([]);
+    setIsDestinationValid(false); // Reset validation state
   };
 
   // Load itinerary for editing
@@ -129,16 +125,8 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
     const itinerary = itineraries.find(i => i.id === itineraryId);
     if (!itinerary) return;
 
-    console.log('[DATE_DEBUG][handleEdit] Loading itinerary:', {
-      id: itinerary.id,
-      destination: itinerary.destination,
-      startDateRaw: itinerary.startDate,
-      endDateRaw: itinerary.endDate,
-      startDateType: typeof itinerary.startDate,
-      endDateType: typeof itinerary.endDate,
-    });
-
     setDestination(itinerary.destination);
+    setIsDestinationValid(true); // Existing itineraries have valid destinations
     
     // CRITICAL: Use parseLocalDate to avoid timezone shifts (same as EditProfileModal)
     // itinerary.startDate is "2026-02-06" (YYYY-MM-DD string from Firestore)
@@ -146,18 +134,6 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
     // parseLocalDate manually parses components → Feb 6 stays Feb 6
     const parsedStartDate = parseLocalDate(itinerary.startDate);
     const parsedEndDate = parseLocalDate(itinerary.endDate);
-    
-    console.log('[DATE_DEBUG][handleEdit] After parseLocalDate:', {
-      parsedStartDate: parsedStartDate.toISOString(),
-      parsedStartDateLocal: parsedStartDate.toString(),
-      parsedStartDateComponents: {
-        year: parsedStartDate.getFullYear(),
-        month: parsedStartDate.getMonth(),
-        day: parsedStartDate.getDate(),
-      },
-      parsedEndDate: parsedEndDate.toISOString(),
-      parsedEndDateLocal: parsedEndDate.toString(),
-    });
     
     setStartDate(parsedStartDate);
     setEndDate(parsedEndDate);
@@ -258,22 +234,21 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
       Alert.alert('Validation Error', 'Please enter a destination.');
       return;
     }
-
-    console.log('[DATE_DEBUG][handleSubmit] State dates before formatting:', {
-      startDate: startDate.toISOString(),
-      startDateLocal: startDate.toString(),
-      endDate: endDate.toISOString(),
-      endDateLocal: endDate.toString(),
-    });
+    
+    // Validate destination has value but is not from Google Places
+    // If empty, the validation check above will catch it
+    if (destination && !isDestinationValid) {
+      Alert.alert(
+        'Invalid Destination', 
+        'Please select a destination from the dropdown list. This ensures accurate matching with other travelers.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
 
     const formattedStartDate = formatDateLocal(startDate);
     const formattedEndDate = formatDateLocal(endDate);
     
-    console.log('[DATE_DEBUG][handleSubmit] Formatted dates:', {
-      formattedStartDate,
-      formattedEndDate,
-    });
-
     const formData: ManualItineraryFormData = {
       destination: destination.trim(),
       startDate: formattedStartDate,
@@ -423,7 +398,6 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Trip Details</Text>
 
-            {/* Destination - Google Places for comprehensive coverage */}
             <Text style={styles.label}>Destination *</Text>
             <PlacesAutocomplete
               testID="google-places-input"
@@ -433,7 +407,8 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
               onPlaceSelected={(place: string) => {
                 setDestination(place);
               }}
-              error={!!destination && destination.length === 0}
+              onValidationChange={setIsDestinationValid}
+              error={!!destination && !isDestinationValid}
             />
 
             {/* Start Date */}

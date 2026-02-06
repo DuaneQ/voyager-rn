@@ -18,7 +18,48 @@ jest.mock('../../constants/apiConfig', () => ({
   getGooglePlacesApiKey: () => 'test-api-key',
 }));
 
-// Mock GooglePlacesAutocomplete
+// Mock PlacesAutocomplete component (named export)
+jest.mock('../../components/common/PlacesAutocomplete', () => {
+  const React = require('react');
+  const { TextInput } = require('react-native');
+  
+  const MockPlacesAutocomplete = ({ 
+    value, 
+    onChangeText, 
+    onPlaceSelected, 
+    onValidationChange, 
+    testID, 
+    placeholder 
+  }: any) => {
+    // Simulate the validation behavior when text changes
+    React.useEffect(() => {
+      if (value && onValidationChange) {
+        // In real component, selection from dropdown marks as valid
+        // For tests, consider any non-empty value as valid
+        onValidationChange(true);
+      }
+    }, [value, onValidationChange]);
+    
+    return React.createElement(TextInput, {
+      testID: testID || 'google-places-input',
+      value,
+      onChangeText: (text: string) => {
+        onChangeText(text);
+        // Simulate that changing text marks as valid (selected from dropdown)
+        if (onValidationChange) {
+          onValidationChange(true);
+        }
+      },
+      placeholder,
+    });
+  };
+  
+  return {
+    PlacesAutocomplete: MockPlacesAutocomplete
+  };
+});
+
+// Mock GooglePlacesAutocomplete (legacy, keeping for compatibility)
 jest.mock('react-native-google-places-autocomplete', () => {
   const React = require('react');
   return {

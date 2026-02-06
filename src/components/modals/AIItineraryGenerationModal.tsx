@@ -15,11 +15,13 @@ import {
   ActivityIndicator,
   Dimensions,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  Alert
 } from 'react-native';
 import { CrossPlatformDatePicker } from '../common/CrossPlatformDatePicker';
 import { PlacesAutocomplete } from '../common/PlacesAutocomplete';
 import { City } from '../../types/City';
+import { parseLocalDate } from '../../utils/formatDate';
 import { format, addDays, parse } from 'date-fns';
 import * as firebaseCfg from '../../config/firebaseConfig';
 import { useAIGenerationV2 } from '../../hooks/useAIGenerationV2';
@@ -123,6 +125,10 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
   const [showPreferenceDropdown, setShowPreferenceDropdown] = useState(false);
   const [showFlightClassDropdown, setShowFlightClassDropdown] = useState(false);
   const [showStopPrefDropdown, setShowStopPrefDropdown] = useState(false);
+  
+  // Validation state to ensure destinations are from Google Places
+  const [isDestinationValid, setIsDestinationValid] = useState(false);
+  const [isDepartureValid, setIsDepartureValid] = useState(true); // Optional field, so default to valid
 
   // Initialize form when modal opens (matching PWA logic)
   useEffect(() => {
@@ -151,6 +157,10 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
 
       setFormErrors({});
       setShowSuccessState(false);
+      
+      // Reset validation state
+      setIsDestinationValid(!!initialDestination); // Valid if pre-filled
+      setIsDepartureValid(true); // Optional field
     }
   }, [visible, initialDestination, initialDates, initialPreferenceProfileId, preferences]);
 
@@ -211,11 +221,6 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
     if (formData.startDate && formData.endDate) {
       // CRITICAL: Parse YYYY-MM-DD as local date, not UTC
       // new Date('2026-02-05') interprets as UTC midnight → shifts to Feb 4 in EST
-      const parseLocalDate = (dateString: string): Date => {
-        const [year, month, day] = dateString.split('-').map(Number);
-        return new Date(year, month - 1, day);
-      };
-      
       const start = parseLocalDate(formData.startDate);
       const end = parseLocalDate(formData.endDate);
       const today = new Date();
@@ -246,6 +251,17 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
 
   // Handle generation (matching PWA flow)
   const handleGenerate = useCallback(async () => {
+    // First check if destination has value but is not from Google Places
+    // If empty, let form validation handle it
+    if (formData.destination && !isDestinationValid) {
+      Alert.alert(
+        'Invalid Destination',
+        'Please select a destination from the dropdown list. This ensures accurate matching with other travelers.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     const errors = validateForm();
     
     if (Object.keys(errors).length > 0) {
@@ -519,7 +535,8 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
                     onPlaceSelected={(description) => {
                       handleFieldChange('destination', description);
                     }}
-                    error={!!formErrors.destination}
+                    onValidationChange={setIsDestinationValid}
+                    error={!!formErrors.destination || (!!formData.destination && !isDestinationValid)}
                   />
                   {formErrors.destination && (
                     <Text style={styles.fieldError}>{formErrors.destination}</Text>
@@ -557,6 +574,8 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
                     onPlaceSelected={(description) => {
                       handleFieldChange('departure', description);
                     }}
+                    onValidationChange={setIsDepartureValid}
+                    error={!!formData.departure && !isDepartureValid}
                   />
                 </View>
 
@@ -588,18 +607,7 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
                       testID="start-date-picker"
                       value={formData.startDate ? parse(formData.startDate, 'yyyy-MM-dd', new Date()) : new Date()}
                       onChange={(date) => {
-                        console.log('[DATE_DEBUG][AI_Modal] Start date onChange:', {
-                          dateInput: date,
-                          dateISO: date.toISOString(),
-                          dateLocal: date.toString(),
-                          dateComponents: {
-                            year: date.getFullYear(),
-                            month: date.getMonth(),
-                            day: date.getDate(),
-                          },
-                        });
                         const formatted = format(date, 'yyyy-MM-dd');
-                        console.log('[DATE_DEBUG][AI_Modal] Formatted start date:', formatted);
                         handleFieldChange('startDate', formatted);
                         // If end date is before new start date, update it
                         const currentEndDate = formData.endDate ? parse(formData.endDate, 'yyyy-MM-dd', new Date()) : null;
@@ -619,13 +627,7 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
                       testID="end-date-picker"
                       value={formData.endDate ? parse(formData.endDate, 'yyyy-MM-dd', new Date()) : addDays(new Date(), 7)}
                       onChange={(date) => {
-                        console.log('[DATE_DEBUG][AI_Modal] End date onChange:', {
-                          dateInput: date,
-                          dateISO: date.toISOString(),
-                          dateLocal: date.toString(),
-                        });
                         const formatted = format(date, 'yyyy-MM-dd');
-                        console.log('[DATE_DEBUG][AI_Modal] Formatted end date:', formatted);
                         handleFieldChange('endDate', formatted);
                       }}
                       minimumDate={formData.startDate ? parse(formData.startDate, 'yyyy-MM-dd', new Date()) : new Date()}

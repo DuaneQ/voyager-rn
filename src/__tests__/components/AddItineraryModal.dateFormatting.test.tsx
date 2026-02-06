@@ -15,11 +15,33 @@ jest.mock('../../components/common/PlacesAutocomplete', () => {
   const React = require('react');
   const { TextInput } = require('react-native');
   
-  const MockPlacesAutocomplete = ({ value, onChangeText, testID, placeholder }: any) => {
+  const MockPlacesAutocomplete = ({ 
+    value, 
+    onChangeText, 
+    onPlaceSelected, 
+    onValidationChange, 
+    testID, 
+    placeholder 
+  }: any) => {
+    // Simulate the validation behavior when text changes
+    React.useEffect(() => {
+      if (value && onValidationChange) {
+        // In real component, selection from dropdown marks as valid
+        // For tests, consider any non-empty value as valid
+        onValidationChange(true);
+      }
+    }, [value, onValidationChange]);
+    
     return React.createElement(TextInput, {
       testID: testID || 'google-places-input',
       value,
-      onChangeText,
+      onChangeText: (text: string) => {
+        onChangeText(text);
+        // Simulate that changing text marks as valid (selected from dropdown)
+        if (onValidationChange) {
+          onValidationChange(true);
+        }
+      },
       placeholder,
     });
   };

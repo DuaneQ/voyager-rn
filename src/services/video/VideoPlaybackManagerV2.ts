@@ -99,7 +99,6 @@ export class VideoPlaybackManagerV2 {
   async setActiveVideo(videoId: string, retryCount: number = 0): Promise<void> {
     const MAX_RETRIES = 20; // 20 retries * 50ms = 1 second max wait
     const timestamp = Date.now();
-    console.log(`[DIAG][${timestamp}][Manager] setActiveVideo(${videoId}) - current active: ${this.activeVideoId}, retryCount: ${retryCount}`);
     
     // Prevent concurrent activation attempts with retry limit
     if (this.isActivating) {
@@ -188,9 +187,7 @@ export class VideoPlaybackManagerV2 {
       }
       
       try {
-        console.log(`[DIAG][${Date.now()}][Manager] About to play ${videoId}`);
         await registration.player.play();
-        console.log(`[DIAG][${Date.now()}][Manager] ${videoId} play() completed`);
       } catch (playError: any) {
         // On web, if autoplay fails (shouldn't happen if component set muted correctly),
         // log but don't crash - the user can tap to play
@@ -214,7 +211,6 @@ export class VideoPlaybackManagerV2 {
    */
   private async deactivateVideo(videoId: string): Promise<void> {
     const timestamp = Date.now();
-    console.log(`[DIAG][${timestamp}][Manager] deactivateVideo(${videoId}) called`);
     
     // Prevent duplicate deactivation calls (race condition fix)
     if (this.deactivating.has(videoId)) {
@@ -240,7 +236,6 @@ export class VideoPlaybackManagerV2 {
       // Pause playback
       const pauseTimestamp = Date.now();
       await registration.player.pause();
-      console.log(`[DIAG][${Date.now()}][Manager] ${videoId} paused (${Date.now() - pauseTimestamp}ms)`);
       
       // Call lifecycle hook if provided
       registration.onBecomeInactive?.();
@@ -261,7 +256,6 @@ export class VideoPlaybackManagerV2 {
   async deactivateAll(): Promise<void> {
     const timestamp = Date.now();
     const activeId = this.activeVideoId;
-    console.log(`[DIAG][${timestamp}][Manager] deactivateAll() called - active: ${activeId}, registrations: ${this.registrations.size}`);
     
     // Mute all videos immediately to stop audio
     const mutePromises: Promise<void>[] = [];
@@ -274,7 +268,6 @@ export class VideoPlaybackManagerV2 {
     });
     
     await Promise.all(mutePromises);
-    console.log(`[DIAG][${Date.now()}][Manager] All videos muted (${Date.now() - timestamp}ms)`);
     
     // Deactivate current video
     if (this.activeVideoId) {
@@ -282,8 +275,6 @@ export class VideoPlaybackManagerV2 {
       this.activeVideoId = null;
       this.events.onActiveVideoChanged?.(null);
     }
-    
-    console.log(`[DIAG][${Date.now()}][Manager] deactivateAll() complete (${Date.now() - timestamp}ms total)`);
   }
 
   /**

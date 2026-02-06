@@ -179,6 +179,73 @@ export function formatRelativeTime(timestamp: Timestamp | Date | null | undefine
 }
 
 /**
+ * Parse a YYYY-MM-DD date string as local date (not UTC).
+ * Prevents timezone shift issues where dates display as previous day.
+ * 
+ * @param dateString - Date string in YYYY-MM-DD format
+ * @returns Date object in local timezone
+ */
+export function parseLocalDate(dateString: string): Date {
+  const [year, month, day] = dateString.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
+/**
+ * Parse and format itinerary dates for display.
+ * Handles multiple input formats and always parses as local date to avoid timezone shifts.
+ * 
+ * Supported formats:
+ * - ISO strings: "2026-02-05T00:00:00.000Z" → "Feb 5, 2026"
+ * - YYYY-MM-DD: "2026-02-05" → "Feb 5, 2026"
+ * - Firestore Timestamp objects: {seconds: 1234567890} → formatted date
+ * 
+ * @param dateStr - Date string or Firestore Timestamp object
+ * @returns Formatted string like "Feb 5, 2026" or "Invalid Date" on error
+ */
+export function parseAndFormatItineraryDate(dateStr: any): string {
+  if (!dateStr) return 'No Date';
+  
+  try {
+    // Handle Firestore Timestamp objects
+    if (typeof dateStr === 'object' && dateStr !== null) {
+      if (dateStr.seconds !== undefined) {
+        const d = new Date(dateStr.seconds * 1000);
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      }
+      if (dateStr.toDate && typeof dateStr.toDate === 'function') {
+        const d = dateStr.toDate();
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      }
+      return 'Invalid Date';
+    }
+    
+    if (typeof dateStr !== 'string') return 'Invalid Date';
+    
+    // For ISO strings like '2026-02-05T00:00:00.000Z', extract the date part
+    // BEFORE 'T' to avoid UTC→local timezone shift
+    const dateOnly = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
+    
+    // Parse YYYY-MM-DD as local date using the shared utility
+    const parts = dateOnly.split('-');
+    if (parts.length !== 3) return dateStr;
+    
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10);
+    const day = parseInt(parts[2], 10);
+    
+    if (isNaN(year) || isNaN(month) || isNaN(day)) return dateStr;
+    
+    const date = parseLocalDate(dateOnly);
+    if (isNaN(date.getTime())) return dateStr;
+    
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  } catch (err) {
+    console.warn('[parseAndFormatItineraryDate] Date parse error:', dateStr, err);
+    return typeof dateStr === 'string' ? dateStr : 'Invalid Date';
+  }
+}
+
+/**
  * Format a date in local timezone (YYYY-MM-DD).
  * Used for itinerary dates and other date inputs that need consistent formatting.
  * 

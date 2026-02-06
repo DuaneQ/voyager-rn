@@ -1,22 +1,7 @@
 /**
  * AI Itinerary List Tab Component
  * Displays user's generated AI itineraries with dropdown selector
- * Matches PWA functionality - only shconst styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F5F5',
-  },
-  displayContainer: {
-    flex: 1,
-    backgroundColor: '#F5F5F5',
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-    padding: 20,
-  },rips
+ * Matches PWA functionality - only shows AI-generated trips
  */
 
 import React, { useState } from 'react';
@@ -25,10 +10,10 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
 import { CrossPlatformPicker, PickerItem } from '../common/CrossPlatformPicker';
+import { parseAndFormatItineraryDate } from '../../utils/formatDate';
 import { useAIGeneratedItineraries } from '../../hooks/useAIGeneratedItineraries';
 import { AIItineraryDisplay } from '../ai/AIItineraryDisplay';
 
@@ -47,39 +32,7 @@ export const AIItineraryListTab: React.FC = () => {
 
   // Create picker items
   const pickerItems: PickerItem[] = itineraries.map(itin => {
-    let dateLabel = 'Invalid Date';
-    try {
-      if (itin.startDate && typeof itin.startDate === 'string') {
-        if (itin.startDate.includes('T')) {
-          // Extract date part before 'T' to avoid UTC→local timezone shift
-          const datePart = itin.startDate.split('T')[0];
-          const dtParts = datePart.split('-');
-          if (dtParts.length === 3) {
-            const y = parseInt(dtParts[0], 10);
-            const m = parseInt(dtParts[1], 10);
-            const d = parseInt(dtParts[2], 10);
-            if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
-              dateLabel = new Date(y, m - 1, d).toLocaleDateString();
-            }
-          }
-        } else {
-          const parts = itin.startDate.split('-');
-          if (parts.length === 3) {
-            const year = parseInt(parts[0], 10);
-            const month = parseInt(parts[1], 10);
-            const day = parseInt(parts[2], 10);
-            if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
-              const date = new Date(year, month - 1, day);
-              if (!isNaN(date.getTime())) {
-                dateLabel = date.toLocaleDateString();
-              }
-            }
-          }
-        }
-      }
-    } catch (err) {
-      console.warn('[AIItineraryListTab] Date parse error:', itin.startDate, err);
-    }
+    const dateLabel = parseAndFormatItineraryDate(itin.startDate);
     
     return {
       label: `${itin.destination} - ${dateLabel}`,
