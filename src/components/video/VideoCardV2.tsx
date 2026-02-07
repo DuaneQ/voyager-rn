@@ -14,6 +14,7 @@ import { Platform } from 'react-native';
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   TouchableOpacity,
   Dimensions,
@@ -27,6 +28,8 @@ import { IVideoPlayer } from '../../interfaces/IVideoPlayer';
 import { videoPlayerFactory } from '../../services/video/VideoPlayerFactory';
 import { videoPlaybackManagerV2 } from '../../services/video/VideoPlaybackManagerV2';
 import { ExpoVideoPlayer } from '../../services/video/ExpoVideoPlayer';
+import { AppError, isAppError } from '../../errors/AppError';
+import { createVideoError } from '../../errors/factories/videoErrors';
 
 const { width, height } = Dimensions.get('window');
 
@@ -59,7 +62,7 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
   const expoPlayerRef = useRef<any>(null); // Immediate ref for Android RecyclerListView
   const [userPaused, setUserPaused] = useState(false);
   const [error, setError] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null); // Specific error message
+  const [videoError, setVideoError] = useState<AppError | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasTrackedView, setHasTrackedView] = useState(false);
   // Web-specific: track if autoplay was blocked by browser policy
@@ -69,6 +72,31 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
   const viewTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isUnmountedRef = useRef(false);
   const statusUnsubscribeRef = useRef<(() => void) | null>(null);
+  // Ref for mute state — avoids including isMuted in player creation effect deps,
+  // which would destroy & recreate the player on every mute toggle.
+  const isMutedRef = useRef(isMuted);
+  isMutedRef.current = isMuted;
+  
+  // RECYCLING TRANSITION OVERLAY
+  // When RecyclerListView recycles a view, video.id changes but the old player's
+  // native TextureView still shows stale content for a few frames until the new
+  // player initializes. Instead of clearing the player ref (which shows jarring
+  // "Loading..." text), we overlay the NEW video's thumbnail on top of the
+  // VideoView. The overlay hides once the new player renders its first frame.
+  //
+  // This is the same pattern TikTok/Reels use on budget Android devices.
+  // React supports setState-during-render for derived state:
+  // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
+  const [showTransitionOverlay, setShowTransitionOverlay] = useState(true); // true initially until first frame
+  const prevVideoIdRef = useRef(video.id);
+  if (prevVideoIdRef.current !== video.id) {
+    prevVideoIdRef.current = video.id;
+    // Show thumbnail overlay to mask stale native content during player swap.
+    // React will re-render immediately before committing — no intermediate paint.
+    if (!showTransitionOverlay) {
+      setShowTransitionOverlay(true);
+    }
+  }
   
   // Get Firebase auth
   const resolvedAuth = typeof (firebaseConfig as any).getAuthInstance === 'function'
@@ -82,164 +110,159 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
   const commentCount = video.comments?.length || 0;
   const viewCount = video.viewCount || 0;
 
+  // Whether to use lazy player creation (only create when active).
+  // Android budget devices hit hardware decoder limits (e.g. 8 max on MediaTek),
+  // so we MUST avoid creating players for off-screen cells.
+  // iOS/Web have no such limit — eager creation eliminates the black flash on scroll.
+  const useLazyCreation = Platform.OS === 'android';
+
   /**
-   * Initialize player on mount
+   * Creates a player instance for the current video URL, wires up listeners,
+   * and registers with the playback manager. Returns the playerInstance.
+   * Extracted as a helper so both eager and lazy paths share the same logic.
    */
-  useEffect(() => {
-    // debug logs removed
-    
-    // Prefer Mux HLS URL when available (universal codec compatibility)
-    // Falls back to original Firebase URL if Mux hasn't processed yet
+  const createAndRegisterPlayer = useCallback((): IVideoPlayer | null => {
     const playbackUrl = video.muxPlaybackUrl || video.videoUrl;
-    const isMuxUrl = !!video.muxPlaybackUrl;
-    
-    // debug logs removed
-    
-    // Log video specs to help diagnose playback issues (HTTP 416, black screens, etc.)
-    const fileSizeMB = video.fileSize ? (video.fileSize / (1024 * 1024)).toFixed(2) : 'unknown';
-    const durationSec = video.duration || 'unknown';
-    // video specs available; debug logs removed
-    
-    // All videos now use Mux HLS adaptive streaming - no size limits needed
-    // HLS handles large files automatically via chunking
-    
     let playerInstance: IVideoPlayer | null = null;
-    
+
     try {
-      // Create player using factory (Dependency Inversion Principle)
-      // Use Mux HLS URL when available for universal codec compatibility
       playerInstance = videoPlayerFactory.createPlayer({
-        videoUrl: playbackUrl, // Use Mux URL if available, otherwise original
+        videoUrl: playbackUrl,
         loop: true,
-        muted: isMuted,
-        autoPlay: false, // Don't auto-play, wait for isActive
+        muted: isMutedRef.current,
+        autoPlay: false,
       });
-      
+
       setPlayer(playerInstance);
-      
-      // Get underlying expo-video player for VideoView
+
       if (playerInstance instanceof ExpoVideoPlayer) {
-        // debug log removed
-        const player = playerInstance.getPlayer();
-        
-        // Set ref immediately (synchronous) - critical for Android RecyclerListView
-        expoPlayerRef.current = player;
-        // debug log removed
-        
-        // Also set state for React updates
+        const rawPlayer = playerInstance.getPlayer();
+        expoPlayerRef.current = rawPlayer;
         if (!isUnmountedRef.current) {
-          // debug log removed
-          setExpoPlayer(player);
-        } else {
-          console.warn(`[VideoCardV2][${Platform.OS}] Component unmounted before player state set: ${video.id}`);
+          setExpoPlayer(rawPlayer);
         }
       }
-      
-      // Listen for status changes
+
       const unsubscribe = playerInstance.addStatusListener((status) => {
-        if (isUnmountedRef.current) {
-          // Ignore updates after unmount
-          return;
-        }
-
+        if (isUnmountedRef.current) return;
         setIsPlaying(status.isPlaying);
-
-        // Handle browser autoplay policy block (web only)
-        if (status.autoplayBlocked) {
-          setAutoplayBlocked(true);
-        }
-
+        if (status.autoplayBlocked) setAutoplayBlocked(true);
         if (status.error) {
           console.error(`[VideoCardV2][${Platform.OS}] Player error for ${video.id}:`, status.error);
           setError(true);
-          // Store specific error message for better user feedback
-          if (status.error.includes('not supported') || status.error.includes('MediaCodec')) {
-            setErrorMessage('This video format is not compatible with your device');
-          } else {
-            setErrorMessage(status.error);
-          }
+          setVideoError(createVideoError(status.error, video.id, {
+            platform: Platform.OS,
+            videoUrl: video.videoUrl,
+            muxPlaybackUrl: video.muxPlaybackUrl,
+          }));
         }
       });
-
       statusUnsubscribeRef.current = unsubscribe;
-      
-      // Register with playback manager
-      // CRITICAL: Set expectedVideoId to handle FlatList component recycling
-      // When FlatList recycles a component, the player instance might have old video loaded
+
       videoPlaybackManagerV2.register({
         videoId: video.id,
         player: playerInstance,
-        expectedVideoId: video.id, // Track which video this player should have loaded
-        onBecomeActive: () => {
-          setUserPaused(false);
-        },
+        expectedVideoId: video.id,
+        onBecomeActive: () => setUserPaused(false),
         onBecomeInactive: () => {},
       });
-      
-      // player initialized; debug log removed
     } catch (err) {
       console.error(`[VideoCardV2][${Platform.OS}] Error initializing player for ${video.id}:`, err);
       setError(true);
     }
-    
-    // Cleanup on unmount
-    return () => {
-      isUnmountedRef.current = true;
-      // debug log removed
-      
-      // Unsubscribe from status updates first
-      if (statusUnsubscribeRef.current) {
-        try {
-          // debug log removed
-          statusUnsubscribeRef.current();
-          statusUnsubscribeRef.current = null;
-        } catch (err) {
-          console.error(`[VideoCardV2][${Platform.OS}] Error unsubscribing for ${video.id}:`, err);
-        }
-      }
-      
-      // Unregister from playback manager
-      try {
-          // debug log removed
-        videoPlaybackManagerV2.unregister(video.id);
-      } catch (err) {
-        console.error(`[VideoCardV2][${Platform.OS}] Error unregistering for ${video.id}:`, err);
-      }
-      
-      // Release player resources - do this last
-      if (playerInstance) {
-        playerInstance.release().catch((err) => {
-          console.error(`[VideoCardV2][${Platform.OS}] Error releasing player for ${video.id}:`, err);
-        });
-      }
-      
-      // Clear view timer
-      if (viewTimerRef.current) {
-        clearTimeout(viewTimerRef.current);
-        viewTimerRef.current = null;
-      }
-      
-      // Clear expo player ref
-      expoPlayerRef.current = null;
-    };
-  }, [video.id, video.videoUrl]); // Recreate if video changes
+
+    return playerInstance;
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- stable factory references
+  }, [video.id, video.videoUrl, video.muxPlaybackUrl]);
 
   /**
-   * Handle isActive changes - request activation/deactivation
+   * Tears down the current player: unsubscribes listeners, unregisters from
+   * the playback manager, releases resources, and clears state/refs.
    */
+  const teardownPlayer = useCallback((playerInstance: IVideoPlayer | null) => {
+    if (statusUnsubscribeRef.current) {
+      try { statusUnsubscribeRef.current(); statusUnsubscribeRef.current = null; } catch (_) {}
+    }
+    try { videoPlaybackManagerV2.unregister(video.id); } catch (_) {}
+    if (playerInstance) {
+      playerInstance.release().catch((err) => {
+        console.error(`[VideoCardV2][${Platform.OS}] Error releasing player for ${video.id}:`, err);
+      });
+    }
+    if (viewTimerRef.current) { clearTimeout(viewTimerRef.current); viewTimerRef.current = null; }
+    expoPlayerRef.current = null;
+    setPlayer(null);
+    setExpoPlayer(null);
+    setIsPlaying(false);
+    setShowTransitionOverlay(true);
+  }, [video.id]);
+
+  // ────────────────────────────────────────────────────────────────────
+  // ANDROID: LAZY PLAYER CREATION
+  // Only allocate an ExoPlayer (and its MediaCodec hardware decoder) for
+  // the ACTIVE cell. Non-active cells show a static thumbnail.
+  // This keeps concurrent decoders at 1 (max 8 on MediaTek).
+  // ────────────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!player) {
-      // No player yet for ${video.id}, skipping playback management
+    if (!useLazyCreation) return; // iOS/Web handled by next effect
+
+    isUnmountedRef.current = false;
+
+    if (!isActive) {
+      // Not active on Android → no player, show thumbnail
+      setPlayer(null);
+      setExpoPlayer(null);
+      expoPlayerRef.current = null;
+      setIsPlaying(false);
       return;
     }
-    
-    const timestamp = Date.now();    
+
+    // Active on Android → create player and start playback
+    setUserPaused(false);
+    const playerInstance = createAndRegisterPlayer();
+    if (playerInstance) {
+      videoPlaybackManagerV2.setActiveVideo(video.id);
+    }
+
+    return () => {
+      isUnmountedRef.current = true;
+      teardownPlayer(playerInstance);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [useLazyCreation ? isActive : '__skip__', video.id, video.videoUrl]);
+
+  // ────────────────────────────────────────────────────────────────────
+  // iOS / WEB: EAGER PLAYER CREATION
+  // Create player on mount, keep it alive regardless of isActive.
+  // Play/pause is managed by the separate userPaused effect below.
+  // No decoder limit issues on these platforms.
+  // ────────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (useLazyCreation) return; // Android handled by previous effect
+
+    isUnmountedRef.current = false;
+    const playerInstance = createAndRegisterPlayer();
+
+    return () => {
+      isUnmountedRef.current = true;
+      teardownPlayer(playerInstance);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [useLazyCreation ? '__skip__' : video.id, video.videoUrl]);
+
+  /**
+   * Handle isActive + userPaused changes — manages play/pause at runtime.
+   * On Android (lazy), the player only exists while active so this is a
+   * secondary guard. On iOS/Web (eager), this is the primary play/pause driver.
+   */
+  useEffect(() => {
+    if (!player) return;
+
     const managePlayback = async () => {
       if (isActive && !userPaused) {
-        // Request activation through manager (ensures only one plays)
         await videoPlaybackManagerV2.setActiveVideo(video.id);
       } else {
-        // Video scrolled away or user paused
+        // Scrolled away, user paused, or screen unfocused → pause
         try {
           await player.pause();
         } catch (err) {
@@ -247,7 +270,7 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
         }
       }
     };
-    
+
     managePlayback();
   }, [isActive, userPaused, player, video.id]);
 
@@ -260,14 +283,13 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
    * 4. This causes audio to not play even though UI shows unmuted
    */
   useEffect(() => {
-    if (!player) return;
+    // Guard: skip if no player or if the player ref is already gone (released)
+    if (!player || !expoPlayerRef.current) return;
     
-    // Always apply mute state when player exists, isActive changes, or isMuted changes
-    // apply mute state; debug log removed
-    player.setMuted(isMuted).catch((err) => {
-      console.error(`[VideoCardV2] Error setting mute for ${video.id}:`, err);
+    player.setMuted(isMuted).catch(() => {
+      // Swallow — player may have been released between the guard check and the call
     });
-  }, [isMuted, player, video.id, isActive]); // Added isActive as dependency
+  }, [isMuted, player, video.id, isActive]);
 
   /**
    * Track view after 3 seconds of playing
@@ -416,17 +438,20 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
    * Render error state
    */
   if (error) {
+    const safeMessage = videoError
+      ? videoError.getUserMessage()
+      : 'This video may have been removed or is temporarily unavailable';
     return (
       <View style={styles.container}>
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle-outline" size={64} color="#fff" />
           <Text style={styles.errorText}>Video Unavailable</Text>
           <Text style={styles.errorSubtext}>
-            {errorMessage || 'This video may have been removed or is temporarily unavailable'}
+            {safeMessage}
           </Text>
-          {Platform.OS === 'android' && (
+          {__DEV__ && videoError && (
             <Text style={[styles.errorSubtext, { fontSize: 10, marginTop: 8, opacity: 0.5 }]}>
-              {video.id}
+              [{videoError.code}]
             </Text>
           )}
         </View>
@@ -435,14 +460,26 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
   }
 
   /**
-   * Render loading state while player initializes
+   * On iOS/Web (eager): expoPlayer is set on mount, so this only shows
+   * briefly during the very first frame. On Android (lazy): expoPlayer
+   * is null for non-active cells, but we still need action buttons etc.
+   * So we skip the early return on Android and let the main render
+   * handle the thumbnail-vs-VideoView swap inside the full layout.
    */
-  if (!expoPlayer) {
+  if (!expoPlayer && Platform.OS !== 'android') {
     return (
       <View style={styles.container}>
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Loading...</Text>
-        </View>
+        {(video.muxThumbnailUrl || video.thumbnailUrl) ? (
+          <Image
+            source={{ uri: video.muxThumbnailUrl || video.thumbnailUrl }}
+            style={styles.video}
+            resizeMode="contain"
+          />
+        ) : (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>Loading...</Text>
+          </View>
+        )}
       </View>
     );
   }
@@ -453,13 +490,16 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
       {/* Video player */}
       <View style={styles.videoContainer}>
         {!expoPlayerRef.current ? (
-          // Loading state - show until player is ready (use ref for immediate check)
+          // No player — show thumbnail (cell not active or player initializing)
           <View style={[styles.video, styles.loadingContainer]}>
-            <Text style={styles.loadingText}>Loading...</Text>
-            {Platform.OS === 'android' && (
-              <Text style={[styles.loadingText, { fontSize: 12, marginTop: 8 }]}>
-                {video.id}
-              </Text>
+            {(video.muxThumbnailUrl || video.thumbnailUrl) ? (
+              <Image
+                source={{ uri: video.muxThumbnailUrl || video.thumbnailUrl }}
+                style={StyleSheet.absoluteFill}
+                resizeMode="contain"
+              />
+            ) : (
+              <Text style={styles.loadingText}>Loading...</Text>
             )}
           </View>
         ) : (
@@ -477,7 +517,7 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
               // surfaceView (default) causes problems with overlapping videos in RecyclerListView
               // See: https://docs.expo.dev/versions/latest/sdk/video/#surfacetype
               surfaceType={Platform.OS === 'android' ? 'textureView' : undefined}
-              onFirstFrameRender={() => {}}
+              onFirstFrameRender={() => setShowTransitionOverlay(false)}
             />
 
             {/* Play overlay - show when user paused OR autoplay blocked by browser */}
@@ -487,6 +527,22 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
                 {autoplayBlocked && Platform.OS === 'web' && (
                   <Text style={styles.tapToPlayText}>Tap to play</Text>
                 )}
+              </View>
+            )}
+
+            {/* Transition overlay — covers stale native content during RLV view recycling.
+                Shows the new video's thumbnail (or solid black) until the new player
+                renders its first frame. This prevents the "wrong video flash" on
+                budget Android devices like Galaxy A03s where the swap takes longer. */}
+            {showTransitionOverlay && (
+              <View style={styles.transitionOverlay}>
+                {(video.muxThumbnailUrl || video.thumbnailUrl) ? (
+                  <Image
+                    source={{ uri: video.muxThumbnailUrl || video.thumbnailUrl }}
+                    style={StyleSheet.absoluteFill}
+                    resizeMode="contain"
+                  />
+                ) : null}
               </View>
             )}
           </TouchableOpacity>
@@ -637,6 +693,11 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.7)',
     marginTop: 8,
     textAlign: 'center',
+  },
+  transitionOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#000',
+    zIndex: 5,
   },
   loadingContainer: {
     justifyContent: 'center',

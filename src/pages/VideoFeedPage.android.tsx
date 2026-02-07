@@ -37,12 +37,26 @@ import { ReportVideoModal } from '../components/modals/ReportVideoModal';
 import { useVideoFeed, VideoFilter } from '../hooks/video/useVideoFeed';
 import { useVideoUpload } from '../hooks/video/useVideoUpload';
 import { useAlert } from '../context/AlertContext';
+import { isAppError } from '../errors/AppError';
 import { shareVideo } from '../utils/videoSharing';
 import { videoPlaybackManagerV2 as videoPlaybackManager } from '../services/video/VideoPlaybackManagerV2';
 import { doc, getDocFromServer } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
 
 const { width, height } = Dimensions.get('window');
+
+// ────────────────────────────────────────────────────────────────────────────
+// DIAGNOSTIC LOGGING — prefix all with [VF-DIAG] for easy Metro filtering
+// Set to false to disable all diagnostic logs in production
+const VF_DIAG_ENABLED = __DEV__;
+let _diagSeq = 0; // monotonic sequence counter for ordering events
+const diagLog = (tag: string, msg: string, data?: Record<string, unknown>) => {
+  if (!VF_DIAG_ENABLED) return;
+  _diagSeq++;
+  const ts = Date.now();
+  const dataStr = data ? ` | ${JSON.stringify(data)}` : '';
+};
+// ────────────────────────────────────────────────────────────────────────────
 
 // Layout types for RecyclerListView
 const ViewTypes = {
@@ -92,14 +106,58 @@ const VideoFeedPage: React.FC = () => {
   
   const recyclerRef = useRef<RecyclerListView<any, any>>(null);
 
+  // Ref to track current video index without stale closures during rapid scrolling
+  const currentVideoIndexRef = useRef(currentVideoIndex);
+  // Keep ref in sync with state on every render
+  currentVideoIndexRef.current = currentVideoIndex;
+
+  // Diagnostic: track render count and extendedState changes
+  const renderCountRef = useRef(0);
+  renderCountRef.current++;
+  diagLog('COMPONENT_RENDER', `VideoFeedPage render #${renderCountRef.current}`, {
+    currentVideoIndex,
+    isScreenFocused,
+    isMuted,
+    videoCount: videos.length,
+    refIndex: currentVideoIndexRef.current,
+  });
+  const prevExtendedStateRef = useRef({ currentVideoIndex, isScreenFocused, isMuted });
+  useEffect(() => {
+    const prev = prevExtendedStateRef.current;
+    const changed: string[] = [];
+    if (prev.currentVideoIndex !== currentVideoIndex) changed.push(`currentVideoIndex: ${prev.currentVideoIndex}→${currentVideoIndex}`);
+    if (prev.isScreenFocused !== isScreenFocused) changed.push(`isScreenFocused: ${prev.isScreenFocused}→${isScreenFocused}`);
+    if (prev.isMuted !== isMuted) changed.push(`isMuted: ${prev.isMuted}→${isMuted}`);
+    if (changed.length > 0) {
+      diagLog('EXTENDED_STATE', 'extendedState will change (new object ref → ALL visible views re-render)', {
+        changes: changed,
+        renderCount: renderCountRef.current,
+        videoCount: videos.length,
+      });
+    }
+    prevExtendedStateRef.current = { currentVideoIndex, isScreenFocused, isMuted };
+  }, [currentVideoIndex, isScreenFocused, isMuted, videos.length]);
+
+  // NOTE: scrollTimeoutRef removed — immediate ref update means only ONE setState per page transition
+
   /**
    * RecyclerListView Data Provider
    * Tracks data changes and determines when to re-render
    */
   const dataProvider = useMemo(() => {
-    return new DataProvider((r1, r2) => {
-      return r1.id !== r2.id;
+    const dp = new DataProvider((r1, r2) => {
+      // Compare by reference — when likes, comments, viewCount, or any field
+      // changes via optimistic updates (e.g. handleLike calling setVideos),
+      // the new video object has a different reference so RLV re-renders the row.
+      // Previously we only compared r1.id !== r2.id which missed data mutations.
+      return r1 !== r2;
     }).cloneWithRows(videos);
+    diagLog('DATA_PROVIDER', 'DataProvider recreated via useMemo', {
+      videoCount: videos.length,
+      firstId: videos[0]?.id ?? 'none',
+      lastId: videos[videos.length - 1]?.id ?? 'none',
+    });
+    return dp;
   }, [videos]);
 
   /**
@@ -121,8 +179,10 @@ const VideoFeedPage: React.FC = () => {
    */
   useFocusEffect(
     useCallback(() => {
+      diagLog('FOCUS', 'Screen FOCUSED — resuming playback');
       setIsScreenFocused(true);
       return () => {
+        diagLog('FOCUS', 'Screen UNFOCUSED — deactivating all playback');
         setIsScreenFocused(false);
         videoPlaybackManager.deactivateAll();
       };
@@ -268,29 +328,49 @@ const VideoFeedPage: React.FC = () => {
   }, []);
 
   /**
-   * Track scroll position to determine active video
-   * Uses scroll offset to calculate which video is >50% visible (centered)
+   * Track scroll position to determine active video.
+   * Uses scroll offset to calculate which video is >50% visible (centered).
+   *
+   * FIX: No debounce. The ref is updated IMMEDIATELY so subsequent scroll events
+   * in the same snap animation see ref === centeredIndex and skip. This means
+   * only ONE setState fires per page transition, eliminating the 200-250ms
+   * debounce-reset delay that caused stale isActive rendering.
    */
   const handleScroll = useCallback((rawEvent: any, offsetX: number, offsetY: number) => {
-    // Calculate which video is centered based on scroll offset
-    // Round to nearest index (video is active when >50% visible)
     const centeredIndex = Math.round(offsetY / height);
-    
-    // debug logs removed
+    const refIndex = currentVideoIndexRef.current;
 
-    if (centeredIndex !== currentVideoIndex && centeredIndex >= 0 && centeredIndex < videos.length) {
-      // Deactivate all before activating new (prevent audio overlap)
+    // Only fire on index change — ref gates this to ONE call per page snap
+    if (centeredIndex !== refIndex && centeredIndex >= 0 && centeredIndex < videos.length) {
+      diagLog('SCROLL', 'Index CHANGED — immediate update (no debounce)', {
+        from: refIndex,
+        to: centeredIndex,
+        offsetY: Math.round(offsetY),
+        exactPosition: +(offsetY / height).toFixed(3),
+      });
+
+      // Deactivate audio immediately to prevent overlap
       videoPlaybackManager.deactivateAll();
+
+      // Update ref IMMEDIATELY — this gates subsequent scroll events in the same
+      // snap animation so they see ref === centeredIndex and don't trigger again.
+      currentVideoIndexRef.current = centeredIndex;
+
+      // Single setState per page transition (React batches if multiple fire in same tick)
       setCurrentVideoIndex(centeredIndex);
     }
-  }, [currentVideoIndex, setCurrentVideoIndex, videos.length]);
+  }, [setCurrentVideoIndex, videos.length]);
 
   /**
    * Handle visible indices changed (RecyclerListView's viewability tracking)
    * Now only used for logging/debugging - scroll handler determines active video
    */
   const handleVisibleIndicesChanged = useCallback((all: number[], now: number[]) => {
-    // Visibility tracking callback - actual index change handled by onScroll
+    diagLog('VISIBLE_INDICES', 'RLV visibility changed', {
+      allVisible: all,
+      newlyVisible: now,
+      currentVideoIndexRef: currentVideoIndexRef.current,
+    });
   }, []);
 
   /**
@@ -303,17 +383,47 @@ const VideoFeedPage: React.FC = () => {
   }, [hasMoreVideos, isLoadingMore, goToNextVideo]);
 
   /**
+   * Memoize extendedState to avoid creating a new object reference on every render.
+   * 
+   * KEY INSIGHT from RLV source (BaseViewRenderer.shouldComponentUpdate):
+   *   hasExtendedStateChanged = this.props.extendedState !== newProps.extendedState
+   * 
+   * A new object each render forces ALL visible cells to re-render, even ones whose
+   * isActive status hasn't changed. useMemo ensures the reference only changes when
+   * one of the actual values changes.
+   */
+  const extendedState = useMemo(() => {
+    diagLog('EXTENDED_STATE_MEMO', 'New extendedState object created', {
+      currentVideoIndex, isScreenFocused, isMuted,
+    });
+    return { currentVideoIndex, isScreenFocused, isMuted };
+  }, [currentVideoIndex, isScreenFocused, isMuted]);
+
+  /**
    * Row renderer for RecyclerListView
    */
   const rowRenderer = useCallback(
     (type: string | number, data: any, index: number) => {
       const currentUserId = resolvedAuth?.currentUser?.uid;
       const isOwnVideo = data.userId === currentUserId;
+      // Use REF for isActive — the ref is updated immediately in handleScroll,
+      // so even if this render cycle was triggered by a slightly-stale extendedState,
+      // the ref always has the latest scroll position.
+      const isActive = index === currentVideoIndexRef.current && isScreenFocused;
+
+      diagLog('ROW_RENDER', `rowRenderer called`, {
+        index,
+        videoId: data.id?.substring(0, 8),
+        isActive,
+        refIndex: currentVideoIndexRef.current,
+        isScreenFocused,
+        isMuted,
+      });
 
       return (
         <VideoCard
           video={data}
-          isActive={index === currentVideoIndex && isScreenFocused}
+          isActive={isActive}
           isMuted={isMuted}
           onMuteToggle={setIsMuted}
           onLike={() => handleLike(data)}
@@ -324,7 +434,7 @@ const VideoFeedPage: React.FC = () => {
         />
       );
     },
-    [currentVideoIndex, isScreenFocused, isMuted, handleLike, handleCommentPress, handleShare, handleReportPress, handleViewTracked, resolvedAuth]
+    [isScreenFocused, isMuted, handleLike, handleCommentPress, handleShare, handleReportPress, handleViewTracked, resolvedAuth]
   );
 
   /**
@@ -398,7 +508,9 @@ const VideoFeedPage: React.FC = () => {
       <SafeAreaView style={styles.container}>
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle-outline" size={64} color="#fff" />
-          <Text style={styles.errorText}>{error}</Text>
+          <Text style={styles.errorText}>
+            {isAppError(error) ? error.getUserMessage() : 'Failed to load videos. Please try again.'}
+          </Text>
           <TouchableOpacity style={styles.retryButton} onPress={handleRefresh}>
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
@@ -461,7 +573,7 @@ const VideoFeedPage: React.FC = () => {
         forceNonDeterministicRendering={true}
         // CRITICAL: Track state changes that affect rendering but aren't in data
         // This forces re-render of visible items when currentVideoIndex changes
-        extendedState={{ currentVideoIndex, isScreenFocused, isMuted }}
+        extendedState={extendedState}
         // CRITICAL: Only preload 1 screen ahead (reduces memory pressure)
         renderAheadOffset={height}
         // CRITICAL: Use onScroll to determine active video (more accurate than onVisibleIndicesChanged)

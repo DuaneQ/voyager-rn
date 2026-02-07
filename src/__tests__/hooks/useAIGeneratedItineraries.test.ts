@@ -27,8 +27,9 @@ describe('useAIGeneratedItineraries', () => {
     const { result } = renderHook(() => useHook());
 
     await waitFor(() => {
-      expect(result.current.error).toBe('User not authenticated');
+      expect(result.current.error).not.toBeNull();
     });
+    expect(result.current.error?.getUserMessage()).toBe('Please sign in to view your itineraries.');
 
     expect(result.current.itineraries).toEqual([]);
     expect(result.current.loading).toBe(false);
@@ -65,8 +66,9 @@ describe('useAIGeneratedItineraries', () => {
     const { result } = renderHook(() => useHook());
 
     await waitFor(() => {
-      expect(result.current.error).toMatch(/backend failure/);
+      expect(result.current.error).not.toBeNull();
     });
+    expect(result.current.error?.message).toMatch(/backend failure/);
 
     expect(result.current.itineraries).toEqual([]);
     expect(result.current.loading).toBe(false);

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Itinerary } from '../../hooks/useAllItineraries';
 import { parseAndFormatItineraryDate } from '../../utils/formatDate';
 
@@ -8,6 +8,7 @@ interface ItineraryListItemProps {
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
   isEditing?: boolean;
+  isDeleting?: boolean;
 }
 
 const ItineraryListItem: React.FC<ItineraryListItemProps> = ({
@@ -15,6 +16,7 @@ const ItineraryListItem: React.FC<ItineraryListItemProps> = ({
   onEdit,
   onDelete,
   isEditing = false,
+  isDeleting = false,
 }) => {
   const isAI = itinerary.ai_status === 'completed' || itinerary.response?.success;
   const emoji = isAI ? '🤖' : '✈️';
@@ -97,10 +99,15 @@ const ItineraryListItem: React.FC<ItineraryListItemProps> = ({
           <Text style={styles.editButtonText}>Edit</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={styles.deleteButton}
+          style={[styles.deleteButton, isDeleting && styles.deleteButtonDisabled]}
           onPress={() => onDelete(itinerary.id)}
+          disabled={isDeleting}
         >
-          <Text style={styles.deleteButtonText}>Delete</Text>
+          {isDeleting ? (
+            <ActivityIndicator size="small" color="#ff3b30" />
+          ) : (
+            <Text style={styles.deleteButtonText}>Delete</Text>
+          )}
         </TouchableOpacity>
       </View>
     </View>
@@ -173,6 +180,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#ff3b30',
+  },
+  deleteButtonDisabled: {
+    opacity: 0.5,
   },
   deleteButtonText: {
     color: '#ff3b30',

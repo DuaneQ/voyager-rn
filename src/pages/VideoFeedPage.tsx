@@ -30,6 +30,7 @@ import { shareVideo } from '../utils/videoSharing';
 import { videoPlaybackManagerV2 as videoPlaybackManager } from '../services/video/VideoPlaybackManagerV2';
 import { doc, getDocFromServer } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
+import { isAppError } from '../errors/AppError';
 
 // Platform-safe useFocusEffect
 let useFocusEffect: (callback: () => void | (() => void)) => void;
@@ -435,7 +436,9 @@ const VideoFeedPage: React.FC = () => {
       <SafeAreaView style={styles.container}>
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle-outline" size={64} color="#fff" />
-          <Text style={styles.errorText}>{error}</Text>
+          <Text style={styles.errorText}>
+            {isAppError(error) ? error.getUserMessage() : 'Failed to load videos. Please try again.'}
+          </Text>
           <TouchableOpacity style={styles.retryButton} onPress={handleRefresh}>
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>

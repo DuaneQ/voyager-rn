@@ -120,8 +120,8 @@ describe('UserProfileContext', () => {
         await ref.current!.updateProfile(updateData);
       });
 
-      // Assert: updateDoc was called with the updates
-      expect(updateDoc).toHaveBeenCalledWith(expect.anything(), updateData);
+      // Assert: setDoc with merge was called with the updates
+      expect(setDoc).toHaveBeenCalledWith(expect.anything(), updateData, { merge: true });
     });;
 
     it('should create document for new user who signed up but has no profile', async () => {
@@ -149,8 +149,8 @@ describe('UserProfileContext', () => {
         await ref.current!.updateProfile(profileData);
       });
 
-      // Should call updateDoc to update/create the profile
-      expect(updateDoc).toHaveBeenCalledWith(expect.anything(), profileData);
+      // Should call setDoc with merge to update/create the profile
+      expect(setDoc).toHaveBeenCalledWith(expect.anything(), profileData, { merge: true });
     });;
 
     it('should update existing profile fields', async () => {
@@ -172,8 +172,8 @@ describe('UserProfileContext', () => {
         await ref.current!.updateProfile(updates);
       });
 
-      // Assert: updateDoc was called with updates
-      expect(updateDoc).toHaveBeenCalledWith(expect.anything(), updates);
+      // Assert: setDoc with merge was called with updates
+      expect(setDoc).toHaveBeenCalledWith(expect.anything(), updates, { merge: true });
     });
 
     it('should throw error when user is not authenticated', async () => {

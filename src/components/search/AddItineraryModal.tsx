@@ -85,6 +85,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [deleteConfirmModalVisible, setDeleteConfirmModalVisible] = useState(false);
   const [itineraryToDelete, setItineraryToDelete] = useState<string | null>(null);
+  const [deletingItineraryId, setDeletingItineraryId] = useState<string | null>(null);
   const [isDestinationValid, setIsDestinationValid] = useState(false);
   
   // Android picker modal states
@@ -193,7 +194,12 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
     const idToDelete = itineraryId || itineraryToDelete;
     if (!idToDelete) return;
     
+    setDeletingItineraryId(idToDelete);
+    
     const response = await deleteItinerary(idToDelete);
+    
+    setDeletingItineraryId(null);
+    
     if (response.success) {
       // Parent will show a unified success notification. Refresh list and reset form if needed.
       onItineraryAdded(); // Refresh list
@@ -578,6 +584,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
                   onEdit={handleEdit}
                   onDelete={handleDelete}
                   isEditing={editingItineraryId === itinerary.id}
+                  isDeleting={deletingItineraryId === itinerary.id}
                 />
               ))
             )}

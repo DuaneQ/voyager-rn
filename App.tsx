@@ -12,6 +12,11 @@ import AppNavigator from './src/navigation/AppNavigator';
 import { AuthProvider } from './src/context/AuthContext';
 import { AlertProvider } from './src/context/AlertContext';
 import { UserProfileProvider } from './src/context/UserProfileContext';
+import ErrorBoundary from './src/components/common/ErrorBoundary';
+import { setupGlobalErrorHandlers } from './src/utils/globalErrorHandler';
+
+// Initialize global error handlers for uncaught errors and unhandled promise rejections
+setupGlobalErrorHandlers();
 
 // Enable react-native-screens for better performance and compatibility with React 19
 enableScreens(true);
@@ -60,15 +65,17 @@ export default function App() {
   }
 
   return (
-    <SafeAreaProvider>
-      <AuthProvider>
-        <AlertProvider>
-          <UserProfileProvider>
-            <AppNavigator />
-          </UserProfileProvider>
-        </AlertProvider>
-      </AuthProvider>
-    </SafeAreaProvider>
+    <ErrorBoundary level="global">
+      <SafeAreaProvider>
+        <AuthProvider>
+          <AlertProvider>
+            <UserProfileProvider>
+              <AppNavigator />
+            </UserProfileProvider>
+          </AlertProvider>
+        </AuthProvider>
+      </SafeAreaProvider>
+    </ErrorBoundary>
   );
 }
 

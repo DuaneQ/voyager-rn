@@ -89,7 +89,6 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
     const successful = results.filter(r => r.success);
     const failed = results.filter(r => !r.success);
     
-    console.log(`[TEST SETUP] Seeded ${successful.length}/${results.length} itineraries`);
     if (failed.length > 0) {
       console.error(`[TEST SETUP] Failed to seed ${failed.length} itineraries`);
     }
@@ -149,10 +148,6 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
     it('should return only Paris itineraries when searching for Paris', async () => {
       const now = Date.now();
       const twoWeeksLater = now + 14 * 24 * 60 * 60 * 1000;
-
-      console.log('[TEST] Searching for Paris itineraries between', new Date(now).toISOString(), 'and', new Date(twoWeeksLater).toISOString());
-      console.log('[TEST] Created itineraries:', createdItineraryIds.length);
-
       const results = await callSearchItineraries({
         destination: 'Paris, France',
         minStartDay: now,
@@ -164,8 +159,6 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
         lowerRange: 20,
         upperRange: 40,
       });
-
-      console.log('[TEST] Search returned', results.length, 'itineraries');
 
       // Assert ALL results are for Paris
       expect(results.length).toBeGreaterThan(0);

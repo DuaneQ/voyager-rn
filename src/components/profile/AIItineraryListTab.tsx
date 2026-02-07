@@ -11,14 +11,16 @@ import {
   StyleSheet,
   ScrollView,
   ActivityIndicator,
+  TouchableOpacity,
 } from 'react-native';
 import { CrossPlatformPicker, PickerItem } from '../common/CrossPlatformPicker';
 import { parseAndFormatItineraryDate } from '../../utils/formatDate';
 import { useAIGeneratedItineraries } from '../../hooks/useAIGeneratedItineraries';
 import { AIItineraryDisplay } from '../ai/AIItineraryDisplay';
+import { isAppError } from '../../errors/AppError';
 
 export const AIItineraryListTab: React.FC = () => {
-  const { itineraries, loading, error } = useAIGeneratedItineraries();
+  const { itineraries, loading, error, refreshItineraries } = useAIGeneratedItineraries();
   const [selectedItineraryId, setSelectedItineraryId] = useState<string | null>(null);
 
   // Auto-select first itinerary when loaded
@@ -50,11 +52,17 @@ export const AIItineraryListTab: React.FC = () => {
   }
 
   if (error) {
+    const errorMessage = isAppError(error)
+      ? error.getUserMessage()
+      : 'Unable to load itineraries. Please check your connection and try again.';
     return (
       <View style={styles.centerContainer}>
         <Text style={styles.errorIcon}>⚠️</Text>
         <Text style={styles.errorTitle}>Error Loading Itineraries</Text>
-        <Text style={styles.errorText}>{error}</Text>
+        <Text style={styles.errorText}>{errorMessage}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={refreshItineraries}>
+          <Text style={styles.retryButtonText}>Try Again</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -138,6 +146,18 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     lineHeight: 24,
+  },
+  retryButton: {
+    marginTop: 20,
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
   emptyContainer: {
     flex: 1,

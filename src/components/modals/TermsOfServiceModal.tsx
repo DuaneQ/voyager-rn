@@ -15,6 +15,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { isAppError } from '../../errors/AppError';
 
 interface TermsOfServiceModalProps {
   visible: boolean;
@@ -232,7 +233,9 @@ export const TermsOfServiceModal: React.FC<TermsOfServiceModalProps> = ({
         {error && (
           <View style={styles.errorBox}>
             <Text style={styles.errorTitle}>❌ Error</Text>
-            <Text style={styles.errorText}>{error.message}</Text>
+            <Text style={styles.errorText}>
+              {isAppError(error) ? error.getUserMessage() : 'Something went wrong. Please try again.'}
+            </Text>
           </View>
         )}
 

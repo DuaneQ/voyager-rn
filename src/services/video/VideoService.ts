@@ -198,25 +198,43 @@ export class VideoService {
 
   /**
    * Delete video from Storage and Firestore
+   * Gracefully handles missing Storage objects (e.g. already deleted from PWA)
    */
   async deleteVideo(videoId: string, video: Video): Promise<void> {
     try {
-      // Delete video file from Storage
-      const videoRef = ref(storage, video.videoUrl);
-      await deleteObject(videoRef);
+      // Delete video file from Storage (ignore if already deleted)
+      try {
+        const videoRef = ref(storage, video.videoUrl);
+        await deleteObject(videoRef);
+      } catch (storageErr: any) {
+        if (storageErr?.code === 'storage/object-not-found') {
+          console.warn('[VideoService] Video file already deleted from Storage, continuing cleanup');
+        } else {
+          throw storageErr;
+        }
+      }
 
-      // Delete thumbnail from Storage
+      // Delete thumbnail from Storage (ignore if already deleted or missing)
       if (video.thumbnailUrl) {
-        const thumbnailRef = ref(storage, video.thumbnailUrl);
-        await deleteObject(thumbnailRef);
+        try {
+          const thumbnailRef = ref(storage, video.thumbnailUrl);
+          await deleteObject(thumbnailRef);
+        } catch (thumbErr: any) {
+          if (thumbErr?.code === 'storage/object-not-found') {
+            console.warn('[VideoService] Thumbnail already deleted from Storage, continuing cleanup');
+          } else {
+            throw thumbErr;
+          }
+        }
       }
 
       // Delete Firestore document
       await deleteDoc(doc(db, 'videos', videoId));
     } catch (error) {
+      console.error('[VideoService] Video deletion error:', error);
       const errorMessage =
         error instanceof Error ? error.message : 'Video deletion failed';
-      throw new Error(errorMessage);
+      throw new Error(`Failed to delete video: ${errorMessage}`);
     }
   }
 

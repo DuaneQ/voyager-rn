@@ -180,9 +180,12 @@ export const useVideoUpload = (options?: UseVideoUploadOptions) => {
       await videoService.deleteVideo(videoId, video);
       return true;
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Delete failed';
-      showError(errorMessage, 'Delete Failed');
+      console.error('[useVideoUpload] Delete error:', error);
+      // Show user-friendly message instead of raw Firebase errors
+      showError(
+        'Unable to delete video. Please check your connection and try again.',
+        'Delete Failed'
+      );
       return false;
     }
   }, []);

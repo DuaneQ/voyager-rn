@@ -7,12 +7,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { 
   doc, 
-  updateDoc, 
+  setDoc, 
   getDoc, 
   serverTimestamp as firestoreServerTimestamp 
 } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from '../config/firebaseConfig';
+import { AppError, isAppError } from '../errors/AppError';
+import { createFirestoreError } from '../errors/factories/firestoreErrors';
+import { createNotAuthenticatedError } from '../errors/factories/profileErrors';
 
 interface TermsOfService {
   accepted: boolean;
@@ -23,7 +26,7 @@ interface TermsOfService {
 interface UseTermsAcceptanceReturn {
   hasAcceptedTerms: boolean;
   isLoading: boolean;
-  error: Error | null;
+  error: AppError | Error | null;
   acceptTerms: () => Promise<void>;
   checkTermsStatus: () => Promise<boolean>;
 }
@@ -39,7 +42,7 @@ const CURRENT_TERMS_VERSION = '1.0.0';
 export const useTermsAcceptance = (): UseTermsAcceptanceReturn => {
   const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const [error, setError] = useState<AppError | Error | null>(null);
   const [userId, setUserId] = useState<string | undefined>(undefined);
 
   /**
@@ -118,7 +121,7 @@ export const useTermsAcceptance = (): UseTermsAcceptanceReturn => {
     const currentUserId = auth.currentUser?.uid || userId;
     
     if (!currentUserId) {
-      const noUserError = new Error('User must be logged in to accept terms');
+      const noUserError = createNotAuthenticatedError();
       console.error('[useTermsAcceptance.acceptTerms] ❌ No user ID found');
       setError(noUserError);
       throw noUserError;
@@ -129,26 +132,23 @@ export const useTermsAcceptance = (): UseTermsAcceptanceReturn => {
     try {
       const userDocRef = doc(db, 'users', currentUserId);
       
-      // Write acceptance to Firestore
-      await updateDoc(userDocRef, {
+      // Use setDoc with merge to handle case where user document doesn't exist yet.
+      // This fixes the "No document to update" production error that occurred when
+      // a user authenticated via Firebase Auth but had no Firestore users record.
+      await setDoc(userDocRef, {
         termsOfService: {
           accepted: true,
           acceptedAt: firestoreServerTimestamp(),
           version: CURRENT_TERMS_VERSION,
         },
         lastUpdated: firestoreServerTimestamp(),
-      });
+      }, { merge: true });
       setHasAcceptedTerms(true);
     } catch (err) {
-      const errorObj = err instanceof Error ? err : new Error(String(err));
-      console.error('[useTermsAcceptance.acceptTerms] ❌ Error accepting terms:', errorObj);
-      console.error('[useTermsAcceptance.acceptTerms] Error details:', {
-        code: (err as any)?.code,
-        message: errorObj.message,
-        stack: errorObj.stack
-      });
-      setError(errorObj);
-      throw errorObj;
+      const appError = isAppError(err) ? err : createFirestoreError(err, 'acceptTerms', { userId: currentUserId });
+      console.error('[useTermsAcceptance.acceptTerms] ❌ Error accepting terms:', appError.toLogObject());
+      setError(appError);
+      throw appError;
     } finally {
       setIsLoading(false);
     }

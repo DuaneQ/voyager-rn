@@ -5,7 +5,7 @@
 
 import { renderHook, act, waitFor } from '@testing-library/react-native';
 import { useTermsAcceptance } from '../../hooks/useTermsAcceptance';
-import { getDoc, updateDoc } from 'firebase/firestore';
+import { getDoc, setDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 
 // Mock Firebase modules
@@ -19,7 +19,7 @@ jest.mock('../../config/firebaseConfig', () => ({
 }));
 
 const mockGetDoc = getDoc as jest.MockedFunction<typeof getDoc>;
-const mockUpdateDoc = updateDoc as jest.MockedFunction<typeof updateDoc>;
+const mockSetDoc = setDoc as jest.MockedFunction<typeof setDoc>;
 const mockOnAuthStateChanged = onAuthStateChanged as jest.MockedFunction<typeof onAuthStateChanged>;
 
 describe('useTermsAcceptance', () => {
@@ -130,7 +130,7 @@ describe('useTermsAcceptance', () => {
       await result.current.acceptTerms();
     });
 
-    expect(mockUpdateDoc).toHaveBeenCalled();
+    expect(mockSetDoc).toHaveBeenCalled();
     expect(result.current.hasAcceptedTerms).toBe(true);
   });
 

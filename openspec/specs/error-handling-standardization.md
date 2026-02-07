@@ -727,10 +727,281 @@ src/
 
 ### 8.3 Manual Testing Checklist
 
-- [ ] Delete user's Firestore document → sign in → see friendly error + recovery option (not raw Firestore path)
-- [ ] Kill network → perform action → see "Connection error" (not timeout stack trace)
-- [ ] Trigger render error in SearchPage → other tabs still work (Error Boundary catches)
-- [ ] All existing tests still pass after Phase 1
+Each scenario below includes **exact steps**, **expected behavior**, and **what to verify**. Test on all three platforms (iOS, Android, Web) unless stated otherwise.
+
+---
+
+#### 8.3.1 Firestore "Document Not Found" Error (The Production Bug)
+
+**What it tests**: Raw Firestore paths are never shown to users when a user's document is missing.
+
+**Prerequisites**:
+- Access to the Firebase Console (dev project)
+- A test user account you can safely modify
+
+**Steps**:
+1. Sign in to the app with a test user on **iOS, Android, and Web**
+2. Confirm the user can navigate normally (profile loads, tabs work)
+3. Open Firebase Console → Firestore → `users` collection
+4. **Delete the user's document** (or rename the document ID so it can't be found)
+5. In the app, navigate to a screen that reads the user's profile:
+   - Go to **Profile tab** → should trigger a profile load
+   - Go to **Settings** → try updating a setting
+   - If Terms of Service acceptance is required, trigger that flow
+6. Observe the error displayed
+
+**Expected behavior**:
+- ✅ A friendly message appears: *"Your profile could not be found. Please try signing out and back in."* or *"Your data was not found."*
+- ✅ A recovery option is shown (e.g., "Sign Out & Retry" button)
+- ❌ **NEVER** see raw Firestore paths like `projects/mundo1-1/databases/(default)/documents/users/...`
+- ❌ **NEVER** see `No document to update` raw error text
+- ❌ **NEVER** see a stack trace or internal error code
+
+**Cleanup**: Re-create the user's document in Firestore Console, or sign out and sign in again to trigger profile creation.
+
+---
+
+#### 8.3.2 Network Connectivity Errors
+
+**What it tests**: Clean error messages appear when the network is unavailable, with a retry option.
+
+**Steps (Mobile — iOS/Android)**:
+1. Sign in and navigate to the **Search** or **Video Feed** tab
+2. Turn on **Airplane Mode** (Settings → Airplane Mode)
+3. Pull to refresh, or navigate to a different tab that loads data
+4. Observe the error displayed
+5. Turn **Airplane Mode off**
+6. Press the **Retry** button (or pull to refresh again)
+
+**Steps (Web)**:
+1. Sign in and navigate to the **Search** or **Video Feed** tab
+2. Open **DevTools → Network tab** → set throttling to **Offline**
+3. Refresh the page or navigate to a tab that loads data
+4. Observe the error displayed
+5. Set throttling back to **No Throttling**
+6. Press **Retry** or refresh
+
+**Expected behavior**:
+- ✅ A friendly message appears: *"Connection error. Please check your internet and try again."* or *"Could not load this video. Please check your connection and try again."*
+- ✅ A **Retry** button is visible
+- ✅ After restoring connectivity and pressing Retry, data loads normally
+- ❌ **NEVER** see `ETIMEDOUT`, `ECONNREFUSED`, `deadline-exceeded`, or any raw error code
+- ❌ **NEVER** see a stack trace
+
+---
+
+#### 8.3.3 ErrorBoundary — Component Crash Isolation
+
+**What it tests**: A crash in one screen/tab does not crash the entire app. Other tabs remain functional.
+
+**Steps (Development mode — `__DEV__` only)**:
+1. Start the app in development mode (`npx expo start`)
+2. Temporarily inject a crash into a single page component:
+   - In **SearchPage.tsx**, add `throw new Error('Test crash')` as the first line of the component body
+3. Navigate to the **Search** tab
+4. Observe the error screen
+5. Navigate to **other tabs** (Profile, Chat, Video Feed)
+
+**Expected behavior**:
+- ✅ The Search tab shows a fallback: *"This section encountered an error"* with a **"Try Again"** button
+- ✅ If level="global", shows: *"Something went wrong"* with a **"Try Again"** button
+- ✅ **Other tabs still work** — you can navigate to Profile, Chat, etc. without crashing
+- ✅ In `__DEV__` mode, debug info (error message) appears below the friendly message
+- ✅ Pressing **"Try Again"** resets the boundary and re-renders the component
+- ❌ The entire app does **NOT** crash or show a white/blank screen
+
+**Cleanup**: Remove the injected `throw` statement.
+
+---
+
+#### 8.3.4 ErrorDisplay Component — Various Error Types
+
+**What it tests**: The `ErrorDisplay` component renders safely for all error types and never leaks internal details.
+
+**Steps**:
+1. Navigate to any screen that uses `ErrorDisplay` (e.g., profile load error state, video feed error state)
+2. Trigger an error condition (see scenarios below)
+3. Verify the UI
+
+**Scenario A — AppError (preferred path)**:
+- Trigger a Firestore error (e.g., delete a document and try to load it)
+- **Verify**: User sees the error's `userMessage`, not the raw `message`. Retry button shows the `retryAction` label.
+
+**Scenario B — Raw Error object (backward-compatible path)**:
+- If any hook still returns a raw `Error` instead of `AppError`, the `ErrorDisplay` should show: *"Something went wrong. Please try again."*
+- **Verify**: The raw `error.message` (which may contain Firestore paths) is **NOT** displayed.
+
+**Scenario C — String error (legacy path)**:
+- If an error state is a plain string, `ErrorDisplay` should show: *"Something went wrong. Please try again."*
+- **Verify**: The raw string is **NOT** displayed.
+
+---
+
+#### 8.3.5 Video Error — Deleted Video (Cross-Platform)
+
+**What it tests**: When a video is deleted on one platform, the other platform shows a friendly message instead of a raw error.
+
+**Prerequisites**:
+- A test user with at least one uploaded video
+- Access to the app on two platforms (e.g., Web + iOS, or Web + Android)
+
+**Steps**:
+1. On **Platform A** (e.g., Web), sign in and go to the **Profile** tab
+2. Open the video grid and **delete a video** that you know the other platform has cached or will try to load
+3. On **Platform B** (e.g., iOS or Android), navigate to the **Video Feed** or the user's profile
+4. Scroll to where the deleted video would appear
+5. Observe the error displayed on the video card
+
+**Expected behavior**:
+- ✅ The video card shows: *"This video is no longer available. It may have been removed."*
+- ✅ No retry button (deleted videos can't be retried — `recoverable: false`)
+- ❌ **NEVER** see `Object does not exist at location`, `404`, `storage/object-not-found`, or Firebase Storage URLs
+- ❌ **NEVER** see the video's Firestore document ID (e.g., `BwYMglU1PCdkHeUCbXL9HFL2yuj1`)
+
+---
+
+#### 8.3.6 Video Error — Codec Incompatibility (Android)
+
+**What it tests**: Android devices with limited codec support show a friendly message instead of a raw `MediaCodecVideoRenderer` error.
+
+**Prerequisites**:
+- An Android device or emulator
+- A video encoded in HEVC/H.265 (or a format the test device doesn't support)
+
+**Steps**:
+1. Upload a video in an uncommon codec (HEVC/H.265) from Web or iOS
+2. On an Android device/emulator, navigate to the **Video Feed**
+3. Scroll to the video and let it attempt to play
+4. Observe the error
+
+**Expected behavior**:
+- ✅ The video card shows: *"This video format is not compatible with your device."*
+- ✅ No retry button (`recoverable: false` — retrying won't fix codec support)
+- ❌ **NEVER** see `MediaCodecVideoRenderer error, index=0, format=Format(2, null, video/hevc, 1920x1080...`
+- ❌ **NEVER** see raw codec names like `video/hevc` or decoder pipeline details
+
+---
+
+#### 8.3.7 Video Error — Network Failure During Playback
+
+**What it tests**: Videos that fail to load due to network issues show a recoverable error.
+
+**Steps**:
+1. Navigate to the **Video Feed** and let a few videos start loading
+2. **Kill the network** (Airplane Mode on mobile, Offline throttling on Web)
+3. Scroll to a new video that hasn't loaded yet
+4. Observe the error
+5. **Restore the network**
+6. Press **Retry** (if available) or scroll away and back
+
+**Expected behavior**:
+- ✅ The video card shows: *"Could not load this video. Please check your connection and try again."*
+- ✅ A **Retry** button is visible (`recoverable: true`)
+- ✅ After restoring network and retrying, the video loads and plays
+- ❌ **NEVER** see `timeout`, `416 Range Not Satisfiable`, `ECONNREFUSED`, or raw HTTP status codes
+
+---
+
+#### 8.3.8 Video Error — Autoplay Blocked (Web Only)
+
+**What it tests**: Web browsers that block autoplay show a helpful tap-to-play message.
+
+**Prerequisites**:
+- A desktop web browser (Chrome, Safari, Firefox)
+- Browser autoplay settings set to block (or a fresh tab with no prior user interaction)
+
+**Steps**:
+1. Open the app in a **new incognito/private browser window** (no prior interaction)
+2. Navigate directly to the **Video Feed** (some browsers require user interaction before allowing autoplay)
+3. Observe the first video card
+
+**Expected behavior**:
+- ✅ If autoplay is blocked, the video shows: *"Tap to play this video."*
+- ✅ Severity is INFO (not a real error — just a browser policy)
+- ✅ Tapping the video starts playback
+- ❌ **NEVER** see `play() request was interrupted` or `user didn't interact with the document first`
+
+---
+
+#### 8.3.9 Video Feed — Firestore Query Failure
+
+**What it tests**: When the video feed Firestore query fails, the page shows a friendly error instead of crashing.
+
+**Steps**:
+1. Navigate to the **Video Feed** tab
+2. Trigger a Firestore failure (one of):
+   - Kill the network **before** the feed loads
+   - Temporarily modify Firestore security rules to deny reads on the `videos` collection (dev only)
+3. Observe the feed error state
+
+**Expected behavior**:
+- ✅ The feed shows: *"Failed to load videos. Please check your connection and try again."*
+- ✅ A **Retry** button is visible
+- ✅ The error is an `AppError` with `code: 'VIDEO_FEED_LOAD_FAILED'`
+- ❌ **NEVER** see raw Firestore error messages or permission denial details
+
+---
+
+#### 8.3.10 Video Error — Video Grid Playback Failure (Cross-Platform Alert)
+
+**What it tests**: The VideoGrid component uses cross-platform `showAlert()` instead of `Alert.alert()` which is broken on web.
+
+**Steps (Web)**:
+1. Navigate to a user's profile that has uploaded videos
+2. Open the **video grid**
+3. Trigger a playback error (e.g., corrupted video file, or delete the video's storage object)
+4. Observe the alert/notification
+
+**Expected behavior**:
+- ✅ On **Web**: A banner/toast alert appears (via `showAlert('error', ...)`)
+- ✅ On **iOS/Android**: The same `showAlert` system works (not `Alert.alert`)
+- ❌ On **Web**: Does **NOT** call `Alert.alert()` (which shows nothing or crashes on web)
+- ❌ **NEVER** see `window.alert()` or browser-native dialogs for errors
+
+---
+
+#### 8.3.11 Global Error Handler — Unhandled Promise Rejection
+
+**What it tests**: Unhandled promise rejections are caught and logged (not silently swallowed).
+
+**Steps (Development mode)**:
+1. Open the **Metro bundler console** or **browser DevTools console**
+2. Temporarily add an unhandled promise rejection somewhere in the app:
+   ```typescript
+   // Temporary test code in any component
+   useEffect(() => {
+     Promise.reject(new Error('Test unhandled rejection'));
+   }, []);
+   ```
+3. Navigate to that screen
+4. Check the console output
+
+**Expected behavior**:
+- ✅ Console shows: `[GlobalErrorHandler] Unhandled promise rejection: { reason: { message: 'Test unhandled rejection' } }`
+- ✅ The app does **NOT** crash
+- ❌ The rejection is **NOT** silently swallowed (it appears in console)
+
+**Cleanup**: Remove the temporary test code.
+
+---
+
+#### 8.3.12 Verification Checklist (Run After All Scenarios)
+
+After completing manual testing, verify these cross-cutting concerns:
+
+| Check | Status |
+|-------|--------|
+| No raw Firestore paths visible anywhere in the UI | ☐ |
+| No raw stack traces visible anywhere in the UI | ☐ |
+| No raw video IDs visible to users (outside `__DEV__` debug info) | ☐ |
+| No raw error codes visible (e.g., `not-found`, `permission-denied`) | ☐ |
+| No `Alert.alert()` used on web (check browser console for warnings) | ☐ |
+| All retry buttons work and actually retry the failed operation | ☐ |
+| ErrorBoundary isolates crashes — other tabs survive | ☐ |
+| `__DEV__` mode shows debug info; production does not | ☐ |
+| All three platforms (iOS, Android, Web) tested | ☐ |
+| All existing tests still pass: `npm test` | ☐ |
+| TypeScript compiles: `npx tsc --noEmit` | ☐ |
 
 ---
 

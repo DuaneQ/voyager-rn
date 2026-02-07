@@ -6,6 +6,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { httpsCallable } from 'firebase/functions';
 import * as firebaseCfg from '../config/firebaseConfig';
+import { AppError, ErrorDomain } from '../errors/AppError';
+import { toAppError } from '../errors/toAppError';
 
 export interface AIGeneratedItinerary {
   id: string;
@@ -31,7 +33,7 @@ export interface AIGeneratedItinerary {
 export const useAIGeneratedItineraries = () => {
   const [itineraries, setItineraries] = useState<AIGeneratedItinerary[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<AppError | null>(null);
 
   const fetchItineraries = useCallback(async () => {
   const tentative = typeof (firebaseCfg as any).getAuthInstance === 'function'
@@ -40,7 +42,15 @@ export const useAIGeneratedItineraries = () => {
   const effectiveAuth = tentative && tentative.currentUser ? tentative : (firebaseCfg as any).auth;
   const userId = effectiveAuth?.currentUser?.uid;
     if (!userId) {
-      setError('User not authenticated');
+      setError(new AppError({
+        code: 'AUTH_REQUIRED',
+        message: 'User not authenticated for AI itineraries',
+        userMessage: 'Please sign in to view your itineraries.',
+        domain: ErrorDomain.AUTH,
+        severity: 'error' as any,
+        recoverable: true,
+        retryAction: 'Sign In',
+      }));
       return;
     }
 
@@ -71,7 +81,7 @@ export const useAIGeneratedItineraries = () => {
       setItineraries(allItineraries);
     } catch (err) {
       console.error('Error fetching AI itineraries:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch itineraries');
+      setError(toAppError(err, ErrorDomain.ITINERARY));
     } finally {
       setLoading(false);
     }
