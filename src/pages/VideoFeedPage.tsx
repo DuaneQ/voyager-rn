@@ -30,6 +30,7 @@ import { shareVideo } from '../utils/videoSharing';
 import { videoPlaybackManagerV2 as videoPlaybackManager } from '../services/video/VideoPlaybackManagerV2';
 import { doc, getDocFromServer } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
+import { isAppError } from '../errors/AppError';
 
 // Platform-safe useFocusEffect
 let useFocusEffect: (callback: () => void | (() => void)) => void;
@@ -93,6 +94,11 @@ const VideoFeedPage: React.FC = () => {
   const isScrollingRef = useRef(false); // Use ref instead of state to prevent stale closures
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastViewabilityChangeRef = useRef<number>(0); // Track last viewability change time
+  // CRITICAL: Mirror currentVideoIndex in a ref so the useRef-based onViewableItemsChanged
+  // callback always reads the latest value (avoids stale closure over initial value of 0)
+  const currentVideoIndexRef = useRef(currentVideoIndex);
+  // Keep ref in sync with state on every render
+  currentVideoIndexRef.current = currentVideoIndex;
 
   // Stop video playback when navigating away (fixes Android audio continuing)
   useFocusEffect(
@@ -169,10 +175,12 @@ const VideoFeedPage: React.FC = () => {
    * Handle scroll begin - immediately deactivate to prevent audio overlap
    */
   const handleScrollBeginDrag = useCallback(() => {
-    
+    const timestamp = Date.now();    
     // Immediately deactivate current video to stop audio
-    videoPlaybackManager.deactivateAll().catch(err => {
-      console.warn('[VideoFeedPage] Error deactivating on scroll start:', err);
+    videoPlaybackManager.deactivateAll().then(() => {
+      const elapsed = Date.now() - timestamp;
+    }).catch(err => {
+      console.error(`[DIAG][${Date.now()}][VideoFeedPage] deactivateAll() error:`, err);
     });
   }, []);
 
@@ -333,7 +341,11 @@ const VideoFeedPage: React.FC = () => {
       
       // CRITICAL FIX: Only block during RAPID changes, not during scroll flag
       // This allows index to update when scroll settles (even if flag hasn't cleared yet)
-      if (!isRapidChange && index !== null && index !== currentVideoIndex) {
+      // Use currentVideoIndexRef.current (not currentVideoIndex) to avoid stale closure!
+      // The useRef-based callback captures the initial state value forever,
+      // so comparing against the captured `currentVideoIndex` would always compare against 0,
+      // making it impossible to scroll back to the first video (index 0).
+      if (!isRapidChange && index !== null && index !== currentVideoIndexRef.current) {
         
         // CRITICAL for Android: Force deactivate ALL videos before activating new one
         // This prevents audio overlap during rapid scrolling
@@ -424,7 +436,9 @@ const VideoFeedPage: React.FC = () => {
       <SafeAreaView style={styles.container}>
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle-outline" size={64} color="#fff" />
-          <Text style={styles.errorText}>{error}</Text>
+          <Text style={styles.errorText}>
+            {isAppError(error) ? error.getUserMessage() : 'Failed to load videos. Please try again.'}
+          </Text>
           <TouchableOpacity style={styles.retryButton} onPress={handleRefresh}>
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>

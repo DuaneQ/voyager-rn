@@ -128,8 +128,9 @@ describe('TermsGuard', () => {
       </TermsGuard>
     );
 
-    expect(getByText('Error loading profile')).toBeTruthy();
-    expect(getByText('Network error')).toBeTruthy();
+    // ErrorDisplay shows a safe generic message for raw Error objects
+    expect(getByText('Something went wrong')).toBeTruthy();
+    expect(getByText('Something went wrong. Please try again.')).toBeTruthy();
   });
 
   it('should show Terms modal when terms not accepted', () => {

@@ -17,6 +17,7 @@ import { VIDEO_CONSTRAINTS } from '../../types/Video';
 // Mock expo modules
 jest.mock('expo-video-thumbnails');
 jest.mock('expo-file-system');
+jest.mock('expo-image-manipulator');
 
 // Mock expo-video createVideoPlayer
 jest.mock('expo-video', () => ({
@@ -24,6 +25,7 @@ jest.mock('expo-video', () => ({
     duration: 30, // 30 seconds
     status: 'readyToPlay',
     release: jest.fn(),
+    generateThumbnailsAsync: jest.fn(),
   })),
 }));
 
@@ -39,6 +41,7 @@ describe('videoValidation', () => {
       duration: 30, // 30 seconds
       status: 'readyToPlay',
       release: jest.fn(),
+      generateThumbnailsAsync: jest.fn(),
     };
     
     // Reset the mock to return default player
@@ -78,33 +81,6 @@ describe('videoValidation', () => {
       expect(result.isValid).toBe(false);
       expect(result.errors.length).toBeGreaterThan(0);
       expect(result.errors[0]).toContain('File size too large');
-    });
-
-    it('should reject video exceeding max duration', async () => {
-      // Mock player with duration exceeding max
-      const expoVideo = require('expo-video');
-      mockPlayer.duration = VIDEO_CONSTRAINTS.MAX_DURATION + 10;
-      (expoVideo.createVideoPlayer as jest.Mock).mockReturnValue(mockPlayer);
-
-      const result = await validateVideoFile(mockUri, 10 * 1024 * 1024);
-
-      expect(result.isValid).toBe(false);
-      expect(result.errors.length).toBeGreaterThan(0);
-      expect(result.errors[0]).toContain('Video too long');
-    });
-
-    it('should handle duration check errors', async () => {
-      // Mock player with error status
-      const expoVideo = require('expo-video');
-      mockPlayer.duration = 0;
-      mockPlayer.status = 'error';
-      (expoVideo.createVideoPlayer as jest.Mock).mockReturnValue(mockPlayer);
-
-      const result = await validateVideoFile(mockUri, 10 * 1024 * 1024);
-
-      expect(result.isValid).toBe(false);
-      expect(result.errors.length).toBeGreaterThan(0);
-      expect(result.errors[0]).toContain('Unable to read video duration');
     });
 
     it('should display file size in MB correctly', async () => {
@@ -278,7 +254,7 @@ describe('videoValidation', () => {
   describe('generateVideoThumbnail', () => {
     const mockUri = 'file:///test/video.mp4';
 
-    it('should generate thumbnail successfully', async () => {
+    it('should generate thumbnail successfully on first attempt', async () => {
       const mockThumbnailUri = 'file:///test/thumbnail.jpg';
 
       (VideoThumbnails.getThumbnailAsync as jest.Mock).mockResolvedValue({
@@ -310,26 +286,69 @@ describe('videoValidation', () => {
       });
     });
 
-    it('should throw error when thumbnail generation fails', async () => {
-      (VideoThumbnails.getThumbnailAsync as jest.Mock).mockRejectedValue(
-        new Error('Generation failed')
-      );
+    it('should retry with time=0 when first attempt fails', async () => {
+      const mockThumbnailUri = 'file:///test/thumbnail-retry.jpg';
 
-      await expect(generateVideoThumbnail(mockUri)).rejects.toThrow('Failed to generate thumbnail');
+      (VideoThumbnails.getThumbnailAsync as jest.Mock)
+        .mockRejectedValueOnce(new Error('No keyframe at time 1s'))
+        .mockResolvedValueOnce({ uri: mockThumbnailUri });
+
+      const result = await generateVideoThumbnail(mockUri);
+
+      expect(result).toBe(mockThumbnailUri);
+      expect(VideoThumbnails.getThumbnailAsync).toHaveBeenCalledTimes(2);
+      // Second call should use time=0
+      expect(VideoThumbnails.getThumbnailAsync).toHaveBeenLastCalledWith(mockUri, {
+        time: 0,
+        quality: 0.7,
+      });
     });
 
-    it('should include error message in thrown error', async () => {
-      (VideoThumbnails.getThumbnailAsync as jest.Mock).mockRejectedValue(
-        new Error('Custom error message')
-      );
+    it('should fallback to expo-video when all expo-video-thumbnails attempts fail', async () => {
+      const ImageManipulator = require('expo-image-manipulator');
+      const mockSavedUri = 'file:///cache/thumbnail-exvideo.jpg';
 
-      await expect(generateVideoThumbnail(mockUri)).rejects.toThrow('Custom error message');
+      // Both expo-video-thumbnails attempts fail
+      (VideoThumbnails.getThumbnailAsync as jest.Mock)
+        .mockRejectedValue(new Error('Could not generate thumbnail'));
+
+      // expo-video fallback succeeds
+      const mockThumbnail = { width: 640, height: 360 };
+      mockPlayer.generateThumbnailsAsync = jest.fn().mockResolvedValue([mockThumbnail]);
+      (ImageManipulator.manipulateAsync as jest.Mock).mockResolvedValue({ uri: mockSavedUri });
+
+      const result = await generateVideoThumbnail(mockUri);
+
+      expect(result).toBe(mockSavedUri);
+      expect(VideoThumbnails.getThumbnailAsync).toHaveBeenCalledTimes(2);
+      expect(mockPlayer.generateThumbnailsAsync).toHaveBeenCalled();
+      expect(mockPlayer.release).toHaveBeenCalled();
     });
 
-    it('should handle unknown errors', async () => {
-      (VideoThumbnails.getThumbnailAsync as jest.Mock).mockRejectedValue('String error');
+    it('should throw when all strategies fail', async () => {
+      // All expo-video-thumbnails attempts fail
+      (VideoThumbnails.getThumbnailAsync as jest.Mock)
+        .mockRejectedValue(new Error('Could not generate thumbnail'));
 
-      await expect(generateVideoThumbnail(mockUri)).rejects.toThrow('Unknown error');
+      // expo-video fallback also fails
+      mockPlayer.generateThumbnailsAsync = jest.fn()
+        .mockRejectedValue(new Error('Player failed'));
+
+      await expect(generateVideoThumbnail(mockUri)).rejects.toThrow(
+        'Failed to generate thumbnail after all attempts'
+      );
+      expect(mockPlayer.release).toHaveBeenCalled();
+    });
+
+    it('should release player even when expo-video fallback fails', async () => {
+      (VideoThumbnails.getThumbnailAsync as jest.Mock)
+        .mockRejectedValue(new Error('Failed'));
+
+      mockPlayer.generateThumbnailsAsync = jest.fn()
+        .mockRejectedValue(new Error('Player error'));
+
+      await expect(generateVideoThumbnail(mockUri)).rejects.toThrow();
+      expect(mockPlayer.release).toHaveBeenCalled();
     });
   });
 

@@ -59,6 +59,7 @@ export const VideoGrid: React.FC = () => {
   const [uploadModalVisible, setUploadModalVisible] = useState(false);
   const [selectedVideoUri, setSelectedVideoUri] = useState<string | null>(null);
   const [selectedVideoFileSize, setSelectedVideoFileSize] = useState<number | undefined>(undefined);
+  const [deletingVideoId, setDeletingVideoId] = useState<string | null>(null);
 
   // Load videos on mount
   const refreshVideos = useCallback(async () => {
@@ -110,15 +111,27 @@ export const VideoGrid: React.FC = () => {
   }, []);
 
   const handleDeleteVideo = async (video: VideoType) => {
-    // On web, use window.confirm; on native, use Alert.alert
-    if (Platform.OS === 'web') {
-      const confirmed = window.confirm('Are you sure you want to delete this video?');
-      if (confirmed) {
+    // Prevent double-tap while a delete is in progress
+    if (deletingVideoId) return;
+
+    const performDelete = async () => {
+      setDeletingVideoId(video.id);
+      try {
         const success = await deleteVideo(video.id, video);
         if (success) {
           showAlert('success', 'Video deleted successfully');
           await refreshVideos();
         }
+      } finally {
+        setDeletingVideoId(null);
+      }
+    };
+
+    // On web, use window.confirm; on native, use Alert.alert
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('Are you sure you want to delete this video?');
+      if (confirmed) {
+        await performDelete();
       }
     } else {
       Alert.alert(
@@ -129,13 +142,7 @@ export const VideoGrid: React.FC = () => {
           {
             text: 'Delete',
             style: 'destructive',
-            onPress: async () => {
-              const success = await deleteVideo(video.id, video);
-              if (success) {
-                showAlert('success', 'Video deleted successfully');
-                await refreshVideos();
-              }
-            },
+            onPress: performDelete,
           },
         ]
       );
@@ -176,10 +183,18 @@ export const VideoGrid: React.FC = () => {
         </TouchableOpacity>
         {/* Delete button - visible on all user's own videos */}
         <TouchableOpacity
-          style={styles.deleteButton}
+          style={[
+            styles.deleteButton,
+            deletingVideoId === video.id && styles.deleteButtonDisabled,
+          ]}
           onPress={() => handleDeleteVideo(video)}
+          disabled={deletingVideoId !== null}
         >
-          <Ionicons name="trash-outline" size={20} color="#fff" />
+          {deletingVideoId === video.id ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Ionicons name="trash-outline" size={20} color="#fff" />
+          )}
         </TouchableOpacity>
       </View>
     );
@@ -276,7 +291,7 @@ export const VideoGrid: React.FC = () => {
                     onError={() => {
                       console.error('[VideoGrid] Video playback error:', selectedVideo.id);
                       setSelectedVideo(null);
-                      Alert.alert('Error', 'Failed to play video. Please try again.');
+                      showAlert('error', 'Failed to play video. Please try again.');
                     }}
                   />
                 </View>
@@ -294,13 +309,9 @@ export const VideoGrid: React.FC = () => {
                     // Check for codec-related errors
                     const errorStr = typeof error === 'string' ? error : JSON.stringify(error);
                     if (errorStr.includes('Decoder failed') || errorStr.includes('hevc') || errorStr.includes('codec')) {
-                      Alert.alert(
-                        'Playback Error',
-                        'This video format is not supported on your device. Please use H.264 (AVC) encoded videos.',
-                        [{ text: 'OK' }]
-                      );
+                      showAlert('error', 'This video format is not supported on your device.');
                     } else {
-                      Alert.alert('Error', 'Failed to play video. Please try again.');
+                      showAlert('error', 'Failed to play video. Please try again.');
                     }
                   }}
                   onLoad={() => {
@@ -396,6 +407,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
+  },
+  deleteButtonDisabled: {
+    backgroundColor: 'rgba(150, 150, 150, 0.9)',
   },
   addButton: {
     justifyContent: 'center',

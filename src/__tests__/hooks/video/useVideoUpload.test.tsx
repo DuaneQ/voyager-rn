@@ -433,7 +433,10 @@ describe('useVideoUpload', () => {
       });
 
       expect(deleteResult!).toBe(false);
-      expect(Alert.alert).toHaveBeenCalledWith('Delete Failed', 'Delete failed');
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Delete Failed',
+        'Unable to delete video. Please check your connection and try again.'
+      );
     });
 
     it('should handle delete failure with generic error', async () => {
@@ -447,7 +450,10 @@ describe('useVideoUpload', () => {
       });
 
       expect(deleteResult!).toBe(false);
-      expect(Alert.alert).toHaveBeenCalledWith('Delete Failed', 'Delete failed');
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Delete Failed',
+        'Unable to delete video. Please check your connection and try again.'
+      );
     });
   });
 

@@ -7,7 +7,7 @@
  */
 
 import React, { createContext, useState, useContext, useEffect, useCallback, ReactNode } from 'react';
-import { getDoc, updateDoc, doc } from 'firebase/firestore';
+import { getDoc, setDoc, doc } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 import { db } from '../config/firebaseConfig';
 import { UserProfile } from '../types/UserProfile';
@@ -49,8 +49,10 @@ const UserProfileProvider: React.FC<UserProfileProviderProps> = ({ children }) =
     }
 
     try {
-      // Use Firestore Web SDK to update profile
-      await updateDoc(doc(db, 'users', userId), data);
+      // Use setDoc with merge to handle case where user document may not exist yet.
+      // This is safer than updateDoc which throws "No document to update" if the
+      // user's Firestore record is missing (e.g., orphaned auth, failed signup).
+      await setDoc(doc(db, 'users', userId), data, { merge: true });
 
       // Update local state
       setUserProfile((prev) => {

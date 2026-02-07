@@ -68,6 +68,7 @@ interface PlacesAutocompleteProps {
   onPlaceSelected: (description: string) => void;
   value?: string;
   onChangeText?: (text: string) => void;
+  onValidationChange?: (isValid: boolean) => void; // Track if value is from selection
   containerStyle?: any;
   inputStyle?: any;
   error?: boolean;
@@ -79,6 +80,7 @@ export const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
   onPlaceSelected,
   value = '',
   onChangeText,
+  onValidationChange,
   containerStyle,
   inputStyle,
   error = false,
@@ -88,6 +90,7 @@ export const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isValidSelection, setIsValidSelection] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Session timeout ref for auto-clearing expired sessions
@@ -153,7 +156,7 @@ export const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
         service.getPlacePredictions(
           {
             input: searchText,
-            types: ['(cities)'],
+            types: ['geocode'],
             language: 'en',
             sessionToken: webSessionToken, // Web SDK uses its own token object
           },
@@ -179,7 +182,7 @@ export const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
             params: {
               input: searchText,
               key: getGooglePlacesApiKey(),
-              types: '(cities)',
+              types: 'geocode',
               language: 'en',
               sessiontoken: sessionToken, // Groups all requests into one billing session
             },
@@ -203,8 +206,13 @@ export const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
   }, [getTokenWithTimeout]);
 
   const handleTextChange = useCallback((text: string) => {
-    setQuery(text);
-    onChangeText?.(text);
+    onChangeText(text);
+    
+    // If user modifies text after selecting, mark as invalid
+    if (isValidSelection) {
+      setIsValidSelection(false);
+      onValidationChange?.(false);
+    }
 
     // Clear existing timeout
     if (timeoutRef.current) {
@@ -215,18 +223,19 @@ export const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
     timeoutRef.current = setTimeout(() => {
       searchPlaces(text);
     }, 300);
-  }, [onChangeText, searchPlaces]);
+  }, [onChangeText, searchPlaces, isValidSelection, onValidationChange]);
 
+  // Mark as valid selection from Google Places
   const handleSelectPlace = useCallback((place: PlaceSuggestion) => {
-    setQuery(place.description);
     onPlaceSelected(place.description);
-    setSuggestions([]);
-    setShowSuggestions(false);
+    setIsValidSelection(true);
+    onValidationChange?.(true);
     
     // Clear session token when user selects a place
     // This ends the billing session for this search
     handleClearSession();
-  }, [onPlaceSelected, handleClearSession]);
+    setShowSuggestions(false);
+  }, [onPlaceSelected, handleClearSession, onValidationChange]);
 
   return (
     <View style={[styles.container, containerStyle]}>

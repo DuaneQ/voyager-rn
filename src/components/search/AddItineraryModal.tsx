@@ -20,7 +20,7 @@ import RangeSlider from '../common/RangeSlider';
 import { AndroidPickerModal } from '../common/AndroidPickerModal';
 import { useCreateItinerary } from '../../hooks/useCreateItinerary';
 import { useDeleteItinerary } from '../../hooks/useDeleteItinerary';
-import { formatDateLocal } from '../../utils/formatDate';
+import { formatDateLocal, parseLocalDate } from '../../utils/formatDate';
 import {
   ManualItineraryFormData,
   GENDER_OPTIONS,
@@ -83,6 +83,10 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
   // UI state
   const [editingItineraryId, setEditingItineraryId] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [deleteConfirmModalVisible, setDeleteConfirmModalVisible] = useState(false);
+  const [itineraryToDelete, setItineraryToDelete] = useState<string | null>(null);
+  const [deletingItineraryId, setDeletingItineraryId] = useState<string | null>(null);
+  const [isDestinationValid, setIsDestinationValid] = useState(false);
   
   // Android picker modal states
   const [showGenderPicker, setShowGenderPicker] = useState(false);
@@ -114,6 +118,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
     setUpperRange(45);
     setEditingItineraryId(null);
     setValidationErrors([]);
+    setIsDestinationValid(false); // Reset validation state
   };
 
   // Load itinerary for editing
@@ -122,8 +127,17 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
     if (!itinerary) return;
 
     setDestination(itinerary.destination);
-    setStartDate(new Date(itinerary.startDate));
-    setEndDate(new Date(itinerary.endDate));
+    setIsDestinationValid(true); // Existing itineraries have valid destinations
+    
+    // CRITICAL: Use parseLocalDate to avoid timezone shifts (same as EditProfileModal)
+    // itinerary.startDate is "2026-02-06" (YYYY-MM-DD string from Firestore)
+    // new Date("2026-02-06") interprets as UTC midnight → shifts to previous day in PST
+    // parseLocalDate manually parses components → Feb 6 stays Feb 6
+    const parsedStartDate = parseLocalDate(itinerary.startDate);
+    const parsedEndDate = parseLocalDate(itinerary.endDate);
+    
+    setStartDate(parsedStartDate);
+    setEndDate(parsedEndDate);
     setDescription(itinerary.description || '');
     
     // Parse activities from JSON string or array
@@ -151,29 +165,53 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
 
   // Handle delete
   const handleDelete = (itineraryId: string) => {
-    Alert.alert(
-      'Delete Itinerary',
-      'Are you sure you want to delete this itinerary?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            const response = await deleteItinerary(itineraryId);
-            if (response.success) {
-              // Parent will show a unified success notification. Refresh list and reset form if needed.
-              onItineraryAdded(); // Refresh list
-              if (editingItineraryId === itineraryId) {
-                resetForm();
-              }
-            } else {
-              Alert.alert('Error', response.error || 'Failed to delete');
-            }
+    if (Platform.OS === 'web') {
+      // Web: Use custom Modal (Alert.alert doesn't work on web)
+      setItineraryToDelete(itineraryId);
+      setDeleteConfirmModalVisible(true);
+    } else {
+      // Mobile: Use native Alert (nested Modals don't work on mobile)
+      Alert.alert(
+        'Delete Itinerary?',
+        'Are you sure you want to delete this itinerary? This action cannot be undone.',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
           },
-        },
-      ]
-    );
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: () => confirmDelete(itineraryId),
+          },
+        ],
+        { cancelable: true }
+      );
+    }
+  };
+
+  const confirmDelete = async (itineraryId?: string) => {
+    const idToDelete = itineraryId || itineraryToDelete;
+    if (!idToDelete) return;
+    
+    setDeletingItineraryId(idToDelete);
+    
+    const response = await deleteItinerary(idToDelete);
+    
+    setDeletingItineraryId(null);
+    
+    if (response.success) {
+      // Parent will show a unified success notification. Refresh list and reset form if needed.
+      onItineraryAdded(); // Refresh list
+      if (editingItineraryId === idToDelete) {
+        resetForm();
+      }
+    } else {
+      Alert.alert('Error', response.error || 'Failed to delete');
+    }
+    
+    setDeleteConfirmModalVisible(false);
+    setItineraryToDelete(null);
   };
 
   // Add activity
@@ -202,11 +240,25 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
       Alert.alert('Validation Error', 'Please enter a destination.');
       return;
     }
+    
+    // Validate destination has value but is not from Google Places
+    // If empty, the validation check above will catch it
+    if (destination && !isDestinationValid) {
+      Alert.alert(
+        'Invalid Destination', 
+        'Please select a destination from the dropdown list. This ensures accurate matching with other travelers.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
 
+    const formattedStartDate = formatDateLocal(startDate);
+    const formattedEndDate = formatDateLocal(endDate);
+    
     const formData: ManualItineraryFormData = {
       destination: destination.trim(),
-      startDate: formatDateLocal(startDate),
-      endDate: formatDateLocal(endDate),
+      startDate: formattedStartDate,
+      endDate: formattedEndDate,
       description: description.trim(),
       activities,
       gender,
@@ -298,13 +350,14 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
   };
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      onRequestClose={onClose}
-    >
-      <View style={styles.container}>
-        <View style={styles.header}>
+    <>
+      <Modal
+        visible={visible}
+        animationType="slide"
+        onRequestClose={onClose}
+      >
+        <View style={styles.container}>
+          <View style={styles.header}>
           <TouchableOpacity onPress={onClose}>
             <Text style={styles.closeButton}>Close</Text>
           </TouchableOpacity>
@@ -351,7 +404,6 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Trip Details</Text>
 
-            {/* Destination - Google Places for comprehensive coverage */}
             <Text style={styles.label}>Destination *</Text>
             <PlacesAutocomplete
               testID="google-places-input"
@@ -361,7 +413,8 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
               onPlaceSelected={(place: string) => {
                 setDestination(place);
               }}
-              error={!!destination && destination.length === 0}
+              onValidationChange={setIsDestinationValid}
+              error={!!destination && !isDestinationValid}
             />
 
             {/* Start Date */}
@@ -531,6 +584,7 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
                   onEdit={handleEdit}
                   onDelete={handleDelete}
                   isEditing={editingItineraryId === itinerary.id}
+                  isDeleting={deletingItineraryId === itinerary.id}
                 />
               ))
             )}
@@ -560,6 +614,43 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
         </View>
       </View>
     </Modal>
+
+    {/* Delete Confirmation Modal */}
+    <Modal
+      visible={deleteConfirmModalVisible}
+      transparent
+      animationType="fade"
+      onRequestClose={() => setDeleteConfirmModalVisible(false)}
+    >
+      <View style={styles.deleteModalOverlay}>
+        <View style={styles.deleteModalContent}>
+          <Text style={styles.deleteModalTitle}>Delete Itinerary?</Text>
+          <Text style={styles.deleteModalText}>
+            Are you sure you want to delete this itinerary? This action cannot be undone.
+          </Text>
+          
+          <View style={styles.deleteModalButtons}>
+            <TouchableOpacity
+              style={[styles.deleteModalButton, styles.deleteCancelButton]}
+              onPress={() => {
+                setDeleteConfirmModalVisible(false);
+                setItineraryToDelete(null);
+              }}
+            >
+              <Text style={styles.deleteCancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[styles.deleteModalButton, styles.deleteConfirmButton]}
+              onPress={() => confirmDelete()}
+            >
+              <Text style={styles.deleteConfirmButtonText}>Delete</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+    </>
   );
 };
 
@@ -829,6 +920,58 @@ const styles = StyleSheet.create({
   cancelEditText: {
     color: '#007AFF',
     fontSize: 14,
+  },
+  deleteModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  deleteModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 24,
+    width: '85%',
+    maxWidth: 400,
+  },
+  deleteModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  deleteModalText: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 24,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  deleteModalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  deleteModalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  deleteCancelButton: {
+    backgroundColor: '#f0f0f0',
+  },
+  deleteCancelButtonText: {
+    color: '#333',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  deleteConfirmButton: {
+    backgroundColor: '#ff3b30',
+  },
+  deleteConfirmButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

@@ -6,6 +6,7 @@
 import { Platform } from 'react-native';
 import { createVideoPlayer } from 'expo-video';
 import * as VideoThumbnails from 'expo-video-thumbnails';
+import * as ImageManipulator from 'expo-image-manipulator';
 import * as FileSystem from 'expo-file-system/legacy';
 import { VideoValidationResult, VIDEO_CONSTRAINTS } from '../types/Video';
 
@@ -33,25 +34,6 @@ export const validateVideoFile = async (
     errors.push(
       `File size too large (${fileSizeMB.toFixed(1)}MB). Maximum size: ${maxSizeMB}MB`
     );
-  }
-
-  // Check video duration if other validations pass
-  // Skip on web - expo-av doesn't support video duration on web
-  if (errors.length === 0 && Platform.OS !== 'web') {
-    try {
-      const duration = await getVideoDuration(uri);
-      if (duration > VIDEO_CONSTRAINTS.MAX_DURATION) {
-        errors.push(
-          `Video too long (${Math.round(duration)}s). Maximum duration: ${VIDEO_CONSTRAINTS.MAX_DURATION} seconds`
-        );
-      }
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : 'Unknown error reading video duration';
-      errors.push(`Unable to read video duration: ${errorMessage}`);
-    }
   }
 
   return {
@@ -152,14 +134,22 @@ export const validateVideoMetadata = (
 
 /**
  * Generates a thumbnail from a video file
- * Uses expo-video-thumbnails for React Native (iOS/Android only)
- * On web, generates thumbnail using HTML5 video element and canvas
- * Note: May fail with HEVC/H.265 encoded videos on Android emulator
+ * 
+ * Strategy (native iOS/Android):
+ *   1. Try expo-video-thumbnails at requested time (default 1s)
+ *   2. Retry at time=0 (first frame — always a keyframe, most reliable on Android)
+ *   3. Fallback: use expo-video's createVideoPlayer + generateThumbnailsAsync,
+ *      then save via expo-image-manipulator to get a file URI
+ * 
+ * On web: generates thumbnail using HTML5 video element and canvas
+ * 
+ * Note: expo-video-thumbnails is deprecated (removed in SDK 56).
+ *       The expo-video fallback is the forward-compatible path.
  * 
  * @param uri - Video file URI
  * @param timeInSeconds - Time position for thumbnail (default: 1 second)
  * @returns Promise<string> - Thumbnail URI (native) or base64 data URL (web)
- * @throws Error if thumbnail generation fails
+ * @throws Error if all thumbnail generation strategies fail
  */
 export const generateVideoThumbnail = async (
   uri: string,
@@ -169,22 +159,99 @@ export const generateVideoThumbnail = async (
   if (Platform.OS === 'web') {
     return generateWebThumbnail(uri, timeInSeconds);
   }
-  
+
+  // ── Strategy 1: expo-video-thumbnails at requested time ──
   try {
-    
     const { uri: thumbnailUri } = await VideoThumbnails.getThumbnailAsync(uri, {
       time: timeInSeconds * 1000, // Convert to milliseconds
       quality: 0.7,
     });
-    
     return thumbnailUri;
-  } catch (error) {
-    console.error('[videoValidation] Thumbnail generation failed:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    throw new Error(
-      `Failed to generate thumbnail: ${errorMessage}. Video may use unsupported codec (HEVC/H.265). Use H.264 instead.`
+  } catch (err1) {
+    console.warn(
+      `[videoValidation] Thumbnail attempt 1 failed (time=${timeInSeconds}s):`,
+      err1 instanceof Error ? err1.message : err1
     );
   }
+
+  // ── Strategy 2: expo-video-thumbnails at time=0 (first keyframe) ──
+  if (timeInSeconds !== 0) {
+    try {
+      const { uri: thumbnailUri } = await VideoThumbnails.getThumbnailAsync(uri, {
+        time: 0, // First frame — always a keyframe
+        quality: 0.7,
+      });
+      return thumbnailUri;
+    } catch (err2) {
+      console.warn(
+        '[videoValidation] Thumbnail attempt 2 failed (time=0):',
+        err2 instanceof Error ? err2.message : err2
+      );
+    }
+  }
+
+  // ── Strategy 3: expo-video createVideoPlayer + generateThumbnailsAsync ──
+  // This uses the modern expo-video API (replacement for deprecated expo-video-thumbnails)
+  let player: ReturnType<typeof createVideoPlayer> | null = null;
+  try {
+    player = createVideoPlayer({ uri });
+
+    // Wait for the player to finish loading source metadata
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Timeout waiting for video source to load'));
+      }, 10000);
+
+      const checkReady = () => {
+        if (player!.status === 'readyToPlay') {
+          clearTimeout(timeout);
+          resolve();
+        } else if (player!.status === 'error') {
+          clearTimeout(timeout);
+          reject(new Error('Player failed to load video'));
+        } else {
+          setTimeout(checkReady, 100);
+        }
+      };
+      checkReady();
+    });
+
+    // Generate thumbnail at the requested time (in seconds)
+    const safeTime = player.duration > 0
+      ? Math.min(timeInSeconds, player.duration - 0.1)
+      : 0;
+    const thumbnails = await player.generateThumbnailsAsync(
+      [safeTime],
+      { maxWidth: 640, maxHeight: 640 }
+    );
+
+    if (!thumbnails || thumbnails.length === 0) {
+      throw new Error('generateThumbnailsAsync returned no thumbnails');
+    }
+
+    // Save the native image reference as a JPEG file via expo-image-manipulator
+    const manipResult = await ImageManipulator.manipulateAsync(
+      thumbnails[0] as any, // VideoThumbnail extends SharedRef<'image'>, accepted as source
+      [], // no transforms
+      { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+    );
+
+    return manipResult.uri;
+  } catch (err3) {
+    console.warn(
+      '[videoValidation] Thumbnail attempt 3 (expo-video) failed:',
+      err3 instanceof Error ? err3.message : err3
+    );
+  } finally {
+    if (player) {
+      try { player.release(); } catch { /* ignore cleanup errors */ }
+    }
+  }
+
+  // All strategies exhausted
+  throw new Error(
+    'Failed to generate thumbnail after all attempts. Video may use unsupported codec (HEVC/H.265). Use H.264 instead.'
+  );
 };
 
 /**

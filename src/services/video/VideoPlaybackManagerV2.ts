@@ -15,6 +15,7 @@ import { IVideoPlayer } from '../../interfaces/IVideoPlayer';
 export interface VideoPlaybackRegistrationV2 {
   videoId: string;
   player: IVideoPlayer; // Now uses interface instead of concrete ref
+  expectedVideoId?: string; // Track which video this player instance should have loaded (for FlatList recycling)
   onBecomeActive?: () => void;
   onBecomeInactive?: () => void;
 }
@@ -66,7 +67,12 @@ export class VideoPlaybackManagerV2 {
    * Should be called when a VideoCard mounts.
    */
   register(registration: VideoPlaybackRegistrationV2): void {
-    this.registrations.set(registration.videoId, registration);
+    // Track which video this player should have loaded (for FlatList recycling validation)
+    const updatedRegistration = {
+      ...registration,
+      expectedVideoId: registration.expectedVideoId || registration.videoId,
+    };
+    this.registrations.set(registration.videoId, updatedRegistration);
   }
 
   /**
@@ -92,8 +98,7 @@ export class VideoPlaybackManagerV2 {
    */
   async setActiveVideo(videoId: string, retryCount: number = 0): Promise<void> {
     const MAX_RETRIES = 20; // 20 retries * 50ms = 1 second max wait
-    
-    // debug log removed
+    const timestamp = Date.now();
     
     // Prevent concurrent activation attempts with retry limit
     if (this.isActivating) {
@@ -116,6 +121,17 @@ export class VideoPlaybackManagerV2 {
     // If this video is already active, ensure playback is started
     // (video may have been paused by user action or other events)
     if (this.activeVideoId === videoId) {
+      // CRITICAL: Validate source even for already-active videos (FlatList recycling)
+      const expectedId = registration.expectedVideoId || videoId;
+      if (expectedId !== videoId) {
+        console.warn(
+          `[VideoPlaybackManagerV2] Already-active source mismatch! ` +
+          `Expected: ${expectedId}, Requested: ${videoId}. ` +
+          `Skipping play to prevent wrong audio.`
+        );
+        return;
+      }
+      
       // debug log removed
       // Simply call play() - the player handles the case where it's already playing
       try {
@@ -148,9 +164,30 @@ export class VideoPlaybackManagerV2 {
       // NOTE: Mute state is handled by the component (VideoCardV2) via isMuted prop.
       // On web, VideoFeedPage initializes with isMuted=true to comply with autoplay policy.
       // The manager should NOT override mute state - just coordinate play/pause.
+      
+      // CRITICAL FIX: Validate player has correct video loaded before playing
+      // FlatList recycles components, so player might still have old video source
+      if (!registration.expectedVideoId) {
+        console.warn(
+          `[VideoPlaybackManagerV2] No expectedVideoId for ${videoId}! ` +
+          `This indicates a registration issue. Skipping play.`
+        );
+        this.isActivating = false;
+        return;
+      }
+      
+      if (registration.expectedVideoId !== videoId) {
+        console.warn(
+          `[VideoPlaybackManagerV2] Player source mismatch! ` +
+          `Expected: ${registration.expectedVideoId}, Requested: ${videoId}. ` +
+          `Skipping play to prevent wrong audio. Player needs reinitialization.`
+        );
+        this.isActivating = false;
+        return;
+      }
+      
       try {
         await registration.player.play();
-        // debug log removed
       } catch (playError: any) {
         // On web, if autoplay fails (shouldn't happen if component set muted correctly),
         // log but don't crash - the user can tap to play
@@ -173,6 +210,8 @@ export class VideoPlaybackManagerV2 {
    * Deactivate a specific video (stop playback).
    */
   private async deactivateVideo(videoId: string): Promise<void> {
+    const timestamp = Date.now();
+    
     // Prevent duplicate deactivation calls (race condition fix)
     if (this.deactivating.has(videoId)) {
       // debug log removed
@@ -195,6 +234,7 @@ export class VideoPlaybackManagerV2 {
       }
       
       // Pause playback
+      const pauseTimestamp = Date.now();
       await registration.player.pause();
       
       // Call lifecycle hook if provided
@@ -214,7 +254,8 @@ export class VideoPlaybackManagerV2 {
    * Deactivate all videos (useful when navigating away from video feed).
    */
   async deactivateAll(): Promise<void> {
-    // debug log removed
+    const timestamp = Date.now();
+    const activeId = this.activeVideoId;
     
     // Mute all videos immediately to stop audio
     const mutePromises: Promise<void>[] = [];

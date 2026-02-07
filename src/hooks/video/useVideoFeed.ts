@@ -25,6 +25,8 @@ import {
 import { db } from '../../config/firebaseConfig';
 import * as firebaseCfg from '../../config/firebaseConfig';
 import { Video } from '../../types/Video';
+import { AppError } from '../../errors/AppError';
+import { createVideoFeedLoadError } from '../../errors/factories/videoErrors';
 
 export type VideoFilter = 'all' | 'liked' | 'mine';
 
@@ -33,7 +35,7 @@ interface UseVideoFeedReturn {
   currentVideoIndex: number;
   isLoading: boolean;
   isLoadingMore: boolean;
-  error: string | null;
+  error: AppError | null;
   hasMoreVideos: boolean;
   currentFilter: VideoFilter;
   connectedUserIds: string[];
@@ -56,7 +58,7 @@ export const useVideoFeed = (): UseVideoFeedReturn => {
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<AppError | null>(null);
   const [lastDoc, setLastDoc] = useState<DocumentSnapshot | null>(null);
   const [hasMoreVideos, setHasMoreVideos] = useState(true);
   const [currentFilter, setCurrentFilter] = useState<VideoFilter>('all');
@@ -301,7 +303,7 @@ export const useVideoFeed = (): UseVideoFeedReturn => {
         }
       } catch (err) {
         console.error('Error loading videos:', err);
-        setError('Failed to load videos. Please try again.');
+        setError(createVideoFeedLoadError(err, { filter: currentFilter }));
       } finally {
         setIsLoading(false);
         setIsLoadingMore(false);

@@ -1,22 +1,7 @@
 /**
  * AI Itinerary List Tab Component
  * Displays user's generated AI itineraries with dropdown selector
- * Matches PWA functionality - only shconst styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F5F5',
-  },
-  displayContainer: {
-    flex: 1,
-    backgroundColor: '#F5F5F5',
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-    padding: 20,
-  },rips
+ * Matches PWA functionality - only shows AI-generated trips
  */
 
 import React, { useState } from 'react';
@@ -25,15 +10,17 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
   ActivityIndicator,
+  TouchableOpacity,
 } from 'react-native';
 import { CrossPlatformPicker, PickerItem } from '../common/CrossPlatformPicker';
+import { parseAndFormatItineraryDate } from '../../utils/formatDate';
 import { useAIGeneratedItineraries } from '../../hooks/useAIGeneratedItineraries';
 import { AIItineraryDisplay } from '../ai/AIItineraryDisplay';
+import { isAppError } from '../../errors/AppError';
 
 export const AIItineraryListTab: React.FC = () => {
-  const { itineraries, loading, error } = useAIGeneratedItineraries();
+  const { itineraries, loading, error, refreshItineraries } = useAIGeneratedItineraries();
   const [selectedItineraryId, setSelectedItineraryId] = useState<string | null>(null);
 
   // Auto-select first itinerary when loaded
@@ -46,10 +33,14 @@ export const AIItineraryListTab: React.FC = () => {
   const selectedItinerary = itineraries.find(itin => itin.id === selectedItineraryId);
 
   // Create picker items
-  const pickerItems: PickerItem[] = itineraries.map(itin => ({
-    label: `${itin.destination} - ${new Date(itin.startDate).toLocaleDateString()}`,
-    value: itin.id,
-  }));
+  const pickerItems: PickerItem[] = itineraries.map(itin => {
+    const dateLabel = parseAndFormatItineraryDate(itin.startDate);
+    
+    return {
+      label: `${itin.destination} - ${dateLabel}`,
+      value: itin.id,
+    };
+  });
 
   if (loading) {
     return (
@@ -61,11 +52,17 @@ export const AIItineraryListTab: React.FC = () => {
   }
 
   if (error) {
+    const errorMessage = isAppError(error)
+      ? error.getUserMessage()
+      : 'Unable to load itineraries. Please check your connection and try again.';
     return (
       <View style={styles.centerContainer}>
         <Text style={styles.errorIcon}>⚠️</Text>
         <Text style={styles.errorTitle}>Error Loading Itineraries</Text>
-        <Text style={styles.errorText}>{error}</Text>
+        <Text style={styles.errorText}>{errorMessage}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={refreshItineraries}>
+          <Text style={styles.retryButtonText}>Try Again</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -149,6 +146,18 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     lineHeight: 24,
+  },
+  retryButton: {
+    marginTop: 20,
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
   emptyContainer: {
     flex: 1,

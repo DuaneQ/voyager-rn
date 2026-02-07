@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { CrossPlatformPicker, PickerItem } from '../common/CrossPlatformPicker';
 import { Itinerary } from '../../hooks/useAllItineraries';
+import { parseAndFormatItineraryDate } from '../../utils/formatDate';
 
 interface ItinerarySelectorProps {
   itineraries: Itinerary[];
@@ -32,7 +33,8 @@ export const ItinerarySelector: React.FC<ItinerarySelectorProps> = ({
   const formatItineraryLabel = (itinerary: Itinerary) => {
     const isAI = itinerary.ai_status === 'completed';
     const prefix = isAI ? '🤖 ' : '✈️ ';
-    return `${prefix}${itinerary.destination} - ${new Date(itinerary.startDate).toLocaleDateString()}`;
+    const dateLabel = parseAndFormatItineraryDate(itinerary.startDate);
+    return `${prefix}${itinerary.destination} - ${dateLabel}`;
   };
 
   const pickerItems: PickerItem[] = itineraries.map(itin => ({

@@ -9,6 +9,7 @@ import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { TermsOfServiceModal } from '../modals/TermsOfServiceModal';
 import { useTermsAcceptance } from '../../hooks/useTermsAcceptance';
 import { useAuth } from '../../context/AuthContext';
+import ErrorDisplay from '../common/ErrorDisplay';
 
 interface TermsGuardProps {
   children: React.ReactNode;
@@ -27,7 +28,7 @@ export const TermsGuard: React.FC<TermsGuardProps> = ({
   fallback 
 }) => {
   const { user, signOut: authSignOut } = useAuth();
-  const { hasAcceptedTerms, isLoading, error, acceptTerms } = useTermsAcceptance();
+  const { hasAcceptedTerms, isLoading, error, acceptTerms, checkTermsStatus } = useTermsAcceptance();
   const userId = user?.uid;
 
   // If user is not logged in, don't render anything
@@ -78,12 +79,16 @@ export const TermsGuard: React.FC<TermsGuardProps> = ({
     );
   }
   
-  // Show error state if terms check failed
+  // Show error state if terms check failed — uses ErrorDisplay for safe user messages
   if (error) {
     return (
       <View style={styles.centerContainer}>
-        <Text style={styles.errorText}>Error loading profile</Text>
-        <Text style={styles.errorDetail}>{error.message}</Text>
+        <ErrorDisplay
+          error={error}
+          onRetry={() => checkTermsStatus()}
+          onSecondaryAction={handleDeclineTerms}
+          secondaryActionLabel="Sign Out & Try Again"
+        />
       </View>
     );
   }

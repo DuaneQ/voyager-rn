@@ -6,6 +6,49 @@ jest.mock('../../hooks/useAIGenerationV2');
 // Use central manual mock for firebaseConfig
 jest.mock('../../config/firebaseConfig');
 import { setMockUser, clearMockUser } from '../../testUtils/mockAuth';
+
+// Mock PlacesAutocomplete component (named export)
+jest.mock('../../components/common/PlacesAutocomplete', () => {
+  const React = require('react');
+  const { TextInput } = require('react-native');
+  
+  const MockPlacesAutocomplete = ({ 
+    value, 
+    onChangeText, 
+    onPlaceSelected, 
+    onValidationChange, 
+    testID, 
+    placeholder 
+  }: any) => {
+    // Simulate the validation behavior when text changes
+    React.useEffect(() => {
+      if (value && onValidationChange) {
+        // In real component, selection from dropdown marks as valid
+        // For tests, consider any non-empty value as valid
+        onValidationChange(true);
+      }
+    }, [value, onValidationChange]);
+    
+    return React.createElement(TextInput, {
+      testID: testID || 'destination-input',
+      value,
+      onChangeText: (text: string) => {
+        onChangeText(text);
+        // Simulate that changing text marks as valid (selected from dropdown)
+        if (onValidationChange) {
+          onValidationChange(true);
+        }
+      },
+      placeholder,
+    });
+  };
+  
+  return {
+    PlacesAutocomplete: MockPlacesAutocomplete
+  };
+});
+
+// Mock GooglePlacesAutocomplete (legacy)
 jest.mock('react-native-google-places-autocomplete', () => ({
   GooglePlacesAutocomplete: (props: any) => {
     // Use require inside mock factory to avoid out-of-scope React reference

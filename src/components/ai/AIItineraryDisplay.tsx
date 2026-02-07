@@ -431,19 +431,32 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
   })();
 
   // Format date for display
+  // Extracts YYYY-MM-DD and parses as LOCAL date to avoid UTC→local timezone shift
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
     try {
-      const date = new Date(dateString);
-      // Check if date is valid
-      if (isNaN(date.getTime())) {
-        return dateString;
+      // Extract date portion before 'T' if ISO string, otherwise use as-is
+      const dateOnly = typeof dateString === 'string' && dateString.includes('T')
+        ? dateString.split('T')[0]
+        : dateString;
+      
+      const parts = dateOnly.split('-');
+      if (parts.length === 3) {
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10);
+        const day = parseInt(parts[2], 10);
+        if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+          const date = new Date(year, month - 1, day);
+          if (!isNaN(date.getTime())) {
+            return date.toLocaleDateString('en-US', {
+              month: 'long',
+              day: 'numeric',
+              year: 'numeric'
+            });
+          }
+        }
       }
-      return date.toLocaleDateString('en-US', { 
-        month: 'long', 
-        day: 'numeric', 
-        year: 'numeric' 
-      });
+      return dateString;
     } catch {
       return dateString;
     }

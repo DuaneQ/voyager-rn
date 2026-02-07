@@ -236,8 +236,13 @@ export const useAIGenerationV2 = (): UseAIGenerationV2Return => {
       // ========================================================================
       setProgress(PROGRESS_STAGES.AI_GENERATION);
       
+      // Parse YYYY-MM-DD as local dates to avoid UTC timezone shift
+      const parseLocal = (ds: string): Date => {
+        const [y, m, d] = ds.split('-').map(Number);
+        return new Date(y, m - 1, d);
+      };
       const tripDays = Math.ceil(
-        (new Date(sanitizedRequest.endDate).getTime() - new Date(sanitizedRequest.startDate).getTime()) 
+        (parseLocal(sanitizedRequest.endDate).getTime() - parseLocal(sanitizedRequest.startDate).getTime()) 
         / (1000 * 60 * 60 * 24)
       ) + 1;
       
@@ -416,10 +421,10 @@ export const useAIGenerationV2 = (): UseAIGenerationV2Return => {
         // NOTE: 'departure' is NOT in Prisma schema - store in response.data if needed
         title: '',
         description: aiOutput.travel_agent_summary || aiOutput.trip_narrative || `AI-generated itinerary for ${sanitizedRequest.destination}`,
-        startDate: new Date(sanitizedRequest.startDate).toISOString(),
-        endDate: new Date(sanitizedRequest.endDate).toISOString(),
-        startDay: new Date(sanitizedRequest.startDate).getTime(),
-        endDay: new Date(sanitizedRequest.endDate).getTime(),
+        startDate: sanitizedRequest.startDate + 'T00:00:00.000Z',
+        endDate: sanitizedRequest.endDate + 'T00:00:00.000Z',
+        startDay: parseLocal(sanitizedRequest.startDate).getTime(),
+        endDay: parseLocal(sanitizedRequest.endDate).getTime(),
         lowerRange: 18,
         upperRange: 100,
         gender: 'No Preference',

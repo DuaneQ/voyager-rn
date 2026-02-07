@@ -26,6 +26,7 @@ import {
 } from '../../types/ManualItinerary';
 import { AndroidPickerModal } from '../common/AndroidPickerModal';
 import { CrossPlatformDatePicker } from '../common/CrossPlatformDatePicker';
+import { parseLocalDate } from '../../utils/formatDate';
 
 // iOS Picker Modal Component
 const IOSPickerModal: React.FC<{
@@ -117,12 +118,6 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   const [eduModalVisible, setEduModalVisible] = useState(false);
   const [drinkingModalVisible, setDrinkingModalVisible] = useState(false);
   const [smokingModalVisible, setSmokingModalVisible] = useState(false);
-  
-  // Helper to parse YYYY-MM-DD as local date (not UTC)
-  const parseLocalDate = (dateString: string): Date => {
-    const [year, month, day] = dateString.split('-').map(Number);
-    return new Date(year, month - 1, day);
-  };
 
   // Date state for CrossPlatformDatePicker
   const [dateValue, setDateValue] = useState<Date>(() => {

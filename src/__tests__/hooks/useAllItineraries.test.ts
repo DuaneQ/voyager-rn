@@ -78,7 +78,8 @@ describe('useAllItineraries', () => {
       expect(result.current.loading).toBe(false);
     });
 
-    expect(result.current.error).toBe('User not authenticated');
+    expect(result.current.error).not.toBeNull();
+    expect(result.current.error?.getUserMessage()).toBe('Please sign in to view your itineraries.');
     expect(result.current.itineraries).toEqual([]);
   });
 
@@ -96,7 +97,8 @@ describe('useAllItineraries', () => {
       expect(result.current.loading).toBe(false);
     });
 
-    expect(result.current.error).toBe('Database connection failed');
+    expect(result.current.error).not.toBeNull();
+    expect(result.current.error?.message).toBe('Database connection failed');
     expect(result.current.itineraries).toEqual([]);
   });
 
@@ -109,7 +111,8 @@ describe('useAllItineraries', () => {
       expect(result.current.loading).toBe(false);
     });
 
-    expect(result.current.error).toBe('Network error');
+    expect(result.current.error).not.toBeNull();
+    expect(result.current.error?.message).toBe('Network error');
     expect(result.current.itineraries).toEqual([]);
   });
 

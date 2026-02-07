@@ -6,6 +6,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { httpsCallable } from 'firebase/functions';
 import { getAuthInstance, functions, auth } from '../config/firebaseConfig';
+import { AppError, ErrorDomain } from '../errors/AppError';
+import { toAppError } from '../errors/toAppError';
 
 export interface Itinerary {
   id: string;
@@ -39,7 +41,7 @@ export interface Itinerary {
 export const useAllItineraries = () => {
   const [itineraries, setItineraries] = useState<Itinerary[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<AppError | null>(null);
 
   const fetchItineraries = useCallback(async (): Promise<Itinerary[]> => {
   // If legacy `auth` export is present (tests may toggle it), prefer its explicit value
@@ -47,7 +49,15 @@ export const useAllItineraries = () => {
   const legacyProvided = auth && Object.prototype.hasOwnProperty.call(auth, 'currentUser');
   const userId = legacyProvided ? auth.currentUser?.uid : (typeof getAuthInstance === 'function' ? getAuthInstance()?.currentUser?.uid : undefined);
     if (!userId) {
-      setError('User not authenticated');
+      setError(new AppError({
+        code: 'AUTH_REQUIRED',
+        message: 'User not authenticated for itineraries',
+        userMessage: 'Please sign in to view your itineraries.',
+        domain: ErrorDomain.AUTH,
+        severity: 'error' as any,
+        recoverable: true,
+        retryAction: 'Sign In',
+      }));
       return [];
     }
 
@@ -89,7 +99,7 @@ export const useAllItineraries = () => {
       return allItineraries; // Return the fresh data
     } catch (err) {
       console.error('Error fetching all itineraries:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch itineraries');
+      setError(toAppError(err, ErrorDomain.ITINERARY));
       return []; // Return empty array on error
     } finally {
       setLoading(false);

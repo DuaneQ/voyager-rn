@@ -318,7 +318,7 @@ describe('VideoCardV2', () => {
         expect(mockFactory.createPlayer).toHaveBeenCalled();
       });
       
-      // Update to active
+      // Update to active — player already exists, should start playing
       rerender(<VideoCardV2 {...defaultProps} isActive={true} />);
       
       await waitFor(() => {
@@ -333,7 +333,7 @@ describe('VideoCardV2', () => {
         expect(mockPlayer.play).toHaveBeenCalled();
       });
       
-      // Update to inactive
+      // Update to inactive — player paused but not released (eager path)
       rerender(<VideoCardV2 {...defaultProps} isActive={false} />);
       
       await waitFor(() => {
