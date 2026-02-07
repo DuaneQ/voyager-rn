@@ -24,6 +24,8 @@ import {
   Text,
   ActivityIndicator,
   SafeAreaView,
+  ScrollView,
+  RefreshControl,
 } from 'react-native';
 import { RecyclerListView, DataProvider, LayoutProvider } from 'recyclerlistview';
 import { setAudioModeAsync } from 'expo-audio';
@@ -232,6 +234,8 @@ const VideoFeedPage: React.FC = () => {
    */
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
+    // Cleanup all video players before refreshing to prevent "shared object released" errors
+    videoPlaybackManager.deactivateAll();
     await refreshVideos();
     setIsRefreshing(false);
     if (recyclerRef.current && videos.length > 0) {
@@ -583,6 +587,19 @@ const VideoFeedPage: React.FC = () => {
         // Load more when reaching bottom
         onEndReached={handleEndReached}
         onEndReachedThreshold={0.5}
+        // External ScrollView with RefreshControl for pull-to-refresh
+        externalScrollView={(props) => (
+          <ScrollView
+            {...props}
+            refreshControl={
+              <RefreshControl
+                refreshing={isRefreshing}
+                onRefresh={handleRefresh}
+                tintColor="#fff"
+              />
+            }
+          />
+        )}
         // Scrolling performance
         scrollViewProps={{
           pagingEnabled: true,
@@ -591,8 +608,6 @@ const VideoFeedPage: React.FC = () => {
           decelerationRate: 'fast',
           showsVerticalScrollIndicator: false,
           disableIntervalMomentum: true, // Prevent momentum scroll past snap points
-          onRefresh: isRefreshing ? undefined : handleRefresh,
-          refreshing: isRefreshing,
         }}
       />
 

@@ -5,6 +5,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { Platform } from 'react-native';
 import {
   collection,
   query,
