@@ -114,6 +114,7 @@ export const useVideoFeed = (): UseVideoFeedReturn => {
    */
   const loadVideos = useCallback(
     async (loadMore = false) => {
+    
       try {
         if (loadMore) {
           setIsLoadingMore(true);
@@ -303,7 +304,6 @@ export const useVideoFeed = (): UseVideoFeedReturn => {
             break;
         }
       } catch (err) {
-        console.error('Error loading videos:', err);
         setError(createVideoFeedLoadError(err, { filter: currentFilter }));
       } finally {
         setIsLoading(false);
@@ -464,10 +464,13 @@ export const useVideoFeed = (): UseVideoFeedReturn => {
   }, [connectedUserIds.length, currentFilter]); // Intentionally excluding loadVideos to prevent infinite loop
 
   /**
-   * Auto-load more videos when approaching end
+   * Auto-load more videos when approaching end.
+   * Guard: videos.length must be > 0 to prevent double-fetch race condition
+   * during mount/refresh when the array is temporarily empty.
    */
   useEffect(() => {
     const shouldLoadMore =
+      videos.length > 0 &&
       currentVideoIndex >= videos.length - 2 &&
       hasMoreVideos &&
       !isLoadingMore;

@@ -19,6 +19,7 @@ import {
   TouchableOpacity,
   Dimensions,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { VideoView } from 'expo-video';
 import { Ionicons } from '@expo/vector-icons';
@@ -116,6 +117,12 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
   // iOS/Web have no such limit — eager creation eliminates the black flash on scroll.
   const useLazyCreation = Platform.OS === 'android';
 
+  // Whether this video is still being transcoded by Mux.
+  // On Android, raw 4K video (e.g. 3840x2160 AVC) cannot be decoded by most
+  // hardware decoders, so we MUST wait for Mux adaptive streaming to be ready.
+  // On iOS/Web, raw video fallback works fine — no guard needed.
+  const isMuxProcessing = Platform.OS === 'android' && !video.muxPlaybackUrl && !!video.muxAssetId;
+
   /**
    * Creates a player instance for the current video URL, wires up listeners,
    * and registers with the playback manager. Returns the playerInstance.
@@ -210,6 +217,16 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
 
     if (!isActive) {
       // Not active on Android → no player, show thumbnail
+      setPlayer(null);
+      setExpoPlayer(null);
+      expoPlayerRef.current = null;
+      setIsPlaying(false);
+      return;
+    }
+
+    if (isMuxProcessing) {
+      // Mux is still transcoding — don't attempt raw 4K playback on Android.
+      // Show "Processing..." UI instead; user can pull-to-refresh.
       setPlayer(null);
       setExpoPlayer(null);
       expoPlayerRef.current = null;
@@ -433,6 +450,38 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
       )}
     </View>
   );
+
+  /**
+   * Render processing state (Android only)
+   * When Mux is still transcoding, Android can't decode the raw 4K file.
+   * Show thumbnail with a processing indicator instead of a playback error.
+   */
+  if (isMuxProcessing) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.videoContainer}>
+          {(video.muxThumbnailUrl || video.thumbnailUrl) ? (
+            <Image
+              source={{ uri: video.muxThumbnailUrl || video.thumbnailUrl }}
+              style={styles.video}
+              resizeMode="contain"
+            />
+          ) : (
+            <View style={[styles.video, styles.loadingContainer]} />
+          )}
+          <View style={styles.processingOverlay}>
+            <ActivityIndicator size="large" color="#fff" />
+            <Text style={styles.processingText}>Processing video...</Text>
+            <Text style={styles.processingSubtext}>Pull down to refresh</Text>
+          </View>
+        </View>
+        <View testID="info-overlay" style={[styles.infoOverlayWrapper, { pointerEvents: 'box-none' }]}>
+          {renderVideoInfo()}
+        </View>
+        {renderActionButtons()}
+      </View>
+    );
+  }
 
   /**
    * Render error state
@@ -698,6 +747,29 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: '#000',
     zIndex: 5,
+  },
+  processingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  processingText: {
+    fontSize: 18,
+    color: '#fff',
+    fontWeight: '600',
+    marginTop: 16,
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  processingSubtext: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: 8,
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   loadingContainer: {
     justifyContent: 'center',

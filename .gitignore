@@ -68,3 +68,6 @@ credentials/
 .env.local
 
 .env.local
+
+# Firebase Admin SDK service account key
+mundo1-dev-firebase-adminsdk*.json
