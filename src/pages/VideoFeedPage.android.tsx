@@ -197,7 +197,7 @@ const VideoFeedPage: React.FC = () => {
     console.log('[VideoFeedPage.android] handleRefresh called');
     setIsRefreshing(true);
     // Cleanup all video players before refreshing to prevent "shared object released" errors
-    videoPlaybackManager.deactivateAll();
+    await videoPlaybackManager.deactivateAll();
     console.log('[VideoFeedPage.android] Calling refreshVideos...');
     await refreshVideos();
     console.log('[VideoFeedPage.android] refreshVideos completed, video count:', videos.length);
