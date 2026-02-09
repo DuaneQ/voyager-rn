@@ -71,7 +71,7 @@ const VideoFeedPage: React.FC = () => {
     updateVideo,
   } = useVideoFeed();
 
-  const { uploadState, selectVideo, uploadVideo } = useVideoUpload({
+  const { uploadState, selectVideo, uploadVideo, cancelUpload } = useVideoUpload({
     onError: (message, title) => {
       showAlert('error', message);
     },
@@ -621,6 +621,7 @@ const VideoFeedPage: React.FC = () => {
           visible={uploadModalVisible}
           onClose={handleUploadModalClose}
           onUpload={handleVideoUpload}
+          onCancel={cancelUpload}
           videoUri={selectedVideoUri}
           pickerFileSize={selectedVideoFileSize}
           isUploading={uploadState.loading}

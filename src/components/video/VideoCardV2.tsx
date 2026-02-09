@@ -404,6 +404,11 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
       <Text style={styles.title} numberOfLines={2}>
         {video.title}
       </Text>
+      {video.description && (
+        <Text style={styles.description} numberOfLines={2}>
+          {video.description}
+        </Text>
+      )}
       <View style={styles.statsRow}>
         <Text style={styles.statText}>{viewCount} views</Text>
       </View>
@@ -693,6 +698,12 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
     marginBottom: 4,
+  },
+  description: {
+    fontSize: 14,
+    color: '#e0e0e0',
+    lineHeight: 18,
+    marginBottom: 8,
   },
   statsRow: {
     flexDirection: 'row',

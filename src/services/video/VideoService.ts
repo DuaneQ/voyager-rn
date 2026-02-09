@@ -29,6 +29,9 @@ import { Video, VideoUploadData } from '../../types/Video';
 import { generateVideoThumbnail } from '../../utils/videoValidation';
 
 export class VideoService {
+  private currentUploadTask: UploadTask | null = null;
+  private isCancelled: boolean = false;
+
   /**
    * Upload video to Firebase Storage and create Firestore document
    * Uses same paths as PWA: users/{userId}/videos/ and users/{userId}/thumbnails/
@@ -39,6 +42,7 @@ export class VideoService {
     onProgress?: (progress: number, status: string) => void
   ): Promise<Video> {
     try {
+      this.isCancelled = false;
       // Generate unique video ID
       const videoId = `video_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -90,6 +94,7 @@ export class VideoService {
       };
 
       const uploadTask: UploadTask = uploadBytesResumable(videoRef, videoBlob, metadata);
+      this.currentUploadTask = uploadTask;
 
       // Track upload progress
       const videoUrl = await new Promise<string>((resolve, reject) => {
@@ -101,11 +106,19 @@ export class VideoService {
             
           },
           (error) => {
+            this.currentUploadTask = null;
+            // Check if this is a cancellation error
+            const isCancellation = error.code === 'storage/canceled' || 
+                                  error.message?.includes('canceled');
+            if (!isCancellation) {
+              console.error('[VideoService] Upload task error:', error);
+            }
             reject(new Error(`Upload failed: ${error.message}`));
           },
           async () => {
             try {
               const url = await getDownloadURL(uploadTask.snapshot.ref);
+              this.currentUploadTask = null;
               resolve(url);
             } catch (error) {
               reject(new Error('Failed to get download URL'));
@@ -113,6 +126,11 @@ export class VideoService {
           }
         );
       });
+
+      // Check if upload was cancelled while we were uploading
+      if (this.isCancelled) {
+        throw new Error('Upload canceled by user');
+      }
 
       onProgress?.(60, 'Creating thumbnail...');
 
@@ -159,7 +177,17 @@ export class VideoService {
         thumbnailUrl = '';
       }
 
+      // Check if upload was cancelled during thumbnail generation
+      if (this.isCancelled) {
+        throw new Error('Upload canceled by user');
+      }
+
       onProgress?.(80, 'Saving video details...');
+
+      // Check if upload was cancelled before saving to Firestore
+      if (this.isCancelled) {
+        throw new Error('Upload canceled by user');
+      }
 
       // Get file size from blob
       const fileSize = videoBlob.size;
@@ -182,16 +210,40 @@ export class VideoService {
       };
 
       const videoDoc = await addDoc(collection(db, 'videos'), video);
+      
+      // Final check - if cancelled after Firestore write, delete the document
+      if (this.isCancelled) {
+        await deleteDoc(videoDoc);
+        throw new Error('Upload canceled by user');
+      }
+      
       onProgress?.(100, 'Upload complete!');
+
+      this.isCancelled = false;
+      this.currentUploadTask = null;
 
       return {
         id: videoDoc.id,
         ...video,
       };
     } catch (error) {
-      console.error('[VideoService] Video upload error:', error);
+      this.isCancelled = false;
+      this.currentUploadTask = null;
+      
       const errorMessage =
         error instanceof Error ? error.message : 'Video upload failed';
+      
+      // Don't log cancellation errors - these are intentional user actions
+      const isCancellation = errorMessage.includes('storage/canceled') ||
+                            errorMessage.includes('canceled') ||
+                            errorMessage.includes('Upload canceled');
+      
+      if (!isCancellation) {
+        console.error('[VideoService] Video upload error:', error);
+      } else {
+        console.log('[VideoService] Upload cancelled by user');
+      }
+      
       throw new Error(errorMessage);
     }
   }
@@ -268,6 +320,19 @@ export class VideoService {
         error instanceof Error ? error.message : 'Failed to load videos';
       throw new Error(errorMessage);
     }
+  }
+
+  /**
+   * Cancel the current upload if one is in progress
+   */
+  cancelUpload(): boolean {
+    this.isCancelled = true;
+    if (this.currentUploadTask) {
+      this.currentUploadTask.cancel();
+      this.currentUploadTask = null;
+      return true;
+    }
+    return false;
   }
 }
 

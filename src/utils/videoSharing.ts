@@ -7,15 +7,17 @@ import * as Sharing from 'expo-sharing';
 import * as Clipboard from 'expo-clipboard';
 import { Alert, Platform } from 'react-native';
 import { Video } from '../types/Video';
-
-const BASE_URL = 'https://travalpass.com'; // Production URL
+import { getCloudFunctionUrl } from '../config/firebaseConfig';
 
 /**
- * Generate shareable URL for a video
- * All videos use /video-share/ path which serves proper OG meta tags
+ * Generate shareable URL for a video.
+ * Uses direct Cloud Function URL to bypass Firebase Hosting rewrites,
+ * matching the pattern used by ShareAIItineraryModal.
+ * The videoShare function serves proper HTML with OG meta tags for social sharing.
  */
 export const generateVideoShareUrl = (video: Video): string => {
-  return `${BASE_URL}/video-share/${video.id}`;
+  const baseUrl = getCloudFunctionUrl('videoShare');
+  return `${baseUrl}/video-share/${video.id}`;
 };
 
 /**
