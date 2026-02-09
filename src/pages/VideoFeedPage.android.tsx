@@ -194,13 +194,10 @@ const VideoFeedPage: React.FC = () => {
    * Handle pull-to-refresh
    */
   const handleRefresh = useCallback(async () => {
-    console.log('[VideoFeedPage.android] handleRefresh called');
     setIsRefreshing(true);
     // Cleanup all video players before refreshing to prevent "shared object released" errors
     await videoPlaybackManager.deactivateAll();
-    console.log('[VideoFeedPage.android] Calling refreshVideos...');
     await refreshVideos();
-    console.log('[VideoFeedPage.android] refreshVideos completed, video count:', videos.length);
     setIsRefreshing(false);
     if (recyclerRef.current && videos.length > 0) {
       recyclerRef.current.scrollToIndex(0, false);
@@ -308,19 +305,8 @@ const VideoFeedPage: React.FC = () => {
     const centeredIndex = Math.round(offsetY / height);
     const refIndex = currentVideoIndexRef.current;
 
-    console.log('[ANDROID_SCROLL]', {
-      offsetY,
-      height,
-      centeredIndex,
-      refIndex,
-      videoCount: videos.length,
-      willUpdate: centeredIndex !== refIndex && centeredIndex >= 0 && centeredIndex < videos.length,
-    });
-
     // Only fire on index change — ref gates this to ONE call per page snap
     if (centeredIndex !== refIndex && centeredIndex >= 0 && centeredIndex < videos.length) {
-      console.log('[ANDROID_SCROLL] ✅ INDEX CHANGE:', refIndex, '→', centeredIndex);
-
       // Deactivate audio immediately to prevent overlap
       videoPlaybackManager.deactivateAll();
 

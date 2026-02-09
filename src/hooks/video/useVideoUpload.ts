@@ -164,11 +164,8 @@ export const useVideoUpload = (options?: UseVideoUploadOptions) => {
         const isCancellation = errorMessage.includes('storage/canceled') || 
                               errorMessage.includes('User canceled') ||
                               errorMessage.includes('Upload canceled');
-        
-        console.log('[useVideoUpload] Error caught:', errorMessage, 'Is cancellation?', isCancellation);
-        
+                                      
         if (isCancellation) {
-          console.log('[useVideoUpload] Upload canceled by user - not showing error');
           setUploadState({
             loading: false,
             progress: 0,
