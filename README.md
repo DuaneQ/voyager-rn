@@ -364,10 +364,48 @@ expo start
 npm run ios        # Start iOS simulator
 npm run android    # Start Android emulator
 npm run web        # Start web browser
+```
 
-# Production builds
-expo build:ios     # iOS build
-expo build:android # Android build
+### Production Deployment (EAS Build)
+
+**Prerequisites:**
+1. Increment version numbers in `app.json` and `package.json`
+   - `version`: e.g., 1.7.0 → 1.7.1
+   - iOS `buildNumber`: e.g., 26 → 27
+   - Android `versionCode`: e.g., 18 → 19
+2. Commit and push all changes to git
+
+**Deploy to iOS App Store (auto-submit):**
+```bash
+eas build --platform ios --profile production --auto-submit
+```
+
+**Deploy to Google Play Store (auto-submit):**
+```bash
+eas build --platform android --profile production --auto-submit
+```
+
+**Deploy to Both Stores:**
+```bash
+eas build --platform all --profile production --auto-submit
+```
+
+**Manual submission (build only, no auto-submit):**
+```bash
+# iOS only
+eas build --platform ios --profile production
+
+# Android only
+eas build --platform android --profile production
+```
+
+**⚠️ Important:** Each successful EAS build counts against your quota. Always test locally in Release mode before building:
+```bash
+# iOS Release mode test
+npx expo run:ios --configuration Release
+
+# Android Release mode test
+npx expo run:android --variant release
 ```
 
 ### Database Testing

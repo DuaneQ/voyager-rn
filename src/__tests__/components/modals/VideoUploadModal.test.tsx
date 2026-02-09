@@ -40,12 +40,14 @@ const mockValidateVideoMetadata = videoValidation.validateVideoMetadata as jest.
 describe('VideoUploadModal', () => {
   const mockOnClose = jest.fn();
   const mockOnUpload = jest.fn();
+  const mockOnCancel = jest.fn();
   const mockVideoUri = 'file:///test/video.mp4';
 
   const defaultProps = {
     visible: true,
     onClose: mockOnClose,
     onUpload: mockOnUpload,
+    onCancel: mockOnCancel,
     videoUri: mockVideoUri,
   };
 
@@ -471,13 +473,14 @@ describe('VideoUploadModal', () => {
       expect(getByTestId('public-switch').props.disabled).toBe(true);
     });
 
-    it('should disable buttons during upload', () => {
+    it('should disable upload button during upload', () => {
       const { getByTestId } = render(
         <VideoUploadModal {...defaultProps} isUploading={true} />
       );
       
-      expect(getByTestId('cancel-button').props.disabled).toBe(true);
+      // Upload button is disabled during upload
       expect(getByTestId('upload-button').props.disabled).toBe(true);
+      // Cancel button remains enabled to allow cancellation
     });
 
     it('should show "Uploading..." text on button during upload', () => {
@@ -504,13 +507,16 @@ describe('VideoUploadModal', () => {
       expect(mockOnClose).toHaveBeenCalled();
     });
 
-    it('should not close during upload', () => {
+    it('should call onCancel and onClose when close button pressed during upload', () => {
       const { getByTestId } = render(
         <VideoUploadModal {...defaultProps} isUploading={true} />
       );
       
       fireEvent.press(getByTestId('close-button'));
-      expect(mockOnClose).not.toHaveBeenCalled();
+      // Should cancel the upload first
+      expect(mockOnCancel).toHaveBeenCalled();
+      // Then close the modal
+      expect(mockOnClose).toHaveBeenCalled();
     });
 
     it('should reset form when closing', () => {

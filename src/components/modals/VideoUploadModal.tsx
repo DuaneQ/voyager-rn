@@ -30,6 +30,7 @@ interface VideoUploadModalProps {
   visible: boolean;
   onClose: () => void;
   onUpload: (videoData: VideoUploadData) => Promise<void>;
+  onCancel?: () => void;
   videoUri: string | null;
   pickerFileSize?: number; // Original file size from expo-image-picker (avoids iOS transcoding)
   isUploading?: boolean;
@@ -47,6 +48,7 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
   visible,
   onClose,
   onUpload,
+  onCancel,
   videoUri,
   pickerFileSize,
   isUploading = false,
@@ -122,16 +124,17 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
 
   /**
    * Handle modal close
-   * Prevents closing during upload
+   * Calls onCancel if upload is in progress to abort it
    */
   const handleClose = () => {
-    if (!isUploading) {
-      setTitle('');
-      setDescription('');
-      setIsPublic(true);
-      setErrors([]);
-      onClose();
+    if (isUploading && onCancel) {
+      onCancel();
     }
+    setTitle('');
+    setDescription('');
+    setIsPublic(true);
+    setErrors([]);
+    onClose();
   };
 
   return (
@@ -153,14 +156,13 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
               <Text style={styles.headerTitle}>Upload Video</Text>
               <TouchableOpacity
                 onPress={handleClose}
-                disabled={isUploading}
                 style={styles.closeButton}
                 testID="close-button"
               >
                 <Ionicons
                   name="close"
                   size={28}
-                  color={isUploading ? '#999' : '#333'}
+                  color="#333"
                 />
               </TouchableOpacity>
             </View>
@@ -274,14 +276,12 @@ export const VideoUploadModal: React.FC<VideoUploadModalProps> = ({
                 <TouchableOpacity
                   style={[styles.button, styles.cancelButton]}
                   onPress={handleClose}
-                  disabled={isUploading}
                   testID="cancel-button"
                 >
                   <Text
                     style={[
                       styles.buttonText,
                       styles.cancelButtonText,
-                      isUploading && styles.disabledText,
                     ]}
                   >
                     Cancel

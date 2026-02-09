@@ -1,6 +1,6 @@
 {
   "name": "voyager-rn",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "React Native Expo version of voyager-pwa with identical functionality",
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {

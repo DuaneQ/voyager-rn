@@ -24,6 +24,7 @@ import {
   Text,
   ActivityIndicator,
   SafeAreaView,
+  RefreshControl,
 } from 'react-native';
 import { RecyclerListView, DataProvider, LayoutProvider } from 'recyclerlistview';
 import { setAudioModeAsync } from 'expo-audio';
@@ -44,19 +45,6 @@ import { doc, getDocFromServer } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
 
 const { width, height } = Dimensions.get('window');
-
-// ────────────────────────────────────────────────────────────────────────────
-// DIAGNOSTIC LOGGING — prefix all with [VF-DIAG] for easy Metro filtering
-// Set to false to disable all diagnostic logs in production
-const VF_DIAG_ENABLED = __DEV__;
-let _diagSeq = 0; // monotonic sequence counter for ordering events
-const diagLog = (tag: string, msg: string, data?: Record<string, unknown>) => {
-  if (!VF_DIAG_ENABLED) return;
-  _diagSeq++;
-  const ts = Date.now();
-  const dataStr = data ? ` | ${JSON.stringify(data)}` : '';
-};
-// ────────────────────────────────────────────────────────────────────────────
 
 // Layout types for RecyclerListView
 const ViewTypes = {
@@ -83,7 +71,7 @@ const VideoFeedPage: React.FC = () => {
     updateVideo,
   } = useVideoFeed();
 
-  const { uploadState, selectVideo, uploadVideo } = useVideoUpload({
+  const { uploadState, selectVideo, uploadVideo, cancelUpload } = useVideoUpload({
     onError: (message, title) => {
       showAlert('error', message);
     },
@@ -111,53 +99,30 @@ const VideoFeedPage: React.FC = () => {
   // Keep ref in sync with state on every render
   currentVideoIndexRef.current = currentVideoIndex;
 
-  // Diagnostic: track render count and extendedState changes
-  const renderCountRef = useRef(0);
-  renderCountRef.current++;
-  diagLog('COMPONENT_RENDER', `VideoFeedPage render #${renderCountRef.current}`, {
-    currentVideoIndex,
-    isScreenFocused,
-    isMuted,
-    videoCount: videos.length,
-    refIndex: currentVideoIndexRef.current,
-  });
-  const prevExtendedStateRef = useRef({ currentVideoIndex, isScreenFocused, isMuted });
-  useEffect(() => {
-    const prev = prevExtendedStateRef.current;
-    const changed: string[] = [];
-    if (prev.currentVideoIndex !== currentVideoIndex) changed.push(`currentVideoIndex: ${prev.currentVideoIndex}→${currentVideoIndex}`);
-    if (prev.isScreenFocused !== isScreenFocused) changed.push(`isScreenFocused: ${prev.isScreenFocused}→${isScreenFocused}`);
-    if (prev.isMuted !== isMuted) changed.push(`isMuted: ${prev.isMuted}→${isMuted}`);
-    if (changed.length > 0) {
-      diagLog('EXTENDED_STATE', 'extendedState will change (new object ref → ALL visible views re-render)', {
-        changes: changed,
-        renderCount: renderCountRef.current,
-        videoCount: videos.length,
-      });
-    }
-    prevExtendedStateRef.current = { currentVideoIndex, isScreenFocused, isMuted };
-  }, [currentVideoIndex, isScreenFocused, isMuted, videos.length]);
-
   // NOTE: scrollTimeoutRef removed — immediate ref update means only ONE setState per page transition
 
   /**
    * RecyclerListView Data Provider
-   * Tracks data changes and determines when to re-render
+   * 
+   * CRITICAL: Use a ref so cloneWithRows() is called on the PREVIOUS instance.
+   * This lets RLV compare old rows vs new rows incrementally. If we created a
+   * new DataProvider each time, RLV would treat it as a full data reset and
+   * reset scroll position to 0 — causing the "snap back to first video" bug.
    */
-  const dataProvider = useMemo(() => {
-    const dp = new DataProvider((r1, r2) => {
+  const dataProviderRef = useRef(
+    new DataProvider((r1, r2) => {
       // Compare by reference — when likes, comments, viewCount, or any field
       // changes via optimistic updates (e.g. handleLike calling setVideos),
       // the new video object has a different reference so RLV re-renders the row.
-      // Previously we only compared r1.id !== r2.id which missed data mutations.
       return r1 !== r2;
-    }).cloneWithRows(videos);
-    diagLog('DATA_PROVIDER', 'DataProvider recreated via useMemo', {
-      videoCount: videos.length,
-      firstId: videos[0]?.id ?? 'none',
-      lastId: videos[videos.length - 1]?.id ?? 'none',
-    });
-    return dp;
+    })
+  );
+
+  const dataProvider = useMemo(() => {
+    // Clone from the previous DataProvider so RLV can diff old vs new rows.
+    // Appended rows are treated as additions — scroll position is preserved.
+    dataProviderRef.current = dataProviderRef.current.cloneWithRows(videos);
+    return dataProviderRef.current;
   }, [videos]);
 
   /**
@@ -179,10 +144,8 @@ const VideoFeedPage: React.FC = () => {
    */
   useFocusEffect(
     useCallback(() => {
-      diagLog('FOCUS', 'Screen FOCUSED — resuming playback');
       setIsScreenFocused(true);
       return () => {
-        diagLog('FOCUS', 'Screen UNFOCUSED — deactivating all playback');
         setIsScreenFocused(false);
         videoPlaybackManager.deactivateAll();
       };
@@ -232,6 +195,8 @@ const VideoFeedPage: React.FC = () => {
    */
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
+    // Cleanup all video players before refreshing to prevent "shared object released" errors
+    await videoPlaybackManager.deactivateAll();
     await refreshVideos();
     setIsRefreshing(false);
     if (recyclerRef.current && videos.length > 0) {
@@ -342,13 +307,6 @@ const VideoFeedPage: React.FC = () => {
 
     // Only fire on index change — ref gates this to ONE call per page snap
     if (centeredIndex !== refIndex && centeredIndex >= 0 && centeredIndex < videos.length) {
-      diagLog('SCROLL', 'Index CHANGED — immediate update (no debounce)', {
-        from: refIndex,
-        to: centeredIndex,
-        offsetY: Math.round(offsetY),
-        exactPosition: +(offsetY / height).toFixed(3),
-      });
-
       // Deactivate audio immediately to prevent overlap
       videoPlaybackManager.deactivateAll();
 
@@ -366,11 +324,7 @@ const VideoFeedPage: React.FC = () => {
    * Now only used for logging/debugging - scroll handler determines active video
    */
   const handleVisibleIndicesChanged = useCallback((all: number[], now: number[]) => {
-    diagLog('VISIBLE_INDICES', 'RLV visibility changed', {
-      allVisible: all,
-      newlyVisible: now,
-      currentVideoIndexRef: currentVideoIndexRef.current,
-    });
+    // No-op in production - scroll handler manages active video
   }, []);
 
   /**
@@ -393,9 +347,6 @@ const VideoFeedPage: React.FC = () => {
    * one of the actual values changes.
    */
   const extendedState = useMemo(() => {
-    diagLog('EXTENDED_STATE_MEMO', 'New extendedState object created', {
-      currentVideoIndex, isScreenFocused, isMuted,
-    });
     return { currentVideoIndex, isScreenFocused, isMuted };
   }, [currentVideoIndex, isScreenFocused, isMuted]);
 
@@ -410,15 +361,6 @@ const VideoFeedPage: React.FC = () => {
       // so even if this render cycle was triggered by a slightly-stale extendedState,
       // the ref always has the latest scroll position.
       const isActive = index === currentVideoIndexRef.current && isScreenFocused;
-
-      diagLog('ROW_RENDER', `rowRenderer called`, {
-        index,
-        videoId: data.id?.substring(0, 8),
-        isActive,
-        refIndex: currentVideoIndexRef.current,
-        isScreenFocused,
-        isMuted,
-      });
 
       return (
         <VideoCard
@@ -583,7 +525,10 @@ const VideoFeedPage: React.FC = () => {
         // Load more when reaching bottom
         onEndReached={handleEndReached}
         onEndReachedThreshold={0.5}
-        // Scrolling performance
+        // Scrolling performance + pull-to-refresh via scrollViewProps
+        // NOTE: Do NOT use externalScrollView with an inline function — it creates
+        // a new component type on every render, causing React to unmount/remount
+        // the ScrollView and reset scroll position to 0.
         scrollViewProps={{
           pagingEnabled: true,
           snapToInterval: height, // CRITICAL: Force snap to exact screen height
@@ -591,8 +536,13 @@ const VideoFeedPage: React.FC = () => {
           decelerationRate: 'fast',
           showsVerticalScrollIndicator: false,
           disableIntervalMomentum: true, // Prevent momentum scroll past snap points
-          onRefresh: isRefreshing ? undefined : handleRefresh,
-          refreshing: isRefreshing,
+          refreshControl: (
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={handleRefresh}
+              tintColor="#fff"
+            />
+          ),
         }}
       />
 
@@ -657,6 +607,7 @@ const VideoFeedPage: React.FC = () => {
           visible={uploadModalVisible}
           onClose={handleUploadModalClose}
           onUpload={handleVideoUpload}
+          onCancel={cancelUpload}
           videoUri={selectedVideoUri}
           pickerFileSize={selectedVideoFileSize}
           isUploading={uploadState.loading}

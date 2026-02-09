@@ -44,6 +44,7 @@ export const VideoGrid: React.FC = () => {
     uploadState,
     selectVideo,
     uploadVideo,
+    cancelUpload,
     deleteVideo,
     loadUserVideos,
   } = useVideoUpload({
@@ -340,6 +341,7 @@ export const VideoGrid: React.FC = () => {
           visible={uploadModalVisible}
           onClose={handleUploadModalClose}
           onUpload={handleVideoUpload}
+          onCancel={cancelUpload}
           videoUri={selectedVideoUri}
           pickerFileSize={selectedVideoFileSize}
           isUploading={uploadState.loading}

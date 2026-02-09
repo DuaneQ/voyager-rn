@@ -61,6 +61,18 @@ jobs:
           EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID: ${{ secrets.REACT_APP_FIREBASE_MEASUREMENT_ID }}
           EXPO_PUBLIC_GOOGLE_PLACES_API_KEY: ${{ secrets.REACT_APP_GOOGLE_PLACES_API_KEY }}
 
+      - name: Verify firebase.json has required function rewrites
+        run: |
+          echo "🔍 Checking firebase.json for required Cloud Function rewrites..."
+          for route in "/video-share/**" "/share-itinerary/**" "/video/**"; do
+            if ! grep -q "\"source\": \"$route\"" firebase.json; then
+              echo "::error::Missing required rewrite for $route in firebase.json!"
+              echo "This will break video/itinerary share links. See docs/videos/VIDEO_SHARE_BROKEN_INVESTIGATION.md"
+              exit 1
+            fi
+          done
+          echo "✅ All required function rewrites present in firebase.json"
+
       - name: Deploy to Firebase Hosting (Production)
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:

@@ -11,6 +11,18 @@
     ],
     "rewrites": [
       {
+        "source": "/share-itinerary/**",
+        "function": "itineraryShare"
+      },
+      {
+        "source": "/video-share/**",
+        "function": "videoShare"
+      },
+      {
+        "source": "/video/**",
+        "function": "videoShare"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

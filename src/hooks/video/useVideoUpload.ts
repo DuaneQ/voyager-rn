@@ -27,6 +27,7 @@ export const useVideoUpload = (options?: UseVideoUploadOptions) => {
   });
 
   const [permissionGranted, setPermissionGranted] = useState<boolean | null>(null);
+  const [isUploadActive, setIsUploadActive] = useState(false);
 
   /**
    * Request media library permission
@@ -105,6 +106,7 @@ export const useVideoUpload = (options?: UseVideoUploadOptions) => {
         error: null,
         processingStatus: 'Validating...',
       });
+      setIsUploadActive(true);
 
       try {
         // Get file size - prefer pickerFileSize from expo-image-picker (avoids iOS transcoding)
@@ -150,13 +152,31 @@ export const useVideoUpload = (options?: UseVideoUploadOptions) => {
           error: null,
           processingStatus: null,
         });
+        setIsUploadActive(false);
 
         return video;
       } catch (error) {
-        console.error('[useVideoUpload] Upload error caught:', error);
-        const errorMessage =
-          error instanceof Error ? error.message : 'Upload failed';
-        console.error('[useVideoUpload] Error message:', errorMessage);
+        setIsUploadActive(false);
+        
+        const errorMessage = error instanceof Error ? error.message : 'Upload failed';
+        
+        // Don't show error if user intentionally canceled the upload
+        const isCancellation = errorMessage.includes('storage/canceled') || 
+                              errorMessage.includes('User canceled') ||
+                              errorMessage.includes('Upload canceled');
+                                      
+        if (isCancellation) {
+          setUploadState({
+            loading: false,
+            progress: 0,
+            error: null,
+            processingStatus: null,
+          });
+          return null;
+        }
+        
+        // Only log and show error for actual failures (not cancellations)
+        console.error('[useVideoUpload] Upload error:', errorMessage);
         
         setUploadState({
           loading: false,
@@ -169,8 +189,28 @@ export const useVideoUpload = (options?: UseVideoUploadOptions) => {
         return null;
       }
     },
-    []
+    [showError]
   );
+
+  /**
+   * Cancel ongoing upload
+   */
+  const cancelUpload = useCallback(() => {
+    if (isUploadActive) {
+      const cancelled = videoService.cancelUpload();
+      if (cancelled) {
+        setIsUploadActive(false);
+        setUploadState({
+          loading: false,
+          progress: 0,
+          error: null,
+          processingStatus: null,
+        });
+      }
+      return cancelled;
+    }
+    return false;
+  }, [isUploadActive]);
 
   /**
    * Delete video
@@ -216,8 +256,10 @@ export const useVideoUpload = (options?: UseVideoUploadOptions) => {
     uploadState,
     selectVideo,
     uploadVideo,
+    cancelUpload,
     deleteVideo,
     loadUserVideos,
     requestPermission,
+    isUploadActive,
   };
 };

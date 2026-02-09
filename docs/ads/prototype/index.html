@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>TravalPass Ads — Prototype</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <h1>TravalPass Ads</h1>
+      <nav>
+        <button id="nav-home">Home</button>
+        <button id="nav-campaigns">Campaigns</button>
+        <button id="nav-create">Create Campaign</button>
+        <button id="nav-reports">Reports</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <section id="view-home" class="view">
+      <h2>Welcome, Advertiser</h2>
+      <p>Create and manage ad campaigns for the PWA. This is a clickable prototype.</p>
+      <div class="cta-row">
+        <button id="start-create" class="primary">Create Campaign</button>
+        <button id="view-campaigns-cta">View Campaigns</button>
+      </div>
+    </section>
+
+    <section id="view-campaigns" class="view hidden">
+      <h2>Campaigns</h2>
+      <div id="campaign-list"></div>
+      <div class="controls">
+        <button id="create-from-list" class="primary">New Campaign</button>
+      </div>
+    </section>
+
+    <section id="view-create" class="view hidden">
+      <h2>Create Campaign</h2>
+      <p class="muted">Reach travelers planning trips to a destination and dates relevant to your offering.</p>
+      <div class="stepper" id="stepper">
+        <div class="steps">
+          <span class="step active" data-step="1">1 Details</span>
+          <span class="step" data-step="2">2 Creative</span>
+          <span class="step" data-step="3">3 Targeting</span>
+          <span class="step" data-step="4">4 Budget</span>
+          <span class="step" data-step="5">5 Review</span>
+        </div>
+        <form id="create-form">
+          <div class="step-panel" data-step="1">
+            <label>Campaign name <input name="name" required minlength="3" maxlength="100" /></label>
+            <label>Placements
+              <div class="placements">
+                <label class="placement">
+                  <input type="radio" name="placement" value="video_feed" checked />
+                  <div class="thumb">9:16</div>
+                  <div class="meta"><strong>Video Feed</strong><div class="desc">Full-screen short vertical videos (preferred)</div></div>
+                </label>
+                <label class="placement">
+                  <input type="radio" name="placement" value="itinerary_feed" />
+                  <div class="thumb">1:1</div>
+                  <div class="meta"><strong>Itinerary Feed</strong><div class="desc">Inline posts within itinerary pages</div></div>
+                </label>
+                <label class="placement">
+                  <input type="radio" name="placement" value="ai_slot" />
+                  <div class="thumb">3:2</div>
+                  <div class="meta"><strong>AI Slots</strong><div class="desc">Contextual suggestions alongside AI itineraries</div></div>
+                </label>
+              </div>
+            </label>
+            <label>Objective
+              <select name="objective" required>
+                <option value="Awareness">Awareness</option>
+                <option value="Traffic">Traffic</option>
+              </select>
+            </label>
+            <label>Start date <input type="date" name="startDate" required /></label>
+            <label>End date <input type="date" name="endDate" /></label>
+          </div>
+
+          <div class="step-panel hidden" data-step="2">
+            <label>Creative name <input name="creativeName" required /></label>
+            <label>Creative type
+              <select name="creativeType">
+                <option value="image">Image</option>
+                <option value="video">Video</option>
+              </select>
+            </label>
+            <div id="creative-specs" class="specs muted">Select placement and creative type to see recommended specs (e.g., Video Feed prefers 9:16 MP4 H.264, max 50MB).</div>
+            <label>Upload asset
+              <input type="file" name="asset" accept="image/*,video/*" />
+            </label>
+            <div id="asset-preview" class="preview"></div>
+            <label>Primary text <textarea name="primaryText" maxlength="300"></textarea></label>
+            <label>CTA
+              <select name="cta">
+                <option>Learn More</option>
+                <option>Book Now</option>
+                <option>Sign Up</option>
+                <option>Visit Shop</option>
+              </select>
+            </label>
+            <label>Landing URL <input name="landingUrl" type="url" /></label>
+          </div>
+
+          <div class="step-panel hidden" data-step="3">
+            <label>Audience name <input name="audienceName" required /></label>
+            <label>Locations
+              <div class="location-row">
+                <input name="location" placeholder="Start typing country or city" required />
+                <input name="radius" type="number" min="1" placeholder="Radius km" style="width:120px;margin-left:8px" />
+              </div>
+              <div class="muted small">Use autocomplete to select valid locations (prototype simulates free text).</div>
+            </label>
+            <label><input type="checkbox" name="destinationMatch" /> Destination match from itineraries</label>
+            <label>Age range
+              <select name="ageFrom">
+                <option value="18">18</option>
+                <option value="25">25</option>
+                <option value="35">35</option>
+                <option value="45">45</option>
+              </select>
+              to
+              <select name="ageTo">
+                <option value="34">34</option>
+                <option value="44">44</option>
+                <option value="54">54</option>
+                <option value="65">65+</option>
+              </select>
+            </label>
+            <label>Interests (comma separated) <input name="interests" /></label>
+          </div>
+
+          <div class="step-panel hidden" data-step="4">
+            <label>Budget type
+              <select name="budgetType">
+                <option value="daily">Daily</option>
+                <option value="lifetime">Lifetime</option>
+              </select>
+            </label>
+            <label>Budget amount (USD) <input type="number" name="budgetAmount" min="1" required /></label>
+            <label>Billing model
+              <select name="billingModel">
+                <option value="cpm">CPM (default)</option>
+                <option value="cpc">CPC (optional)</option>
+              </select>
+            </label>
+            <div class="balance-row">
+              <div>Available balance: <strong id="available-balance">$100.00</strong></div>
+              <button type="button" id="add-funds">Add funds</button>
+              <div class="muted small">You will not be charged beyond your available balance. Add funds via Stripe Checkout (prototype).</div>
+            </div>
+          </div>
+
+          <div class="step-panel hidden" data-step="5">
+            <h3>Review</h3>
+            <div id="review-summary" class="review"></div>
+            <label><input type="checkbox" name="agreePolicy" required /> I agree to the advertising policy</label>
+            <div class="controls">
+              <button type="button" id="submit-campaign" class="primary">Submit Campaign</button>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" id="save-draft">Save Draft</button>
+            <div>
+              <button type="button" id="prev-step">Back</button>
+              <button type="button" id="next-step" class="primary" disabled>Next</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <section id="view-reports" class="view hidden">
+      <h2>Reports</h2>
+      <div class="kpis">
+        <div class="kpi">Impressions<br/><strong id="kpi-impr">0</strong></div>
+        <div class="kpi">Clicks<br/><strong id="kpi-clicks">0</strong></div>
+        <div class="kpi">Spend<br/><strong id="kpi-spend">$0</strong></div>
+      </div>
+      <div id="reports-list"></div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">Prototype — not connected to backend. Open files locally to test.</div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
