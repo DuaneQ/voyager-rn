@@ -117,11 +117,25 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
   // iOS/Web have no such limit — eager creation eliminates the black flash on scroll.
   const useLazyCreation = Platform.OS === 'android';
 
-  // Whether this video is still being transcoded by Mux.
-  // On Android, raw 4K video (e.g. 3840x2160 AVC) cannot be decoded by most
-  // hardware decoders, so we MUST wait for Mux adaptive streaming to be ready.
+  // Whether this video needs or is undergoing Mux transcoding.
+  // On Android, raw videos (especially 4K, HEVC, or high-bitrate H.264) often
+  // cannot be decoded by hardware decoders. We require Mux adaptive streaming.
+  // 
+  // Two cases:
+  // 1. isMuxProcessing: Has muxAssetId but no muxPlaybackUrl (actively transcoding)
+  // 2. needsMuxProcessing: No muxPlaybackUrl at all (old video, never processed)
+  // 3. isRecentUpload: Uploaded within last 5 minutes (pending automatic processing)
   // On iOS/Web, raw video fallback works fine — no guard needed.
   const isMuxProcessing = Platform.OS === 'android' && !video.muxPlaybackUrl && !!video.muxAssetId;
+  
+  // Check if this is a recent upload (within last 5 minutes) - will auto-process (Android only)
+  const uploadTime = video.createdAt?.toMillis ? video.createdAt.toMillis() : 0;
+  const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
+  const isRecentUpload = Platform.OS === 'android' && uploadTime > fiveMinutesAgo && !video.muxPlaybackUrl && !video.muxAssetId;
+  
+  // Only mark as "needs processing" if it's an OLD video without Mux
+  // Recent uploads will auto-process, so treat them like "isMuxProcessing"
+  const needsMuxProcessing = Platform.OS === 'android' && !video.muxPlaybackUrl && !video.muxAssetId && !isRecentUpload;
 
   /**
    * Creates a player instance for the current video URL, wires up listeners,
@@ -224,9 +238,9 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
       return;
     }
 
-    if (isMuxProcessing) {
-      // Mux is still transcoding — don't attempt raw 4K playback on Android.
-      // Show "Processing..." UI instead; user can pull-to-refresh.
+    if (isMuxProcessing || isRecentUpload || needsMuxProcessing) {
+      // Mux is still transcoding OR video was just uploaded OR video needs processing
+      // Don't attempt raw playback. Show appropriate UI; user can pull-to-refresh.
       setPlayer(null);
       setExpoPlayer(null);
       expoPlayerRef.current = null;
@@ -246,7 +260,15 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
       teardownPlayer(playerInstance);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [useLazyCreation ? isActive : '__skip__', video.id, video.videoUrl]);
+  }, [
+    useLazyCreation ? isActive : '__skip__', 
+    video.id, 
+    video.videoUrl, 
+    video.muxPlaybackUrl,
+    isMuxProcessing,
+    isRecentUpload,
+    needsMuxProcessing
+  ]);
 
   // ────────────────────────────────────────────────────────────────────
   // iOS / WEB: EAGER PLAYER CREATION
@@ -458,10 +480,20 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
 
   /**
    * Render processing state (Android only)
-   * When Mux is still transcoding, Android can't decode the raw 4K file.
-   * Show thumbnail with a processing indicator instead of a playback error.
+   * Three cases:
+   * 1. Video is actively being transcoded by Mux (has muxAssetId, no playback URL yet)
+   * 2. Video was just uploaded and onVideoUploaded hasn't run yet (recent upload)
+   * 3. Old video that was never processed by Mux (no muxAssetId, uploaded long ago)
    */
-  if (isMuxProcessing) {
+  if (isMuxProcessing || isRecentUpload || needsMuxProcessing) {
+    const isProcessing = isMuxProcessing || isRecentUpload;
+    const message = isProcessing
+      ? 'Processing video...' 
+      : 'Video format not compatible';
+    const subtext = isProcessing
+      ? 'This may take a few seconds. Pull down to refresh.'
+      : 'This video was uploaded before format conversion was enabled. The uploader needs to delete and re-upload it.';
+    
     return (
       <View style={styles.container}>
         <View style={styles.videoContainer}>
@@ -475,9 +507,13 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
             <View style={[styles.video, styles.loadingContainer]} />
           )}
           <View style={styles.processingOverlay}>
-            <ActivityIndicator size="large" color="#fff" />
-            <Text style={styles.processingText}>Processing video...</Text>
-            <Text style={styles.processingSubtext}>Pull down to refresh</Text>
+            {isProcessing ? (
+              <ActivityIndicator size="large" color="#fff" />
+            ) : (
+              <Ionicons name="alert-circle-outline" size={64} color="#fff" />
+            )}
+            <Text style={styles.processingText}>{message}</Text>
+            <Text style={styles.processingSubtext}>{subtext}</Text>
           </View>
         </View>
         <View testID="info-overlay" style={[styles.infoOverlayWrapper, { pointerEvents: 'box-none' }]}>
