@@ -1,10 +1,20 @@
 import React from 'react';
 import renderer, { ReactTestInstance, act } from 'react-test-renderer';
 
-jest.mock('../../config/firebaseConfig', () => ({
-  db: {},
-  getCloudFunctionUrl: jest.fn((functionName) => `https://us-central1-mundo1-dev.cloudfunctions.net/${functionName}`),
-}));
+jest.mock('../../config/firebaseConfig', () => {
+  const APP_DOMAIN = 'https://mundo1-dev.web.app';
+  const SHAREABLE_FUNCTIONS = new Set(['videoShare', 'itineraryShare']);
+  return {
+    db: {},
+    APP_DOMAIN,
+    getCloudFunctionUrl: (functionName: string) => {
+      if (SHAREABLE_FUNCTIONS.has(functionName)) {
+        return APP_DOMAIN;
+      }
+      return `https://us-central1-mundo1-dev.cloudfunctions.net/${functionName}`;
+    },
+  };
+});
 
 describe('ShareAIItineraryModal - rtrender suite', () => {
   const Share = require('../../components/modals/ShareAIItineraryModal').default;

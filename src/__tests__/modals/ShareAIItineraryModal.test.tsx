@@ -17,10 +17,22 @@ jest.mock('react-native/Libraries/Components/Clipboard/Clipboard', () => ({
   getString: jest.fn(() => Promise.resolve('')),
 }));
 
-jest.mock('../../config/firebaseConfig', () => ({
-  db: {},
-  getCloudFunctionUrl: jest.fn((functionName) => `https://us-central1-mundo1-dev.cloudfunctions.net/${functionName}`),
-}));
+jest.mock('../../config/firebaseConfig', () => {
+  // Replicate actual implementation logic for testing branded domains
+  const APP_DOMAIN = 'https://mundo1-dev.web.app'; // __DEV__ === true in tests
+  const SHAREABLE_FUNCTIONS = new Set(['videoShare', 'itineraryShare']);
+  
+  return {
+    db: {},
+    APP_DOMAIN,
+    getCloudFunctionUrl: (functionName: string) => {
+      if (SHAREABLE_FUNCTIONS.has(functionName)) {
+        return APP_DOMAIN;
+      }
+      return `https://us-central1-mundo1-dev.cloudfunctions.net/${functionName}`;
+    },
+  };
+});
 // Note: @expo/vector-icons is mocked in jest.setup.js to a functional stub
 
 import React from 'react';
@@ -106,7 +118,7 @@ describe('ShareAIItineraryModal', () => {
   it('displays the correct share URL', () => {
     const { getByDisplayValue } = renderShareModal();
 
-    const shareUrlInput = getByDisplayValue('https://us-central1-mundo1-dev.cloudfunctions.net/itineraryShare/share-itinerary/test-itinerary-123');
+    const shareUrlInput = getByDisplayValue('https://mundo1-dev.web.app/share-itinerary/test-itinerary-123');
     expect(shareUrlInput).toBeTruthy();
     expect(shareUrlInput.props.editable).toBe(false);
   });
@@ -120,7 +132,7 @@ describe('ShareAIItineraryModal', () => {
 
     await waitFor(() => {
       const RN = require('react-native');
-      expect(RN.Clipboard.setString).toHaveBeenCalledWith('https://us-central1-mundo1-dev.cloudfunctions.net/itineraryShare/share-itinerary/test-itinerary-123');
+      expect(RN.Clipboard.setString).toHaveBeenCalledWith('https://mundo1-dev.web.app/share-itinerary/test-itinerary-123');
     });
   });
 

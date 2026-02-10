@@ -43,6 +43,12 @@ const prodConfig = {
 // Use dev config for development, prod for release builds
 const firebaseConfig = __DEV__ ? devConfig : prodConfig;
 
+// App domain for branded share URLs
+// Uses Firebase Hosting with rewrites to proxy to Cloud Functions
+export const APP_DOMAIN = __DEV__ 
+  ? 'https://mundo1-dev.web.app' 
+  : 'https://travalpass.com';
+
 // Initialize Firebase app (only if not already initialized)
 export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 
@@ -83,8 +89,19 @@ export const getAuthInstance = () => auth;
 // Re-export signInWithCustomToken for auth sync
 export const signInWithCustomToken = firebaseSignInWithCustomToken;
 
-// Helper to get Cloud Function URL (for direct HTTP calls)
+// Share functions use branded domain for better trust/branding
+// Firebase Hosting rewrites proxy these to Cloud Functions
+const SHAREABLE_FUNCTIONS = new Set<string>(['videoShare', 'itineraryShare']);
+
+// Helper to get Cloud Function URL
+// For share functions (videoShare, itineraryShare): returns branded domain with Firebase Hosting rewrite
+// For RPC functions: returns direct Cloud Functions URL
 export const getCloudFunctionUrl = (functionName: string): string => {
+  if (SHAREABLE_FUNCTIONS.has(functionName)) {
+    return APP_DOMAIN;
+  }
+  
+  // RPC functions use direct Cloud Functions URL
   const projectId = firebaseConfig.projectId;
   const region = 'us-central1';
   return `https://${region}-${projectId}.cloudfunctions.net/${functionName}`;

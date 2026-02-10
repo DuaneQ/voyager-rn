@@ -13,10 +13,20 @@ import { Alert } from 'react-native';
 // Mock dependencies
 jest.mock('../../../hooks/useAIGeneratedItineraries');
 jest.mock('../../../hooks/useUpdateItinerary');
-jest.mock('../../../config/firebaseConfig', () => ({
-  db: {},
-  getCloudFunctionUrl: jest.fn((functionName) => `https://us-central1-mundo1-dev.cloudfunctions.net/${functionName}`),
-}));
+jest.mock('../../../config/firebaseConfig', () => {
+  const APP_DOMAIN = 'https://mundo1-dev.web.app';
+  const SHAREABLE_FUNCTIONS = new Set(['videoShare', 'itineraryShare']);
+  return {
+    db: {},
+    APP_DOMAIN,
+    getCloudFunctionUrl: (functionName: string) => {
+      if (SHAREABLE_FUNCTIONS.has(functionName)) {
+        return APP_DOMAIN;
+      }
+      return `https://us-central1-mundo1-dev.cloudfunctions.net/${functionName}`;
+    },
+  };
+});
 jest.mock('firebase/firestore', () => ({
   doc: jest.fn(),
   setDoc: jest.fn(),
