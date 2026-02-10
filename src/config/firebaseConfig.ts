@@ -89,15 +89,15 @@ export const getAuthInstance = () => auth;
 // Re-export signInWithCustomToken for auth sync
 export const signInWithCustomToken = firebaseSignInWithCustomToken;
 
+// Share functions use branded domain for better trust/branding
+// Firebase Hosting rewrites proxy these to Cloud Functions
+const SHAREABLE_FUNCTIONS = new Set<string>(['videoShare', 'itineraryShare']);
+
 // Helper to get Cloud Function URL
 // For share functions (videoShare, itineraryShare): returns branded domain with Firebase Hosting rewrite
 // For RPC functions: returns direct Cloud Functions URL
 export const getCloudFunctionUrl = (functionName: string): string => {
-  // Share functions use branded domain for better trust/branding
-  // Firebase Hosting rewrites proxy these to Cloud Functions
-  const shareableFunctions = ['videoShare', 'itineraryShare'];
-  
-  if (shareableFunctions.includes(functionName)) {
+  if (SHAREABLE_FUNCTIONS.has(functionName)) {
     return APP_DOMAIN;
   }
   
