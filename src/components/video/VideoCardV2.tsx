@@ -260,7 +260,15 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
       teardownPlayer(playerInstance);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [useLazyCreation ? isActive : '__skip__', video.id, video.videoUrl]);
+  }, [
+    useLazyCreation ? isActive : '__skip__', 
+    video.id, 
+    video.videoUrl, 
+    video.muxPlaybackUrl,
+    isMuxProcessing,
+    isRecentUpload,
+    needsMuxProcessing
+  ]);
 
   // ────────────────────────────────────────────────────────────────────
   // iOS / WEB: EAGER PLAYER CREATION
