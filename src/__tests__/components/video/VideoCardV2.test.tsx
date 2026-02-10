@@ -18,11 +18,13 @@ jest.mock('firebase/firestore', () => ({
       seconds: Math.floor(Date.now() / 1000),
       nanoseconds: 0,
       toDate: () => new Date(),
+      toMillis: () => Date.now(),
     })),
     fromDate: jest.fn((date: Date) => ({
       seconds: Math.floor(date.getTime() / 1000),
       nanoseconds: 0,
       toDate: () => date,
+      toMillis: () => date.getTime(),
     })),
   },
 }));
@@ -636,6 +638,421 @@ describe('VideoCardV2', () => {
       
       // Each mount schedules a release; ensure at least one release occurred
       await waitFor(() => expect(mockPlayer.release).toHaveBeenCalled());
+    });
+  });
+
+  describe('Mux Processing States (Android)', () => {
+    let originalPlatform: any;
+
+    beforeAll(() => {
+      // Save original Platform.OS
+      const { Platform } = require('react-native');
+      originalPlatform = Platform.OS;
+    });
+
+    afterAll(() => {
+      // Restore original Platform.OS
+      const { Platform } = require('react-native');
+      Platform.OS = originalPlatform;
+    });
+
+    beforeEach(() => {
+      // Set Platform.OS to android for these tests
+      const { Platform } = require('react-native');
+      Platform.OS = 'android';
+    });
+
+    describe('isMuxProcessing: Has muxAssetId but no playback URL', () => {
+      it('should show processing UI when video has muxAssetId but no muxPlaybackUrl', () => {
+        const videoWithMuxAsset = {
+          ...defaultVideo,
+          muxAssetId: 'test-mux-asset-123',
+          muxPlaybackUrl: undefined,
+        };
+
+        const { getByText, queryByTestId } = render(
+          <VideoCardV2 {...defaultProps} video={videoWithMuxAsset} isActive={true} />
+        );
+
+        expect(getByText('Processing video...')).toBeTruthy();
+        expect(getByText(/This may take a few seconds/)).toBeTruthy();
+        expect(mockFactory.createPlayer).not.toHaveBeenCalled();
+      });
+
+      it('should show spinner in processing state', () => {
+        const videoWithMuxAsset = {
+          ...defaultVideo,
+          muxAssetId: 'test-mux-asset-123',
+          muxPlaybackUrl: undefined,
+        };
+
+        const { UNSAFE_getByType } = render(
+          <VideoCardV2 {...defaultProps} video={videoWithMuxAsset} />
+        );
+
+        const ActivityIndicator = require('react-native').ActivityIndicator;
+        expect(UNSAFE_getByType(ActivityIndicator)).toBeTruthy();
+      });
+
+      it('should not create player when actively processing', async () => {
+        const videoWithMuxAsset = {
+          ...defaultVideo,
+          muxAssetId: 'test-mux-asset-123',
+          muxPlaybackUrl: undefined,
+        };
+
+        render(<VideoCardV2 {...defaultProps} video={videoWithMuxAsset} isActive={true} />);
+
+        // Wait a bit to ensure player creation is not triggered
+        await new Promise(resolve => setTimeout(resolve, 100));
+        expect(mockFactory.createPlayer).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('isRecentUpload: Uploaded within 5 minutes, no muxAssetId', () => {
+      it('should show processing UI for videos uploaded within last 5 minutes', () => {
+        const now = Date.now();
+        const twoMinutesAgo = Timestamp.fromDate(new Date(now - 2 * 60 * 1000));
+        
+        const recentVideo = {
+          ...defaultVideo,
+          createdAt: twoMinutesAgo,
+          muxAssetId: undefined,
+          muxPlaybackUrl: undefined,
+        };
+
+        const { getByText } = render(
+          <VideoCardV2 {...defaultProps} video={recentVideo} isActive={true} />
+        );
+
+        expect(getByText('Processing video...')).toBeTruthy();
+        expect(getByText(/This may take a few seconds/)).toBeTruthy();
+        expect(mockFactory.createPlayer).not.toHaveBeenCalled();
+      });
+
+      it('should show processing UI for video uploaded just now', () => {
+        const justNow = Timestamp.fromDate(new Date(Date.now() - 10 * 1000)); // 10 seconds ago
+        
+        const recentVideo = {
+          ...defaultVideo,
+          createdAt: justNow,
+          muxAssetId: undefined,
+          muxPlaybackUrl: undefined,
+        };
+
+        const { getByText } = render(
+          <VideoCardV2 {...defaultProps} video={recentVideo} isActive={true} />
+        );
+
+        expect(getByText('Processing video...')).toBeTruthy();
+      });
+
+      it('should show processing UI at exactly 4 minutes 59 seconds', () => {
+        const almostFiveMinutes = Timestamp.fromDate(new Date(Date.now() - (5 * 60 - 1) * 1000));
+        
+        const recentVideo = {
+          ...defaultVideo,
+          createdAt: almostFiveMinutes,
+          muxAssetId: undefined,
+          muxPlaybackUrl: undefined,
+        };
+
+        const { getByText } = render(
+          <VideoCardV2 {...defaultProps} video={recentVideo} isActive={true} />
+        );
+
+        expect(getByText('Processing video...')).toBeTruthy();
+      });
+    });
+
+    describe('needsMuxProcessing: Old video without Mux processing', () => {
+      it('should show error UI for videos older than 5 minutes without muxAssetId', () => {
+        const sixMinutesAgo = Timestamp.fromDate(new Date(Date.now() - 6 * 60 * 1000));
+        
+        const oldVideo = {
+          ...defaultVideo,
+          createdAt: sixMinutesAgo,
+          muxAssetId: undefined,
+          muxPlaybackUrl: undefined,
+        };
+
+        const { getByText, UNSAFE_queryByType } = render(
+          <VideoCardV2 {...defaultProps} video={oldVideo} />
+        );
+
+        expect(getByText('Video format not compatible')).toBeTruthy();
+        expect(getByText(/uploaded before format conversion/)).toBeTruthy();
+        
+        // Should show error icon, not spinner
+        const ActivityIndicator = require('react-native').ActivityIndicator;
+        expect(UNSAFE_queryByType(ActivityIndicator)).toBeNull();
+      });
+
+      it('should show error UI for very old videos without muxAssetId', () => {
+        const oneHourAgo = Timestamp.fromDate(new Date(Date.now() - 60 * 60 * 1000));
+        
+        const oldVideo = {
+          ...defaultVideo,
+          createdAt: oneHourAgo,
+          muxAssetId: undefined,
+          muxPlaybackUrl: undefined,
+        };
+
+        const { getByText } = render(
+          <VideoCardV2 {...defaultProps} video={oldVideo} />
+        );
+
+        expect(getByText('Video format not compatible')).toBeTruthy();
+      });
+
+      it('should not create player for old videos without Mux', async () => {
+        const sixMinutesAgo = Timestamp.fromDate(new Date(Date.now() - 6 * 60 * 1000));
+        
+        const oldVideo = {
+          ...defaultVideo,
+          createdAt: sixMinutesAgo,
+          muxAssetId: undefined,
+          muxPlaybackUrl: undefined,
+        };
+
+        render(<VideoCardV2 {...defaultProps} video={oldVideo} isActive={true} />);
+
+        await new Promise(resolve => setTimeout(resolve, 100));
+        expect(mockFactory.createPlayer).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('Video ready to play: Has muxPlaybackUrl', () => {
+      it('should create player when video has muxPlaybackUrl on Android', async () => {
+        const readyVideo = {
+          ...defaultVideo,
+          muxAssetId: 'test-mux-asset-123',
+          muxPlaybackUrl: 'https://stream.mux.com/test.m3u8',
+        };
+
+        render(<VideoCardV2 {...defaultProps} video={readyVideo} isActive={true} />);
+
+        await waitFor(() => {
+          expect(mockFactory.createPlayer).toHaveBeenCalledWith(
+            expect.objectContaining({
+              videoUrl: readyVideo.muxPlaybackUrl,
+            })
+          );
+        });
+      });
+
+      it('should use muxPlaybackUrl instead of raw videoUrl on Android', async () => {
+        const readyVideo = {
+          ...defaultVideo,
+          videoUrl: 'https://storage.googleapis.com/raw-video.mp4',
+          muxPlaybackUrl: 'https://stream.mux.com/test.m3u8',
+          muxAssetId: 'test-mux-asset-123',
+        };
+
+        render(<VideoCardV2 {...defaultProps} video={readyVideo} isActive={true} />);
+
+        await waitFor(() => {
+          expect(mockFactory.createPlayer).toHaveBeenCalledWith(
+            expect.objectContaining({
+              videoUrl: readyVideo.muxPlaybackUrl,
+            })
+          );
+        });
+
+        // Should NOT use raw videoUrl
+        expect(mockFactory.createPlayer).not.toHaveBeenCalledWith(
+          expect.objectContaining({
+            videoUrl: readyVideo.videoUrl,
+          })
+        );
+      });
+
+      it('should not show processing UI when video is ready', () => {
+        const readyVideo = {
+          ...defaultVideo,
+          muxAssetId: 'test-mux-asset-123',
+          muxPlaybackUrl: 'https://stream.mux.com/test.m3u8',
+        };
+
+        const { queryByText } = render(
+          <VideoCardV2 {...defaultProps} video={readyVideo} isActive={true} />
+        );
+
+        expect(queryByText('Processing video...')).toBeNull();
+        expect(queryByText('Video format not compatible')).toBeNull();
+      });
+    });
+
+    describe('Edge cases', () => {
+      it('should handle video with missing createdAt timestamp', () => {
+        const videoNoTimestamp = {
+          ...defaultVideo,
+          createdAt: undefined as any,
+          muxAssetId: undefined,
+          muxPlaybackUrl: undefined,
+        };
+
+        const { getByText } = render(
+          <VideoCardV2 {...defaultProps} video={videoNoTimestamp} />
+        );
+
+        // Should treat as old video since timestamp is missing
+        expect(getByText('Video format not compatible')).toBeTruthy();
+      });
+
+      it('should handle video with createdAt but no toMillis method', () => {
+        const videoInvalidTimestamp = {
+          ...defaultVideo,
+          createdAt: { invalid: true } as any,
+          muxAssetId: undefined,
+          muxPlaybackUrl: undefined,
+        };
+
+        const { getByText } = render(
+          <VideoCardV2 {...defaultProps} video={videoInvalidTimestamp} />
+        );
+
+        // Should treat as old video
+        expect(getByText('Video format not compatible')).toBeTruthy();
+      });
+
+      it('should prioritize muxPlaybackUrl over recent upload check', async () => {
+        const justNow = Timestamp.fromDate(new Date(Date.now() - 10 * 1000));
+        
+        const videoWithPlaybackUrl = {
+          ...defaultVideo,
+          createdAt: justNow,
+          muxAssetId: 'test-mux-asset-123',
+          muxPlaybackUrl: 'https://stream.mux.com/test.m3u8',
+        };
+
+        const { queryByText } = render(
+          <VideoCardV2 {...defaultProps} video={videoWithPlaybackUrl} isActive={true} />
+        );
+
+        // Should NOT show processing UI, video is ready
+        expect(queryByText('Processing video...')).toBeNull();
+        
+        await waitFor(() => {
+          expect(mockFactory.createPlayer).toHaveBeenCalled();
+        });
+      });
+    });
+  });
+
+  describe('Platform-specific behavior', () => {
+    let originalPlatform: any;
+
+    beforeAll(() => {
+      const { Platform } = require('react-native');
+      originalPlatform = Platform.OS;
+    });
+
+    afterAll(() => {
+      const { Platform } = require('react-native');
+      Platform.OS = originalPlatform;
+    });
+
+    it('should NOT block playback on iOS even without muxPlaybackUrl', async () => {
+      const { Platform } = require('react-native');
+      Platform.OS = 'ios';
+
+      const videoWithoutMux = {
+        ...defaultVideo,
+        muxAssetId: undefined,
+        muxPlaybackUrl: undefined,
+      };
+
+      const { queryByText } = render(
+        <VideoCardV2 {...defaultProps} video={videoWithoutMux} isActive={true} />
+      );
+
+      // iOS should NOT show processing UI
+      expect(queryByText('Processing video...')).toBeNull();
+      expect(queryByText('Video format not compatible')).toBeNull();
+
+      // iOS should create player with raw videoUrl
+      await waitFor(() => {
+        expect(mockFactory.createPlayer).toHaveBeenCalledWith(
+          expect.objectContaining({
+            videoUrl: videoWithoutMux.videoUrl,
+          })
+        );
+      });
+    });
+
+    it('should NOT block playback on web even without muxPlaybackUrl', async () => {
+      const { Platform } = require('react-native');
+      Platform.OS = 'web';
+
+      const videoWithoutMux = {
+        ...defaultVideo,
+        muxAssetId: undefined,
+        muxPlaybackUrl: undefined,
+      };
+
+      const { queryByText } = render(
+        <VideoCardV2 {...defaultProps} video={videoWithoutMux} isActive={true} />
+      );
+
+      // Web should NOT show processing UI
+      expect(queryByText('Processing video...')).toBeNull();
+      expect(queryByText('Video format not compatible')).toBeNull();
+
+      // Web should create player
+      await waitFor(() => {
+        expect(mockFactory.createPlayer).toHaveBeenCalled();
+      });
+    });
+
+    it('should handle recent uploads on iOS without showing processing UI', async () => {
+      const { Platform } = require('react-native');
+      Platform.OS = 'ios';
+
+      const justNow = Timestamp.fromDate(new Date(Date.now() - 10 * 1000));
+      
+      const recentVideo = {
+        ...defaultVideo,
+        createdAt: justNow,
+        muxAssetId: undefined,
+        muxPlaybackUrl: undefined,
+      };
+
+      const { queryByText } = render(
+        <VideoCardV2 {...defaultProps} video={recentVideo} isActive={true} />
+      );
+
+      // iOS should play immediately, not wait for Mux
+      expect(queryByText('Processing video...')).toBeNull();
+      
+      await waitFor(() => {
+        expect(mockFactory.createPlayer).toHaveBeenCalled();
+      });
+    });
+
+    it('should handle old videos on iOS without showing error UI', async () => {
+      const { Platform } = require('react-native');
+      Platform.OS = 'ios';
+
+      const oneHourAgo = Timestamp.fromDate(new Date(Date.now() - 60 * 60 * 1000));
+      
+      const oldVideo = {
+        ...defaultVideo,
+        createdAt: oneHourAgo,
+        muxAssetId: undefined,
+        muxPlaybackUrl: undefined,
+      };
+
+      const { queryByText } = render(
+        <VideoCardV2 {...defaultProps} video={oldVideo} />
+      );
+
+      // iOS should NOT show error
+      expect(queryByText('Video format not compatible')).toBeNull();
+      
+      await waitFor(() => {
+        expect(mockFactory.createPlayer).toHaveBeenCalled();
+      });
     });
   });
 });
