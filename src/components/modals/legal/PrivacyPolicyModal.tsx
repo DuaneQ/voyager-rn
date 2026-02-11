@@ -34,8 +34,8 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ visible,
           </View>
 
           <ScrollView style={styles.content} showsVerticalScrollIndicator={true}>
-            <Text style={styles.effectiveDate}>Effective Date: January 18, 2026</Text>
-            <Text style={styles.lastUpdated}>Last Updated: January 18, 2026</Text>
+            <Text style={styles.effectiveDate}>Effective Date: February 11, 2026</Text>
+            <Text style={styles.lastUpdated}>Last Updated: February 11, 2026</Text>
 
             <Text style={styles.paragraph}>
               TravalPass ("we," "our," or "us") is committed to protecting your privacy. This Privacy
@@ -79,11 +79,32 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ visible,
               permitted by these services (name, email, profile photo).
             </Text>
 
+            <Text style={styles.subSectionTitle}>1.4 Contact Information (Optional)</Text>
+            <Text style={styles.paragraph}>
+              If you choose to enable contact discovery, we collect and process:{' \n'}
+              • <Text style={styles.bold}>Contact Names:</Text> Names from your device's contact list
+              {'\n'}
+              • <Text style={styles.bold}>Phone Numbers:</Text> Phone numbers associated with contacts
+              {'\n'}
+              • <Text style={styles.bold}>Email Addresses:</Text> Email addresses associated with
+              contacts{'\n\n'}
+              <Text style={styles.bold}>How We Handle Your Contacts:</Text>{'\n'}
+              • We hash (encrypt) your contacts' phone numbers and email addresses before comparing them
+              to our user database{'\n'}
+              • We do NOT store your contacts' names, phone numbers, or email addresses on our servers
+              {'\n'}
+              • We only store hashed values temporarily for matching purposes{'\n'}
+              • We automatically delete hashed contact data after 24 hours{'\n'}
+              • You can revoke contact access at any time in your device settings{'\n'}
+              • You can delete all stored contact hashes from Settings → Privacy → Delete Contact Data
+            </Text>
+
             <Text style={styles.sectionTitle}>2. How We Use Your Information</Text>
             <Text style={styles.paragraph}>
               • Provide and maintain the Platform{'\n'}
               • Create and manage your account{'\n'}
               • Connect you with compatible travel companions{'\n'}
+              • Match your contacts with existing TravalPass users (only with your permission){'\n'}
               • Process subscription payments{'\n'}
               • Generate AI-powered travel itineraries{'\n'}
               • Send notifications about matches and messages{'\n'}
@@ -162,7 +183,9 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ visible,
               • Control notification settings{'\n'}
               • Delete your account (Settings → Delete Account){'\n'}
               • Request a copy of your data{'\n'}
-              • Opt-out of marketing communications
+              • Opt-out of marketing communications{'\n'}
+              • Delete contact discovery data (Settings → Privacy → Delete Contact Data){'\n'}
+              • Disable contact discovery (Settings → Privacy → Contact Discovery)
             </Text>
 
             <Text style={styles.sectionTitle}>6. Mobile-Specific Privacy</Text>
@@ -172,6 +195,8 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ visible,
               Our app may request:{'\n'}
               • <Text style={styles.bold}>Camera/Photos:</Text> For profile pictures and video uploads
               {'\n'}
+              • <Text style={styles.bold}>Contacts:</Text> To discover friends already using TravalPass
+              and invite new users (optional){'\n'}
               • <Text style={styles.bold}>Location:</Text> For travel matching (optional){'\n'}
               • <Text style={styles.bold}>Notifications:</Text> For matches and messages (optional){'\n'}
               • <Text style={styles.bold}>Storage:</Text> For caching and offline functionality
@@ -184,6 +209,32 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ visible,
             <Text style={styles.paragraph}>
               We use Firebase Cloud Messaging to send push notifications. You can disable notifications
               in your device settings or within the app.
+            </Text>
+
+            <Text style={styles.subSectionTitle}>6.3 Contact Discovery Privacy</Text>
+            <Text style={styles.paragraph}>
+              When you enable contact discovery:{'\n\n'}
+              <Text style={styles.bold}>What We Do:</Text>{'\n'}
+              • We read your contacts (only with your explicit permission){'\n'}
+              • We hash (one-way encrypt) phone numbers and emails using SHA-256{'\n'}
+              • We compare hashed values against our user database to find matches{'\n'}
+              • We show you which of your contacts are TravalPass users{'\n'}
+              • We allow you to invite contacts who aren't yet on the platform{'\n\n'}
+              <Text style={styles.bold}>What We DON'T Do:</Text>{'\n'}
+              • We do NOT upload your raw contact data to our servers{'\n'}
+              • We do NOT share your contacts with other users{'\n'}
+              • We do NOT sell your contact data to third parties{'\n'}
+              • We do NOT use your contacts for marketing purposes{'\n'}
+              • We do NOT store your contacts permanently{'\n\n'}
+              <Text style={styles.bold}>Your Rights:</Text>{'\n'}
+              • You can disable contact discovery at any time{'\n'}
+              • You can delete all stored contact hashes from app settings{'\n'}
+              • You can revoke contact permission in device settings{'\n'}
+              • Contact discovery is entirely optional - you can use TravalPass without it{'\n\n'}
+              <Text style={styles.bold}>Data Retention:</Text>{'\n'}
+              • Hashed contact data is automatically deleted after 24 hours{'\n'}
+              • Sync history (when you synced, how many contacts) is kept for 90 days{'\n'}
+              • Invitation records are kept for analytics purposes but don't include contact details
             </Text>
 
             <Text style={styles.sectionTitle}>7. Data Security</Text>
