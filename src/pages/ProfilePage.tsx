@@ -19,6 +19,7 @@ import { PhotoGrid } from '../components/profile/PhotoGrid';
 import { ProfileTab } from '../components/profile/ProfileTab';
 import { VideoGrid } from '../components/video/VideoGrid';
 import { AIItinerarySection } from '../components/profile/AIItinerarySection';
+import { ContactDiscoveryBanner } from '../components/contacts/ContactDiscoveryBanner';
 import type { PhotoSlot } from '../types/Photo';
 
 // Platform-specific route param handling
@@ -58,6 +59,10 @@ const ProfilePage: React.FC = () => {
   
   const [activeTab, setActiveTab] = useState<TabType>('profile');
   const [editModalVisible, setEditModalVisible] = useState(false);
+  
+  // Contact Discovery State
+  const [contactsSynced, setContactsSynced] = useState(false);
+  const [matchedContactsCount, setMatchedContactsCount] = useState(0);
 
   // Removed auto-opening of EditProfileModal
   // Profile completion is now only enforced when creating itineraries
@@ -168,6 +173,23 @@ const ProfilePage: React.FC = () => {
       // Navigation happens automatically via AuthContext
     } catch (error) {
       showAlert('Error signing out', 'error');
+    }
+  };
+
+  /**
+   * Handle contact discovery banner press
+   * TODO: Open PermissionModal in next phase
+   */
+  const handleContactDiscoveryPress = () => {
+    if (!contactsSynced) {
+      // First time: show permission modal
+      showAlert('Contact discovery coming soon!', 'info');
+    } else if (matchedContactsCount === 0) {
+      // No matches: navigate to invite screen
+      showAlert('Invite contacts coming soon!', 'info');
+    } else {
+      // Has matches: navigate to discovery results
+      showAlert('View matched contacts coming soon!', 'info');
     }
   };
 
@@ -293,6 +315,13 @@ const ProfilePage: React.FC = () => {
           hasPhoto={!!(userProfile.photoURL || userProfile.photos?.profile)}
           uploadProgress={uploadState.progress}
           isUploading={uploadState.loading}
+        />
+
+        {/* Contact Discovery Banner */}
+        <ContactDiscoveryBanner
+          hasSynced={contactsSynced}
+          matchCount={matchedContactsCount}
+          onPress={handleContactDiscoveryPress}
         />
 
         {/* Tab Navigation */}
