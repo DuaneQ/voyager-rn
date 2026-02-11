@@ -153,5 +153,32 @@ service cloud.firestore {
       allow read: if request.auth != null && (request.auth.token.admin == true || resource.data.userId == request.auth.uid);
       allow update, delete: if request.auth != null && request.auth.token.admin == true;
     }
+
+    // Contact Discovery: Sync Metadata
+    match /contactSyncs/{syncId} {
+      // Users can create their own sync records (written by Cloud Function)
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      // Users can only read their own sync history
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      // Admins can read all syncs for analytics
+      allow read: if request.auth != null && request.auth.token.admin == true;
+    }
+
+    // Contact Discovery: Invites
+    match /contactInvites/{inviteId} {
+      // Users can create invites (written by Cloud Function or client)
+      allow create: if request.auth != null && request.resource.data.inviterUserId == request.auth.uid;
+      // Users can read invites they sent
+      allow read: if request.auth != null && resource.data.inviterUserId == request.auth.uid;
+      // Users can update invite status when accepting (sets acceptedByUserId)
+      allow update: if request.auth != null && (
+        // Inviter can update their own invites
+        resource.data.inviterUserId == request.auth.uid ||
+        // Accepter can mark as accepted
+        (request.resource.data.acceptedByUserId == request.auth.uid && resource.data.status == 'sent')
+      );
+      // Admins can read all invites for analytics
+      allow read: if request.auth != null && request.auth.token.admin == true;
+    }
   }
 }
