@@ -670,7 +670,7 @@ describe('VideoCardV2', () => {
           muxPlaybackUrl: undefined,
         };
 
-        const { getByText, queryByTestId } = render(
+        const { getByText } = render(
           <VideoCardV2 {...defaultProps} video={videoWithMuxAsset} isActive={true} />
         );
 

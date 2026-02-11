@@ -48,6 +48,7 @@ const Tab = createBottomTabNavigator();
 const MainTabNavigator: React.FC = () => {
   return (
     <Tab.Navigator
+      initialRouteName="Videos"
       screenOptions={{
         tabBarActiveTintColor: '#1976d2',
         tabBarInactiveTintColor: 'gray',
