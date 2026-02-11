@@ -20,6 +20,7 @@ import { ProfileTab } from '../components/profile/ProfileTab';
 import { VideoGrid } from '../components/video/VideoGrid';
 import { AIItinerarySection } from '../components/profile/AIItinerarySection';
 import { ContactDiscoveryBanner } from '../components/contacts/ContactDiscoveryBanner';
+import { ContactPermissionModal } from '../components/contacts/ContactPermissionModal';
 import type { PhotoSlot } from '../types/Photo';
 
 // Platform-specific route param handling
@@ -63,6 +64,7 @@ const ProfilePage: React.FC = () => {
   // Contact Discovery State
   const [contactsSynced, setContactsSynced] = useState(false);
   const [matchedContactsCount, setMatchedContactsCount] = useState(0);
+  const [permissionModalVisible, setPermissionModalVisible] = useState(false);
 
   // Removed auto-opening of EditProfileModal
   // Profile completion is now only enforced when creating itineraries
@@ -178,12 +180,11 @@ const ProfilePage: React.FC = () => {
 
   /**
    * Handle contact discovery banner press
-   * TODO: Open PermissionModal in next phase
    */
   const handleContactDiscoveryPress = () => {
     if (!contactsSynced) {
       // First time: show permission modal
-      showAlert('Contact discovery coming soon!', 'info');
+      setPermissionModalVisible(true);
     } else if (matchedContactsCount === 0) {
       // No matches: navigate to invite screen
       showAlert('Invite contacts coming soon!', 'info');
@@ -191,6 +192,36 @@ const ProfilePage: React.FC = () => {
       // Has matches: navigate to discovery results
       showAlert('View matched contacts coming soon!', 'info');
     }
+  };
+
+  /**
+   * Handle when user allows contact access from permission modal
+   * TODO: Integrate with ContactsService in next phase
+   */
+  const handleAllowContactAccess = async () => {
+    setPermissionModalVisible(false);
+    
+    try {
+      showAlert('Syncing contacts...', 'info');
+      
+      // TODO: Call ContactsService.syncContacts() here
+      // For now, simulate sync
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      setContactsSynced(true);
+      setMatchedContactsCount(5); // Mock count
+      showAlert('Found 5 contacts on TravalPass!', 'success');
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error('Sync failed');
+      showAlert(`Failed to sync contacts: ${err.message}`, 'error');
+    }
+  };
+
+  /**
+   * Handle when user dismisses permission modal
+   */
+  const handleDismissPermissionModal = () => {
+    setPermissionModalVisible(false);
   };
 
   // Debug logging
@@ -383,6 +414,13 @@ const ProfilePage: React.FC = () => {
           drinking: userProfile?.drinking || '',
           smoking: userProfile?.smoking || '',
         }}
+      />
+      
+      {/* Contact Permission Modal */}
+      <ContactPermissionModal
+        visible={permissionModalVisible}
+        onAllowAccess={handleAllowContactAccess}
+        onDismiss={handleDismissPermissionModal}
       />
     </SafeAreaView>
   );
