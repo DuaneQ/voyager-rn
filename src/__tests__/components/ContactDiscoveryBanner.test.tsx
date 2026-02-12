@@ -13,7 +13,7 @@ describe('ContactDiscoveryBanner', () => {
         />
       );
       
-      expect(getByText('Find friends already using TravalPass')).toBeDefined();
+      expect(getByText('Find friends on TravalPass')).toBeDefined();
     });
     
     it('displays "Invite friends" text when synced with 0 matches', () => {
@@ -25,7 +25,7 @@ describe('ContactDiscoveryBanner', () => {
         />
       );
       
-      expect(getByText('Invite friends to TravalPass')).toBeDefined();
+      expect(getByText('Invite friends to join')).toBeDefined();
     });
     
     it('displays singular contact count for 1 match', () => {
@@ -37,7 +37,7 @@ describe('ContactDiscoveryBanner', () => {
         />
       );
       
-      expect(getByText('1 of your contact is on TravalPass')).toBeDefined();
+      expect(getByText('1 contact is on TravalPass')).toBeDefined();
     });
     
     it('displays plural contact count for 2-5 matches', () => {
@@ -49,7 +49,7 @@ describe('ContactDiscoveryBanner', () => {
         />
       );
       
-      expect(getByText('3 of your contacts are on TravalPass')).toBeDefined();
+      expect(getByText('3 contacts are on TravalPass')).toBeDefined();
     });
     
     it('displays "X+ friends found" for more than 5 matches', () => {
@@ -61,7 +61,7 @@ describe('ContactDiscoveryBanner', () => {
         />
       );
       
-      expect(getByText('12+ friends found on TravalPass!')).toBeDefined();
+      expect(getByText('12+ friends on TravalPass!')).toBeDefined();
     });
     
     it('displays "X+ friends found" for exactly 6 matches', () => {
@@ -73,7 +73,7 @@ describe('ContactDiscoveryBanner', () => {
         />
       );
       
-      expect(getByText('6+ friends found on TravalPass!')).toBeDefined();
+      expect(getByText('6+ friends on TravalPass!')).toBeDefined();
     });
   });
   
@@ -126,7 +126,7 @@ describe('ContactDiscoveryBanner', () => {
         />
       );
       
-      fireEvent.press(getByText('Find friends already using TravalPass'));
+      fireEvent.press(getByText('Find friends on TravalPass'));
       
       expect(mockOnPress).toHaveBeenCalledTimes(1);
     });

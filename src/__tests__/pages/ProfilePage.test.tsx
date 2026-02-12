@@ -349,7 +349,7 @@ describe('ProfilePage', () => {
       
       await waitFor(() => {
         expect(mockUpdateProfile).toHaveBeenCalled();
-        expect(mockShowAlert).toHaveBeenCalledWith('Profile updated successfully', 'success');
+        expect(mockShowAlert).toHaveBeenCalledWith('success', 'Profile updated successfully');
       });
     });
 
@@ -526,8 +526,8 @@ describe('ProfilePage', () => {
       
       await waitFor(() => {
         expect(mockShowAlert).toHaveBeenCalledWith(
-          'Photo removed from slot1',
-          'success'
+          'success',
+          'Photo removed from slot1'
         );
       });
     });
@@ -565,8 +565,8 @@ describe('ProfilePage', () => {
       
       await waitFor(() => {
         expect(mockShowAlert).toHaveBeenCalledWith(
-          'Photo uploaded to slot1',
-          'success'
+          'success',
+          'Photo uploaded to slot1'
         );
       });
     });

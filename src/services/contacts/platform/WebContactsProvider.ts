@@ -50,8 +50,12 @@ export class WebContactsProvider implements IContactsPlatformProvider {
   }
 
   isSupported(): boolean {
-    // Check if Contact Picker API is available
-    // Currently only available in Chrome/Edge
+    // Contact Picker API support:
+    // ✅ Chrome Android 80+
+    // ✅ Samsung Internet 14+
+    // ❌ Desktop Chrome (disabled by default, needs flag)
+    // ❌ Safari (all versions)
+    // ❌ Firefox (all versions)
     return 'contacts' in navigator && 'ContactsManager' in window;
   }
 }

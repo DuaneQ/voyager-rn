@@ -22,9 +22,12 @@ describe('ContactDiscoveryRepository', () => {
   
   describe('matchContacts', () => {
     it('returns matched contacts when cloud function succeeds', async () => {
+      const validHash1 = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+      const validHash2 = 'fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210';
+      
       const mockMatches: MatchedContact[] = [
         {
-          hash: 'abc123',
+          hash: validHash1,
           userId: 'user1',
           displayName: 'Jane Doe',
           username: 'janedoe',
@@ -43,11 +46,11 @@ describe('ContactDiscoveryRepository', () => {
       
       (httpsCallable as jest.Mock).mockReturnValue(mockFunction);
       
-      const result = await repository.matchContacts(['abc123', 'def456']);
+      const result = await repository.matchContacts([validHash1, validHash2]);
       
       expect(result).toEqual(mockMatches);
       expect(mockFunction).toHaveBeenCalledWith({
-        hashedIdentifiers: ['abc123', 'def456'],
+        hashedIdentifiers: [validHash1, validHash2],
       });
     });
     
@@ -77,6 +80,7 @@ describe('ContactDiscoveryRepository', () => {
     });
     
     it('throws user-friendly error for unauthenticated requests', async () => {
+      const validHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
       const mockFunction = jest.fn().mockRejectedValue({
         code: 'functions/unauthenticated',
         message: 'Unauthenticated',
@@ -85,11 +89,12 @@ describe('ContactDiscoveryRepository', () => {
       (httpsCallable as jest.Mock).mockReturnValue(mockFunction);
       
       await expect(
-        repository.matchContacts(['abc123'])
+        repository.matchContacts([validHash])
       ).rejects.toThrow('You must be signed in to match contacts');
     });
     
     it('throws user-friendly error for invalid argument', async () => {
+      const validHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
       const mockFunction = jest.fn().mockRejectedValue({
         code: 'functions/invalid-argument',
         message: 'Invalid argument',
@@ -97,12 +102,14 @@ describe('ContactDiscoveryRepository', () => {
       
       (httpsCallable as jest.Mock).mockReturnValue(mockFunction);
       
+      // Should throw the actual error.message from the function
       await expect(
-        repository.matchContacts(['abc123'])
-      ).rejects.toThrow('Invalid contact data format');
+        repository.matchContacts([validHash])
+      ).rejects.toThrow('Invalid argument');
     });
     
     it('throws user-friendly error for rate limit exceeded', async () => {
+      const validHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
       const mockFunction = jest.fn().mockRejectedValue({
         code: 'functions/resource-exhausted',
         message: 'Rate limit exceeded',
@@ -111,7 +118,7 @@ describe('ContactDiscoveryRepository', () => {
       (httpsCallable as jest.Mock).mockReturnValue(mockFunction);
       
       await expect(
-        repository.matchContacts(['abc123'])
+        repository.matchContacts([validHash])
       ).rejects.toThrow('Rate limit exceeded. Please try again later.');
     });
   });

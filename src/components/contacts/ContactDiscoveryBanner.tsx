@@ -32,20 +32,20 @@ export const ContactDiscoveryBanner: React.FC<ContactDiscoveryBannerProps> = ({
   // Determine banner text based on state
   const getBannerText = (): string => {
     if (!hasSynced) {
-      return 'Find friends already using TravalPass';
+      return 'Find friends on TravalPass';
     }
     
     if (matchCount === 0) {
-      return 'Invite friends to TravalPass';
+      return 'Invite friends to join';
     }
     
     if (matchCount <= 5) {
       const plural = matchCount === 1 ? 'contact is' : 'contacts are';
-      return `${matchCount} of your ${plural} on TravalPass`;
+      return `${matchCount} ${plural} on TravalPass`;
     }
     
     // 5+ matches
-    return `${matchCount}+ friends found on TravalPass!`;
+    return `${matchCount}+ friends on TravalPass!`;
   };
   
   // Determine button text based on state
@@ -77,7 +77,7 @@ export const ContactDiscoveryBanner: React.FC<ContactDiscoveryBannerProps> = ({
           {/* Icon + Text */}
           <View style={styles.leftSection}>
             <Text style={styles.icon}>👥</Text>
-            <Text style={styles.text} numberOfLines={1}>
+            <Text style={styles.text} numberOfLines={2}>
               {getBannerText()}
             </Text>
           </View>

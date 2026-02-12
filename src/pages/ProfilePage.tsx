@@ -8,7 +8,9 @@ import {
   ScrollView,
   Alert,
   Platform,
+  Linking,
 } from 'react-native';
+// Note: useNavigation is imported conditionally at component level for web compatibility
 import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
 import { useUserProfile } from '../context/UserProfileContext';
@@ -21,6 +23,10 @@ import { VideoGrid } from '../components/video/VideoGrid';
 import { AIItinerarySection } from '../components/profile/AIItinerarySection';
 import { ContactDiscoveryBanner } from '../components/contacts/ContactDiscoveryBanner';
 import { ContactPermissionModal } from '../components/contacts/ContactPermissionModal';
+import { ContactsService } from '../services/contacts/ContactsService';
+import { ContactDiscoveryRepository } from '../repositories/contacts/ContactDiscoveryRepository';
+import { MatchedContact, UnmatchedContact } from '../services/contacts/types';
+import { ContactToInvite } from '../components/contacts/InviteContactCard';
 import type { PhotoSlot } from '../types/Photo';
 
 // Platform-specific route param handling
@@ -51,8 +57,27 @@ if (Platform.OS === 'web') {
 
 type TabType = 'profile' | 'photos' | 'videos' | 'itinerary';
 
+// Safe navigation hook wrapper for cross-platform compatibility
+const useSafeNavigation = () => {
+  if (Platform.OS === 'web') {
+    // Web doesn't use React Navigation
+    return null;
+  }
+  
+  try {
+    const { useNavigation } = require('@react-navigation/native');
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    return useNavigation();
+  } catch (error) {
+    console.warn('[ProfilePage] Navigation not available:', error);
+    return null;
+  }
+};
+
 const ProfilePage: React.FC = () => {
   const routeParams = useRouteParams();
+  const navigation = useSafeNavigation();
+  const { user } = useAuth();
   const { showAlert } = useAlert();
   const { userProfile, updateProfile, isLoading } = useUserProfile();
   const { selectAndUploadPhoto, deletePhoto, uploadState } = usePhotoUpload();
@@ -61,9 +86,15 @@ const ProfilePage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('profile');
   const [editModalVisible, setEditModalVisible] = useState(false);
   
+  // Initialize contact discovery service (handles full flow internally)
+  const contactsService = new ContactsService();
+  const contactDiscoveryRepo = new ContactDiscoveryRepository();
+  
   // Contact Discovery State
   const [contactsSynced, setContactsSynced] = useState(false);
   const [matchedContactsCount, setMatchedContactsCount] = useState(0);
+  const [matchedContacts, setMatchedContacts] = useState<MatchedContact[]>([]);
+  const [contactsToInvite, setContactsToInvite] = useState<ContactToInvite[]>([]);
   const [permissionModalVisible, setPermissionModalVisible] = useState(false);
 
   // Removed auto-opening of EditProfileModal
@@ -122,11 +153,11 @@ const ProfilePage: React.FC = () => {
     try {
       const result = await selectAndUploadPhoto('profile' as PhotoSlot);
       if (result?.url) {
-        showAlert('Profile photo updated successfully', 'success');
+        showAlert('success', 'Profile photo updated successfully');
       }
     } catch (error) {
       const err = error instanceof Error ? error : new Error('Upload failed');
-      showAlert(`Failed to update profile photo: ${err.message}`, 'error');
+      showAlert('error', `Failed to update profile photo: ${err.message}`);
     }
   };
 
@@ -136,10 +167,10 @@ const ProfilePage: React.FC = () => {
   const handleDeleteProfilePhoto = async () => {
     try {
       await deletePhoto('profile' as PhotoSlot);
-      showAlert('Profile photo removed', 'success');
+      showAlert('success', 'Profile photo removed');
     } catch (error) {
       const err = error instanceof Error ? error : new Error('Delete failed');
-      showAlert(`Failed to delete profile photo: ${err.message}`, 'error');
+      showAlert('error', `Failed to delete profile photo: ${err.message}`);
     }
   };
 
@@ -147,10 +178,10 @@ const ProfilePage: React.FC = () => {
     try {
       await updateProfile(data);
       setEditModalVisible(false); // Close modal immediately after successful save
-      showAlert('Profile updated successfully', 'success');
+      showAlert('success', 'Profile updated successfully');
     } catch (error) {
       console.error('Error updating profile:', error);
-      showAlert('Failed to update profile', 'error');
+      showAlert('error', 'Failed to update profile');
       throw error; // Let modal handle the error state
     }
   };
@@ -159,14 +190,14 @@ const ProfilePage: React.FC = () => {
    * Handle gallery photo upload success
    */
   const handleGalleryPhotoUploadSuccess = (slot: PhotoSlot, url: string) => {
-    showAlert(`Photo uploaded to ${slot}`, 'success');
+    showAlert('success', `Photo uploaded to ${slot}`);
   };
 
   /**
    * Handle gallery photo delete success
    */
   const handleGalleryPhotoDeleteSuccess = (slot: PhotoSlot) => {
-    showAlert(`Photo removed from ${slot}`, 'success');
+    showAlert('success', `Photo removed from ${slot}`);
   };
 
   const handleSignOut = async () => {
@@ -174,7 +205,7 @@ const ProfilePage: React.FC = () => {
       await signOut();
       // Navigation happens automatically via AuthContext
     } catch (error) {
-      showAlert('Error signing out', 'error');
+      showAlert('error', 'Error signing out');
     }
   };
 
@@ -185,36 +216,148 @@ const ProfilePage: React.FC = () => {
     if (!contactsSynced) {
       // First time: show permission modal
       setPermissionModalVisible(true);
-    } else if (matchedContactsCount === 0) {
-      // No matches: navigate to invite screen
-      showAlert('Invite contacts coming soon!', 'info');
     } else {
-      // Has matches: navigate to discovery results
-      showAlert('View matched contacts coming soon!', 'info');
+      // Navigate to discovery results page (mobile only)
+      if (Platform.OS !== 'web' && navigation) {
+        // Note: Pass only serializable data, handlers defined in destination
+        navigation.navigate('DiscoveryResults', {
+          matchedContacts,
+          contactsToInvite,
+        });
+      } else {
+        // Web: Feature not available (Contact API requires native app)
+        showAlert('info', 'Contact discovery requires the TravalPass mobile app. Download on iOS or Android to find friends!');
+      }
     }
   };
 
   /**
    * Handle when user allows contact access from permission modal
-   * TODO: Integrate with ContactsService in next phase
+   * Integrates with ContactsService (which calls ContactDiscoveryRepository)
    */
   const handleAllowContactAccess = async () => {
-    setPermissionModalVisible(false);
+    try {
+      // Check if contacts are supported on this platform
+      if (!contactsService.isSupported()) {
+        setPermissionModalVisible(false);
+        showAlert('error', 'Contact discovery is not available in this browser. Use Chrome on Android, or download our iOS/Android app for the best experience.');
+        return;
+      }
+      
+      // Step 1: Request permission
+      const permissionStatus = await contactsService.requestPermission();
+      
+      // Close modal after permission result
+      setPermissionModalVisible(false);
+      
+      if (permissionStatus !== 'granted') {
+        showAlert('error', 'Contact permission denied');
+        return;
+      }
+      
+      showAlert('info', 'Syncing contacts...');
+      
+      // Step 2: Sync contacts (ContactsService handles: fetch -> hash -> match)
+      const syncResult = await contactsService.syncContacts();
+      
+      console.log('[ProfilePage] Contact sync result:', {
+        totalContactsScanned: syncResult.totalContactsScanned,
+        totalHashesGenerated: syncResult.totalHashesGenerated,
+        matchedCount: syncResult.matched.length,
+        unmatchedCount: syncResult.unmatched.length,
+        errors: syncResult.errors,
+      });
+      
+      if (syncResult.errors && syncResult.errors.length > 0) {
+        console.warn('[ProfilePage] Contact sync errors:', syncResult.errors);
+      }
+      
+      // Step 3: Update state
+      setContactsSynced(true);
+      setMatchedContactsCount(syncResult.matched.length);
+      setMatchedContacts(syncResult.matched);
+      
+      // Convert unmatched contacts to ContactToInvite format
+      const inviteList: ContactToInvite[] = syncResult.unmatched.map(c => ({
+        id: c.contactId,
+        name: c.name || 'Unknown',
+        contactInfo: c.identifier,
+        type: c.identifierType as 'email' | 'phone',
+        hash: '', // Will be generated when invite is sent
+      }));
+      setContactsToInvite(inviteList);
+      
+      if (syncResult.matched.length > 0) {
+        showAlert('success', `Found ${syncResult.matched.length} contacts on TravalPass!`);
+      } else {
+        showAlert('info', 'No contacts found on TravalPass yet');
+      }
+    } catch (error) {
+      setPermissionModalVisible(false); // Make sure modal closes on error
+      const err = error instanceof Error ? error : new Error('Sync failed');
+      console.error('[ProfilePage] Contact sync error:', err);
+      showAlert('error', `Failed to sync contacts: ${err.message}`);
+    }
+  };
+
+  /**
+   * Handle Connect button - create connection with matched user
+   */
+  const handleConnectUser = async (userId: string) => {
+    if (!user) return;
     
     try {
-      showAlert('Syncing contacts...', 'info');
-      
-      // TODO: Call ContactsService.syncContacts() here
-      // For now, simulate sync
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      setContactsSynced(true);
-      setMatchedContactsCount(5); // Mock count
-      showAlert('Found 5 contacts on TravalPass!', 'success');
+      // TODO: Implement connection creation in Firestore
+      // For now, just show success
+      showAlert('success', 'Connection request sent!');
+      console.log('[ProfilePage] Connect with user:', userId);
     } catch (error) {
-      const err = error instanceof Error ? error : new Error('Sync failed');
-      showAlert(`Failed to sync contacts: ${err.message}`, 'error');
+      const err = error instanceof Error ? error : new Error('Failed to connect');
+      showAlert('error', `Failed to connect: ${err.message}`);
     }
+  };
+
+  /**
+   * Handle Invite button - send SMS/email with referral link
+   */
+  const handleInviteContact = async (contact: ContactToInvite) => {
+    if (!user) return;
+    
+    try {
+      // Call sendContactInvite Cloud Function
+      const hashingService = contactsService['hashingService'];
+      const hash = contact.type === 'phone'
+        ? await hashingService.hashPhoneNumber(contact.contactInfo)
+        : await hashingService.hashEmail(contact.contactInfo);
+      
+      const result = await contactDiscoveryRepo.sendInvite(hash, 'sms');
+      
+      // Open native SMS/Email with invite link
+      const message = `Hey ${contact.name}! Join me on TravalPass to find travel buddies: ${result.inviteLink}`;
+      
+      if (contact.type === 'phone') {
+        const smsUrl = Platform.OS === 'ios'
+          ? `sms:${contact.contactInfo}&body=${encodeURIComponent(message)}`
+          : `sms:${contact.contactInfo}?body=${encodeURIComponent(message)}`;
+        await Linking.openURL(smsUrl);
+      } else {
+        const emailUrl = `mailto:${contact.contactInfo}?subject=${encodeURIComponent('Join me on TravalPass!')}&body=${encodeURIComponent(message)}`;
+        await Linking.openURL(emailUrl);
+      }
+      
+      showAlert('success', 'Invite sent!');
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error('Failed to send invite');
+      showAlert('error', `Failed to send invite: ${err.message}`);
+    }
+  };
+
+  /**
+   * Handle Invite All button
+   */
+  const handleInviteAll = async () => {
+    // TODO: Implement bulk invite
+    showAlert('info', 'Invite all coming soon!');
   };
 
   /**

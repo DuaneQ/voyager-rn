@@ -66,8 +66,19 @@ export class ContactDiscoveryRepository {
     try {
       // Validate input
       if (!hashedIdentifiers || hashedIdentifiers.length === 0) {
+        console.log('[ContactDiscoveryRepository] Empty hashedIdentifiers array');
         return [];
       }
+
+      // Validate hash format (SHA-256 = 64 hex chars)
+      const invalidHashes = hashedIdentifiers.filter(h => !/^[a-f0-9]{64}$/i.test(h));
+      if (invalidHashes.length > 0) {
+        console.error('[ContactDiscoveryRepository] Invalid hash formats detected:', invalidHashes.slice(0, 3));
+        throw new Error(`Invalid hash format: Found ${invalidHashes.length} invalid hashes`);
+      }
+
+      console.log(`[ContactDiscoveryRepository] Matching ${hashedIdentifiers.length} hashes`);
+      console.log('[ContactDiscoveryRepository] Sample hashes:', hashedIdentifiers.slice(0, 2));
 
       // Call Cloud Function
       const matchFunction = httpsCallable<
@@ -75,25 +86,43 @@ export class ContactDiscoveryRepository {
         MatchContactsResponse
       >(this.functions, 'matchContactsWithUsers');
 
-      const result: HttpsCallableResult<MatchContactsResponse> = await matchFunction({
-        hashedIdentifiers,
+      const payload = { hashedIdentifiers };
+      console.log('[ContactDiscoveryRepository] Sending payload:', {
+        hashCount: payload.hashedIdentifiers.length,
+        firstHashLength: payload.hashedIdentifiers[0]?.length,
+        isArray: Array.isArray(payload.hashedIdentifiers),
+        sampleHashes: payload.hashedIdentifiers.slice(0, 2),
+        allHashesAreStrings: payload.hashedIdentifiers.every(h => typeof h === 'string'),
       });
+
+      const result: HttpsCallableResult<MatchContactsResponse> = await matchFunction(payload);
 
       const response = result.data;
 
       if (!response.success) {
+        console.error('[ContactDiscoveryRepository] Match failed:', response.error);
         throw new Error(response.error || 'Failed to match contacts');
       }
 
+      console.log(`[ContactDiscoveryRepository] Found ${response.matches.length} matches`);
       return response.matches;
     } catch (error: any) {
+      console.error('============================================');
+      console.error('[ContactDiscoveryRepository] matchContacts ERROR');
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
+      console.error('Error details:', error.details);
+      console.error('Full error:', JSON.stringify(error, null, 2));
+      console.error('============================================');
+      
       // Map Firebase error codes to user-friendly messages
       if (error.code === 'functions/unauthenticated') {
         throw new Error('You must be signed in to match contacts');
       }
       
       if (error.code === 'functions/invalid-argument') {
-        throw new Error('Invalid contact data format');
+        // Include the detailed error message from the function
+        throw new Error(error.message || 'Invalid contact data format');
       }
       
       if (error.code === 'functions/resource-exhausted') {
@@ -153,13 +182,23 @@ export class ContactDiscoveryRepository {
 
       return response;
     } catch (error: any) {
+      console.error('============================================');
+      console.error('[ContactDiscoveryRepository] sendInvite ERROR');
+      console.error('============================================');
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
+      console.error('Error details:', error.details);
+      console.error('Full error:', JSON.stringify(error, null, 2));
+      console.error('============================================');
+      
       // Map Firebase error codes to user-friendly messages
       if (error.code === 'functions/unauthenticated') {
         throw new Error('You must be signed in to send invites');
       }
       
       if (error.code === 'functions/invalid-argument') {
-        throw new Error('Invalid contact data format');
+        // Include the detailed error message from the function
+        throw new Error(error.message || 'Invalid contact data format');
       }
       
       if (error.code === 'functions/resource-exhausted') {

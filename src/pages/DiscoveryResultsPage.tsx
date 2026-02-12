@@ -7,19 +7,26 @@ import {
   StyleSheet,
   SafeAreaView,
   ActivityIndicator,
+  Platform,
+  Linking,
+  Alert,
 } from 'react-native';
+import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
+import { useAlert } from '../context/AlertContext';
+import { useAuth } from '../context/AuthContext';
 import { MatchedContactCard } from '../components/contacts/MatchedContactCard';
 import { InviteContactCard, ContactToInvite } from '../components/contacts/InviteContactCard';
-import { MatchedContact } from '../repositories/contacts/ContactDiscoveryRepository';
+import { MatchedContact, ContactDiscoveryRepository } from '../repositories/contacts/ContactDiscoveryRepository';
+import { HashingService } from '../services/contacts/HashingService';
 
 export interface DiscoveryResultsPageProps {
   matchedContacts: MatchedContact[];
   contactsToInvite: ContactToInvite[];
-  onConnect: (userId: string) => void;
-  onInvite: (contact: ContactToInvite) => void;
-  onInviteAll: () => void;
-  onBack: () => void;
 }
+
+type DiscoveryResultsRouteProp = RouteProp<{
+  DiscoveryResults: DiscoveryResultsPageProps;
+}, 'DiscoveryResults'>;
 
 interface SectionData {
   title: string;
@@ -27,16 +34,168 @@ interface SectionData {
   type: 'matched' | 'invite';
 }
 
-export const DiscoveryResultsPage: React.FC<DiscoveryResultsPageProps> = ({
-  matchedContacts,
-  contactsToInvite,
-  onConnect,
-  onInvite,
-  onInviteAll,
-  onBack,
-}) => {
+export const DiscoveryResultsPage: React.FC = () => {
+  const route = useRoute<DiscoveryResultsRouteProp>();
+  const navigation = useNavigation();
+  const { showAlert } = useAlert();
+  const { user } = useAuth();
+  const {
+    matchedContacts = [],
+    contactsToInvite = [],
+  } = route.params || {};
+  
+  const contactDiscoveryRepo = new ContactDiscoveryRepository();
+  const hashingService = new HashingService();
   const [connectingUsers, setConnectingUsers] = useState<Set<string>>(new Set());
   const [invitingContacts, setInvitingContacts] = useState<Set<string>>(new Set());
+  const [invitingAll, setInvitingAll] = useState(false);
+
+  /**
+   * Handle Connect button - create connection with matched user
+   */
+  const handleConnect = async (userId: string) => {
+    if (!user) return;
+    
+    setConnectingUsers(prev => new Set(prev).add(userId));
+    try {
+      // TODO: Implement connection creation in Firestore
+      showAlert('success', 'Connection request sent!');
+      console.log('[DiscoveryResultsPage] Connect with user:', userId);
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error('Failed to connect');
+      showAlert('error', `Failed to connect: ${err.message}`);
+    } finally {
+      setConnectingUsers(prev => {
+        const next = new Set(prev);
+        next.delete(userId);
+        return next;
+      });
+    }
+  };
+
+  /**
+   * Handle Invite button - send SMS/email with referral link
+   */
+  const handleInvite = async (contact: ContactToInvite) => {
+    if (!user) return;
+    
+    setInvitingContacts(prev => new Set(prev).add(contact.id));
+    try {
+      // Call sendContactInvite Cloud Function
+      const hash = contact.type === 'phone'
+        ? await hashingService.hashPhoneNumber(contact.contactInfo)
+        : await hashingService.hashEmail(contact.contactInfo);
+      
+      const result = await contactDiscoveryRepo.sendInvite(hash, 'sms');
+      
+      // Open native SMS/Email with invite link
+      const message = `Hey ${contact.name}! Join me on TravalPass to find travel buddies: ${result.inviteLink}`;
+      
+      if (contact.type === 'phone') {
+        const smsUrl = Platform.OS === 'ios'
+          ? `sms:${contact.contactInfo}&body=${encodeURIComponent(message)}`
+          : `sms:${contact.contactInfo}?body=${encodeURIComponent(message)}`;
+        await Linking.openURL(smsUrl);
+      } else {
+        const emailUrl = `mailto:${contact.contactInfo}?subject=${encodeURIComponent('Join me on TravalPass!')}&body=${encodeURIComponent(message)}`;
+        await Linking.openURL(emailUrl);
+      }
+      
+      showAlert('success', 'Invite sent!');
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error('Failed to send invite');
+      console.error('============================================');
+      console.error('[DiscoveryResultsPage] Invite failed');
+      console.error('Contact:', contact.name);
+      console.error('Error:', err.message);
+      console.error('============================================');
+      showAlert('error', `Failed to send invite: ${err.message}`);
+    } finally {
+      setInvitingContacts(prev => {
+        const next = new Set(prev);
+        next.delete(contact.id);
+        return next;
+      });
+    }
+  };
+
+  /**
+   * Handle Invite All button
+   * Creates invite records and opens SMS for each contact sequentially
+   */
+  const handleInviteAll = async () => {
+    if (!user?.uid || contactsToInvite.length === 0) return;
+
+    // Show confirmation with explanation using Alert.alert
+    Alert.alert(
+      'Invite All Friends',
+      `You'll send ${contactsToInvite.length} invites. Your SMS app will open for each contact - just tap Send for each message!`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Continue', 
+          onPress: async () => {
+            setInvitingAll(true);
+            let successCount = 0;
+            let failCount = 0;
+
+            try {
+              // Process each contact sequentially
+              for (const contact of contactsToInvite) {
+                try {
+                  // Hash the contact identifier
+                  const hash = contact.type === 'phone'
+                    ? await hashingService.hashPhoneNumber(contact.contactInfo)
+                    : await hashingService.hashEmail(contact.contactInfo);
+                  
+                  // Create invite record and get invite link
+                  const result = await contactDiscoveryRepo.sendInvite(hash, 'sms', contact.name);
+
+                  if (result.success && result.inviteLink) {
+                    // Build SMS message
+                    const message = `Hey ${contact.name}! Join me on TravalPass to find travel buddies: ${result.inviteLink}`;
+                    const encodedMessage = encodeURIComponent(message);
+                    const smsUrl = Platform.select({
+                      ios: `sms:${contact.contactInfo}&body=${encodedMessage}`,
+                      android: `sms:${contact.contactInfo}?body=${encodedMessage}`,
+                      default: `sms:${contact.contactInfo}?body=${encodedMessage}`,
+                    });
+
+                    // Open SMS app (non-blocking)
+                    await Linking.openURL(smsUrl!);
+                    successCount++;
+
+                    // Small delay between opening SMS composers
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                  } else {
+                    failCount++;
+                  }
+                } catch (error) {
+                  console.error(`[DiscoveryResultsPage] Failed to invite ${contact.name}:`, error);
+                  failCount++;
+                }
+              }
+
+              // Show final result
+              if (successCount > 0) {
+                showAlert(
+                  'success',
+                  `Prepared ${successCount} invite${successCount > 1 ? 's' : ''}! ${failCount > 0 ? `(${failCount} failed)` : ''}`
+                );
+              } else {
+                showAlert('error', 'Failed to send invites. Please try again.');
+              }
+            } catch (error) {
+              console.error('[DiscoveryResultsPage] Invite all error:', error);
+              showAlert('error', 'Failed to send invites. Please try again.');
+            } finally {
+              setInvitingAll(false);
+            }
+          }
+        },
+      ]
+    );
+  };
 
   // Build sections for SectionList
   const sections: SectionData[] = [];
@@ -57,32 +216,6 @@ export const DiscoveryResultsPage: React.FC<DiscoveryResultsPageProps> = ({
     });
   }
 
-  const handleConnect = async (userId: string) => {
-    setConnectingUsers(prev => new Set(prev).add(userId));
-    try {
-      await onConnect(userId);
-    } finally {
-      setConnectingUsers(prev => {
-        const next = new Set(prev);
-        next.delete(userId);
-        return next;
-      });
-    }
-  };
-
-  const handleInvite = async (contact: ContactToInvite) => {
-    setInvitingContacts(prev => new Set(prev).add(contact.id));
-    try {
-      await onInvite(contact);
-    } finally {
-      setInvitingContacts(prev => {
-        const next = new Set(prev);
-        next.delete(contact.id);
-        return next;
-      });
-    }
-  };
-
   const renderSectionHeader = ({ section }: { section: SectionData }) => (
     <View style={styles.sectionHeader}>
       <Text style={styles.sectionTitle}>{section.title}</Text>
@@ -96,7 +229,7 @@ export const DiscoveryResultsPage: React.FC<DiscoveryResultsPageProps> = ({
       return (
         <MatchedContactCard
           contact={contact}
-          onConnect={handleConnect}
+          onConnect={() => handleConnect(contact.userId)}
           isConnecting={connectingUsers.has(contact.userId)}
         />
       );
@@ -105,7 +238,7 @@ export const DiscoveryResultsPage: React.FC<DiscoveryResultsPageProps> = ({
       return (
         <InviteContactCard
           contact={contact}
-          onInvite={handleInvite}
+          onInvite={() => handleInvite(contact)}
           isInviting={invitingContacts.has(contact.id)}
         />
       );
@@ -118,11 +251,16 @@ export const DiscoveryResultsPage: React.FC<DiscoveryResultsPageProps> = ({
     return (
       <View style={styles.footer}>
         <TouchableOpacity
-          style={styles.inviteAllButton}
-          onPress={onInviteAll}
+          style={[styles.inviteAllButton, invitingAll && styles.inviteAllButtonDisabled]}
+          onPress={handleInviteAll}
           activeOpacity={0.8}
+          disabled={invitingAll}
         >
-          <Text style={styles.inviteAllButtonText}>Invite All Friends</Text>
+          {invitingAll ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.inviteAllButtonText}>Invite All Friends</Text>
+          )}
         </TouchableOpacity>
       </View>
     );
@@ -144,7 +282,7 @@ export const DiscoveryResultsPage: React.FC<DiscoveryResultsPageProps> = ({
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={onBack}
+          onPress={() => navigation.goBack()}
           activeOpacity={0.6}
         >
           <Text style={styles.backIcon}>←</Text>
@@ -238,6 +376,10 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     // Shadow for Android
     elevation: 3,
+  },
+  inviteAllButtonDisabled: {
+    backgroundColor: '#B0BEC5',
+    opacity: 0.6,
   },
   inviteAllButtonText: {
     fontSize: 16,

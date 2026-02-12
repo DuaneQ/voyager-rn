@@ -53,6 +53,9 @@ jest.mock('@react-navigation/native', () => {
       navigate: jest.fn(),
       goBack: jest.fn(),
     }),
+    useRoute: () => ({
+      params: {},
+    }),
     useNavigationContainerRef: () => ({
       current: {
         navigate: jest.fn(),
@@ -129,6 +132,15 @@ jest.mock('../../pages/VideoFeedPage', () => {
     return React.createElement(Text, { testID: 'video-feed-page' }, 'Video Feed');
   };
   return { __esModule: true, default: VideoFeedPage };
+});
+
+jest.mock('../../pages/DiscoveryResultsPage', () => {
+  const React = require('react');
+  const { Text } = require('react-native');
+  const DiscoveryResultsPage = function DiscoveryResultsPage() {
+    return React.createElement(Text, { testID: 'discovery-results-page' }, 'Discovery Results');
+  };
+  return { __esModule: true, default: DiscoveryResultsPage, DiscoveryResultsPage };
 });
 
 // Mock context providers
