@@ -40,6 +40,7 @@ import {
   serverTimestamp,
   updateDoc,
 } from 'firebase/firestore';
+import { HashingService } from '../services/contacts/HashingService';
 
 // Simple user interface matching Firebase Auth User
 interface FirebaseUser {
@@ -244,10 +245,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
       
+      // Hash email for contact discovery matching
+      const hashingService = new HashingService();
+      const emailHash = await hashingService.hashEmail(email);
+      
       // Create user profile in Firestore (PWA pattern)
       const userProfile = {
         username,
         email,
+        emailHash, // ✅ Store hashed email for contact discovery
         bio: '',
         gender: '',
         sexualOrientation: '',

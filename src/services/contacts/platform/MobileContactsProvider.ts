@@ -26,9 +26,7 @@ export class MobileContactsProvider implements IContactsPlatformProvider {
       throw new Error('Contact permission not granted');
     }
 
-    try {
-      console.log('[MobileContactsProvider] Fetching contacts...');
-      
+    try {      
       // Fetch contacts with phone numbers and emails
       const { data } = await Contacts.getContactsAsync({
         fields: [
@@ -62,13 +60,6 @@ export class MobileContactsProvider implements IContactsPlatformProvider {
       // Log sample of first contact for debugging (without PII)
       if (validContacts.length > 0) {
         const sample = validContacts[0];
-        console.log('[MobileContactsProvider] Sample contact:', {
-          hasName: !!sample.name,
-          phoneCount: sample.phoneNumbers?.length || 0,
-          emailCount: sample.emails?.length || 0,
-          phoneType: sample.phoneNumbers?.[0] ? typeof sample.phoneNumbers[0] : 'none',
-          emailType: sample.emails?.[0] ? typeof sample.emails[0] : 'none',
-        });
       }
 
       return mappedContacts;

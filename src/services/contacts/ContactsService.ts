@@ -10,6 +10,7 @@
  */
 
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { IContactsPlatformProvider } from './platform/IContactsPlatformProvider';
 import { MobileContactsProvider } from './platform/MobileContactsProvider';
 import { WebContactsProvider } from './platform/WebContactsProvider';
@@ -24,10 +25,15 @@ import {
   UnmatchedContact,
 } from './types';
 
+// Cache configuration
+const CACHE_KEY = '@contacts_sync_cache';
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
 export interface IContactsService {
   requestPermission(): Promise<ContactPermissionStatus>;
   getPermissionStatus(): Promise<ContactPermissionStatus>;
-  syncContacts(): Promise<ContactSyncResult>;
+  syncContacts(forceRefresh?: boolean): Promise<ContactSyncResult>;
+  clearCache(): Promise<void>;
   isSupported(): boolean;
 }
 
@@ -57,13 +63,25 @@ export class ContactsService implements IContactsService {
 
   /**
    * Main contact sync flow:
-   * 1. Check permission
-   * 2. Fetch contacts from device
-   * 3. Hash phone numbers and emails
-   * 4. Send hashes to server for matching
-   * 5. Return matched and unmatched contacts
+   * 1. Check cache (unless forceRefresh=true)
+   * 2. Check permission
+   * 3. Fetch contacts from device
+   * 4. Hash phone numbers and emails
+   * 5. Send hashes to server for matching
+   * 6. Cache results for 24 hours
+   * 7. Return matched and unmatched contacts
+   * 
+   * @param forceRefresh - Skip cache and force full sync
    */
-  async syncContacts(): Promise<ContactSyncResult> {
+  async syncContacts(forceRefresh = false): Promise<ContactSyncResult> {
+    // Check cache first (95%+ cost savings on repeat syncs)
+    if (!forceRefresh) {
+      const cachedResult = await this.getCachedResult();
+      if (cachedResult) {
+        console.log('[ContactsService] Returning cached sync result');
+        return cachedResult;
+      }
+    }
     const errors: string[] = [];
     
     try {
@@ -169,7 +187,7 @@ export class ContactsService implements IContactsService {
         rawContacts
       );
 
-      return {
+      const result: ContactSyncResult = {
         totalContactsScanned: rawContacts.length,
         totalHashesGenerated: hashedContacts.length,
         matched,
@@ -177,6 +195,11 @@ export class ContactsService implements IContactsService {
         syncedAt: new Date(),
         errors: errors.length > 0 ? errors : undefined,
       };
+
+      // Cache the successful result
+      await this.cacheResult(result);
+
+      return result;
     } catch (error) {
       errors.push(`Sync failed: ${error}`);
       throw new Error(`Contact sync failed: ${error}`);
@@ -299,6 +322,72 @@ export class ContactsService implements IContactsService {
       
       return results;
     });
+  }
+
+  /**
+   * Get cached sync result if available and not expired
+   */
+  private async getCachedResult(): Promise<ContactSyncResult | null> {
+    try {
+      const cached = await AsyncStorage.getItem(CACHE_KEY);
+      if (!cached) {
+        console.log('[ContactsService] No cached result found');
+        return null;
+      }
+
+      const parsed = JSON.parse(cached);
+      const cachedAt = new Date(parsed.cachedAt);
+      const now = new Date();
+      const age = now.getTime() - cachedAt.getTime();
+
+      if (age > CACHE_TTL_MS) {
+        console.log(`[ContactsService] Cache expired (${Math.round(age / 1000 / 60 / 60)}h old)`);
+        await this.clearCache();
+        return null;
+      }
+
+      console.log(`[ContactsService] Cache hit (${Math.round(age / 1000 / 60)}m old)`);
+      
+      // Reconstruct ContactSyncResult with proper Date objects
+      return {
+        ...parsed.result,
+        syncedAt: new Date(parsed.result.syncedAt),
+        fromCache: true, // Add flag to indicate cached result
+      };
+    } catch (error) {
+      console.error('[ContactsService] Cache read error:', error);
+      await this.clearCache();
+      return null;
+    }
+  }
+
+  /**
+   * Cache sync result with timestamp
+   */
+  private async cacheResult(result: ContactSyncResult): Promise<void> {
+    try {
+      const cacheData = {
+        result,
+        cachedAt: new Date().toISOString(),
+      };
+      await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+      console.log('[ContactsService] Cached sync result');
+    } catch (error) {
+      console.error('[ContactsService] Cache write error:', error);
+      // Non-critical error - don't throw
+    }
+  }
+
+  /**
+   * Clear cached sync result (public API)
+   */
+  async clearCache(): Promise<void> {
+    try {
+      await AsyncStorage.removeItem(CACHE_KEY);
+      console.log('[ContactsService] Cache cleared');
+    } catch (error) {
+      console.error('[ContactsService] Cache clear error:', error);
+    }
   }
 
   /**

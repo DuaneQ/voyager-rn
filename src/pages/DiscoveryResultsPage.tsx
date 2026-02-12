@@ -10,6 +10,7 @@ import {
   Platform,
   Linking,
   Alert,
+  TextInput,
 } from 'react-native';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { useAlert } from '../context/AlertContext';
@@ -50,6 +51,8 @@ export const DiscoveryResultsPage: React.FC = () => {
   const [connectingUsers, setConnectingUsers] = useState<Set<string>>(new Set());
   const [invitingContacts, setInvitingContacts] = useState<Set<string>>(new Set());
   const [invitingAll, setInvitingAll] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(new Set());
 
   /**
    * Handle Connect button - create connection with matched user
@@ -93,12 +96,28 @@ export const DiscoveryResultsPage: React.FC = () => {
       const message = `Hey ${contact.name}! Join me on TravalPass to find travel buddies: ${result.inviteLink}`;
       
       if (contact.type === 'phone') {
-        const smsUrl = Platform.OS === 'ios'
-          ? `sms:${contact.contactInfo}&body=${encodeURIComponent(message)}`
-          : `sms:${contact.contactInfo}?body=${encodeURIComponent(message)}`;
+        const smsUrl = `sms:${contact.contactInfo}?body=${encodeURIComponent(message)}`;
+        
+        // Check if device can open SMS (fails on iOS Simulator)
+        const canOpen = await Linking.canOpenURL(smsUrl);
+        if (!canOpen) {
+          // Invite created on backend, but can't open SMS (likely simulator)
+          console.warn('[DiscoveryResultsPage] SMS not supported (simulator?), but invite created');
+          showAlert('warning', 'Invite created! (SMS not available on simulator)');
+          return;
+        }
+        
         await Linking.openURL(smsUrl);
       } else {
         const emailUrl = `mailto:${contact.contactInfo}?subject=${encodeURIComponent('Join me on TravalPass!')}&body=${encodeURIComponent(message)}`;
+        
+        const canOpen = await Linking.canOpenURL(emailUrl);
+        if (!canOpen) {
+          console.warn('[DiscoveryResultsPage] Email not supported, but invite created');
+          showAlert('warning', 'Invite created! (Email app not configured)');
+          return;
+        }
+        
         await Linking.openURL(emailUrl);
       }
       
@@ -122,73 +141,60 @@ export const DiscoveryResultsPage: React.FC = () => {
 
   /**
    * Handle Invite All button
-   * Creates invite records and opens SMS for each contact sequentially
+   * Opens ONE SMS composer with all contacts in the "To:" field
    */
   const handleInviteAll = async () => {
     if (!user?.uid || contactsToInvite.length === 0) return;
 
-    // Show confirmation with explanation using Alert.alert
+    // Filter to phone contacts only (can't batch emails in mailto:)
+    const phoneContacts = contactsToInvite.filter(c => c.type === 'phone');
+    
+    if (phoneContacts.length === 0) {
+      showAlert('info', 'No phone contacts to invite. Try individual email invites instead.');
+      return;
+    }
+
+    // Show confirmation
     Alert.alert(
       'Invite All Friends',
-      `You'll send ${contactsToInvite.length} invites. Your SMS app will open for each contact - just tap Send for each message!`,
+      `Open Messages with all ${phoneContacts.length} contacts pre-filled? You'll just need to tap Send once!`,
       [
         { text: 'Cancel', style: 'cancel' },
         { 
-          text: 'Continue', 
+          text: 'Open Messages', 
           onPress: async () => {
             setInvitingAll(true);
-            let successCount = 0;
-            let failCount = 0;
 
             try {
-              // Process each contact sequentially
-              for (const contact of contactsToInvite) {
-                try {
-                  // Hash the contact identifier
-                  const hash = contact.type === 'phone'
-                    ? await hashingService.hashPhoneNumber(contact.contactInfo)
-                    : await hashingService.hashEmail(contact.contactInfo);
-                  
-                  // Create invite record and get invite link
-                  const result = await contactDiscoveryRepo.sendInvite(hash, 'sms', contact.name);
+              // Create ONE invite record to get the invite link
+              // (All contacts will share the same link since it points to landing page)
+              const firstContact = phoneContacts[0];
+              const hash = await hashingService.hashPhoneNumber(firstContact.contactInfo);
+              const result = await contactDiscoveryRepo.sendInvite(hash, 'sms', 'multiple contacts');
 
-                  if (result.success && result.inviteLink) {
-                    // Build SMS message
-                    const message = `Hey ${contact.name}! Join me on TravalPass to find travel buddies: ${result.inviteLink}`;
-                    const encodedMessage = encodeURIComponent(message);
-                    const smsUrl = Platform.select({
-                      ios: `sms:${contact.contactInfo}&body=${encodedMessage}`,
-                      android: `sms:${contact.contactInfo}?body=${encodedMessage}`,
-                      default: `sms:${contact.contactInfo}?body=${encodedMessage}`,
-                    });
+              if (result.success && result.inviteLink) {
+                // Build SMS with ALL phone numbers comma-separated
+                const phoneNumbers = phoneContacts.map(c => c.contactInfo).join(',');
+                const message = `Hey! Join me on TravalPass to find travel buddies: ${result.inviteLink}`;
+                const smsUrl = `sms:${phoneNumbers}?body=${encodeURIComponent(message)}`;
 
-                    // Open SMS app (non-blocking)
-                    await Linking.openURL(smsUrl!);
-                    successCount++;
-
-                    // Small delay between opening SMS composers
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                  } else {
-                    failCount++;
-                  }
-                } catch (error) {
-                  console.error(`[DiscoveryResultsPage] Failed to invite ${contact.name}:`, error);
-                  failCount++;
+                // Check if device can open SMS
+                const canOpen = await Linking.canOpenURL(smsUrl);
+                if (!canOpen) {
+                  showAlert('error', 'SMS not available (simulator does not support SMS)');
+                  return;
                 }
-              }
 
-              // Show final result
-              if (successCount > 0) {
-                showAlert(
-                  'success',
-                  `Prepared ${successCount} invite${successCount > 1 ? 's' : ''}! ${failCount > 0 ? `(${failCount} failed)` : ''}`
-                );
+                // Open ONE SMS composer with all contacts
+                await Linking.openURL(smsUrl);
+                showAlert('success', `Messages opened with ${phoneContacts.length} contacts!`);
               } else {
-                showAlert('error', 'Failed to send invites. Please try again.');
+                showAlert('error', 'Failed to create invite link. Please try again.');
               }
             } catch (error) {
               console.error('[DiscoveryResultsPage] Invite all error:', error);
-              showAlert('error', 'Failed to send invites. Please try again.');
+              const err = error instanceof Error ? error : new Error('Unknown error');
+              showAlert('error', `Failed to open Messages: ${err.message}`);
             } finally {
               setInvitingAll(false);
             }
@@ -197,6 +203,107 @@ export const DiscoveryResultsPage: React.FC = () => {
       ]
     );
   };
+
+  /**
+   * Handle checkbox toggle for individual contact
+   */
+  const handleToggleSelect = (contact: ContactToInvite) => {
+    setSelectedContactIds(prev => {
+      const next = new Set(prev);
+      if (next.has(contact.id)) {
+        next.delete(contact.id);
+      } else {
+        next.add(contact.id);
+      }
+      return next;
+    });
+  };
+
+  /**
+   * Select all filtered contacts
+   */
+  const handleSelectAll = () => {
+    const allIds = new Set(filteredContactsToInvite.map(c => c.id));
+    setSelectedContactIds(allIds);
+  };
+
+  /**
+   * Deselect all contacts
+   */
+  const handleDeselectAll = () => {
+    setSelectedContactIds(new Set());
+  };
+
+  /**
+   * Invite selected contacts (opens ONE SMS with selected phone contacts)
+   */
+  const handleInviteSelected = async () => {
+    if (!user?.uid || selectedContactIds.size === 0) return;
+
+    const selectedContacts = contactsToInvite.filter(c => selectedContactIds.has(c.id));
+    const phoneContacts = selectedContacts.filter(c => c.type === 'phone');
+    
+    if (phoneContacts.length === 0) {
+      showAlert('info', 'No phone contacts selected. Try individual email invites instead.');
+      return;
+    }
+
+    // Show confirmation
+    Alert.alert(
+      'Invite Selected Friends',
+      `Open Messages with ${phoneContacts.length} selected contact${phoneContacts.length > 1 ? 's' : ''} pre-filled?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Open Messages', 
+          onPress: async () => {
+            setInvitingAll(true);
+
+            try {
+              // Create ONE invite record to get the invite link
+              const firstContact = phoneContacts[0];
+              const hash = await hashingService.hashPhoneNumber(firstContact.contactInfo);
+              const result = await contactDiscoveryRepo.sendInvite(hash, 'sms', `${phoneContacts.length} selected contacts`);
+
+              if (result.success && result.inviteLink) {
+                // Build SMS with selected phone numbers comma-separated
+                const phoneNumbers = phoneContacts.map(c => c.contactInfo).join(',');
+                const message = `Hey! Join me on TravalPass to find travel buddies: ${result.inviteLink}`;
+                const smsUrl = `sms:${phoneNumbers}?body=${encodeURIComponent(message)}`;
+
+                // Check if device can open SMS
+                const canOpen = await Linking.canOpenURL(smsUrl);
+                if (!canOpen) {
+                  showAlert('error', 'SMS not available (simulator does not support SMS)');
+                  return;
+                }
+
+                // Open SMS and clear selections
+                await Linking.openURL(smsUrl);
+                setSelectedContactIds(new Set());
+                showAlert('success', `Messages opened with ${phoneContacts.length} contacts!`);
+              } else {
+                showAlert('error', 'Failed to create invite link. Please try again.');
+              }
+            } catch (error) {
+              console.error('[DiscoveryResultsPage] Invite selected error:', error);
+              const err = error instanceof Error ? error : new Error('Unknown error');
+              showAlert('error', `Failed to open Messages: ${err.message}`);
+            } finally {
+              setInvitingAll(false);
+            }
+          }
+        },
+      ]
+    );
+  };
+
+  // Filter contacts based on search query
+  const filteredContactsToInvite = searchQuery.trim()
+    ? contactsToInvite.filter(contact =>
+        contact.name.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : contactsToInvite;
 
   // Build sections for SectionList
   const sections: SectionData[] = [];
@@ -209,17 +316,31 @@ export const DiscoveryResultsPage: React.FC = () => {
     });
   }
 
-  if (contactsToInvite.length > 0) {
+  if (filteredContactsToInvite.length > 0) {
     sections.push({
-      title: `📨 Invite Friends (${contactsToInvite.length})`,
-      data: contactsToInvite,
+      title: `📨 Invite Friends (${filteredContactsToInvite.length})`,
+      data: filteredContactsToInvite,
       type: 'invite',
     });
   }
 
   const renderSectionHeader = ({ section }: { section: SectionData }) => (
     <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle}>{section.title}</Text>
+      <View style={styles.sectionHeaderTop}>
+        <Text style={styles.sectionTitle}>{section.title}</Text>
+        {section.type === 'invite' && filteredContactsToInvite.length > 0 && (
+          <View style={styles.selectionControls}>
+            <TouchableOpacity onPress={handleSelectAll} style={styles.selectionButton}>
+              <Text style={styles.selectionButtonText}>Select All</Text>
+            </TouchableOpacity>
+            {selectedContactIds.size > 0 && (
+              <TouchableOpacity onPress={handleDeselectAll} style={styles.selectionButton}>
+                <Text style={styles.selectionButtonText}>Clear ({selectedContactIds.size})</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+      </View>
       <View style={styles.sectionDivider} />
     </View>
   );
@@ -241,6 +362,8 @@ export const DiscoveryResultsPage: React.FC = () => {
           contact={contact}
           onInvite={() => handleInvite(contact)}
           isInviting={invitingContacts.has(contact.id)}
+          isSelected={selectedContactIds.has(contact.id)}
+          onToggleSelect={handleToggleSelect}
         />
       );
     }
@@ -251,6 +374,7 @@ export const DiscoveryResultsPage: React.FC = () => {
 
     return (
       <View style={styles.footer}>
+        {/* Invite All Button */}
         <TouchableOpacity
           style={[styles.inviteAllButton, invitingAll && styles.inviteAllButtonDisabled]}
           onPress={handleInviteAll}
@@ -292,6 +416,39 @@ export const DiscoveryResultsPage: React.FC = () => {
         <View style={styles.headerSpacer} />
       </View>
 
+      {/* Search Bar - only show if there are contacts to invite */}
+      {contactsToInvite.length > 0 && (
+        <View style={styles.searchContainer}>
+          <View style={styles.searchInputWrapper}>
+            <Text style={styles.searchIcon}>🔍</Text>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search contacts to invite..."
+              placeholderTextColor="#999"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoCapitalize="none"
+              autoCorrect={false}
+              clearButtonMode="while-editing"
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity
+                style={styles.clearButton}
+                onPress={() => setSearchQuery('')}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Text style={styles.clearButtonText}>✕</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          {searchQuery.trim() && filteredContactsToInvite.length === 0 && (
+            <Text style={styles.noResultsText}>
+              No contacts found matching "{searchQuery}"
+            </Text>
+          )}
+        </View>
+      )}
+
       {/* Results List */}
       <SectionList
         sections={sections}
@@ -305,6 +462,25 @@ export const DiscoveryResultsPage: React.FC = () => {
         contentContainerStyle={styles.listContent}
         stickySectionHeadersEnabled={false}
       />
+
+      {/* Floating Action Button - appears when contacts are selected */}
+      {selectedContactIds.size > 0 && (
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={handleInviteSelected}
+          activeOpacity={0.8}
+          disabled={invitingAll}
+        >
+          {invitingAll ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <>
+              <Text style={styles.fabIcon}>📤</Text>
+              <Text style={styles.fabText}>Invite ({selectedContactIds.size})</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      )}
     </SafeAreaView>
   );
 };
@@ -342,6 +518,48 @@ const styles = StyleSheet.create({
   headerSpacer: {
     width: 40,
   },
+  searchContainer: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  searchInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  searchIcon: {
+    fontSize: 16,
+    marginRight: 8,
+    opacity: 0.6,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    color: '#1a1a1a',
+    paddingVertical: 4,
+  },
+  clearButton: {
+    padding: 4,
+    marginLeft: 8,
+  },
+  clearButtonText: {
+    fontSize: 18,
+    color: '#999',
+    fontWeight: '300',
+  },
+  noResultsText: {
+    fontSize: 13,
+    color: '#666',
+    marginTop: 8,
+    fontStyle: 'italic',
+  },
   listContent: {
     paddingVertical: 8,
     flexGrow: 1,
@@ -351,11 +569,31 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 8,
   },
+  sectionHeaderTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#1a1a1a',
-    marginBottom: 8,
+  },
+  selectionControls: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  selectionButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#E3F2FD',
+    borderRadius: 6,
+  },
+  selectionButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1976D2',
   },
   sectionDivider: {
     height: 1,
@@ -409,5 +647,34 @@ const styles = StyleSheet.create({
     color: '#666666',
     textAlign: 'center',
     lineHeight: 22,
+  },
+  // Floating Action Button
+  fab: {
+    position: 'absolute',
+    bottom: 80,
+    right: 16,
+    backgroundColor: '#43A047',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 28,
+    // Shadow for iOS
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    // Shadow for Android
+    elevation: 8,
+    zIndex: 1000,
+  },
+  fabIcon: {
+    fontSize: 18,
+    marginRight: 8,
+  },
+  fabText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });

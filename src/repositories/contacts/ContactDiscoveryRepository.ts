@@ -99,7 +99,15 @@ export class ContactDiscoveryRepository {
         allHashesAreStrings: payload.hashedIdentifiers.every(h => typeof h === 'string'),
       });
 
-      const result: HttpsCallableResult<MatchContactsResponse> = await matchFunction(payload);
+      // Add timeout wrapper (30 seconds - generous for slow WiFi)
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Network request timed out. Please check your internet connection.')), 30000);
+      });
+
+      const result: HttpsCallableResult<MatchContactsResponse> = await Promise.race([
+        matchFunction(payload),
+        timeoutPromise
+      ]);
 
       const response = result.data;
 
@@ -131,6 +139,11 @@ export class ContactDiscoveryRepository {
       
       if (error.code === 'functions/resource-exhausted') {
         throw new Error('Rate limit exceeded. Please try again later.');
+      }
+
+      // Network errors (common on WiFi-only devices)
+      if (error.code === 'functions/unavailable' || error.message?.includes('network') || error.message?.includes('timeout')) {
+        throw new Error('Network error. Please check your internet connection and try again.');
       }
 
       // Re-throw with original message
@@ -172,11 +185,19 @@ export class ContactDiscoveryRepository {
         SendInviteResponse
       >(this.functions, 'sendContactInvite');
 
-      const result: HttpsCallableResult<SendInviteResponse> = await inviteFunction({
-        contactIdentifier,
-        inviteMethod,
-        contactName,
+      // Add timeout wrapper (20 seconds - SMS/email generation is fast)
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Network request timed out. Please check your internet connection.')), 20000);
       });
+
+      const result: HttpsCallableResult<SendInviteResponse> = await Promise.race([
+        inviteFunction({
+          contactIdentifier,
+          inviteMethod,
+          contactName,
+        }),
+        timeoutPromise
+      ]);
 
       const response = result.data;
 
@@ -207,6 +228,11 @@ export class ContactDiscoveryRepository {
       
       if (error.code === 'functions/resource-exhausted') {
         throw new Error('Daily invite limit reached (100/day). Try again tomorrow.');
+      }
+
+      // Network errors (common on WiFi-only devices)
+      if (error.code === 'functions/unavailable' || error.message?.includes('network') || error.message?.includes('timeout')) {
+        throw new Error('Network error. Please check your internet connection and try again.');
       }
 
       // Re-throw with original message

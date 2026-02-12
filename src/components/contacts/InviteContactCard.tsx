@@ -18,19 +18,36 @@ export interface InviteContactCardProps {
   contact: ContactToInvite;
   onInvite: (contact: ContactToInvite) => void;
   isInviting?: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: (contact: ContactToInvite) => void;
 }
 
 export const InviteContactCard: React.FC<InviteContactCardProps> = ({
   contact,
   onInvite,
   isInviting = false,
+  isSelected = false,
+  onToggleSelect,
 }) => {
   const getIcon = () => {
     return contact.type === 'email' ? '📧' : '💬';
   };
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, isSelected && styles.cardSelected]}>
+      {/* Checkbox */}
+      {onToggleSelect && (
+        <TouchableOpacity
+          style={styles.checkbox}
+          onPress={() => onToggleSelect(contact)}
+          activeOpacity={0.8}
+        >
+          <View style={[styles.checkboxBox, isSelected && styles.checkboxBoxSelected]}>
+            {isSelected && <Text style={styles.checkboxCheck}>✓</Text>}
+          </View>
+        </TouchableOpacity>
+      )}
+      
       <View style={styles.leftSection}>
         {/* Icon */}
         <Text style={styles.icon}>{getIcon()}</Text>
@@ -80,6 +97,32 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     // Shadow for Android
     elevation: 2,
+  },
+  cardSelected: {
+    backgroundColor: '#E3F2FD',
+    borderColor: '#2196F3',
+  },
+  checkbox: {
+    marginRight: 12,
+  },
+  checkboxBox: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#BDBDBD',
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkboxBoxSelected: {
+    backgroundColor: '#2196F3',
+    borderColor: '#2196F3',
+  },
+  checkboxCheck: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   leftSection: {
     flexDirection: 'row',

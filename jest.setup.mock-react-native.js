@@ -99,8 +99,28 @@ jest.mock(
 				}
 				const children = renderItem ? data.map((item, index) => renderItem({ item, index })) : null;
 				return React.createElement('FlatList', rest, children);
-			}),
-			Animated: {
+			}),		SectionList: ((props) => {
+			const React = require('react');
+			const { sections = [], renderItem, renderSectionHeader, ListEmptyComponent, ...rest } = props || {};
+			if (!sections || sections.length === 0) {
+				const empty = typeof ListEmptyComponent === 'function'
+					? React.createElement(ListEmptyComponent)
+					: (ListEmptyComponent || null);
+				return React.createElement('SectionList', rest, empty);
+			}
+			const children = [];
+			sections.forEach((section) => {
+				if (renderSectionHeader) {
+					children.push(renderSectionHeader({ section }));
+				}
+				if (renderItem && section.data) {
+					section.data.forEach((item, index) => {
+						children.push(renderItem({ item, index, section }));
+					});
+				}
+			});
+			return React.createElement('SectionList', rest, ...children);
+		}),			Animated: {
 				View: createHostComponent('AnimatedView'),
 				Value: function Value(initial = 0) { return { _value: initial, setValue(v){ this._value = v; }, addListener(){}, removeListener(){} }; },
 				add: (...args) => ({ __animated: 'add', args }),
@@ -111,8 +131,13 @@ jest.mock(
 			},
 			UIManager: { getViewManagerConfig: () => ({}) },
 			Share: { share: jest.fn(() => Promise.resolve({ action: 'sharedAction' })) },
-			Clipboard: { setString: jest.fn(() => {}), getString: jest.fn(() => Promise.resolve('')) },
-			Alert: { alert: jest.fn(() => {}) },
+			Clipboard: { setString: jest.fn(() => {}), getString: jest.fn(() => Promise.resolve('')) },		Linking: {
+			canOpenURL: jest.fn(() => Promise.resolve(true)),
+			openURL: jest.fn(() => Promise.resolve(true)),
+			getInitialURL: jest.fn(() => Promise.resolve(null)),
+			addEventListener: jest.fn(),
+			removeEventListener: jest.fn(),
+		},			Alert: { alert: jest.fn(() => {}) },
 		};
 	},
 	{ virtual: true }
