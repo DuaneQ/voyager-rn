@@ -228,9 +228,8 @@ describe('Contact Discovery Integration Tests', () => {
       // Referral code should be 8 uppercase alphanumeric characters
       expect(body.result.referralCode).toMatch(/^[A-Z0-9]{8}$/);
 
-      // Invite link should contain referral code
-      expect(body.result.inviteLink).toContain(body.result.referralCode);
-      expect(body.result.inviteLink).toMatch(/travalpass\.com\/invite\?ref=/);
+      // Invite link should be the landing page (referral code tracked separately)
+      expect(body.result.inviteLink).toBe('https://travalpass.com');
     }, 15000);
 
     it('should accept all invite methods (sms, email, link, share)', async () => {
