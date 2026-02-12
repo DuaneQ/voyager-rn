@@ -16,7 +16,8 @@ import { useAlert } from '../context/AlertContext';
 import { useAuth } from '../context/AuthContext';
 import { MatchedContactCard } from '../components/contacts/MatchedContactCard';
 import { InviteContactCard, ContactToInvite } from '../components/contacts/InviteContactCard';
-import { MatchedContact, ContactDiscoveryRepository } from '../repositories/contacts/ContactDiscoveryRepository';
+import { MatchedContact } from '../services/contacts/types';
+import { ContactDiscoveryRepository, InviteMethodType } from '../repositories/contacts/ContactDiscoveryRepository';
 import { HashingService } from '../services/contacts/HashingService';
 
 export interface DiscoveryResultsPageProps {

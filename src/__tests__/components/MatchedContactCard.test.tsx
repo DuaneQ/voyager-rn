@@ -1,11 +1,10 @@
 import React from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
 import { MatchedContactCard } from '../../components/contacts/MatchedContactCard';
-import { MatchedContact } from '../../repositories/contacts/ContactDiscoveryRepository';
+import { MatchedContact } from '../../services/contacts/types';
 
 describe('MatchedContactCard', () => {
   const mockContact: MatchedContact = {
-    hash: 'abc123',
     userId: 'user123',
     displayName: 'Sarah Johnson',
     username: 'sarahjay',

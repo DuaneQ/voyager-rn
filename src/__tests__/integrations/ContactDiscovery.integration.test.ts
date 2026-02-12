@@ -192,7 +192,7 @@ describe('Contact Discovery Integration Tests', () => {
 
       // Should return unauthenticated error
       expect(body.error).toBeDefined();
-      expect(body.error.message).toMatch(/unauthenticated|unauthorized/i);
+      expect(body.error.message).toMatch(/must be authenticated/i);
     }, 10000);
   });
 
@@ -370,7 +370,7 @@ describe('Contact Discovery Integration Tests', () => {
 
       // Should return unauthenticated error
       expect(body.error).toBeDefined();
-      expect(body.error.message).toMatch(/unauthenticated|unauthorized/i);
+      expect(body.error.message).toMatch(/must be authenticated/i);
     }, 10000);
   });
 

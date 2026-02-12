@@ -15,7 +15,11 @@ import { app } from '../../../firebase-config';
 // Type Definitions (Match Cloud Function contracts)
 // ============================================================================
 
-export interface MatchedContact {
+/**
+ * Cloud Function response for a single matched contact
+ * Includes hash for correlation with request
+ */
+export interface MatchedContactResult {
   hash: string;
   userId: string;
   displayName: string;
@@ -25,7 +29,7 @@ export interface MatchedContact {
 
 export interface MatchContactsResponse {
   success: boolean;
-  matches: MatchedContact[];
+  matches: MatchedContactResult[];
   totalHashes: number;
   totalMatches: number;
   error?: string;
@@ -38,7 +42,7 @@ export interface SendInviteResponse {
   error?: string;
 }
 
-export type InviteMethod = 'sms' | 'email' | 'link' | 'share';
+export type InviteMethodType = 'sms' | 'email' | 'link' | 'share';
 
 // ============================================================================
 // Repository Implementation
@@ -62,7 +66,7 @@ export class ContactDiscoveryRepository {
    * Rate Limit: 1000 hashes per request (server-enforced)
    * Performance: Batched Firestore queries (10 hashes per batch)
    */
-  async matchContacts(hashedIdentifiers: string[]): Promise<MatchedContact[]> {
+  async matchContacts(hashedIdentifiers: string[]): Promise<MatchedContactResult[]> {
     try {
       // Validate input
       if (!hashedIdentifiers || hashedIdentifiers.length === 0) {
@@ -149,7 +153,7 @@ export class ContactDiscoveryRepository {
    */
   async sendInvite(
     contactIdentifier: string,
-    inviteMethod: InviteMethod,
+    inviteMethod: InviteMethodType,
     contactName?: string
   ): Promise<SendInviteResponse> {
     try {
@@ -162,7 +166,7 @@ export class ContactDiscoveryRepository {
       const inviteFunction = httpsCallable<
         { 
           contactIdentifier: string;
-          inviteMethod: InviteMethod;
+          inviteMethod: InviteMethodType;
           contactName?: string;
         },
         SendInviteResponse

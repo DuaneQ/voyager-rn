@@ -1,4 +1,4 @@
-import { ContactDiscoveryRepository, MatchedContact } from '../../repositories/contacts/ContactDiscoveryRepository';
+import { ContactDiscoveryRepository, MatchedContactResult } from '../../repositories/contacts/ContactDiscoveryRepository';
 
 // Mock Firebase Functions
 jest.mock('firebase/functions', () => ({
@@ -25,7 +25,7 @@ describe('ContactDiscoveryRepository', () => {
       const validHash1 = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
       const validHash2 = 'fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210';
       
-      const mockMatches: MatchedContact[] = [
+      const mockMatches: MatchedContactResult[] = [
         {
           hash: validHash1,
           userId: 'user1',

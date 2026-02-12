@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
-import { MatchedContact } from '../../repositories/contacts/ContactDiscoveryRepository';
+import { MatchedContact } from '../../services/contacts/types';
 
 export interface MatchedContactCardProps {
   contact: MatchedContact;

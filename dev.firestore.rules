@@ -172,10 +172,24 @@ service cloud.firestore {
       allow read: if request.auth != null && resource.data.inviterUserId == request.auth.uid;
       // Users can update invite status when accepting (sets acceptedByUserId)
       allow update: if request.auth != null && (
-        // Inviter can update their own invites
-        resource.data.inviterUserId == request.auth.uid ||
-        // Accepter can mark as accepted
-        (request.resource.data.acceptedByUserId == request.auth.uid && resource.data.status == 'sent')
+        // Inviter can update their own invites, but cannot modify acceptance-related fields
+        (
+          resource.data.inviterUserId == request.auth.uid &&
+          // Inviter cannot change ownership of the invite
+          request.resource.data.inviterUserId == resource.data.inviterUserId &&
+          // Inviter is not allowed to modify acceptance-related fields
+          !resource.data.diff(request.resource.data).affectedKeys().hasAny(['acceptedByUserId', 'status'])
+        ) ||
+        // Accepter can mark as accepted: may only change acceptedByUserId and status
+        (
+          request.resource.data.acceptedByUserId == request.auth.uid &&
+          resource.data.status == 'sent' &&
+          resource.data.acceptedByUserId == null &&
+          // Inviter must remain the same
+          request.resource.data.inviterUserId == resource.data.inviterUserId &&
+          // Only acceptance-related fields may change
+          resource.data.diff(request.resource.data).affectedKeys().hasOnly(['acceptedByUserId', 'status'])
+        )
       );
       // Admins can read all invites for analytics
       allow read: if request.auth != null && request.auth.token.admin == true;

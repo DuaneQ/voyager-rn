@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
 import { DiscoveryResultsPage } from '../../pages/DiscoveryResultsPage';
-import { MatchedContact } from '../../repositories/contacts/ContactDiscoveryRepository';
+import { MatchedContact } from '../../services/contacts/types';
 import { ContactToInvite } from '../../components/contacts/InviteContactCard';
 
 // Mock child components to isolate DiscoveryResultsPage 
@@ -41,14 +41,12 @@ jest.mock('../../components/contacts/InviteContactCard', () => ({
 describe.skip('DiscoveryResultsPage', () => {
   const mockMatchedContacts: MatchedContact[] = [
     {
-      hash: 'hash1',
       userId: 'user1',
       displayName: 'Sarah Johnson',
       username: 'sarahjay',
       profilePhotoUrl: 'https://example.com/photo1.jpg',
     },
     {
-      hash: 'hash2',
       userId: 'user2',
       displayName: 'Mike Chen',
       username: 'mikechen',

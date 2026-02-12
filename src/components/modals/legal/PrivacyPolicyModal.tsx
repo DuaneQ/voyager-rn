@@ -181,11 +181,15 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ visible,
               You can:{'\n'}
               • Update your profile information anytime{'\n'}
               • Control notification settings{'\n'}
-              • Delete your account (Settings → Delete Account){'\n'}
+              • Delete your account (Profile → Delete Account){'\n'}
               • Request a copy of your data{'\n'}
-              • Opt-out of marketing communications{'\n'}
-              • Delete contact discovery data (Settings → Privacy → Delete Contact Data){'\n'}
-              • Disable contact discovery (Settings → Privacy → Contact Discovery)
+              • Opt-out of marketing communications
+            </Text>
+            
+            <Text style={styles.subSectionTitle}>Contact Discovery</Text>
+            <Text style={styles.paragraph}>
+              • Request deletion of contact discovery data (contact us using the details in the "Contact Us" section below){'\n'}
+              • Request that contact discovery be disabled for your account (contact us using the details in the "Contact Us" section below)
             </Text>
 
             <Text style={styles.sectionTitle}>6. Mobile-Specific Privacy</Text>
