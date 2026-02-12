@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -10,7 +10,11 @@ import {
   Platform,
   Linking,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 // Note: useNavigation is imported conditionally at component level for web compatibility
+import { useFocusEffect } from '@react-navigation/native';
+import { getFirestore, collection, query, where, orderBy, limit, getDocs, Timestamp } from 'firebase/firestore';
+import { app } from '../../firebase-config';
 import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
 import { useUserProfile } from '../context/UserProfileContext';
@@ -93,8 +97,24 @@ const ProfilePage: React.FC = () => {
   // Contact Discovery State
   const [contactsSynced, setContactsSynced] = useState(false);
   const [matchedContactsCount, setMatchedContactsCount] = useState(0);
-  const [matchedContacts, setMatchedContacts] = useState<MatchedContact[]>([]);
-  const [contactsToInvite, setContactsToInvite] = useState<ContactToInvite[]>([]);
+  const [matchedContacts, setMatchedContactsRaw] = useState<MatchedContact[]>([]);
+  const [contactsToInvite, setContactsToInviteRaw] = useState<ContactToInvite[]>([]);
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
+  
+  // Wrap setters to use functional updates (prevents dependency issues)
+  const setMatchedContacts = React.useCallback((value: MatchedContact[] | ((prev: MatchedContact[]) => MatchedContact[])) => {
+    setMatchedContactsRaw(prev => {
+      const newValue = typeof value === 'function' ? value(prev) : value;
+      return newValue;
+    });
+  }, []);
+  
+  const setContactsToInvite = React.useCallback((value: ContactToInvite[] | ((prev: ContactToInvite[]) => ContactToInvite[])) => {
+    setContactsToInviteRaw(prev => {
+      const newValue = typeof value === 'function' ? value(prev) : value;
+      return newValue;
+    });
+  }, []);
   const [permissionModalVisible, setPermissionModalVisible] = useState(false);
 
   // Removed auto-opening of EditProfileModal
@@ -210,6 +230,70 @@ const ProfilePage: React.FC = () => {
   };
 
   /**
+   * Refresh contact discovery stats from Firestore contactSyncs collection
+   * Fetches most recent sync metadata and updates state
+   * Also restores contact arrays from AsyncStorage if available
+   */
+  const refreshContactStats = useCallback(async () => {
+    if (!user?.uid) return;
+
+    try {
+      // Restore contact arrays from AsyncStorage (iOS fix)
+      const storedMatched = await AsyncStorage.getItem(`matched_contacts_${user.uid}`);
+      const storedToInvite = await AsyncStorage.getItem(`contacts_to_invite_${user.uid}`);
+      
+      if (storedMatched) {
+        const parsedMatched = JSON.parse(storedMatched);
+        setMatchedContacts(parsedMatched);
+      }
+      
+      if (storedToInvite) {
+        const parsedToInvite = JSON.parse(storedToInvite);
+        setContactsToInvite(parsedToInvite);
+      }
+      
+      // Fetch sync metadata from Firestore
+      const db = getFirestore(app);
+      const contactSyncsRef = collection(db, 'contactSyncs');
+      const q = query(
+        contactSyncsRef,
+        where('userId', '==', user.uid),
+        orderBy('syncedAt', 'desc'),
+        limit(1)
+      );
+
+      const querySnapshot = await getDocs(q);
+      
+      if (!querySnapshot.empty) {
+        const syncDoc = querySnapshot.docs[0];
+        const syncData = syncDoc.data();
+        
+        // Update state with most recent sync data
+        setContactsSynced(true);
+        setMatchedContactsCount(syncData.totalMatches || 0);
+        
+        // Convert Firestore Timestamp to Date
+        if (syncData.syncedAt) {
+          const timestamp = syncData.syncedAt as Timestamp;
+          setLastSyncedAt(timestamp.toDate());
+        }
+      }
+    } catch (error) {
+      console.warn('[ProfilePage] Error refreshing contact stats:', error);
+      // Don't show error to user - this is a background refresh
+    }
+  }, [user?.uid, setMatchedContacts, setContactsToInvite]);
+
+  /**
+   * Refresh contact stats when tab comes into focus
+   */
+  useFocusEffect(
+    useCallback(() => {
+      refreshContactStats();
+    }, [refreshContactStats])
+  );
+
+  /**
    * Handle contact discovery banner press
    */
   const handleContactDiscoveryPress = () => {
@@ -217,17 +301,39 @@ const ProfilePage: React.FC = () => {
       // First time: show permission modal
       setPermissionModalVisible(true);
     } else {
-      // Navigate to discovery results page (mobile only)
-      if (Platform.OS !== 'web' && navigation) {
-        // Note: Pass only serializable data, handlers defined in destination
-        navigation.navigate('DiscoveryResults', {
-          matchedContacts,
-          contactsToInvite,
-        });
-      } else {
-        // Web: Feature not available (Contact API requires native app)
-        showAlert('info', 'Contact discovery requires the TravalPass mobile app. Download on iOS or Android to find friends!');
-      }
+      // Already synced - give option to view results or re-sync
+      Alert.alert(
+        'Contact Discovery',
+        'What would you like to do?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'View Results', 
+            onPress: () => {
+              // Navigate to discovery results page (mobile only)
+              if (Platform.OS !== 'web' && navigation) {
+                navigation.navigate('DiscoveryResults', {
+                  matchedContacts,
+                  contactsToInvite,
+                });
+              }
+            }
+          },
+          { 
+            text: 'Re-sync Contacts', 
+            onPress: async () => {
+              // Clear cache and AsyncStorage to force fresh sync
+              if (user?.uid) {
+                await AsyncStorage.removeItem(`matched_contacts_${user.uid}`);
+                await AsyncStorage.removeItem(`contacts_to_invite_${user.uid}`);
+                await contactsService.clearCache();
+              }
+              setPermissionModalVisible(true);
+            },
+            style: 'default'
+          }
+        ]
+      );
     }
   };
 
@@ -258,15 +364,8 @@ const ProfilePage: React.FC = () => {
       showAlert('info', 'Syncing contacts...');
       
       // Step 2: Sync contacts (ContactsService handles: fetch -> hash -> match)
-      const syncResult = await contactsService.syncContacts();
-      
-      console.log('[ProfilePage] Contact sync result:', {
-        totalContactsScanned: syncResult.totalContactsScanned,
-        totalHashesGenerated: syncResult.totalHashesGenerated,
-        matchedCount: syncResult.matched.length,
-        unmatchedCount: syncResult.unmatched.length,
-        errors: syncResult.errors,
-      });
+      // Force refresh to bypass cache and read all contacts from device
+      const syncResult = await contactsService.syncContacts(true);
       
       if (syncResult.errors && syncResult.errors.length > 0) {
         console.warn('[ProfilePage] Contact sync errors:', syncResult.errors);
@@ -276,6 +375,7 @@ const ProfilePage: React.FC = () => {
       setContactsSynced(true);
       setMatchedContactsCount(syncResult.matched.length);
       setMatchedContacts(syncResult.matched);
+      setLastSyncedAt(new Date()); // Set sync timestamp
       
       // Convert unmatched contacts to ContactToInvite format
       const inviteList: ContactToInvite[] = syncResult.unmatched.map(c => ({
@@ -286,6 +386,12 @@ const ProfilePage: React.FC = () => {
         hash: '', // Will be generated when invite is sent
       }));
       setContactsToInvite(inviteList);
+      
+      // Persist to AsyncStorage for iOS state restoration
+      if (user?.uid) {
+        await AsyncStorage.setItem(`matched_contacts_${user.uid}`, JSON.stringify(syncResult.matched));
+        await AsyncStorage.setItem(`contacts_to_invite_${user.uid}`, JSON.stringify(inviteList));
+      }
       
       if (syncResult.matched.length > 0) {
         showAlert('success', `Found ${syncResult.matched.length} contacts on TravalPass!`);
@@ -310,7 +416,6 @@ const ProfilePage: React.FC = () => {
       // TODO: Implement connection creation in Firestore
       // For now, just show success
       showAlert('success', 'Connection request sent!');
-      console.log('[ProfilePage] Connect with user:', userId);
     } catch (error) {
       const err = error instanceof Error ? error : new Error('Failed to connect');
       showAlert('error', `Failed to connect: ${err.message}`);
@@ -495,6 +600,7 @@ const ProfilePage: React.FC = () => {
         <ContactDiscoveryBanner
           hasSynced={contactsSynced}
           matchCount={matchedContactsCount}
+          lastSyncedAt={lastSyncedAt}
           onPress={handleContactDiscoveryPress}
         />
 

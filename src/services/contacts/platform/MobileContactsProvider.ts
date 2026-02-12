@@ -36,8 +36,6 @@ export class MobileContactsProvider implements IContactsPlatformProvider {
         ],
       });
 
-      console.log(`[MobileContactsProvider] Fetched ${data.length} raw contacts`);
-
       // Map to our domain model with defensive checks
       const mappedContacts = data.map(contact => {
         const phones = contact.phoneNumbers?.map(p => p.number ?? '').filter(Boolean) || [];
@@ -55,7 +53,6 @@ export class MobileContactsProvider implements IContactsPlatformProvider {
       const validContacts = mappedContacts.filter(
         c => (c.phoneNumbers && c.phoneNumbers.length > 0) || (c.emails && c.emails.length > 0)
       );
-      console.log(`[MobileContactsProvider] ${validContacts.length}/${data.length} contacts have phone/email`);
       
       // Log sample of first contact for debugging (without PII)
       if (validContacts.length > 0) {

@@ -78,7 +78,6 @@ export class ContactsService implements IContactsService {
     if (!forceRefresh) {
       const cachedResult = await this.getCachedResult();
       if (cachedResult) {
-        console.log('[ContactsService] Returning cached sync result');
         return cachedResult;
       }
     }
@@ -384,7 +383,6 @@ export class ContactsService implements IContactsService {
   async clearCache(): Promise<void> {
     try {
       await AsyncStorage.removeItem(CACHE_KEY);
-      console.log('[ContactsService] Cache cleared');
     } catch (error) {
       console.error('[ContactsService] Cache clear error:', error);
     }

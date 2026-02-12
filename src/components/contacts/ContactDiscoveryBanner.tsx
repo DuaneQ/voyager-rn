@@ -19,14 +19,40 @@ export interface ContactDiscoveryBannerProps {
   matchCount: number;
   
   /**
+   * Optional timestamp of last sync
+   */
+  lastSyncedAt?: Date | null;
+  
+  /**
    * Callback when banner is pressed
    */
   onPress: () => void;
 }
 
+/**
+ * Format relative time from a date (e.g., "2 hours ago", "Just now")
+ */
+const formatRelativeTime = (date: Date): string => {
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins} min${diffMins !== 1 ? 's' : ''} ago`;
+  if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays} days ago`;
+  
+  // Format absolute date for older syncs
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
+
 export const ContactDiscoveryBanner: React.FC<ContactDiscoveryBannerProps> = ({
   hasSynced,
   matchCount,
+  lastSyncedAt,
   onPress,
 }) => {
   // Determine banner text based on state
@@ -77,9 +103,16 @@ export const ContactDiscoveryBanner: React.FC<ContactDiscoveryBannerProps> = ({
           {/* Icon + Text */}
           <View style={styles.leftSection}>
             <Text style={styles.icon}>👥</Text>
-            <Text style={styles.text} numberOfLines={2}>
-              {getBannerText()}
-            </Text>
+            <View style={styles.textContainer}>
+              <Text style={styles.text} numberOfLines={2}>
+                {getBannerText()}
+              </Text>
+              {hasSynced && lastSyncedAt && (
+                <Text style={styles.timestamp}>
+                  Last synced: {formatRelativeTime(lastSyncedAt)}
+                </Text>
+              )}
+            </View>
           </View>
           
           {/* Action Button */}
@@ -127,11 +160,18 @@ const styles = StyleSheet.create({
     fontSize: 24,
     marginRight: 8,
   },
+  textContainer: {
+    flex: 1,
+  },
   text: {
     fontSize: 15,
     fontWeight: '500',
     color: '#1976D2',
-    flex: 1,
+  },
+  timestamp: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
   },
   buttonContainer: {
     backgroundColor: '#1976D2',

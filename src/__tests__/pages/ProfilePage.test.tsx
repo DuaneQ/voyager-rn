@@ -17,6 +17,20 @@ jest.mock('firebase/firestore', () => ({
   doc: jest.fn(),
   updateDoc: jest.fn(),
   getDoc: jest.fn(),
+  collection: jest.fn(),
+  query: jest.fn(),
+  where: jest.fn(),
+  orderBy: jest.fn(),
+  limit: jest.fn(),
+  getDocs: jest.fn(() => Promise.resolve({
+    empty: true,
+    docs: [],
+  })),
+  Timestamp: {
+    fromDate: jest.fn((date) => ({
+      toDate: () => date,
+    })),
+  },
 }));
 
 jest.mock('firebase/auth', () => ({
@@ -34,6 +48,10 @@ jest.mock('@react-navigation/native', () => ({
   useNavigation: jest.fn(() => ({
     navigate: jest.fn(),
   })),
+  useFocusEffect: jest.fn((callback) => {
+    // Call the callback immediately in tests to simulate focus
+    callback();
+  }),
 }));
 
 // Simplified AuthContext mock so components using useAuth() won't throw

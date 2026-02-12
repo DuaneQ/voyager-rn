@@ -64,7 +64,6 @@ export const DiscoveryResultsPage: React.FC = () => {
     try {
       // TODO: Implement connection creation in Firestore
       showAlert('success', 'Connection request sent!');
-      console.log('[DiscoveryResultsPage] Connect with user:', userId);
     } catch (error) {
       const err = error instanceof Error ? error : new Error('Failed to connect');
       showAlert('error', `Failed to connect: ${err.message}`);
