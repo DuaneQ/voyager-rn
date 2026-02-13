@@ -45,8 +45,20 @@
   - Tested on physical iOS device - working correctly
 - [x] All unit tests passing (2191 passed, 22 skipped)
 - [x] All integration tests passing (111 passed, 3 skipped)
+- [x] **Email hashing for all registration methods**
+  - Email/password registration: ✅ emailHash stored
+  - Google Sign-In: ✅ emailHash added (Feb 13, 2026)
+  - Apple Sign-In: ✅ emailHash added (Feb 13, 2026)
+  - All new users are now discoverable by contacts who have their email
 
 ## Pending 🟡
+
+### High Priority
+- [ ] **Implement Connect functionality for matched contacts**
+  - Backend: Create connection request in Firestore
+  - UI: Re-enable Connect button in MatchedContactCard
+  - Real-time: Listen for connection status updates
+  - Notifications: Notify users of new connection requests
 
 ### High Priority
 

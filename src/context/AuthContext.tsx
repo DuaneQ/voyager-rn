@@ -549,9 +549,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       // New user - create profile
+      // Hash email for contact discovery matching
+      const hashingService = new HashingService();
+      const emailHash = user.email ? await hashingService.hashEmail(user.email) : '';
+      
       const userProfile = {
         username: user.displayName || user.email?.split('@')[0] || 'newuser',
         email: user.email || '',
+        emailHash, // ✅ Store hashed email for contact discovery
         bio: '',
         gender: '',
         sexualOrientation: '',
@@ -732,9 +737,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         ? `${credential.fullName.givenName || ''} ${credential.fullName.familyName || ''}`.trim()
         : user.email?.split('@')[0] || 'Apple User';
       
+      // Hash email for contact discovery matching
+      const hashingService = new HashingService();
+      const userEmail = user.email || credential.email || '';
+      const emailHash = userEmail ? await hashingService.hashEmail(userEmail) : '';
+      
       const userProfile = {
         username: displayName,
-        email: user.email || credential.email || '',
+        email: userEmail,
+        emailHash, // ✅ Store hashed email for contact discovery
         bio: '',
         gender: '',
         sexualOrientation: '',

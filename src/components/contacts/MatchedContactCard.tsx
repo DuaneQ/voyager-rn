@@ -10,7 +10,7 @@ import { MatchedContact } from '../../services/contacts/types';
 
 export interface MatchedContactCardProps {
   contact: MatchedContact;
-  onConnect: (userId: string) => void;
+  onConnect?: (userId: string) => void;
   isConnecting?: boolean;
 }
 
@@ -49,17 +49,19 @@ export const MatchedContactCard: React.FC<MatchedContactCardProps> = ({
         </View>
       </View>
       
-      {/* Connect Button */}
-      <TouchableOpacity
-        style={[styles.button, isConnecting && styles.buttonDisabled]}
-        onPress={() => onConnect(contact.userId)}
-        disabled={isConnecting}
-        activeOpacity={0.8}
-      >
-        <Text style={styles.buttonText}>
-          {isConnecting ? 'Connecting...' : 'Connect'}
-        </Text>
-      </TouchableOpacity>
+      {/* Connect Button - Hidden until connect functionality is implemented */}
+      {onConnect && (
+        <TouchableOpacity
+          style={[styles.button, isConnecting && styles.buttonDisabled]}
+          onPress={() => onConnect(contact.userId)}
+          disabled={isConnecting}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.buttonText}>
+            {isConnecting ? 'Connecting...' : 'Connect'}
+          </Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 };

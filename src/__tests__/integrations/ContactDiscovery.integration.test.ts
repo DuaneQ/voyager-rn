@@ -216,9 +216,6 @@ describe('Contact Discovery Integration Tests', () => {
 
       const body = await response.json();
 
-      // Debug: Log actual response structure
-      console.log('[DEBUG] sendContactInvite response:', JSON.stringify(body, null, 2));
-
       expect(body).toBeDefined();
       expect(body.result).toBeDefined();
       expect(body.result.success).toBe(true);

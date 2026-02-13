@@ -80,10 +80,6 @@ export class ContactDiscoveryRepository {
         console.error('[ContactDiscoveryRepository] Invalid hash formats detected:', invalidHashes.slice(0, 3));
         throw new Error(`Invalid hash format: Found ${invalidHashes.length} invalid hashes`);
       }
-
-      console.log(`[ContactDiscoveryRepository] Matching ${hashedIdentifiers.length} hashes`);
-      console.log('[ContactDiscoveryRepository] Sample hashes:', hashedIdentifiers.slice(0, 2));
-
       // Call Cloud Function
       const matchFunction = httpsCallable<
         { hashedIdentifiers: string[] },
@@ -91,13 +87,6 @@ export class ContactDiscoveryRepository {
       >(this.functions, 'matchContactsWithUsers');
 
       const payload = { hashedIdentifiers };
-      console.log('[ContactDiscoveryRepository] Sending payload:', {
-        hashCount: payload.hashedIdentifiers.length,
-        firstHashLength: payload.hashedIdentifiers[0]?.length,
-        isArray: Array.isArray(payload.hashedIdentifiers),
-        sampleHashes: payload.hashedIdentifiers.slice(0, 2),
-        allHashesAreStrings: payload.hashedIdentifiers.every(h => typeof h === 'string'),
-      });
 
       // Add timeout wrapper (30 seconds - generous for slow WiFi)
       const timeoutPromise = new Promise<never>((_, reject) => {
@@ -116,16 +105,8 @@ export class ContactDiscoveryRepository {
         throw new Error(response.error || 'Failed to match contacts');
       }
 
-      console.log(`[ContactDiscoveryRepository] Found ${response.matches.length} matches`);
       return response.matches;
     } catch (error: any) {
-      console.error('============================================');
-      console.error('[ContactDiscoveryRepository] matchContacts ERROR');
-      console.error('Error code:', error.code);
-      console.error('Error message:', error.message);
-      console.error('Error details:', error.details);
-      console.error('Full error:', JSON.stringify(error, null, 2));
-      console.error('============================================');
       
       // Map Firebase error codes to user-friendly messages
       if (error.code === 'functions/unauthenticated') {

@@ -350,8 +350,9 @@ export const DiscoveryResultsPage: React.FC = () => {
       return (
         <MatchedContactCard
           contact={contact}
-          onConnect={() => handleConnect(contact.userId)}
-          isConnecting={connectingUsers.has(contact.userId)}
+          // onConnect disabled until connection functionality is implemented
+          // onConnect={() => handleConnect(contact.userId)}
+          // isConnecting={connectingUsers.has(contact.userId)}
         />
       );
     } else {

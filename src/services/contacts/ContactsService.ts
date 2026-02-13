@@ -125,7 +125,6 @@ export class ContactsService implements IContactsService {
       
       // Validate we have valid hashes before calling server
       if (validHashes.length === 0) {
-        console.log('[ContactsService] No valid hashes generated from contacts');
         return {
           totalContactsScanned: rawContacts.length,
           totalHashesGenerated: 0,
@@ -135,8 +134,6 @@ export class ContactsService implements IContactsService {
           errors: errors.length > 0 ? errors : ['No phone numbers or emails found in contacts'],
         };
       }
-
-      console.log(`[ContactsService] Matching ${validHashes.length} valid hashes against server`);
       
       // Step 5: Match with server via Cloud Function (with batching for large contact lists)
       // Cloud Function has a rate limit of 1000 hashes per request
@@ -151,12 +148,10 @@ export class ContactsService implements IContactsService {
       } else {
         // Large contact list: batch requests
         const batchCount = Math.ceil(validHashes.length / BATCH_SIZE);
-        console.log(`[ContactsService] Batching ${validHashes.length} hashes into ${batchCount} requests`);
         
         for (let i = 0; i < validHashes.length; i += BATCH_SIZE) {
           const batch = validHashes.slice(i, i + BATCH_SIZE);
           const batchNum = Math.floor(i / BATCH_SIZE) + 1;
-          console.log(`[ContactsService] Processing batch ${batchNum}/${batchCount} (${batch.length} hashes)`);
           
           try {
             const batchResults = await this.repository.matchContacts(batch);
@@ -330,7 +325,6 @@ export class ContactsService implements IContactsService {
     try {
       const cached = await AsyncStorage.getItem(CACHE_KEY);
       if (!cached) {
-        console.log('[ContactsService] No cached result found');
         return null;
       }
 
@@ -340,13 +334,9 @@ export class ContactsService implements IContactsService {
       const age = now.getTime() - cachedAt.getTime();
 
       if (age > CACHE_TTL_MS) {
-        console.log(`[ContactsService] Cache expired (${Math.round(age / 1000 / 60 / 60)}h old)`);
         await this.clearCache();
         return null;
-      }
-
-      console.log(`[ContactsService] Cache hit (${Math.round(age / 1000 / 60)}m old)`);
-      
+      }      
       // Reconstruct ContactSyncResult with proper Date objects
       return {
         ...parsed.result,
@@ -370,7 +360,6 @@ export class ContactsService implements IContactsService {
         cachedAt: new Date().toISOString(),
       };
       await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
-      console.log('[ContactsService] Cached sync result');
     } catch (error) {
       console.error('[ContactsService] Cache write error:', error);
       // Non-critical error - don't throw
