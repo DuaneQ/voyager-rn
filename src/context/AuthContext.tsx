@@ -19,7 +19,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth, db } from '../config/firebaseConfig';
 import { SafeGoogleSignin } from '../utils/SafeGoogleSignin';
 import * as AppleAuthentication from 'expo-apple-authentication';
-import { notificationService } from '../services/notification/NotificationService';
+
+// Conditional import for notification service (only on mobile)
+let notificationService: any = null;
+if (Platform.OS !== 'web') {
+  notificationService = require('../services/notification/NotificationService').notificationService;
+}
+
 // Firebase Web SDK - static imports for Jest compatibility
 import {
   signInWithEmailAndPassword,
@@ -305,13 +311,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signOutUser = async (): Promise<void> => {
     try {
-      // Clean up push notification tokens before signing out
-      if (user?.uid) {
+      // Clean up this device's push notification token before signing out (mobile only)
+      if (user?.uid && notificationService) {
         try {
-          await notificationService.removeAllTokens(user.uid);
-          console.log('Push notification tokens cleared');
+          // Remove only current device's token (persist it locally so sign-out can
+          // remove it reliably) instead of wiping the entire fcmTokens array.
+          const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+          const currentDeviceToken = await AsyncStorage.getItem('@current_fcm_token');
+          if (currentDeviceToken) {
+            await notificationService.removeToken(user.uid, currentDeviceToken);
+            console.log('Current device push notification token cleared');
+          }
         } catch (error) {
-          console.warn('Failed to clear push tokens, continuing with sign out:', error);
+          console.warn('Failed to clear push token for current device, continuing with sign out:', error);
           // Don't block sign out on token cleanup failure
         }
       }

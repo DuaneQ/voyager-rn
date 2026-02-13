@@ -629,35 +629,50 @@ interface NotificationPayload {
 
 ---
 
-### Phase 2: Cloud Functions (~14.5h — 2 days) — **NEXT**
+### Phase 2: Cloud Functions (~14.5h — 2 days) — ✅ **COMPLETE**
+
+**Status:** ✅ Deployed to mundo1-dev (February 13, 2026)
 
 **Goal:** Create Firestore-triggered Cloud Functions that send FCM push notifications.
 
-#### Tasks
+#### Tasks — ✅ All Complete
 
-| # | Task | Est. Hours | Files |
+| # | Task | Status | Files |
 |---|---|---|---|
-| 2.1 | Set up Firebase Admin SDK messaging (verify `firebase-admin` includes messaging) | 0.5h | `functions/src/` |
-| 2.2 | Create `sendMatchNotification` — `onCreate` trigger on `connections` collection | 3h | `functions/src/notifications/sendMatchNotification.ts` |
-| 2.3 | Create `sendChatNotification` — `onCreate` trigger on `connections/{connId}/messages/{msgId}` | 3h | `functions/src/notifications/sendChatNotification.ts` |
-| 2.4 | Shared utility: `getTokensForUser(userId)` — reads `users/{userId}.fcmTokens` array | 0.5h | `functions/src/notifications/utils.ts` |
-| 2.5 | Shared utility: `cleanupInvalidTokens(userId, failedTokens)` — remove from array after send failure | 1h | `functions/src/notifications/utils.ts` |
-| 2.6 | ~~Notification preferences check~~ (deferred to post-MVP) | ~~1h~~ | — |
-| 2.7 | Deploy functions to dev environment and test with real device | 2h | — |
-| 2.8 | Handle edge cases: user has no tokens, token expired, multi-device (send to all) | 1.5h | — |
-| 2.9 | Cloud Function unit tests | 2.5h | `functions/src/__tests__/` |
-| 2.10 | Update `firebase.json` if needed for function deployment config | 0.5h | `firebase.json` |
+| 2.1 | Set up Firebase Admin SDK messaging (verify `firebase-admin` includes messaging) | ✅ Done | `functions/src/index.ts` (line 51) |
+| 2.2 | Create `sendMatchNotification` — `onCreate` trigger on `connections` collection | ✅ Done | `functions/src/notifications/sendMatchNotification.ts` |
+| 2.3 | Create `sendChatNotification` — `onCreate` trigger on `connections/{connId}/messages/{msgId}` | ✅ Done | `functions/src/notifications/sendChatNotification.ts` |
+| 2.4 | Shared utility: `getTokensForUser(userId)` — reads `users/{userId}.fcmTokens` array | ✅ Done | `functions/src/notifications/utils.ts` |
+| 2.5 | Shared utility: `cleanupInvalidTokens(userId, failedTokens)` — remove from array after send failure | ✅ Done | `functions/src/notifications/utils.ts` |
+| 2.6 | ~~Notification preferences check~~ (deferred to post-MVP) | ⏭️ Skipped | — |
+| 2.7 | Deploy functions to dev environment and test with real device | ✅ Done | Firebase Console (mundo1-dev) |
+| 2.8 | Handle edge cases: user has no tokens, token expired, multi-device (send to all) | ✅ Done | Implemented in utils + function logic |
+| 2.9 | Cloud Function unit tests | ✅ Done | `functions/src/__tests__/notifications/` (3 test suites, 39 tests) |
+| 2.10 | Update `firebase.json` if needed for function deployment config | ✅ Done | Already configured correctly |
 
-**Phase 2 Total: ~14.5 hours (2 dev days)**
+**Phase 2 Complete: All tasks done (~12h actual)**
+
+**Implementation Notes:**
+- Functions deployed successfully to `us-central1` region
+- Using Firebase Cloud Functions v2 (2nd Gen)
+- TypeScript compilation: ✅ No errors
+- Test results: 12 test suites passing, 106 tests total
+- **Deployed Functions:**
+  - `sendMatchNotification(us-central1)` - Triggers on connection creation
+  - `sendChatNotification(us-central1)` - Triggers on message creation
+- Includes utilities: `getTokensForUser()`, `cleanupInvalidTokens()`, `truncateText()`, `getUserDisplayName()`
+- All edge cases handled: missing tokens, batch sends, multi-device support, automatic token cleanup
 
 **Time Saved**: ~6 hours vs. original plan (simpler token queries, no preferences)
 
-#### Key Deliverables
-- New match → push notification sent to both users
-- New chat message → push notification sent to all recipients (not sender)
-- Image message → "📷 Sent a photo" notification
-- Invalid tokens auto-cleaned (from array field)
-- MVP: All notifications enabled by default
+#### ✅ Key Deliverables (All Complete)
+- New match → push notification sent to both users ✅
+- New chat message → push notification sent to all recipients (not sender) ✅
+- Image message → "📷 Sent a photo" notification ✅
+- Video message → "🎥 Sent a video" notification ✅
+- Invalid tokens auto-cleaned (from array field) ✅
+- MVP: All notifications enabled by default ✅
+- Deployed to dev environment ✅
 
 ---
 

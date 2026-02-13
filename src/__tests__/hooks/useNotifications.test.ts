@@ -1,79 +1,51 @@
 /**
  * Unit tests for useNotifications hook
- * Tests state management and integration with NotificationService
+ * Tests state management and integration with NotificationService (FCM-based)
  */
 
 import { renderHook, act, waitFor } from '@testing-library/react-native';
 import { useNotifications } from '../../hooks/useNotifications';
-import * as Notifications from 'expo-notifications';
 import { notificationService } from '../../services/notification/NotificationService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Mock expo-notifications
-jest.mock('expo-notifications');
+// Mock @react-native-firebase/messaging (auto-loaded from __mocks__)
+jest.mock('@react-native-firebase/messaging');
+jest.mock('@react-native-firebase/app');
+
+// Mock AsyncStorage (auto-loaded from __mocks__)
+jest.mock('@react-native-async-storage/async-storage');
 
 // Mock NotificationService
 jest.mock('../../services/notification/NotificationService', () => ({
   notificationService: {
     requestPermission: jest.fn(),
-    getExpoPushToken: jest.fn(),
+    getFCMToken: jest.fn(),
     saveToken: jest.fn(),
     removeToken: jest.fn(),
     removeAllTokens: jest.fn(),
-    createNotificationChannels: jest.fn(),
+    onTokenRefresh: jest.fn(() => jest.fn()),
   },
 }));
 
 describe('useNotifications', () => {
   const mockUserId = 'test-user-123';
-  const mockToken = 'ExponentPushToken[MOCK_TOKEN_123]';
+  const mockToken = 'mock-fcm-token-abc123xyz';
 
   beforeEach(() => {
     jest.clearAllMocks();
-
-    // Setup default mocks
-    (Notifications.getPermissionsAsync as jest.Mock).mockResolvedValue({
-      status: 'undetermined',
-    });
-    (Notifications.requestPermissionsAsync as jest.Mock).mockResolvedValue({
-      status: 'granted',
-    });
-    (Notifications.addNotificationReceivedListener as jest.Mock).mockReturnValue({
-      remove: jest.fn(),
-    });
-    (Notifications.addNotificationResponseReceivedListener as jest.Mock).mockReturnValue({
-      remove: jest.fn(),
-    });
+    
+    // Reset AsyncStorage mocks to default behavior
+    (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
+    (AsyncStorage.removeItem as jest.Mock).mockResolvedValue(undefined);
   });
 
   it('should initialize with null permission and token', () => {
     const { result } = renderHook(() => useNotifications());
 
     expect(result.current.permissionStatus).toBeNull();
-    expect(result.current.expoPushToken).toBeNull();
+    expect(result.current.fcmToken).toBeNull();
     expect(result.current.isLoading).toBe(false);
-  });
-
-  it('should set up notification listeners on mount', () => {
-    renderHook(() => useNotifications());
-
-    expect(Notifications.addNotificationReceivedListener).toHaveBeenCalled();
-    expect(Notifications.addNotificationResponseReceivedListener).toHaveBeenCalled();
-  });
-
-  it('should clean up listeners on unmount', () => {
-    const mockRemove = jest.fn();
-    (Notifications.addNotificationReceivedListener as jest.Mock).mockReturnValue({
-      remove: mockRemove,
-    });
-    (Notifications.addNotificationResponseReceivedListener as jest.Mock).mockReturnValue({
-      remove: mockRemove,
-    });
-
-    const { unmount } = renderHook(() => useNotifications());
-
-    unmount();
-
-    expect(mockRemove).toHaveBeenCalledTimes(2);
   });
 
   describe('requestPermission', () => {
@@ -109,12 +81,10 @@ describe('useNotifications', () => {
 
   describe('registerForPushNotifications', () => {
     it('should register device and save token', async () => {
-      (Notifications.requestPermissionsAsync as jest.Mock).mockResolvedValue({
-        status: 'granted',
-      });
-      (notificationService.getExpoPushToken as jest.Mock).mockResolvedValue(mockToken);
+      (notificationService.requestPermission as jest.Mock).mockResolvedValue(true);
+      (notificationService.getFCMToken as jest.Mock).mockResolvedValue(mockToken);
       (notificationService.saveToken as jest.Mock).mockResolvedValue(undefined);
-      (notificationService.createNotificationChannels as jest.Mock).mockResolvedValue(undefined);
+      (notificationService.onTokenRefresh as jest.Mock).mockReturnValue(jest.fn());
 
       const { result } = renderHook(() => useNotifications());
 
@@ -123,19 +93,17 @@ describe('useNotifications', () => {
       });
 
       await waitFor(() => {
-        expect(result.current.expoPushToken).toBe(mockToken);
+        expect(result.current.fcmToken).toBe(mockToken);
         expect(result.current.permissionStatus).toBe('granted');
       });
 
-      expect(notificationService.getExpoPushToken).toHaveBeenCalled();
+      expect(notificationService.getFCMToken).toHaveBeenCalled();
       expect(notificationService.saveToken).toHaveBeenCalledWith(mockUserId, mockToken);
-      expect(notificationService.createNotificationChannels).toHaveBeenCalled();
+      expect(AsyncStorage.setItem).toHaveBeenCalledWith('@current_fcm_token', mockToken);
     });
 
     it('should not save token if permission denied', async () => {
-      (Notifications.requestPermissionsAsync as jest.Mock).mockResolvedValue({
-        status: 'denied',
-      });
+      (notificationService.requestPermission as jest.Mock).mockResolvedValue(false);
 
       const { result } = renderHook(() => useNotifications());
 
@@ -143,15 +111,13 @@ describe('useNotifications', () => {
         await result.current.registerForPushNotifications(mockUserId);
       });
 
-      expect(notificationService.getExpoPushToken).not.toHaveBeenCalled();
+      expect(notificationService.getFCMToken).not.toHaveBeenCalled();
       expect(notificationService.saveToken).not.toHaveBeenCalled();
     });
 
     it('should handle missing token gracefully', async () => {
-      (Notifications.requestPermissionsAsync as jest.Mock).mockResolvedValue({
-        status: 'granted',
-      });
-      (notificationService.getExpoPushToken as jest.Mock).mockResolvedValue(null);
+      (notificationService.requestPermission as jest.Mock).mockResolvedValue(true);
+      (notificationService.getFCMToken as jest.Mock).mockResolvedValue(null);
 
       const { result } = renderHook(() => useNotifications());
 
@@ -164,13 +130,28 @@ describe('useNotifications', () => {
   });
 
   describe('unregisterPushNotifications', () => {
-    it('should remove specific token if available', async () => {
-      // First register to get a token
-      (Notifications.requestPermissionsAsync as jest.Mock).mockResolvedValue({
-        status: 'granted',
-      });
-      (notificationService.getExpoPushToken as jest.Mock).mockResolvedValue(mockToken);
+    it('should remove only current device token from AsyncStorage', async () => {
+      (AsyncStorage.getItem as jest.Mock).mockResolvedValue(mockToken);
       (notificationService.removeToken as jest.Mock).mockResolvedValue(undefined);
+
+      const { result } = renderHook(() => useNotifications());
+
+      await act(async () => {
+        await result.current.unregisterPushNotifications(mockUserId);
+      });
+
+      expect(AsyncStorage.getItem).toHaveBeenCalledWith('@current_fcm_token');
+      expect(notificationService.removeToken).toHaveBeenCalledWith(mockUserId, mockToken);
+      expect(AsyncStorage.removeItem).toHaveBeenCalledWith('@current_fcm_token');
+      expect(result.current.fcmToken).toBeNull();
+    });
+
+    it('should fallback to in-memory token if AsyncStorage unavailable', async () => {
+      // First register to set fcmToken
+      (notificationService.requestPermission as jest.Mock).mockResolvedValue(true);
+      (notificationService.getFCMToken as jest.Mock).mockResolvedValue(mockToken);
+      (notificationService.saveToken as jest.Mock).mockResolvedValue(undefined);
+      (notificationService.onTokenRefresh as jest.Mock).mockReturnValue(jest.fn());
 
       const { result } = renderHook(() => useNotifications());
 
@@ -178,24 +159,16 @@ describe('useNotifications', () => {
         await result.current.registerForPushNotifications(mockUserId);
       });
 
+      // Now unregister with AsyncStorage returning null
+      (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
+      (notificationService.removeToken as jest.Mock).mockResolvedValue(undefined);
+
       await act(async () => {
         await result.current.unregisterPushNotifications(mockUserId);
       });
 
       expect(notificationService.removeToken).toHaveBeenCalledWith(mockUserId, mockToken);
-      expect(result.current.expoPushToken).toBeNull();
-    });
-
-    it('should remove all tokens if specific token unavailable', async () => {
-      (notificationService.removeAllTokens as jest.Mock).mockResolvedValue(undefined);
-
-      const { result } = renderHook(() => useNotifications());
-
-      await act(async () => {
-        await result.current.unregisterPushNotifications(mockUserId);
-      });
-
-      expect(notificationService.removeAllTokens).toHaveBeenCalledWith(mockUserId);
+      expect(result.current.fcmToken).toBeNull();
     });
   });
 });

@@ -1,12 +1,15 @@
 import { useEffect } from 'react';
+import { Platform } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
-import { useNotifications } from '../../hooks/useNotifications';
 
 /**
  * NotificationInitializer Component
  * 
  * Handles automatic push notification registration when user signs in.
  * Manages token lifecycle in sync with authentication state.
+ * 
+ * NOTE: Push notifications are only supported on iOS and Android.
+ * Web platform is explicitly excluded as expo-notifications is not web-compatible.
  * 
  * Flow:
  * 1. User signs in → registerForPushNotifications(userId)
@@ -15,7 +18,19 @@ import { useNotifications } from '../../hooks/useNotifications';
  * 4. Token removed from Firestore
  */
 export function NotificationInitializer() {
+  // Skip push notifications entirely on web platform
+  // Don't even import the hook to avoid module loading issues
+  if (Platform.OS === 'web') {
+    return null;
+  }
+
+  // Only import and use notifications on mobile platforms
+  // This is a non-standard pattern but necessary for web compatibility
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const { useNotifications } = require('../../hooks/useNotifications');
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const { user, status } = useAuth();
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const { registerForPushNotifications, unregisterPushNotifications } = useNotifications();
 
   useEffect(() => {
@@ -34,18 +49,8 @@ export function NotificationInitializer() {
     }
   }, [user?.uid, user?.emailVerified, status, registerForPushNotifications]);
 
-  // Cleanup on unmount (when user signs out)
-  useEffect(() => {
-    return () => {
-      if (user?.uid) {
-        // Attempt to unregister on component unmount (sign out)
-        // This is a best-effort cleanup - actual cleanup happens in AuthContext.signOut
-        unregisterPushNotifications(user.uid).catch(error => {
-          console.error('Failed to unregister push notifications on unmount:', error);
-        });
-      }
-    };
-  }, [user?.uid, unregisterPushNotifications]);
+  // This component doesn't render anything; cleanup of push tokens on sign-out
+  // is handled explicitly in AuthContext.signOut to avoid affecting other devices.
 
   // This component doesn't render anything
   return null;

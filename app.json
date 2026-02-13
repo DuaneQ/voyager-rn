@@ -78,7 +78,9 @@
         "expo-video",
         {
           "supportsBackgroundPlayback": false,
-          "support,
+          "supportsPictureInPicture": false
+        }
+      ],
       [
         "expo-notifications",
         {
@@ -86,8 +88,6 @@
           "color": "#FF6B35",
           "sounds": [],
           "defaultChannel": "default"
-        }
-      ]sPictureInPicture": false
         }
       ],
       "expo-audio"

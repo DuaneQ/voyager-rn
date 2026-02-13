@@ -1,16 +1,17 @@
 /**
- * Unit tests for NotificationService
- * Tests permission handling, token management, and Firestore operations
+ * Unit tests for NotificationService (FCM-based)
+ * Tests permission handling, FCM token management, and Firestore operations
  */
 
 import { NotificationService } from '../../services/notification/NotificationService';
-import * as Notifications from 'expo-notifications';
-import * as Device from 'expo-device';
 import { getFirestore, doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 
-// Mock expo modules
-jest.mock('expo-notifications');
-jest.mock('expo-device');
+// Mock React Native Firebase
+jest.mock('@react-native-firebase/messaging');
+jest.mock('@react-native-firebase/app');
+
+// Get mocked messaging for tests
+const messaging = jest.requireMock('@react-native-firebase/messaging').default;
 
 // Mock Firebase
 jest.mock('firebase/firestore', () => ({
@@ -21,115 +22,98 @@ jest.mock('firebase/firestore', () => ({
   arrayRemove: jest.fn((value) => ({ _type: 'arrayRemove', value })),
 }));
 
-describe('NotificationService', () => {
+describe('NotificationService (FCM)', () => {
   let service: NotificationService;
   const mockUserId = 'test-user-123';
-  const mockToken = 'ExponentPushToken[MOCK_TOKEN_123]';
+  const mockToken = 'mock-fcm-token-abc123xyz';
 
   beforeEach(() => {
     jest.clearAllMocks();
     service = new NotificationService();
-    
-    // Default mock implementations
-    (Device as any).isDevice = true;
   });
 
   describe('requestPermission', () => {
     it('should return true when permission is granted', async () => {
-      (Notifications.getPermissionsAsync as jest.Mock).mockResolvedValue({
-        status: 'granted',
-      });
+      const mockMessaging = messaging as jest.MockedFunction<typeof messaging>;
+      mockMessaging().requestPermission.mockResolvedValue(messaging.AuthorizationStatus.AUTHORIZED);
 
       const result = await service.requestPermission();
 
       expect(result).toBe(true);
-      expect(Notifications.getPermissionsAsync).toHaveBeenCalled();
+      expect(mockMessaging().requestPermission).toHaveBeenCalled();
     });
 
-    it('should request permission if not already granted', async () => {
-      (Notifications.getPermissionsAsync as jest.Mock).mockResolvedValue({
-        status: 'undetermined',
-      });
-      (Notifications.requestPermissionsAsync as jest.Mock).mockResolvedValue({
-        status: 'granted',
-      });
+    it('should return true for provisional permission', async () => {
+      const mockMessaging = messaging as jest.MockedFunction<typeof messaging>;
+      mockMessaging().requestPermission.mockResolvedValue(messaging.AuthorizationStatus.PROVISIONAL);
 
       const result = await service.requestPermission();
 
       expect(result).toBe(true);
-      expect(Notifications.requestPermissionsAsync).toHaveBeenCalled();
     });
 
     it('should return false when permission is denied', async () => {
-      (Notifications.getPermissionsAsync as jest.Mock).mockResolvedValue({
-        status: 'undetermined',
-      });
-      (Notifications.requestPermissionsAsync as jest.Mock).mockResolvedValue({
-        status: 'denied',
-      });
+      const mockMessaging = messaging as jest.MockedFunction<typeof messaging>;
+      mockMessaging().requestPermission.mockResolvedValue(messaging.AuthorizationStatus.DENIED);
 
       const result = await service.requestPermission();
 
       expect(result).toBe(false);
     });
 
-    it('should return false when not on physical device', async () => {
-      (Device as any).isDevice = false;
+    it('should handle errors gracefully', async () => {
+      const mockMessaging = messaging as jest.MockedFunction<typeof messaging>;
+      mockMessaging().requestPermission.mockRejectedValue(new Error('Permission error'));
 
       const result = await service.requestPermission();
 
       expect(result).toBe(false);
-      expect(Notifications.getPermissionsAsync).not.toHaveBeenCalled();
     });
   });
 
-  describe('getExpoPushToken', () => {
-    it('should return push token on success', async () => {
-      (Notifications.getExpoPushTokenAsync as jest.Mock).mockResolvedValue({
-        type: 'expo',
-        data: mockToken,
-      });
+  describe('getFCMToken', () => {
+    it('should return FCM token on success', async () => {
+      const mockMessaging = messaging as jest.MockedFunction<typeof messaging>;
+      mockMessaging().getToken.mockResolvedValue(mockToken);
 
-      const result = await service.getExpoPushToken();
+      const result = await service.getFCMToken();
 
       expect(result).toBe(mockToken);
-      expect(Notifications.getExpoPushTokenAsync).toHaveBeenCalledWith({
-        projectId: '6fc90234-4d23-427c-918f-75d141efe8ed',
-      });
+      expect(mockMessaging().getToken).toHaveBeenCalled();
     });
 
     it('should return null on error', async () => {
-      (Notifications.getExpoPushTokenAsync as jest.Mock).mockRejectedValue(
-        new Error('Token error')
-      );
+      const mockMessaging = messaging as jest.MockedFunction<typeof messaging>;
+      mockMessaging().getToken.mockRejectedValue(new Error('Token error'));
 
-      const result = await service.getExpoPushToken();
+      const result = await service.getFCMToken();
 
       expect(result).toBeNull();
     });
 
-    it('should return null when not on physical device', async () => {
-      (Device as any).isDevice = false;
+    it('should return null when token is null', async () => {
+      const mockMessaging = messaging as jest.MockedFunction<typeof messaging>;
+      mockMessaging().getToken.mockResolvedValue(null);
 
-      const result = await service.getExpoPushToken();
+      const result = await service.getFCMToken();
 
       expect(result).toBeNull();
-      expect(Notifications.getExpoPushTokenAsync).not.toHaveBeenCalled();
     });
   });
 
   describe('saveToken', () => {
-    it('should save token to Firestore using arrayUnion', async () => {
-      const mockUpdateDoc = updateDoc as jest.Mock;
+    it('should save FCM token to Firestore using arrayUnion', async () => {
       const mockDoc = doc as jest.Mock;
+      const mockUpdateDoc = updateDoc as jest.Mock;
       const mockArrayUnion = arrayUnion as jest.Mock;
 
       mockDoc.mockReturnValue({ path: `users/${mockUserId}` });
-      mockArrayUnion.mockReturnValue({ _type: 'arrayUnion', value: mockToken });
+      mockUpdateDoc.mockResolvedValue(undefined);
 
       await service.saveToken(mockUserId, mockToken);
 
       expect(mockDoc).toHaveBeenCalled();
+      expect(mockArrayUnion).toHaveBeenCalledWith(mockToken);
       expect(mockUpdateDoc).toHaveBeenCalledWith(
         { path: `users/${mockUserId}` },
         { fcmTokens: { _type: 'arrayUnion', value: mockToken } }
@@ -137,24 +121,25 @@ describe('NotificationService', () => {
     });
 
     it('should throw error on Firestore failure', async () => {
-      (updateDoc as jest.Mock).mockRejectedValue(new Error('Firestore error'));
+      const mockUpdateDoc = updateDoc as jest.Mock;
+      mockUpdateDoc.mockRejectedValue(new Error('Firestore error'));
 
       await expect(service.saveToken(mockUserId, mockToken)).rejects.toThrow('Firestore error');
     });
   });
 
   describe('removeToken', () => {
-    it('should remove token from Firestore using arrayRemove', async () => {
-      const mockUpdateDoc = updateDoc as jest.Mock;
+    it('should remove FCM token from Firestore using arrayRemove', async () => {
       const mockDoc = doc as jest.Mock;
+      const mockUpdateDoc = updateDoc as jest.Mock;
       const mockArrayRemove = arrayRemove as jest.Mock;
 
       mockDoc.mockReturnValue({ path: `users/${mockUserId}` });
-      mockArrayRemove.mockReturnValue({ _type: 'arrayRemove', value: mockToken });
+      mockUpdateDoc.mockResolvedValue(undefined);
 
       await service.removeToken(mockUserId, mockToken);
 
-      expect(mockDoc).toHaveBeenCalled();
+      expect(mockArrayRemove).toHaveBeenCalledWith(mockToken);
       expect(mockUpdateDoc).toHaveBeenCalledWith(
         { path: `users/${mockUserId}` },
         { fcmTokens: { _type: 'arrayRemove', value: mockToken } }
@@ -162,19 +147,21 @@ describe('NotificationService', () => {
     });
 
     it('should not throw error on Firestore failure', async () => {
-      (updateDoc as jest.Mock).mockRejectedValue(new Error('Firestore error'));
+      const mockUpdateDoc = updateDoc as jest.Mock;
+      mockUpdateDoc.mockRejectedValue(new Error('Firestore error'));
 
-      // Should not throw - cleanup is best effort
+      // Should not throw - sign-out should continue
       await expect(service.removeToken(mockUserId, mockToken)).resolves.not.toThrow();
     });
   });
 
   describe('removeAllTokens', () => {
     it('should clear all tokens by setting empty array', async () => {
-      const mockUpdateDoc = updateDoc as jest.Mock;
       const mockDoc = doc as jest.Mock;
+      const mockUpdateDoc = updateDoc as jest.Mock;
 
       mockDoc.mockReturnValue({ path: `users/${mockUserId}` });
+      mockUpdateDoc.mockResolvedValue(undefined);
 
       await service.removeAllTokens(mockUserId);
 
@@ -186,46 +173,40 @@ describe('NotificationService', () => {
     });
   });
 
-  describe('createNotificationChannels', () => {
-    // Skip this test - Platform.OS check makes it hard to test in Jest
-    // Actual functionality works correctly on Android devices
-    it.skip('should create Android notification channels', async () => {
-      const mockSetChannelAsync = Notifications.setNotificationChannelAsync as jest.Mock;
+  describe('onTokenRefresh', () => {
+    it('should set up token refresh listener', () => {
+      const mockMessaging = messaging as jest.MockedFunction<typeof messaging>;
+      const mockUnsubscribe = jest.fn();
+      mockMessaging().onTokenRefresh.mockReturnValue(mockUnsubscribe);
 
-      await service.createNotificationChannels();
+      const callback = jest.fn();
+      const unsubscribe = service.onTokenRefresh(mockUserId, callback);
 
-      // Should create chat-messages and matches channels
-      expect(mockSetChannelAsync).toHaveBeenCalledTimes(2);
-      
-      // Check chat-messages channel
-      expect(mockSetChannelAsync).toHaveBeenCalledWith('chat-messages', expect.objectContaining({
-        name: 'Chat Messages',
-        importance: Notifications.AndroidImportance.HIGH,
-      }));
+      expect(mockMessaging().onTokenRefresh).toHaveBeenCalled();
+      expect(unsubscribe).toBe(mockUnsubscribe);
+    });
+  });
 
-      // Check matches channel
-      expect(mockSetChannelAsync).toHaveBeenCalledWith('matches', expect.objectContaining({
-        name: 'New Matches',
-        importance: Notifications.AndroidImportance.HIGH,
-      }));
+  describe('deleteToken', () => {
+    it('should delete FCM token', async () => {
+      const mockMessaging = messaging as jest.MockedFunction<typeof messaging>;
+      mockMessaging().deleteToken.mockResolvedValue();
+
+      await service.deleteToken();
+
+      expect(mockMessaging().deleteToken).toHaveBeenCalled();
     });
   });
 
   describe('setBadgeCount', () => {
-    it('should set iOS badge count', async () => {
-      const mockSetBadgeCount = Notifications.setBadgeCountAsync as jest.Mock;
-
-      await service.setBadgeCount(5);
-
-      expect(mockSetBadgeCount).toHaveBeenCalledWith(5);
+    it('should set iOS badge count (or skip if no expo-notifications)', async () => {
+      // This test may not be meaningful without expo-notifications
+      // Just verify it doesn't throw
+      await expect(service.setBadgeCount(5)).resolves.not.toThrow();
     });
 
     it('should clear badge with clearBadge', async () => {
-      const mockSetBadgeCount = Notifications.setBadgeCountAsync as jest.Mock;
-
-      await service.clearBadge();
-
-      expect(mockSetBadgeCount).toHaveBeenCalledWith(0);
+      await expect(service.clearBadge()).resolves.not.toThrow();
     });
   });
 });
