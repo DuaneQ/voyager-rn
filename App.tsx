@@ -13,6 +13,7 @@ import { AuthProvider } from './src/context/AuthContext';
 import { AlertProvider } from './src/context/AlertContext';
 import { UserProfileProvider } from './src/context/UserProfileContext';
 import ErrorBoundary from './src/components/common/ErrorBoundary';
+import { NotificationInitializer } from './src/components/common/NotificationInitializer';
 import { setupGlobalErrorHandlers } from './src/utils/globalErrorHandler';
 
 // Initialize global error handlers for uncaught errors and unhandled promise rejections
@@ -70,6 +71,7 @@ export default function App() {
         <AuthProvider>
           <AlertProvider>
             <UserProfileProvider>
+              <NotificationInitializer />
               <AppNavigator />
             </UserProfileProvider>
           </AlertProvider>

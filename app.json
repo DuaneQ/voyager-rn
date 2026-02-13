@@ -50,7 +50,10 @@
       "permissions": [
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
-        "CAMERA"
+        "CAMERA",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE",
+        "POST_NOTIFICATIONS"
       ]
     },
     "web": {
@@ -75,7 +78,16 @@
         "expo-video",
         {
           "supportsBackgroundPlayback": false,
-          "supportsPictureInPicture": false
+          "support,
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#FF6B35",
+          "sounds": [],
+          "defaultChannel": "default"
+        }
+      ]sPictureInPicture": false
         }
       ],
       "expo-audio"

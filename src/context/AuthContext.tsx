@@ -19,6 +19,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth, db } from '../config/firebaseConfig';
 import { SafeGoogleSignin } from '../utils/SafeGoogleSignin';
 import * as AppleAuthentication from 'expo-apple-authentication';
+import { notificationService } from '../services/notification/NotificationService';
 // Firebase Web SDK - static imports for Jest compatibility
 import {
   signInWithEmailAndPassword,
@@ -304,6 +305,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signOutUser = async (): Promise<void> => {
     try {
+      // Clean up push notification tokens before signing out
+      if (user?.uid) {
+        try {
+          await notificationService.removeAllTokens(user.uid);
+          console.log('Push notification tokens cleared');
+        } catch (error) {
+          console.warn('Failed to clear push tokens, continuing with sign out:', error);
+          // Don't block sign out on token cleanup failure
+        }
+      }
+
       // Use Firebase Web SDK signOut (works everywhere)
       await signOut(auth);
       
