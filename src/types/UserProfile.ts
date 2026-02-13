@@ -6,6 +6,7 @@
 export interface UserProfile {
   uid?: string;
   email?: string;
+  emailHash?: string; // SHA-256 hash of email for contact discovery (privacy-safe)
   username?: string;
   displayName?: string;
   photoURL?: string; // Main photo URL (legacy field)

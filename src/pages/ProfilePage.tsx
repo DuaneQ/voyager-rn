@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -8,7 +8,13 @@ import {
   ScrollView,
   Alert,
   Platform,
+  Linking,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+// Note: useNavigation is imported conditionally at component level for web compatibility
+import { useFocusEffect } from '@react-navigation/native';
+import { getFirestore, collection, query, where, orderBy, limit, getDocs, Timestamp } from 'firebase/firestore';
+import { app } from '../../firebase-config';
 import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
 import { useUserProfile } from '../context/UserProfileContext';
@@ -19,6 +25,12 @@ import { PhotoGrid } from '../components/profile/PhotoGrid';
 import { ProfileTab } from '../components/profile/ProfileTab';
 import { VideoGrid } from '../components/video/VideoGrid';
 import { AIItinerarySection } from '../components/profile/AIItinerarySection';
+import { ContactDiscoveryBanner } from '../components/contacts/ContactDiscoveryBanner';
+import { ContactPermissionModal } from '../components/contacts/ContactPermissionModal';
+import { ContactsService } from '../services/contacts/ContactsService';
+import { ContactDiscoveryRepository } from '../repositories/contacts/ContactDiscoveryRepository';
+import { MatchedContact, UnmatchedContact } from '../services/contacts/types';
+import { ContactToInvite } from '../components/contacts/InviteContactCard';
 import type { PhotoSlot } from '../types/Photo';
 
 // Platform-specific route param handling
@@ -49,8 +61,27 @@ if (Platform.OS === 'web') {
 
 type TabType = 'profile' | 'photos' | 'videos' | 'itinerary';
 
+// Safe navigation hook wrapper for cross-platform compatibility
+const useSafeNavigation = () => {
+  if (Platform.OS === 'web') {
+    // Web doesn't use React Navigation
+    return null;
+  }
+  
+  try {
+    const { useNavigation } = require('@react-navigation/native');
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    return useNavigation();
+  } catch (error) {
+    console.warn('[ProfilePage] Navigation not available:', error);
+    return null;
+  }
+};
+
 const ProfilePage: React.FC = () => {
   const routeParams = useRouteParams();
+  const navigation = useSafeNavigation();
+  const { user } = useAuth();
   const { showAlert } = useAlert();
   const { userProfile, updateProfile, isLoading } = useUserProfile();
   const { selectAndUploadPhoto, deletePhoto, uploadState } = usePhotoUpload();
@@ -58,6 +89,33 @@ const ProfilePage: React.FC = () => {
   
   const [activeTab, setActiveTab] = useState<TabType>('profile');
   const [editModalVisible, setEditModalVisible] = useState(false);
+  
+  // Initialize contact discovery service (handles full flow internally)
+  const contactsService = new ContactsService();
+  const contactDiscoveryRepo = new ContactDiscoveryRepository();
+  
+  // Contact Discovery State
+  const [contactsSynced, setContactsSynced] = useState(false);
+  const [matchedContactsCount, setMatchedContactsCount] = useState(0);
+  const [matchedContacts, setMatchedContactsRaw] = useState<MatchedContact[]>([]);
+  const [contactsToInvite, setContactsToInviteRaw] = useState<ContactToInvite[]>([]);
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
+  
+  // Wrap setters to use functional updates (prevents dependency issues)
+  const setMatchedContacts = React.useCallback((value: MatchedContact[] | ((prev: MatchedContact[]) => MatchedContact[])) => {
+    setMatchedContactsRaw(prev => {
+      const newValue = typeof value === 'function' ? value(prev) : value;
+      return newValue;
+    });
+  }, []);
+  
+  const setContactsToInvite = React.useCallback((value: ContactToInvite[] | ((prev: ContactToInvite[]) => ContactToInvite[])) => {
+    setContactsToInviteRaw(prev => {
+      const newValue = typeof value === 'function' ? value(prev) : value;
+      return newValue;
+    });
+  }, []);
+  const [permissionModalVisible, setPermissionModalVisible] = useState(false);
 
   // Removed auto-opening of EditProfileModal
   // Profile completion is now only enforced when creating itineraries
@@ -115,11 +173,11 @@ const ProfilePage: React.FC = () => {
     try {
       const result = await selectAndUploadPhoto('profile' as PhotoSlot);
       if (result?.url) {
-        showAlert('Profile photo updated successfully', 'success');
+        showAlert('success', 'Profile photo updated successfully');
       }
     } catch (error) {
       const err = error instanceof Error ? error : new Error('Upload failed');
-      showAlert(`Failed to update profile photo: ${err.message}`, 'error');
+      showAlert('error', `Failed to update profile photo: ${err.message}`);
     }
   };
 
@@ -129,10 +187,10 @@ const ProfilePage: React.FC = () => {
   const handleDeleteProfilePhoto = async () => {
     try {
       await deletePhoto('profile' as PhotoSlot);
-      showAlert('Profile photo removed', 'success');
+      showAlert('success', 'Profile photo removed');
     } catch (error) {
       const err = error instanceof Error ? error : new Error('Delete failed');
-      showAlert(`Failed to delete profile photo: ${err.message}`, 'error');
+      showAlert('error', `Failed to delete profile photo: ${err.message}`);
     }
   };
 
@@ -140,10 +198,10 @@ const ProfilePage: React.FC = () => {
     try {
       await updateProfile(data);
       setEditModalVisible(false); // Close modal immediately after successful save
-      showAlert('Profile updated successfully', 'success');
+      showAlert('success', 'Profile updated successfully');
     } catch (error) {
       console.error('Error updating profile:', error);
-      showAlert('Failed to update profile', 'error');
+      showAlert('error', 'Failed to update profile');
       throw error; // Let modal handle the error state
     }
   };
@@ -152,14 +210,14 @@ const ProfilePage: React.FC = () => {
    * Handle gallery photo upload success
    */
   const handleGalleryPhotoUploadSuccess = (slot: PhotoSlot, url: string) => {
-    showAlert(`Photo uploaded to ${slot}`, 'success');
+    showAlert('success', `Photo uploaded to ${slot}`);
   };
 
   /**
    * Handle gallery photo delete success
    */
   const handleGalleryPhotoDeleteSuccess = (slot: PhotoSlot) => {
-    showAlert(`Photo removed from ${slot}`, 'success');
+    showAlert('success', `Photo removed from ${slot}`);
   };
 
   const handleSignOut = async () => {
@@ -167,8 +225,251 @@ const ProfilePage: React.FC = () => {
       await signOut();
       // Navigation happens automatically via AuthContext
     } catch (error) {
-      showAlert('Error signing out', 'error');
+      showAlert('error', 'Error signing out');
     }
+  };
+
+  /**
+   * Refresh contact discovery stats from Firestore contactSyncs collection
+   * Fetches most recent sync metadata and updates state
+   * Also restores contact arrays from AsyncStorage if available
+   */
+  const refreshContactStats = useCallback(async () => {
+    if (!user?.uid) return;
+
+    try {
+      // Restore contact arrays from AsyncStorage (iOS fix)
+      const storedMatched = await AsyncStorage.getItem(`matched_contacts_${user.uid}`);
+      const storedToInvite = await AsyncStorage.getItem(`contacts_to_invite_${user.uid}`);
+      
+      if (storedMatched) {
+        const parsedMatched = JSON.parse(storedMatched);
+        setMatchedContacts(parsedMatched);
+      }
+      
+      if (storedToInvite) {
+        const parsedToInvite = JSON.parse(storedToInvite);
+        setContactsToInvite(parsedToInvite);
+      }
+      
+      // Fetch sync metadata from Firestore
+      const db = getFirestore(app);
+      const contactSyncsRef = collection(db, 'contactSyncs');
+      const q = query(
+        contactSyncsRef,
+        where('userId', '==', user.uid),
+        orderBy('syncedAt', 'desc'),
+        limit(1)
+      );
+
+      const querySnapshot = await getDocs(q);
+      
+      if (!querySnapshot.empty) {
+        const syncDoc = querySnapshot.docs[0];
+        const syncData = syncDoc.data();
+        
+        // Update state with most recent sync data
+        setContactsSynced(true);
+        setMatchedContactsCount(syncData.totalMatches || 0);
+        
+        // Convert Firestore Timestamp to Date
+        if (syncData.syncedAt) {
+          const timestamp = syncData.syncedAt as Timestamp;
+          setLastSyncedAt(timestamp.toDate());
+        }
+      }
+    } catch (error) {
+      console.warn('[ProfilePage] Error refreshing contact stats:', error);
+      // Don't show error to user - this is a background refresh
+    }
+  }, [user?.uid, setMatchedContacts, setContactsToInvite]);
+
+  /**
+   * Refresh contact stats when tab comes into focus
+   */
+  useFocusEffect(
+    useCallback(() => {
+      refreshContactStats();
+    }, [refreshContactStats])
+  );
+
+  /**
+   * Handle contact discovery banner press
+   */
+  const handleContactDiscoveryPress = () => {
+    if (!contactsSynced) {
+      // First time: show permission modal
+      setPermissionModalVisible(true);
+    } else {
+      // Already synced - give option to view results or re-sync
+      Alert.alert(
+        'Contact Discovery',
+        'What would you like to do?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'View Results', 
+            onPress: () => {
+              // Navigate to discovery results page (mobile only)
+              if (Platform.OS !== 'web' && navigation) {
+                navigation.navigate('DiscoveryResults', {
+                  matchedContacts,
+                  contactsToInvite,
+                });
+              }
+            }
+          },
+          { 
+            text: 'Re-sync Contacts', 
+            onPress: async () => {
+              // Clear cache and AsyncStorage to force fresh sync
+              if (user?.uid) {
+                await AsyncStorage.removeItem(`matched_contacts_${user.uid}`);
+                await AsyncStorage.removeItem(`contacts_to_invite_${user.uid}`);
+                await contactsService.clearCache();
+              }
+              setPermissionModalVisible(true);
+            },
+            style: 'default'
+          }
+        ]
+      );
+    }
+  };
+
+  /**
+   * Handle when user allows contact access from permission modal
+   * Integrates with ContactsService (which calls ContactDiscoveryRepository)
+   */
+  const handleAllowContactAccess = async () => {
+    try {
+      // Check if contacts are supported on this platform
+      if (!contactsService.isSupported()) {
+        setPermissionModalVisible(false);
+        showAlert('error', 'Contact discovery is not available in this browser. Use Chrome on Android, or download our iOS/Android app for the best experience.');
+        return;
+      }
+      
+      // Step 1: Request permission
+      const permissionStatus = await contactsService.requestPermission();
+      
+      // Close modal after permission result
+      setPermissionModalVisible(false);
+      
+      if (permissionStatus !== 'granted') {
+        showAlert('error', 'Contact permission denied');
+        return;
+      }
+      
+      showAlert('info', 'Syncing contacts...');
+      
+      // Step 2: Sync contacts (ContactsService handles: fetch -> hash -> match)
+      // Force refresh to bypass cache and read all contacts from device
+      const syncResult = await contactsService.syncContacts(true);
+      
+      if (syncResult.errors && syncResult.errors.length > 0) {
+        console.warn('[ProfilePage] Contact sync errors:', syncResult.errors);
+      }
+      
+      // Step 3: Update state
+      setContactsSynced(true);
+      setMatchedContactsCount(syncResult.matched.length);
+      setMatchedContacts(syncResult.matched);
+      setLastSyncedAt(new Date()); // Set sync timestamp
+      
+      // Convert unmatched contacts to ContactToInvite format
+      const inviteList: ContactToInvite[] = syncResult.unmatched.map(c => ({
+        id: c.contactId,
+        name: c.name || 'Unknown',
+        contactInfo: c.identifier,
+        type: c.identifierType as 'email' | 'phone',
+        hash: '', // Will be generated when invite is sent
+      }));
+      setContactsToInvite(inviteList);
+      
+      // Persist to AsyncStorage for iOS state restoration
+      if (user?.uid) {
+        await AsyncStorage.setItem(`matched_contacts_${user.uid}`, JSON.stringify(syncResult.matched));
+        await AsyncStorage.setItem(`contacts_to_invite_${user.uid}`, JSON.stringify(inviteList));
+      }
+      
+      if (syncResult.matched.length > 0) {
+        showAlert('success', `Found ${syncResult.matched.length} contacts on TravalPass!`);
+      } else {
+        showAlert('info', 'No contacts found on TravalPass yet');
+      }
+    } catch (error) {
+      setPermissionModalVisible(false); // Make sure modal closes on error
+      const err = error instanceof Error ? error : new Error('Sync failed');
+      console.error('[ProfilePage] Contact sync error:', err);
+      showAlert('error', `Failed to sync contacts: ${err.message}`);
+    }
+  };
+
+  /**
+   * Handle Connect button - create connection with matched user
+   */
+  const handleConnectUser = async (userId: string) => {
+    if (!user) return;
+    
+    try {
+      // TODO: Implement connection creation in Firestore
+      // For now, just show success
+      showAlert('success', 'Connection request sent!');
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error('Failed to connect');
+      showAlert('error', `Failed to connect: ${err.message}`);
+    }
+  };
+
+  /**
+   * Handle Invite button - send SMS/email with referral link
+   */
+  const handleInviteContact = async (contact: ContactToInvite) => {
+    if (!user) return;
+    
+    try {
+      // Call sendContactInvite Cloud Function
+      const hashingService = contactsService['hashingService'];
+      const hash = contact.type === 'phone'
+        ? await hashingService.hashPhoneNumber(contact.contactInfo)
+        : await hashingService.hashEmail(contact.contactInfo);
+      
+      const result = await contactDiscoveryRepo.sendInvite(hash, 'sms');
+      
+      // Open native SMS/Email with invite link
+      const message = `Hey ${contact.name}! Join me on TravalPass to find travel buddies: ${result.inviteLink}`;
+      
+      if (contact.type === 'phone') {
+        const smsUrl = Platform.OS === 'ios'
+          ? `sms:${contact.contactInfo}&body=${encodeURIComponent(message)}`
+          : `sms:${contact.contactInfo}?body=${encodeURIComponent(message)}`;
+        await Linking.openURL(smsUrl);
+      } else {
+        const emailUrl = `mailto:${contact.contactInfo}?subject=${encodeURIComponent('Join me on TravalPass!')}&body=${encodeURIComponent(message)}`;
+        await Linking.openURL(emailUrl);
+      }
+      
+      showAlert('success', 'Invite sent!');
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error('Failed to send invite');
+      showAlert('error', `Failed to send invite: ${err.message}`);
+    }
+  };
+
+  /**
+   * Handle Invite All button
+   */
+  const handleInviteAll = async () => {
+    // TODO: Implement bulk invite
+    showAlert('info', 'Invite all coming soon!');
+  };
+
+  /**
+   * Handle when user dismisses permission modal
+   */
+  const handleDismissPermissionModal = () => {
+    setPermissionModalVisible(false);
   };
 
   // Debug logging
@@ -295,6 +596,14 @@ const ProfilePage: React.FC = () => {
           isUploading={uploadState.loading}
         />
 
+        {/* Contact Discovery Banner */}
+        <ContactDiscoveryBanner
+          hasSynced={contactsSynced}
+          matchCount={matchedContactsCount}
+          lastSyncedAt={lastSyncedAt}
+          onPress={handleContactDiscoveryPress}
+        />
+
         {/* Tab Navigation */}
         <View style={styles.tabContainer}>
           <TouchableOpacity
@@ -354,6 +663,13 @@ const ProfilePage: React.FC = () => {
           drinking: userProfile?.drinking || '',
           smoking: userProfile?.smoking || '',
         }}
+      />
+      
+      {/* Contact Permission Modal */}
+      <ContactPermissionModal
+        visible={permissionModalVisible}
+        onAllowAccess={handleAllowContactAccess}
+        onDismiss={handleDismissPermissionModal}
       />
     </SafeAreaView>
   );

@@ -238,7 +238,7 @@ const RootNavigator: React.FC = () => {
         path="/" 
         element={
           isAuthenticated ? (
-            <Navigate to="/app/search" replace />
+            <Navigate to="/app/videos" replace />
           ) : (
             <LandingPage />
           )
@@ -249,7 +249,7 @@ const RootNavigator: React.FC = () => {
         path="/auth" 
         element={
           isAuthenticated ? (
-            <Navigate to="/app/search" replace />
+            <Navigate to="/app/videos" replace />
           ) : (
             <AuthPage />
           )
@@ -316,7 +316,7 @@ const RootNavigator: React.FC = () => {
       {/* Default redirect for /app */}
       <Route 
         path="/app" 
-        element={<Navigate to="/app/search" replace />} 
+        element={<Navigate to="/app/videos" replace />} 
       />
 
       {/* Catch-all redirect */}
@@ -324,7 +324,7 @@ const RootNavigator: React.FC = () => {
         path="*" 
         element={
           isAuthenticated ? (
-            <Navigate to="/app/search" replace />
+            <Navigate to="/app/videos" replace />
           ) : (
             <Navigate to="/" replace />
           )

@@ -119,6 +119,13 @@ const Stub = {
     setString: jest.fn(() => {}),
     getString: jest.fn(() => Promise.resolve('')),
   },
+  Linking: {
+    canOpenURL: jest.fn(() => Promise.resolve(true)),
+    openURL: jest.fn(() => Promise.resolve(true)),
+    getInitialURL: jest.fn(() => Promise.resolve(null)),
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+  },
   Alert: {
     alert: jest.fn(() => {}),
   },

@@ -29,6 +29,7 @@ import VideoFeedPage from '../pages/VideoFeedPage';
 import ChatThreadScreen from '../pages/ChatThreadScreen';
 import ProfilePage from '../pages/ProfilePage';
 import SearchPage from '../pages/SearchPage';
+import { DiscoveryResultsPage } from '../pages/DiscoveryResultsPage';
 
 // Guards
 import { TermsGuard } from '../components/auth/TermsGuard';
@@ -43,11 +44,23 @@ import { validateProfileForItinerary } from '../utils/profileValidation';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
+const ProfileStack = createStackNavigator();
+
+// Profile Stack Navigator (Profile + Contact Discovery)
+const ProfileStackNavigator: React.FC = () => {
+  return (
+    <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
+      <ProfileStack.Screen name="ProfileMain" component={ProfilePage} />
+      <ProfileStack.Screen name="DiscoveryResults" component={DiscoveryResultsPage} />
+    </ProfileStack.Navigator>
+  );
+};
 
 // Bottom Tab Navigator (replicates BottomNav from PWA)
 const MainTabNavigator: React.FC = () => {
   return (
     <Tab.Navigator
+      initialRouteName="Videos"
       screenOptions={{
         tabBarActiveTintColor: '#1976d2',
         tabBarInactiveTintColor: 'gray',
@@ -104,7 +117,7 @@ const MainTabNavigator: React.FC = () => {
       />
       <Tab.Screen 
         name="Profile" 
-        component={ProfilePage}
+        component={ProfileStackNavigator}
         options={{ 
           title: 'Profile',
           tabBarIcon: ({ focused, color, size }) => (
@@ -207,7 +220,13 @@ const AppNavigator: React.FC = () => {
             Search: 'search',
             Videos: 'videos',
             Chat: 'chat',
-            Profile: 'profile',
+            Profile: {
+              path: 'profile',
+              screens: {
+                ProfileMain: '',
+                DiscoveryResults: 'discovery-results',
+              },
+            },
           },
         },
         ChatThread: 'chat/:connectionId',
