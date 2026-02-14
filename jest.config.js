@@ -16,20 +16,21 @@ module.exports = {
   ],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
-    '^react-native-svg$': '<rootDir>/src/__mocks__/react-native-svg.js',
-  // NOTE: react-native is mocked from a setupFiles script instead of
-  // moduleNameMapper to avoid interfering with the react-native preset
-  // module resolution while still ensuring the mock loads before tests.
-    '^react-native-google-places-autocomplete$': '<rootDir>/src/__mocks__/react-native-google-places-autocomplete.js',
-    '^@react-native-community/datetimepicker$': '<rootDir>/src/__mocks__/@react-native-community/datetimepicker.tsx',
-    '^lodash.debounce$': '<rootDir>/src/__mocks__/lodash.debounce.js',
-    '^firebase/functions$': '<rootDir>/src/__mocks__/firebase-functions.js',
+    // Third-party library mocks (from root __mocks__/)
+    '^react-native-svg$': '<rootDir>/__mocks__/react-native-svg.js',
+    '^react-native-google-places-autocomplete$': '<rootDir>/__mocks__/react-native-google-places-autocomplete.js',
+    '^@react-native-community/datetimepicker$': '<rootDir>/__mocks__/@react-native-community/datetimepicker.tsx',
+    '^lodash.debounce$': '<rootDir>/__mocks__/lodash.debounce.js',
+    '^firebase/functions$': '<rootDir>/__mocks__/firebase-functions.js',
     '^firebase/firestore$': '<rootDir>/__mocks__/firebase/firestore.js',
     '^firebase/auth$': '<rootDir>/__mocks__/firebase/auth.js',
     '^firebase/storage$': '<rootDir>/__mocks__/firebase/storage.js',
     '^firebase/app$': '<rootDir>/__mocks__/firebase/app.js',
     '^expo-linear-gradient$': '<rootDir>/__mocks__/expo-linear-gradient.js',
     '^expo-file-system/legacy$': '<rootDir>/__mocks__/expo-file-system.js',
+  // NOTE: react-native is mocked from a setupFiles script instead of
+  // moduleNameMapper to avoid interfering with the react-native preset
+  // module resolution while still ensuring the mock loads before tests.
   },
   testMatch: ['**/__tests__/**/*.test.ts?(x)', '**/?(*.)+(spec|test).ts?(x)'],
   testPathIgnorePatterns: [

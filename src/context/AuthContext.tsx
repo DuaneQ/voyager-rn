@@ -19,6 +19,21 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth, db } from '../config/firebaseConfig';
 import { SafeGoogleSignin } from '../utils/SafeGoogleSignin';
 import * as AppleAuthentication from 'expo-apple-authentication';
+
+// Lazy-load notification service (only on mobile, prevents web bundling errors)
+let notificationService: any = null;
+
+function getNotificationService() {
+  if (Platform.OS !== 'web' && !notificationService) {
+    try {
+      notificationService = require('../services/notification/NotificationService').notificationService;
+    } catch (error) {
+      console.warn('Failed to load notification service:', error);
+    }
+  }
+  return notificationService;
+}
+
 // Firebase Web SDK - static imports for Jest compatibility
 import {
   signInWithEmailAndPassword,
@@ -304,6 +319,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signOutUser = async (): Promise<void> => {
     try {
+      // Clean up this device's push notification token before signing out (mobile only)
+      const service = getNotificationService();
+      if (user?.uid && service && Platform.OS !== 'web') {
+        try {
+          // Remove only current device's token (persist it locally so sign-out can
+          // remove it reliably) instead of wiping the entire fcmTokens array.
+          const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+          const currentDeviceToken = await AsyncStorage.getItem('@current_fcm_token');
+          if (currentDeviceToken) {
+            await service.removeToken(user.uid, currentDeviceToken);
+            console.log('Current device push notification token cleared');
+          }
+        } catch (error) {
+          console.warn('Failed to clear push token for current device, continuing with sign out:', error);
+          // Don't block sign out on token cleanup failure
+        }
+      }
+
       // Use Firebase Web SDK signOut (works everywhere)
       await signOut(auth);
       

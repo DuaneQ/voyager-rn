@@ -11,8 +11,7 @@ import {
   Linking,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-// Note: useNavigation is imported conditionally at component level for web compatibility
-import { useFocusEffect } from '@react-navigation/native';
+// Note: useNavigation and useFocusEffect are imported conditionally to support web platform
 import { getFirestore, collection, query, where, orderBy, limit, getDocs, Timestamp } from 'firebase/firestore';
 import { app } from '../../firebase-config';
 import { useAuth } from '../context/AuthContext';
@@ -75,6 +74,29 @@ const useSafeNavigation = () => {
   } catch (error) {
     console.warn('[ProfilePage] Navigation not available:', error);
     return null;
+  }
+};
+
+// Safe focus effect hook wrapper for cross-platform compatibility
+const useSafeFocusEffect = (callback: () => void, deps: any[]) => {
+  if (Platform.OS === 'web') {
+    // Web: use regular useEffect since there's no navigation context
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    useEffect(callback, deps);
+  } else {
+    // Native: use useFocusEffect from React Navigation
+    try {
+      const { useFocusEffect } = require('@react-navigation/native');
+      // eslint-disable-next-line react-hooks/rules-of-hooks
+      useFocusEffect(
+        // eslint-disable-next-line react-hooks/rules-of-hooks
+        useCallback(callback, deps)
+      );
+    } catch (error) {
+      console.warn('[ProfilePage] useFocusEffect not available, falling back to useEffect:', error);
+      // eslint-disable-next-line react-hooks/rules-of-hooks
+      useEffect(callback, deps);
+    }
   }
 };
 
@@ -286,12 +308,11 @@ const ProfilePage: React.FC = () => {
 
   /**
    * Refresh contact stats when tab comes into focus
+   * Uses platform-safe focus effect (regular useEffect on web, useFocusEffect on native)
    */
-  useFocusEffect(
-    useCallback(() => {
-      refreshContactStats();
-    }, [refreshContactStats])
-  );
+  useSafeFocusEffect(() => {
+    refreshContactStats();
+  }, [refreshContactStats]);
 
   /**
    * Handle contact discovery banner press
