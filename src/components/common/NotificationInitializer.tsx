@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
+import { useNotifications } from '../../hooks/useNotifications';
 
 /**
  * NotificationInitializer Component
@@ -9,7 +10,7 @@ import { useAuth } from '../../context/AuthContext';
  * Manages token lifecycle in sync with authentication state.
  * 
  * NOTE: Push notifications are only supported on iOS and Android.
- * Web platform is explicitly excluded as expo-notifications is not web-compatible.
+ * Web platform uses App.web.tsx which excludes this component entirely.
  * 
  * Flow:
  * 1. User signs in → registerForPushNotifications(userId)
@@ -18,36 +19,35 @@ import { useAuth } from '../../context/AuthContext';
  * 4. Token removed from Firestore
  */
 export function NotificationInitializer() {
-  // Skip push notifications entirely on web platform
-  // Don't even import the hook to avoid module loading issues
-  if (Platform.OS === 'web') {
-    return null;
-  }
-
-  // Only import and use notifications on mobile platforms
-  // This is a non-standard pattern but necessary for web compatibility
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const { useNotifications } = require('../../hooks/useNotifications');
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const { user, status } = useAuth();
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const { registerForPushNotifications, unregisterPushNotifications } = useNotifications();
+  const { registerForPushNotifications } = useNotifications();
 
   useEffect(() => {
+    console.log('🔔 NotificationInitializer effect running', {
+      status,
+      hasUser: !!user,
+      userId: user?.uid,
+      platform: Platform.OS
+    });
+
     // Only proceed if auth has finished initializing
     if (status === 'loading' || status === 'idle') {
+      console.log('⏳ Auth still initializing, skipping notification registration');
+      return;
+    }
+
+    if (!user?.uid) {
+      console.log('❌ No user found, skipping notification registration');
       return;
     }
 
     // Register for push notifications when user signs in
-    if (user?.uid && user.emailVerified) {
-      console.log('User authenticated, registering for push notifications...');
-      registerForPushNotifications(user.uid).catch(error => {
-        console.error('Failed to register for push notifications:', error);
-        // Don't block app startup on push notification failures
-      });
-    }
-  }, [user?.uid, user?.emailVerified, status, registerForPushNotifications]);
+    console.log('✅ User authenticated, registering for push notifications...');
+    registerForPushNotifications(user.uid).catch(error => {
+      console.error('❌ Failed to register for push notifications:', error);
+      // Don't block app startup on push notification failures
+    });
+  }, [user?.uid, status, registerForPushNotifications]);
 
   // This component doesn't render anything; cleanup of push tokens on sign-out
   // is handled explicitly in AuthContext.signOut to avoid affecting other devices.

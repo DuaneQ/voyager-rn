@@ -1,19 +1,20 @@
 import { Platform } from 'react-native';
 import { getFirestore, doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 
-// Conditionally import Firebase Messaging only on mobile platforms
-let messaging: any = null;
-let NotificationsExpo: any = null; // Keep for badge count on iOS
+// Platform-specific import - messaging.native.ts on iOS/Android, messaging.ts on web
+// Metro bundler automatically picks the right one
+import messaging from './messaging';
 
-if (Platform.OS !== 'web') {
-  const firebaseMessaging = require('@react-native-firebase/messaging');
-  messaging = firebaseMessaging.default;
-  
-  // Keep expo-notifications for badge management (optional)
-  try {
-    NotificationsExpo = require('expo-notifications');
-  } catch {
-    // Expo notifications optional - only for badge count
+// Keep expo-notifications for badge management (optional)
+let NotificationsExpo: any = null;
+
+function loadBadgeModule() {
+  if (Platform.OS !== 'web' && !NotificationsExpo) {
+    try {
+      NotificationsExpo = require('expo-notifications');
+    } catch {
+      // Expo notifications optional - only for badge count
+    }
   }
 }
 
@@ -49,31 +50,37 @@ export class NotificationService {
    * @returns Promise<boolean> - true if permission granted, false otherwise
    */
   async requestPermission(): Promise<boolean> {
-    if (Platform.OS === 'web') {
+    console.log('🔔 NotificationService.requestPermission() called');
+    
+    if (Platform.OS === 'web' || !messaging) {
       console.log('Push notifications not supported on web platform');
       return false;
     }
 
-    if (!messaging) {
-      console.error('Firebase Messaging not initialized');
-      return false;
-    }
-
     try {
+      console.log('📱 Requesting push notification permission...');
       const authStatus = await messaging().requestPermission();
       const enabled =
         authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
         authStatus === messaging.AuthorizationStatus.PROVISIONAL;
 
       if (!enabled) {
-        console.warn('Push notification permission denied');
+        console.warn('⚠️ Push notification permission denied by user');
         return false;
       }
 
-      console.log('Push notification permission granted');
+      console.log('✅ Push notification permission granted', {
+        status: authStatus === messaging.AuthorizationStatus.AUTHORIZED ? 'AUTHORIZED' : 'PROVISIONAL'
+      });
       return true;
     } catch (error) {
-      console.error('Error requesting push notification permission:', error);
+      console.error('❌ Error requesting push notification permission:', error);
+      if (error instanceof Error) {
+        console.error('Error details:', {
+          message: error.message,
+          stack: error.stack
+        });
+      }
       return false;
     }
   }
@@ -86,28 +93,33 @@ export class NotificationService {
    * @returns Promise<string | null> - FCM token or null if unavailable
    */
   async getFCMToken(): Promise<string | null> {
-    if (Platform.OS === 'web') {
-      return null;
-    }
-
-    if (!messaging) {
-      console.error('Firebase Messaging not initialized');
+    console.log('🔑 NotificationService.getFCMToken() called');
+    
+    if (Platform.OS === 'web' || !messaging) {
+      console.log('⚠️ Skipping FCM token on web platform');
       return null;
     }
 
     try {
+      console.log('📱 Requesting FCM token from Firebase...');
       // Get FCM token - this is the token Firebase Admin SDK expects
       const token = await messaging().getToken();
       
       if (!token) {
-        console.warn('FCM token is null - may need permissions or physical device');
+        console.warn('⚠️ FCM token is null - may need permissions or physical device');
         return null;
       }
 
-      console.log('FCM token obtained:', token.substring(0, 20) + '...');
+      console.log('✅ FCM token obtained:', token.substring(0, 30) + '...' + token.substring(token.length - 10));
       return token;
     } catch (error) {
-      console.error('Error getting FCM token:', error);
+      console.error('❌ Error getting FCM token:', error);
+      if (error instanceof Error) {
+        console.error('Error details:', {
+          message: error.message,
+          stack: error.stack
+        });
+      }
       return null;
     }
   }
@@ -120,14 +132,25 @@ export class NotificationService {
    * @param token - FCM device registration token
    */
   async saveToken(userId: string, token: string): Promise<void> {
+    console.log('💾 NotificationService.saveToken() called', {
+      userId,
+      tokenPreview: token.substring(0, 30) + '...' + token.substring(token.length - 10)
+    });
     try {
       const userRef = doc(this.db, 'users', userId);
+      console.log('📝 Saving FCM token to Firestore users/' + userId);
       await updateDoc(userRef, {
         fcmTokens: arrayUnion(token),
       });
-      console.log('FCM token saved to Firestore');
+      console.log('✅ FCM token saved to Firestore successfully');
     } catch (error) {
-      console.error('Error saving FCM token:', error);
+      console.error('❌ Error saving FCM token to Firestore:', error);
+      if (error instanceof Error) {
+        console.error('Error details:', {
+          message: error.message,
+          stack: error.stack
+        });
+      }
       throw error;
     }
   }
@@ -209,6 +232,8 @@ export class NotificationService {
     if (Platform.OS !== 'ios') {
       return;
     }
+
+    loadBadgeModule(); // Load expo-notifications for badge management
 
     try {
       // Try using expo-notifications for badge (if available)

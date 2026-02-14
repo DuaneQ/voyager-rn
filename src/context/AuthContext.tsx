@@ -20,10 +20,18 @@ import { auth, db } from '../config/firebaseConfig';
 import { SafeGoogleSignin } from '../utils/SafeGoogleSignin';
 import * as AppleAuthentication from 'expo-apple-authentication';
 
-// Conditional import for notification service (only on mobile)
+// Lazy-load notification service (only on mobile, prevents web bundling errors)
 let notificationService: any = null;
-if (Platform.OS !== 'web') {
-  notificationService = require('../services/notification/NotificationService').notificationService;
+
+function getNotificationService() {
+  if (Platform.OS !== 'web' && !notificationService) {
+    try {
+      notificationService = require('../services/notification/NotificationService').notificationService;
+    } catch (error) {
+      console.warn('Failed to load notification service:', error);
+    }
+  }
+  return notificationService;
 }
 
 // Firebase Web SDK - static imports for Jest compatibility
@@ -312,14 +320,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signOutUser = async (): Promise<void> => {
     try {
       // Clean up this device's push notification token before signing out (mobile only)
-      if (user?.uid && notificationService) {
+      const service = getNotificationService();
+      if (user?.uid && service && Platform.OS !== 'web') {
         try {
           // Remove only current device's token (persist it locally so sign-out can
           // remove it reliably) instead of wiping the entire fcmTokens array.
           const AsyncStorage = require('@react-native-async-storage/async-storage').default;
           const currentDeviceToken = await AsyncStorage.getItem('@current_fcm_token');
           if (currentDeviceToken) {
-            await notificationService.removeToken(user.uid, currentDeviceToken);
+            await service.removeToken(user.uid, currentDeviceToken);
             console.log('Current device push notification token cleared');
           }
         } catch (error) {

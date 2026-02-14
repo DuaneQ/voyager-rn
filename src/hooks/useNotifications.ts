@@ -1,20 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { notificationService } from '../services/notification/NotificationService';
+import messaging from '../services/notification/messaging';
 
 // Storage key for persisting current device's FCM token
 const CURRENT_DEVICE_TOKEN_KEY = '@current_fcm_token';
-
-// Conditionally import Firebase Messaging and notification service only on mobile platforms
-// Web platform doesn't support push notifications and will cause import errors
-let messaging: any = null;
-let notificationService: any = null;
-
-if (Platform.OS !== 'web') {
-  const firebaseMessaging = require('@react-native-firebase/messaging');
-  messaging = firebaseMessaging.default;
-  notificationService = require('../services/notification/NotificationService').notificationService;
-}
 
 export interface UseNotificationsReturn {
   permissionStatus: 'granted' | 'denied' | 'undetermined' | null;
