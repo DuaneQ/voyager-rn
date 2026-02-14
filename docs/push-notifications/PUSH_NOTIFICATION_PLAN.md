@@ -1,10 +1,11 @@
 # Push Notification Implementation Plan — TravalPass (iOS & Android)
 
 > **Created**: June 2025  
-> **Updated**: February 13, 2026 (Simplified Architecture)  
-> **Status**: Planning  
-> **Platforms**: iOS (APNs), Android (FCM), Web (FCM — future)  
-> **Framework**: React Native Expo (SDK 54)
+> **Updated**: February 14, 2026 (Switched to expo-notifications, verified on Android)  
+> **Status**: ✅ Implemented — New Match & Chat Message notifications working  
+> **Platforms**: iOS (APNs), Android (FCM), Web (not supported — excluded)  
+> **Framework**: React Native Expo (SDK 54)  
+> **Library**: `expo-notifications` (replaced `@react-native-firebase/messaging`)
 
 ---
 
@@ -38,8 +39,9 @@ Implement push notifications across iOS and Android to notify users of:
 - **Client**: `expo-notifications` library for token registration, permission handling, foreground/background notification handling, and deep linking
 - **Server**: Firebase Cloud Functions with Firestore `onCreate` triggers to send FCM messages server-side (never client-initiated pushes)
 - **Token Storage**: FCM tokens stored as **array field on user document** (`users/{uid}.fcmTokens: string[]`) — simpler than subcollection
-- **Architecture**: Simplified single `NotificationService` class (combines business logic + Firestore operations), `useNotifications` hook (state management)
+- **Architecture**: `NotificationService` class (permissions + token CRUD + Firestore), `useNotifications` hook (state management), handler at module level in `App.tsx`
 - **MVP Scope**: All notifications enabled by default, settings UI deferred to post-launch
+- **Library Change (Feb 14, 2026)**: Switched from `@react-native-firebase/messaging` to `expo-notifications` — eliminates native module linking issues, uses same FCM tokens, zero cost difference
 
 ### Key Constraints
 

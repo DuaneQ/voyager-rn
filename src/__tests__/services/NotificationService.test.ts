@@ -1,19 +1,31 @@
 /**
- * Unit tests for NotificationService (FCM-based)
- * Tests permission handling, FCM token management, and Firestore operations
+ * Unit tests for NotificationService (expo-notifications)
+ * Tests permission handling, push token management, and Firestore operations
  */
 
 import { NotificationService } from '../../services/notification/NotificationService';
-import { getFirestore, doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import * as Notifications from 'expo-notifications';
 
-// Mock React Native Firebase
-jest.mock('@react-native-firebase/messaging');
-jest.mock('@react-native-firebase/app');
+// Mock expo-notifications
+jest.mock('expo-notifications', () => ({
+  getPermissionsAsync: jest.fn(),
+  requestPermissionsAsync: jest.fn(),
+  setNotificationChannelAsync: jest.fn(),
+  getDevicePushTokenAsync: jest.fn(),
+  addPushTokenListener: jest.fn(),
+  setBadgeCountAsync: jest.fn(),
+  unregisterForNotificationsAsync: jest.fn(),
+  AndroidImportance: { MAX: 5 },
+}));
 
-// Get mocked messaging for tests
-const messaging = jest.requireMock('@react-native-firebase/messaging').default;
+// Mock expo-device with mutable isDevice flag
+let mockIsDevice = true;
+jest.mock('expo-device', () => ({
+  get isDevice() { return mockIsDevice; },
+}));
 
-// Mock Firebase
+// Mock Firebase Firestore
 jest.mock('firebase/firestore', () => ({
   getFirestore: jest.fn(),
   doc: jest.fn(),
@@ -22,7 +34,16 @@ jest.mock('firebase/firestore', () => ({
   arrayRemove: jest.fn((value) => ({ _type: 'arrayRemove', value })),
 }));
 
-describe('NotificationService (FCM)', () => {
+// Mock Firebase Functions (for APNs → FCM conversion on iOS)
+const mockConvertedFcmToken = 'mock-converted-fcm-token-xyz';
+jest.mock('firebase/functions', () => ({
+  getFunctions: jest.fn(),
+  httpsCallable: jest.fn(() => jest.fn().mockResolvedValue({
+    data: { fcmToken: mockConvertedFcmToken }
+  })),
+}));
+
+describe('NotificationService (expo-notifications)', () => {
   let service: NotificationService;
   const mockUserId = 'test-user-123';
   const mockToken = 'mock-fcm-token-abc123xyz';
@@ -30,31 +51,35 @@ describe('NotificationService (FCM)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     service = new NotificationService();
+    // Default: physical device
+    mockIsDevice = true;
   });
 
   describe('requestPermission', () => {
-    it('should return true when permission is granted', async () => {
-      const mockMessaging = messaging as jest.MockedFunction<typeof messaging>;
-      mockMessaging().requestPermission.mockResolvedValue(messaging.AuthorizationStatus.AUTHORIZED);
+    it('should return true when permission is already granted', async () => {
+      (Notifications.getPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'granted' });
 
       const result = await service.requestPermission();
 
       expect(result).toBe(true);
-      expect(mockMessaging().requestPermission).toHaveBeenCalled();
+      expect(Notifications.getPermissionsAsync).toHaveBeenCalled();
+      // Should NOT request again if already granted
+      expect(Notifications.requestPermissionsAsync).not.toHaveBeenCalled();
     });
 
-    it('should return true for provisional permission', async () => {
-      const mockMessaging = messaging as jest.MockedFunction<typeof messaging>;
-      mockMessaging().requestPermission.mockResolvedValue(messaging.AuthorizationStatus.PROVISIONAL);
+    it('should request permission and return true when user grants', async () => {
+      (Notifications.getPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'undetermined' });
+      (Notifications.requestPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'granted' });
 
       const result = await service.requestPermission();
 
       expect(result).toBe(true);
+      expect(Notifications.requestPermissionsAsync).toHaveBeenCalled();
     });
 
     it('should return false when permission is denied', async () => {
-      const mockMessaging = messaging as jest.MockedFunction<typeof messaging>;
-      mockMessaging().requestPermission.mockResolvedValue(messaging.AuthorizationStatus.DENIED);
+      (Notifications.getPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'undetermined' });
+      (Notifications.requestPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'denied' });
 
       const result = await service.requestPermission();
 
@@ -62,47 +87,54 @@ describe('NotificationService (FCM)', () => {
     });
 
     it('should handle errors gracefully', async () => {
-      const mockMessaging = messaging as jest.MockedFunction<typeof messaging>;
-      mockMessaging().requestPermission.mockRejectedValue(new Error('Permission error'));
+      (Notifications.getPermissionsAsync as jest.Mock).mockRejectedValue(new Error('Permission error'));
 
       const result = await service.requestPermission();
 
       expect(result).toBe(false);
     });
+
+    it('should return false on non-device (emulator/simulator)', async () => {
+      mockIsDevice = false;
+
+      const result = await service.requestPermission();
+
+      expect(result).toBe(false);
+      expect(Notifications.getPermissionsAsync).not.toHaveBeenCalled();
+    });
   });
 
   describe('getFCMToken', () => {
-    it('should return FCM token on success', async () => {
-      const mockMessaging = messaging as jest.MockedFunction<typeof messaging>;
-      mockMessaging().getToken.mockResolvedValue(mockToken);
+    it('should return device push token on success (iOS: converts APNs to FCM)', async () => {
+      (Notifications.getDevicePushTokenAsync as jest.Mock).mockResolvedValue({ data: mockToken });
 
       const result = await service.getFCMToken();
 
-      expect(result).toBe(mockToken);
-      expect(mockMessaging().getToken).toHaveBeenCalled();
+      // Platform.OS defaults to 'ios' in test env, so APNs → FCM conversion runs
+      expect(result).toBe(mockConvertedFcmToken);
+      expect(Notifications.getDevicePushTokenAsync).toHaveBeenCalled();
     });
 
     it('should return null on error', async () => {
-      const mockMessaging = messaging as jest.MockedFunction<typeof messaging>;
-      mockMessaging().getToken.mockRejectedValue(new Error('Token error'));
+      (Notifications.getDevicePushTokenAsync as jest.Mock).mockRejectedValue(new Error('Token error'));
 
       const result = await service.getFCMToken();
 
       expect(result).toBeNull();
     });
 
-    it('should return null when token is null', async () => {
-      const mockMessaging = messaging as jest.MockedFunction<typeof messaging>;
-      mockMessaging().getToken.mockResolvedValue(null);
+    it('should return null on non-device (emulator/simulator)', async () => {
+      mockIsDevice = false;
 
       const result = await service.getFCMToken();
 
       expect(result).toBeNull();
+      expect(Notifications.getDevicePushTokenAsync).not.toHaveBeenCalled();
     });
   });
 
   describe('saveToken', () => {
-    it('should save FCM token to Firestore using arrayUnion', async () => {
+    it('should save push token to Firestore using arrayUnion', async () => {
       const mockDoc = doc as jest.Mock;
       const mockUpdateDoc = updateDoc as jest.Mock;
       const mockArrayUnion = arrayUnion as jest.Mock;
@@ -129,7 +161,7 @@ describe('NotificationService (FCM)', () => {
   });
 
   describe('removeToken', () => {
-    it('should remove FCM token from Firestore using arrayRemove', async () => {
+    it('should remove push token from Firestore using arrayRemove', async () => {
       const mockDoc = doc as jest.Mock;
       const mockUpdateDoc = updateDoc as jest.Mock;
       const mockArrayRemove = arrayRemove as jest.Mock;
@@ -174,39 +206,46 @@ describe('NotificationService (FCM)', () => {
   });
 
   describe('onTokenRefresh', () => {
-    it('should set up token refresh listener', () => {
-      const mockMessaging = messaging as jest.MockedFunction<typeof messaging>;
-      const mockUnsubscribe = jest.fn();
-      mockMessaging().onTokenRefresh.mockReturnValue(mockUnsubscribe);
+    it('should set up push token listener and return unsubscribe', () => {
+      const mockRemove = jest.fn();
+      (Notifications.addPushTokenListener as jest.Mock).mockReturnValue({ remove: mockRemove });
 
       const callback = jest.fn();
       const unsubscribe = service.onTokenRefresh(mockUserId, callback);
 
-      expect(mockMessaging().onTokenRefresh).toHaveBeenCalled();
-      expect(unsubscribe).toBe(mockUnsubscribe);
+      expect(Notifications.addPushTokenListener).toHaveBeenCalled();
+      
+      // Calling unsubscribe should call subscription.remove()
+      unsubscribe();
+      expect(mockRemove).toHaveBeenCalled();
     });
   });
 
   describe('deleteToken', () => {
-    it('should delete FCM token', async () => {
-      const mockMessaging = messaging as jest.MockedFunction<typeof messaging>;
-      mockMessaging().deleteToken.mockResolvedValue();
+    it('should unregister from push notifications', async () => {
+      (Notifications.unregisterForNotificationsAsync as jest.Mock).mockResolvedValue(undefined);
 
       await service.deleteToken();
 
-      expect(mockMessaging().deleteToken).toHaveBeenCalled();
+      expect(Notifications.unregisterForNotificationsAsync).toHaveBeenCalled();
     });
   });
 
   describe('setBadgeCount', () => {
-    it('should set iOS badge count (or skip if no expo-notifications)', async () => {
-      // This test may not be meaningful without expo-notifications
-      // Just verify it doesn't throw
-      await expect(service.setBadgeCount(5)).resolves.not.toThrow();
+    it('should set badge count via expo-notifications', async () => {
+      (Notifications.setBadgeCountAsync as jest.Mock).mockResolvedValue(true);
+
+      await service.setBadgeCount(5);
+
+      expect(Notifications.setBadgeCountAsync).toHaveBeenCalledWith(5);
     });
 
     it('should clear badge with clearBadge', async () => {
-      await expect(service.clearBadge()).resolves.not.toThrow();
+      (Notifications.setBadgeCountAsync as jest.Mock).mockResolvedValue(true);
+
+      await service.clearBadge();
+
+      expect(Notifications.setBadgeCountAsync).toHaveBeenCalledWith(0);
     });
   });
 });

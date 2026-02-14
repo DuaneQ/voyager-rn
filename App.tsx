@@ -12,12 +12,29 @@ import AppNavigator from './src/navigation/AppNavigator';
 import { AuthProvider } from './src/context/AuthContext';
 import { AlertProvider } from './src/context/AlertContext';
 import { UserProfileProvider } from './src/context/UserProfileContext';
+import * as Notifications from 'expo-notifications';
 import ErrorBoundary from './src/components/common/ErrorBoundary';
 import { NotificationInitializer } from './src/components/common/NotificationInitializer';
 import { setupGlobalErrorHandlers } from './src/utils/globalErrorHandler';
 
 // Initialize global error handlers for uncaught errors and unhandled promise rejections
 setupGlobalErrorHandlers();
+
+// Configure foreground notification display behavior
+// MUST be called at module level (outside React components) so it's registered
+// before any notification arrives. Without this, foreground notifications are silently dropped.
+if (Platform.OS !== 'web') {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      priority: Notifications.AndroidNotificationPriority.HIGH,
+    }),
+  });
+}
 
 // Enable react-native-screens for better performance and compatibility with React 19
 enableScreens(true);

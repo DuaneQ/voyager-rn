@@ -1,6 +1,6 @@
 /**
  * Unit tests for useNotifications hook
- * Tests state management and integration with NotificationService (FCM-based)
+ * Tests state management and integration with NotificationService (expo-notifications)
  */
 
 import { renderHook, act, waitFor } from '@testing-library/react-native';
@@ -8,9 +8,13 @@ import { useNotifications } from '../../hooks/useNotifications';
 import { notificationService } from '../../services/notification/NotificationService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Mock @react-native-firebase/messaging (auto-loaded from __mocks__)
-jest.mock('@react-native-firebase/messaging');
-jest.mock('@react-native-firebase/app');
+// Mock expo-notifications
+jest.mock('expo-notifications', () => ({
+  setNotificationHandler: jest.fn(),
+  addNotificationReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
+  addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
+  getLastNotificationResponseAsync: jest.fn().mockResolvedValue(null),
+}));
 
 // Mock AsyncStorage (auto-loaded from __mocks__)
 jest.mock('@react-native-async-storage/async-storage');

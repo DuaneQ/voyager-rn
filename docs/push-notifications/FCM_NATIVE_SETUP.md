@@ -1,134 +1,120 @@
-# Firebase Cloud Messaging (FCM) Native Setup
+# Push Notifications Setup — expo-notifications
 
-This guide covers the necessary native configuration for FCM push notifications using `@react-native-firebase/messaging`.
+> **Updated**: February 14, 2026  
+> **Status**: ✅ Implemented & Verified on Android  
+> **Library**: `expo-notifications` (replaced `@react-native-firebase/messaging`)
 
 ## Overview
 
-We use **Firebase Admin SDK** on the backend and **React Native Firebase** on the client to send/receive FCM tokens and notifications. This replaces the Expo Push Token implementation.
+Push notifications use **`expo-notifications`** to obtain native device push tokens:
+- **Android**: FCM device registration token (directly compatible with Firebase Admin SDK)
+- **iOS**: APNs device token (Firebase Admin SDK handles APNs → FCM mapping)
+
+The backend **Firebase Cloud Functions** send notifications via Firebase Admin SDK `messaging().sendEachForMulticast()`.
+
+## Architecture
+
+```
+[Device] → expo-notifications.getDevicePushTokenAsync() → native FCM/APNs token
+         → saved to Firestore: users/{uid}.fcmTokens[]
+[Backend] → Cloud Function trigger (new message, new match)
+          → reads fcmTokens[] from recipient's user doc
+          → Firebase Admin SDK messaging().sendEachForMulticast()
+          → FCM/APNs delivers to device
+```
+
+## Why expo-notifications (not @react-native-firebase/messaging)
+
+| Factor | @react-native-firebase/messaging | expo-notifications |
+|--------|----------------------------------|-------------------|
+| Expo compatibility | Requires `expo-dev-client` + config plugins + `npx expo prebuild` | Works natively with Expo managed workflow |
+| Native module linking | Manual — caused `RNFBAppModule not found` errors | Automatic via Expo plugin system |
+| Token type | FCM token | Same FCM token (via `getDevicePushTokenAsync`) |
+| Cost | Free | Free (identical — same FCM pipeline) |
+| Complexity | High (native setup per platform) | Low (plugin in app.json) |
 
 ## Prerequisites
 
-- ✅ Firebase project created (mundo1-dev / mundo1-1)
-- ✅ `google-services.json` (Android) and `GoogleService-Info.plist` (iOS) already in project
-- ✅ Firebase Web SDK already configured
+- ✅ Firebase project (`mundo1-1` for production)
+- ✅ `google-services.json` in project root (Android) — points to `mundo1-1`
+- ✅ `GoogleService-Info.plist` in project root (iOS) — points to `mundo1-1`
+- ✅ `expo-notifications` configured as plugin in `app.json`
+- ✅ `expo-device` installed (physical device detection)
 
-## iOS Setup
+## Configuration (app.json)
 
-### 1. Install CocoaPods Dependencies
-
-```bash
-cd ios
-pod install
-cd ..
+Already in place:
+```json
+["expo-notifications", {
+  "icon": "./assets/images/notification-icon.png",
+  "color": "#FF6B35",
+  "sounds": [],
+  "defaultChannel": "default"
+}]
 ```
 
-### 2. Enable Push Notifications Capability
+## Android Notification Channels
 
-1. Open `ios/TravalPass.xcworkspace` in Xcode
-2. Select the TravalPass target
-3. Click "Signing & Capabilities" tab
-4. Click "+ Capability" button
-5. Add "Push Notifications"
-6. Add "Background Modes"
-   - Check "Remote notifications"
+Three channels are created by `NotificationService.requestPermission()`:
 
-### 3. Upload APNs Certificate/Key to Firebase Console
+| Channel ID | Name | Used By |
+|-----------|------|---------|
+| `default` | Default | Fallback for any notification |
+| `matches` | Matches | `sendMatchNotification` cloud function |
+| `chat-messages` | Messages | `sendChatNotification` cloud function |
 
-1. Go to Firebase Console → Project Settings → Cloud Messaging
-2. Under "Apple app configuration":
-   - Upload your APNs Authentication Key (.p8 file)
-   - OR upload APNs Certificate (.p12 file)
+## Key Files
 
-**Note**: You likely already have this configured since the PWA uses FCM for web notifications.
-
-## Android Setup
-
-### 1. Verify google-services.json
-
-Ensure `google-services.json` is in `android/app/` (already present).
-
-### 2. Update android/build.gradle
-
-The project should already have:
-
-```gradle
-dependencies {
-    classpath 'com.google.gms:google-services:4.4.2'
-}
-```
-
-### 3. Update android/app/build.gradle
-
-Should already have:
-
-```gradle
-apply plugin: 'com.google.gms.google-services'
-```
-
-### 4. Add Notification Icon (Optional)
-
-Place notification icon at:
-```
-android/app/src/main/res/drawable/notification_icon.png
-```
-
-If not present, Android will use the app icon as fallback.
+| File | Purpose |
+|------|---------|
+| `App.tsx` | `Notifications.setNotificationHandler()` — called at module level (before React render) |
+| `src/services/notification/NotificationService.ts` | Permission, token CRUD, badge, channel creation |
+| `src/hooks/useNotifications.ts` | React hook — state management, registration flow, listeners |
+| `src/components/common/NotificationInitializer.tsx` | Triggers registration when user is authenticated |
 
 ## Testing
 
-### iOS Testing
-
+### Local development build (FREE — no EAS build needed)
 ```bash
-# Development build on physical device
+# Android
+npx expo run:android --device
+
+# iOS  
 npx expo run:ios --device
 ```
 
-**Note**: Push notifications do NOT work in iOS Simulator - requires physical device.
+### Send test notification
+Firebase Console → Cloud Messaging → Compose → "Send test message" → paste FCM token
 
-### Android Testing
+**Important**: Send from the **mundo1-1** (production) Firebase Console, not `mundo1-dev`, because `google-services.json` is configured for production.
 
-```bash
-# Development build
-npx expo run:android --device
+### Verify token in Firestore
+Firebase Console → Firestore → `users/{uid}` → check `fcmTokens` array
 
-# OR build via EAS and install on device
-eas build --profile development --platform android
-```
+## Dev vs Production Note
 
-## Verification Checklist
+| Config | Points To |
+|--------|----------|
+| `google-services.json` / `GoogleService-Info.plist` | `mundo1-1` (production) — **always** |
+| `firebase-config.js` (`__DEV__=true`) | `mundo1-dev` |
+| `firebase-config.js` (`__DEV__=false`) | `mundo1-1` |
 
-- [ ] iOS: Push Notifications and Background Modes capabilities enabled
-- [ ] iOS: APNs certificate/key uploaded to Firebase Console
-- [ ] Android: google-services.json in android/app/
-- [ ] Android: google-services plugin applied
-- [ ] Test on physical device (iOS Simulator doesn't support push)
-- [ ] Verify FCM token format (should be ~150+ char string, not ExponentPushToken)
-
-## Differences from Expo Push Tokens
-
-| Aspect | Expo Push Tokens | FCM Tokens (Current) |
-|--------|------------------|---------------------|
-| Format | `ExponentPushToken[abc123]` | Long alphanumeric string |
-| Where stored | Expo's servers | Direct to FCM/APNs |
-| Backend API | Expo Push API | Firebase Admin FCM |
-| iOS Simulator | Works | Does NOT work |
-| Dependency | `expo-notifications` | `@react-native-firebase/messaging` |
+In dev mode, FCM tokens are registered against `mundo1-1` (native config) but Firestore writes go to `mundo1-dev` (JS SDK). This means **push notifications only fully work in production builds** or when testing with `mundo1-1` Firebase Console.
 
 ## Troubleshooting
 
-### iOS: "No APNs certificate uploaded"
-- Upload APNs Auth Key or Certificate in Firebase Console → Cloud Messaging
-
-### Android: "Service not available"
-- Ensure google-services.json is correct
-- Check that com.google.gms.google-services plugin is applied
-
 ### Token is null
-- Check that permissions are granted
-- On iOS, ensure running on physical device (not simulator)
-- Verify Firebase project configuration
+- Ensure running on physical device (not emulator/simulator)
+- Check that notification permissions are granted
+- Verify `google-services.json` / `GoogleService-Info.plist` are present
 
-### Backend returns "invalid-registration-token"
+### Notifications not displaying
+- Ensure `Notifications.setNotificationHandler()` is called at module level in `App.tsx` (not inside a React component)
+- Check Android notification channels match what cloud functions send to
+
+### Dev mode: notifications don't arrive
+- Expected behavior — `google-services.json` points to production but JS SDK connects to dev Firestore
+- Test with production Firebase Console, or use production build
 - Ensure backend is using Firebase Admin FCM API (already implemented)
 - Verify token format is correct (not Expo token format)
 

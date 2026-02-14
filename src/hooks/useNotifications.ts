@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Notifications from 'expo-notifications';
 import { notificationService } from '../services/notification/NotificationService';
-import messaging from '../services/notification/messaging';
+import { navigateFromNotification } from '../navigation/navigationRef';
 
-// Storage key for persisting current device's FCM token
+// Storage key for persisting current device's push token
 const CURRENT_DEVICE_TOKEN_KEY = '@current_fcm_token';
 
 export interface UseNotificationsReturn {
@@ -17,12 +18,47 @@ export interface UseNotificationsReturn {
 }
 
 /**
- * Hook for managing FCM push notifications
+ * Hook for managing push notifications via expo-notifications
  * Handles permissions, token registration, and notification listeners
  * 
- * Uses Firebase Cloud Messaging directly for proper token compatibility
- * with Firebase Admin SDK backend.
+ * Uses expo-notifications getDevicePushTokenAsync() for native FCM/APNs tokens
+ * compatible with Firebase Admin SDK backend.
  */
+
+/**
+ * Handle deep linking from notification data payload.
+ * Maps cloud function notification types to navigation screens.
+ */
+function handleNotificationNavigation(data: Record<string, unknown> | undefined): void {
+  if (!data?.type) {
+    console.log('Notification has no type, skipping navigation');
+    return;
+  }
+
+  const type = data.type as string;
+
+  switch (type) {
+    case 'new_match':
+    case 'new_message': {
+      const connectionId = data.connectionId as string | undefined;
+      if (connectionId) {
+        console.log(`Navigating to ChatThread for ${type}:`, connectionId);
+        navigateFromNotification('ChatThread', { connectionId });
+      } else {
+        console.warn(`Missing connectionId for ${type} notification`);
+      }
+      break;
+    }
+    case 'video_comment': {
+      console.log('Navigating to Videos tab for video_comment');
+      navigateFromNotification('MainApp', { screen: 'Videos' });
+      break;
+    }
+    default:
+      console.log('Unknown notification type, skipping navigation:', type);
+  }
+}
+
 export function useNotifications(): UseNotificationsReturn {
   const [permissionStatus, setPermissionStatus] = useState<'granted' | 'denied' | 'undetermined' | null>(null);
   const [fcmToken, setFcmToken] = useState<string | null>(null);
@@ -50,12 +86,11 @@ export function useNotifications(): UseNotificationsReturn {
 
   /**
    * Register device for push notifications
-   * Gets FCM token and saves to Firestore
+   * Gets device push token and saves to Firestore
    * Web: No-op (returns immediately)
    */
   const registerForPushNotifications = async (userId: string): Promise<void> => {
     if (Platform.OS === 'web') {
-      console.log('Push notifications not supported on web');
       return;
     }
 
@@ -70,10 +105,10 @@ export function useNotifications(): UseNotificationsReturn {
         return;
       }
 
-      // Get FCM token
+      // Get device push token (FCM on Android, APNs on iOS)
       const token = await notificationService.getFCMToken();
       if (!token) {
-        console.warn('Failed to get FCM token');
+        console.warn('Failed to get device push token');
         return;
       }
 
@@ -95,8 +130,6 @@ export function useNotifications(): UseNotificationsReturn {
           setFcmToken(newToken);
         }
       );
-
-      console.log('Push notifications registered successfully');
     } catch (error) {
       console.error('Error registering for push notifications:', error);
     } finally {
@@ -128,11 +161,9 @@ export function useNotifications(): UseNotificationsReturn {
       if (currentDeviceToken) {
         // Remove ONLY this device's token (preserves other devices)
         await notificationService.removeToken(userId, currentDeviceToken);
-        console.log('Current device push notification token cleared');
       } else if (fcmToken) {
         // Fallback to in-memory token if AsyncStorage unavailable
         await notificationService.removeToken(userId, fcmToken);
-        console.log('Current device push notification token cleared');
       } else {
         console.warn('No token found to remove - may have already been cleared');
       }
@@ -140,70 +171,62 @@ export function useNotifications(): UseNotificationsReturn {
       // Clean up local storage
       await AsyncStorage.removeItem(CURRENT_DEVICE_TOKEN_KEY);
       setFcmToken(null);
-      console.log('Push notifications unregistered for current device');
     } catch (error) {
       console.error('Error unregistering push notifications:', error);
     }
   };
 
   /**
-   * Set up foreground notification listeners
-   * Handles notifications when app is in foreground
-   * Web: Skipped (no native notifications)
+   * Set up notification listeners for foreground and interaction events
+   * NOTE: setNotificationHandler is called at module level in App.tsx
+   * (must be outside React components to catch notifications early)
    */
   useEffect(() => {
-    if (Platform.OS === 'web' || !messaging) {
+    if (Platform.OS === 'web') {
       return;
     }
 
-    // Set up foreground message handler
-    const unsubscribeOnMessage = messaging().onMessage(async (remoteMessage: any) => {
-      console.log('Foreground notification received:', remoteMessage);
-      
-      // Firebase handles notification display automatically
-      // Could trigger in-app UI updates here (e.g., update chat badge, show toast)
-      // TODO: Handle in-app notification display or updates
-    });
+    // Listen for notifications received while app is in foreground
+    const notificationListener = Notifications.addNotificationReceivedListener(
+      (_notification) => {
+        // Could trigger in-app UI updates here (e.g., update chat badge, show toast)
+      }
+    );
 
-    // Cleanup listener on unmount
-    return () => {
-      unsubscribeOnMessage();
-    };
-  }, []);
-
-  /**
-   * Handle notification opened when app launches from quit state or background
-   */
-  useEffect(() => {
-    if (Platform.OS === 'web' || !messaging) {
-      return;
-    }
-
-    // Check if app was opened from a notification (from quit state)
-    messaging()
-      .getInitialNotification()
-      .then((remoteMessage: any) => {
-        if (remoteMessage) {
-          console.log('App opened from notification (quit state):', remoteMessage);
-          // TODO: Handle deep linking based on notification data
-          // Example: navigate to chat screen
-        }
-      })
-      .catch((error: any) => {
-        console.error('Error getting initial notification:', error);
-      });
-
-    // Listen for notification opened events (from background)
-    const unsubscribeOnNotificationOpenedApp = messaging().onNotificationOpenedApp(
-      (remoteMessage: any) => {
-        console.log('App opened from notification (background):', remoteMessage);
-        // TODO: Handle deep linking based on notification data
+    // Listen for notification interactions (taps)
+    const responseListener = Notifications.addNotificationResponseReceivedListener(
+      (response) => {
+        const data = response.notification.request.content.data;
+        handleNotificationNavigation(data);
       }
     );
 
     return () => {
-      unsubscribeOnNotificationOpenedApp();
+      notificationListener.remove();
+      responseListener.remove();
     };
+  }, []);
+
+  /**
+   * Handle notification that launched the app from quit state
+   */
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      return;
+    }
+
+    // Check if app was opened from a notification (from quit state)
+    Notifications.getLastNotificationResponseAsync()
+      .then((response) => {
+        if (response) {
+          const data = response.notification.request.content.data;
+          // Delay navigation slightly to let NavigationContainer mount
+          setTimeout(() => handleNotificationNavigation(data), 500);
+        }
+      })
+      .catch((error) => {
+        console.error('Error getting initial notification:', error);
+      });
   }, []);
 
   /**
