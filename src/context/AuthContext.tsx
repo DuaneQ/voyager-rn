@@ -329,7 +329,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const currentDeviceToken = await AsyncStorage.getItem('@current_fcm_token');
           if (currentDeviceToken) {
             await service.removeToken(user.uid, currentDeviceToken);
-            console.log('Current device push notification token cleared');
           }
         } catch (error) {
           console.warn('Failed to clear push token for current device, continuing with sign out:', error);

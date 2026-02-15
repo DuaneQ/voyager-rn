@@ -7,6 +7,12 @@ import React from 'react';
 import { render, waitFor } from '@testing-library/react-native';
 import { AIItineraryGenerationModal } from '../../components/modals/AIItineraryGenerationModal';
 import * as firebaseCfg from '../../config/firebaseConfig';
+import { AlertProvider } from '../../context/AlertContext';
+
+// Helper to render with AlertProvider
+const renderWithProvider = (component: React.ReactElement) => {
+  return render(<AlertProvider>{component}</AlertProvider>);
+};
 
 // Mock dependencies
 jest.mock('../../hooks/useAIGenerationV2', () => ({
@@ -96,7 +102,7 @@ describe('AIItineraryGenerationModal - Usage Tracking Integration', () => {
     it('should call useUsageTracking hook when modal renders', () => {
       const useUsageTracking = require('../../hooks/useUsageTracking');
       
-      render(<AIItineraryGenerationModal {...defaultProps} />);
+      renderWithProvider(<AIItineraryGenerationModal {...defaultProps} />);
       
       expect(useUsageTracking.useUsageTracking).toHaveBeenCalled();
     });
@@ -104,7 +110,7 @@ describe('AIItineraryGenerationModal - Usage Tracking Integration', () => {
     it('should extract hasReachedAILimit from useUsageTracking', () => {
       const useUsageTracking = require('../../hooks/useUsageTracking');
       
-      render(<AIItineraryGenerationModal {...defaultProps} />);
+      renderWithProvider(<AIItineraryGenerationModal {...defaultProps} />);
       
       const hookReturn = useUsageTracking.useUsageTracking.mock.results[0].value;
       expect(hookReturn.hasReachedAILimit).toBe(mockHasReachedAILimit);
@@ -113,7 +119,7 @@ describe('AIItineraryGenerationModal - Usage Tracking Integration', () => {
     it('should extract trackAICreation from useUsageTracking', () => {
       const useUsageTracking = require('../../hooks/useUsageTracking');
       
-      render(<AIItineraryGenerationModal {...defaultProps} />);
+      renderWithProvider(<AIItineraryGenerationModal {...defaultProps} />);
       
       const hookReturn = useUsageTracking.useUsageTracking.mock.results[0].value;
       expect(hookReturn.trackAICreation).toBe(mockTrackAICreation);
@@ -125,7 +131,7 @@ describe('AIItineraryGenerationModal - Usage Tracking Integration', () => {
       // PWA imports: import { useUsageTracking } from '../../hooks/useUsageTracking';
       const useUsageTracking = require('../../hooks/useUsageTracking');
       
-      render(<AIItineraryGenerationModal {...defaultProps} />);
+      renderWithProvider(<AIItineraryGenerationModal {...defaultProps} />);
       
       expect(useUsageTracking.useUsageTracking).toHaveBeenCalled();
     });
@@ -134,7 +140,7 @@ describe('AIItineraryGenerationModal - Usage Tracking Integration', () => {
       // PWA pattern: const { hasReachedAILimit, trackAICreation } = useUsageTracking();
       const useUsageTracking = require('../../hooks/useUsageTracking');
       
-      render(<AIItineraryGenerationModal {...defaultProps} />);
+      renderWithProvider(<AIItineraryGenerationModal {...defaultProps} />);
       
       const hookReturn = useUsageTracking.useUsageTracking.mock.results[0].value;
       expect(hookReturn.hasReachedAILimit).toBeDefined();
@@ -144,7 +150,7 @@ describe('AIItineraryGenerationModal - Usage Tracking Integration', () => {
 
   describe('Modal Rendering', () => {
     it('should render modal header', async () => {
-      const { getAllByText } = render(
+      const { getAllByText } = renderWithProvider(
         <AIItineraryGenerationModal {...defaultProps} />
       );
 
@@ -158,7 +164,7 @@ describe('AIItineraryGenerationModal - Usage Tracking Integration', () => {
     it('should render with usage tracking initialized', () => {
       const useUsageTracking = require('../../hooks/useUsageTracking');
       
-      const { getAllByText } = render(
+      const { getAllByText } = renderWithProvider(
         <AIItineraryGenerationModal {...defaultProps} />
       );
 

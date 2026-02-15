@@ -148,7 +148,11 @@ describe('NotificationService (expo-notifications)', () => {
       expect(mockArrayUnion).toHaveBeenCalledWith(mockToken);
       expect(mockUpdateDoc).toHaveBeenCalledWith(
         { path: `users/${mockUserId}` },
-        { fcmTokens: { _type: 'arrayUnion', value: mockToken } }
+        { 
+          fcmTokens: { _type: 'arrayUnion', value: mockToken },
+          lastTokenPlatform: 'ios',
+          lastTokenRegistered: expect.any(String)
+        }
       );
     });
 
@@ -200,7 +204,11 @@ describe('NotificationService (expo-notifications)', () => {
       expect(mockDoc).toHaveBeenCalled();
       expect(mockUpdateDoc).toHaveBeenCalledWith(
         { path: `users/${mockUserId}` },
-        { fcmTokens: [] }
+        { 
+          fcmTokens: [],
+          lastTokenPlatform: null,
+          lastTokenRegistered: null
+        }
       );
     });
   });

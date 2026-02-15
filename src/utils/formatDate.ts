@@ -183,11 +183,49 @@ export function formatRelativeTime(timestamp: Timestamp | Date | null | undefine
  * Prevents timezone shift issues where dates display as previous day.
  * 
  * @param dateString - Date string in YYYY-MM-DD format
- * @returns Date object in local timezone
+ * @returns Date object in local timezone, or Invalid Date if format is wrong
  */
 export function parseLocalDate(dateString: string): Date {
-  const [year, month, day] = dateString.split('-').map(Number);
-  return new Date(year, month - 1, day);
+  // Validate input
+  if (!dateString || typeof dateString !== 'string') {
+    console.warn('[parseLocalDate] Invalid input:', dateString);
+    return new Date(NaN); // Return Invalid Date
+  }
+  
+  // Validate YYYY-MM-DD format
+  const parts = dateString.split('-');
+  if (parts.length !== 3) {
+    console.warn('[parseLocalDate] Invalid date format (expected YYYY-MM-DD):', dateString);
+    return new Date(NaN);
+  }
+  
+  const [year, month, day] = parts.map(Number);
+  
+  // Validate parsed numbers
+  if (isNaN(year) || isNaN(month) || isNaN(day)) {
+    console.warn('[parseLocalDate] Non-numeric date components:', dateString);
+    return new Date(NaN);
+  }
+  
+  // Basic range checks for month and day
+  if (month < 1 || month > 12 || day < 1 || day > 31) {
+    console.warn('[parseLocalDate] Out-of-range date components:', dateString);
+    return new Date(NaN);
+  }
+  
+  // Create date and validate it's real (catches invalid dates like Feb 31)
+  const date = new Date(year, month - 1, day);
+  if (
+    isNaN(date.getTime()) ||
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    console.warn('[parseLocalDate] Invalid date (non-existent calendar day):', dateString);
+    return new Date(NaN);
+  }
+  
+  return date;
 }
 
 /**

@@ -208,6 +208,7 @@ const SearchPage: React.FC = () => {
     // Track usage (checks limit with fresh data internally)
     const success = await trackView();
     if (!success) {
+      console.error('[SearchPage] ⛔ Like BLOCKED: trackView returned false (limit reached)');
       if (Platform.OS === 'web') {
         showAlert('info', 'Daily limit reached. Tap Upgrade for unlimited views and AI Itineraries');
       } else {
@@ -220,7 +221,6 @@ const SearchPage: React.FC = () => {
       }
       return;
     }
-
     try {
 
       // Save as viewed
@@ -306,6 +306,7 @@ const SearchPage: React.FC = () => {
     // Track usage (checks limit with fresh data internally)
     const success = await trackView();
     if (!success) {
+      console.error('[SearchPage] ⛔ Dislike BLOCKED: trackView returned false (limit reached)');
       if (Platform.OS === 'web') {
         showAlert('info', 'Daily limit reached. Tap Upgrade for unlimited views and 20 AI Itineraries per day');
       } else {
@@ -318,7 +319,6 @@ const SearchPage: React.FC = () => {
       }
       return;
     }
-
     try {
       // Save as viewed
       saveViewedItinerary(itinerary.id);

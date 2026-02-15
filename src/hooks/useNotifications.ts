@@ -31,7 +31,6 @@ export interface UseNotificationsReturn {
  */
 function handleNotificationNavigation(data: Record<string, unknown> | undefined): void {
   if (!data?.type) {
-    console.log('Notification has no type, skipping navigation');
     return;
   }
 
@@ -42,7 +41,6 @@ function handleNotificationNavigation(data: Record<string, unknown> | undefined)
     case 'new_message': {
       const connectionId = data.connectionId as string | undefined;
       if (connectionId) {
-        console.log(`Navigating to ChatThread for ${type}:`, connectionId);
         navigateFromNotification('ChatThread', { connectionId });
       } else {
         console.warn(`Missing connectionId for ${type} notification`);
@@ -50,7 +48,6 @@ function handleNotificationNavigation(data: Record<string, unknown> | undefined)
       break;
     }
     case 'video_comment': {
-      console.log('Navigating to Videos tab for video_comment');
       navigateFromNotification('MainApp', { screen: 'Videos' });
       break;
     }
@@ -89,7 +86,7 @@ export function useNotifications(): UseNotificationsReturn {
    * Gets device push token and saves to Firestore
    * Web: No-op (returns immediately)
    */
-  const registerForPushNotifications = async (userId: string): Promise<void> => {
+  const registerForPushNotifications = useCallback(async (userId: string): Promise<void> => {
     if (Platform.OS === 'web') {
       return;
     }
@@ -119,7 +116,6 @@ export function useNotifications(): UseNotificationsReturn {
       
       // Store token locally for device-specific cleanup on sign-out
       await AsyncStorage.setItem(CURRENT_DEVICE_TOKEN_KEY, token);
-
       // Set up token refresh listener
       if (tokenRefreshUnsubscribe.current) {
         tokenRefreshUnsubscribe.current();
@@ -135,7 +131,7 @@ export function useNotifications(): UseNotificationsReturn {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   /**
    * Unregister device from push notifications
@@ -143,7 +139,7 @@ export function useNotifications(): UseNotificationsReturn {
    * This ensures other devices remain registered for notifications
    * Web: No-op (returns immediately)
    */
-  const unregisterPushNotifications = async (userId: string): Promise<void> => {
+  const unregisterPushNotifications = useCallback(async (userId: string): Promise<void> => {
     if (Platform.OS === 'web') {
       return;
     }
@@ -174,7 +170,7 @@ export function useNotifications(): UseNotificationsReturn {
     } catch (error) {
       console.error('Error unregistering push notifications:', error);
     }
-  };
+  }, [fcmToken]);
 
   /**
    * Set up notification listeners for foreground and interaction events
@@ -188,7 +184,11 @@ export function useNotifications(): UseNotificationsReturn {
 
     // Listen for notifications received while app is in foreground
     const notificationListener = Notifications.addNotificationReceivedListener(
-      (_notification) => {
+      (notification) => {
+        console.log('🔔 Notification received in foreground:', {
+          title: notification.request.content.title,
+          body: notification.request.content.body,
+        });
         // Could trigger in-app UI updates here (e.g., update chat badge, show toast)
       }
     );

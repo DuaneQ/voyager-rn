@@ -8,7 +8,7 @@ import { getFirestore, doc, updateDoc, getDoc } from 'firebase/firestore';
 import * as firebaseCfg from '../config/firebaseConfig';
 
 const FREE_DAILY_LIMIT = 10;
-const FREE_DAILY_AI_LIMIT = 5;
+const FREE_DAILY_AI_LIMIT = 3;
 const PREMIUM_DAILY_AI_LIMIT = 20;
 
 export const useUsageTracking = () => {
@@ -24,9 +24,15 @@ export const useUsageTracking = () => {
     return effective?.currentUser?.uid;
   };
 
-  // Get today's date in YYYY-MM-DD format (same as PWA)
+  // Get today's date in YYYY-MM-DD format using LOCAL timezone (not UTC)
+  // CRITICAL: Must use local date to match user's perception of "today"
+  // Previous UTC-based approach caused date mismatches for users in non-UTC timezones
   const getTodayString = () => {
-    return new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   // Load user profile from Firestore
@@ -71,23 +77,42 @@ const docRef = doc((firebaseCfg as any).db, 'users', userIdNow);
 
   // Check if daily limit reached (same logic as PWA)
   const hasReachedLimit = useCallback(() => {
-    if (!userProfile) return false;
-    if (hasPremium()) return false; // Premium users have unlimited views
+    if (!userProfile) {
+      return false;
+    }
+    
+    const isPremium = hasPremium();
+    if (isPremium) {
+      return false; // Premium users have unlimited views
+    }
     
     const today = getTodayString();
     const dailyUsage = userProfile.dailyUsage;
     
-    if (!dailyUsage || dailyUsage.date !== today) return false;
-    return dailyUsage.viewCount >= FREE_DAILY_LIMIT;
+    if (!dailyUsage || dailyUsage.date !== today) {
+      return false;
+    }
+    
+    const reached = dailyUsage.viewCount >= FREE_DAILY_LIMIT;
+    if (reached) {
+      console.log('[useUsageTracking] ⛔ View limit REACHED:', `${dailyUsage.viewCount}/${FREE_DAILY_LIMIT}`);
+    } else {
+      console.log('[useUsageTracking] ✅ View limit OK:', `${dailyUsage.viewCount}/${FREE_DAILY_LIMIT}`);
+    }
+    return reached;
   }, [userProfile, hasPremium]);
 
   // Track a view (same logic as PWA)
   const trackView = useCallback(async (): Promise<boolean> => {
     const userIdNow = getCurrentUserId();
     if (!userIdNow) {
-      console.error('No user ID or profile found');
+      console.error('[useUsageTracking] ❌ trackView: No user ID found');
       return false;
     }
+
+    console.log('[useUsageTracking] 🚀 trackView START:', {
+      localViewCount: userProfile?.dailyUsage?.viewCount || 0
+    });
 
     // Fetch fresh data from Firestore before checking limit
     try {
@@ -113,12 +138,19 @@ const docRef = doc((firebaseCfg as any).db, 'users', userIdNow);
           }
         }
         
-        if (isPremium) return true; // Premium users unlimited
+        if (isPremium) {
+          console.log('[useUsageTracking] ⭐ Premium user - view tracking skipped');
+          return true; // Premium users unlimited
+        }
         
         // Check limit with fresh data
         const today = getTodayString();
         const dailyUsage = freshProfile.dailyUsage;
         if (dailyUsage && dailyUsage.date === today && dailyUsage.viewCount >= FREE_DAILY_LIMIT) {
+          console.error('[useUsageTracking] ⛔ trackView BLOCKED: Limit already reached!', {
+            currentCount: dailyUsage.viewCount,
+            limit: FREE_DAILY_LIMIT
+          });
           return false;
         }
         
@@ -127,6 +159,12 @@ const docRef = doc((firebaseCfg as any).db, 'users', userIdNow);
         if (dailyUsage && dailyUsage.date === today) {
           newViewCount = (dailyUsage.viewCount || 0) + 1;
         }
+
+        console.log('[useUsageTracking] ➡️ Incrementing view count:', {
+          oldCount: dailyUsage?.viewCount || 0,
+          newCount: newViewCount,
+          limit: FREE_DAILY_LIMIT
+        });
 
         const updatedUsage = {
           date: today,
@@ -139,7 +177,6 @@ const docRef = doc((firebaseCfg as any).db, 'users', userIdNow);
         await updateDoc(docRef, {
           dailyUsage: updatedUsage
         });
-
         // Update local state
         setUserProfile(prev => ({
           ...prev,
@@ -149,9 +186,10 @@ const docRef = doc((firebaseCfg as any).db, 'users', userIdNow);
         return true;
       }
       
+      console.error('[useUsageTracking] ❌ trackView: Document does not exist');
       return false;
     } catch (error) {
-      console.error('Error tracking view:', error);
+      console.error('[useUsageTracking] ❌ trackView FAILED: Firestore error', error);
       return false;
     } finally {
       setIsLoading(false);
@@ -160,33 +198,73 @@ const docRef = doc((firebaseCfg as any).db, 'users', userIdNow);
 
   // AI-specific tracking (same logic as PWA)
   const hasReachedAILimit = useCallback(() => {
-    if (!userProfile) return false;
+    if (!userProfile) {
+      console.log('[useUsageTracking] ❌ hasReachedAILimit: No userProfile loaded');
+      return false;
+    }
     const today = getTodayString();
-    const aiLimit = hasPremium() ? PREMIUM_DAILY_AI_LIMIT : FREE_DAILY_AI_LIMIT;
+    const isPremium = hasPremium();
+    const aiLimit = isPremium ? PREMIUM_DAILY_AI_LIMIT : FREE_DAILY_AI_LIMIT;
     const aiUsage = userProfile.dailyUsage?.aiItineraries;
-    if (!aiUsage || aiUsage.date !== today) return false;
-    return aiUsage.count >= aiLimit;
+    
+    console.log('[useUsageTracking] 🔍 hasReachedAILimit check:', {
+      today,
+      isPremium,
+      aiLimit,
+      currentCount: aiUsage?.count || 0,
+      usageDate: aiUsage?.date,
+      hasReached: aiUsage?.count >= aiLimit
+    });
+    
+    if (!aiUsage || aiUsage.date !== today) {
+      console.log('[useUsageTracking] ✅ No AI usage for today yet, limit not reached');
+      return false;
+    }
+    
+    const reached = aiUsage.count >= aiLimit;
+    if (reached) {
+      console.log('[useUsageTracking] ⛔ AI limit REACHED:', `${aiUsage.count}/${aiLimit}`);
+    } else {
+      console.log('[useUsageTracking] ✅ AI limit OK:', `${aiUsage.count}/${aiLimit}`);
+    }
+    return reached;
   }, [userProfile, hasPremium]);
 
   const getRemainingAICreations = useCallback(() => {
-    if (!userProfile) return 0;
+    if (!userProfile) {
+      console.log('[useUsageTracking] ⚠️ getRemainingAICreations: No userProfile');
+      return 0;
+    }
     const today = getTodayString();
-    const aiLimit = hasPremium() ? PREMIUM_DAILY_AI_LIMIT : FREE_DAILY_AI_LIMIT;
+    const isPremium = hasPremium();
+    const aiLimit = isPremium ? PREMIUM_DAILY_AI_LIMIT : FREE_DAILY_AI_LIMIT;
     const aiUsage = userProfile.dailyUsage?.aiItineraries;
-    if (!aiUsage || aiUsage.date !== today) return aiLimit;
-    return Math.max(0, aiLimit - aiUsage.count);
+    
+    const remaining = !aiUsage || aiUsage.date !== today 
+      ? aiLimit 
+      : Math.max(0, aiLimit - aiUsage.count);
+    
+    console.log('[useUsageTracking] 📊 getRemainingAICreations:', {
+      isPremium,
+      aiLimit,
+      currentCount: aiUsage?.count || 0,
+      remaining
+    });
+    
+    return remaining;
   }, [userProfile, hasPremium]);
 
   const trackAICreation = useCallback(async (): Promise<boolean> => {
     const userIdNow = getCurrentUserId();
     if (!userIdNow) {
-      console.error('No user ID or profile found');
+      console.error('[useUsageTracking] ❌ trackAICreation: No user ID found');
       return false;
     }
 
     // Determine today's date and limits
     const today = getTodayString();
-    const aiLimit = hasPremium() ? PREMIUM_DAILY_AI_LIMIT : FREE_DAILY_AI_LIMIT;
+    const isPremium = hasPremium();
+    const aiLimit = isPremium ? PREMIUM_DAILY_AI_LIMIT : FREE_DAILY_AI_LIMIT;
 
     // Start with any available authoritative usage (profile first)
     let currentAIUsage: any = userProfile?.dailyUsage?.aiItineraries;
@@ -198,20 +276,34 @@ const docRef = doc((firebaseCfg as any).db, 'users', userIdNow);
       if (snap && snap.exists()) {
         const data = snap.data();
         currentAIUsage = data?.dailyUsage?.aiItineraries || currentAIUsage;
+        console.log('[useUsageTracking] 📥 Fetched fresh Firestore data:', {
+          firestoreCount: currentAIUsage?.count || 0,
+          firestoreDate: currentAIUsage?.date
+        });
       }
     } catch (e) {
       // Non-fatal: fall back to any available local profile
-      console.warn('[useUsageTracking] failed to fetch latest AI usage before increment', e);
+      console.warn('[useUsageTracking] ⚠️ Failed to fetch latest AI usage before increment', e);
     }
     
     let newCount = 1;
     if (currentAIUsage && currentAIUsage.date === today) {
       if (currentAIUsage.count >= aiLimit) {
         // Already reached or exceeded
+        console.error('[useUsageTracking] ⛔ trackAICreation BLOCKED: Limit already reached!', {
+          currentCount: currentAIUsage.count,
+          aiLimit
+        });
         return false;
       }
       newCount = currentAIUsage.count + 1;
     }
+
+    console.log('[useUsageTracking] ➡️ Incrementing AI count:', {
+      oldCount: currentAIUsage?.count || 0,
+      newCount,
+      aiLimit
+    });
 
     const updatedAIUsage = {
       date: today,
@@ -226,6 +318,11 @@ const docRef = doc((firebaseCfg as any).db, 'users', userIdNow);
         ['dailyUsage.aiItineraries']: updatedAIUsage,
       });
 
+      console.log('[useUsageTracking] ✅ trackAICreation SUCCESS: Firestore updated', {
+        newCount,
+        remaining: aiLimit - newCount
+      });
+
       // Update local state
       const updatedProfile = {
         ...userProfile,
@@ -238,7 +335,7 @@ const docRef = doc((firebaseCfg as any).db, 'users', userIdNow);
 
       return true;
     } catch (error) {
-      console.error('Error tracking AI creation:', error);
+      console.error('[useUsageTracking] ❌ trackAICreation FAILED: Firestore error', error);
       return false;
     } finally {
       setIsLoading(false);

@@ -19,6 +19,8 @@ import {
   ActivityIndicator,
   Image,
   StatusBar,
+  Modal,
+  Dimensions,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -120,6 +122,7 @@ const ChatThreadScreen: React.FC<ChatThreadScreenProps> = (props) => {
   const [manageMembersVisible, setManageMembersVisible] = useState(false);
   const [addUsersVisible, setAddUsersVisible] = useState(false);
   const [removeLoading, setRemoveLoading] = useState<string | null>(null);
+  const [enlargedImageUrl, setEnlargedImageUrl] = useState<string | null>(null);
 
   const flatListRef = useRef<FlatList>(null);
   const currentUserId = userProfile?.uid;
@@ -473,19 +476,21 @@ const ChatThreadScreen: React.FC<ChatThreadScreenProps> = (props) => {
             
             {/* Image if present */}
             {item.imageUrl && isValidHttpUrl(item.imageUrl) && (
-              <Image
-                source={{ uri: item.imageUrl }}
-                style={styles.messageImage}
-                resizeMode="cover"
-                onError={(e) => {
-                  // Suppress known errors from corrupted/invalid images
-                  const errorStr = e.nativeEvent.error?.toString() || '';
-                  if (!errorStr.includes('unknown image format') && 
-                      !errorStr.includes('Error decoding image data')) {
-                    console.error('[ChatThread] Image load error for message:', item.id, e.nativeEvent.error);
-                  }
-                }}
-              />
+              <TouchableOpacity onPress={() => setEnlargedImageUrl(item.imageUrl || null)}>
+                <Image
+                  source={{ uri: item.imageUrl }}
+                  style={styles.messageImage}
+                  resizeMode="cover"
+                  onError={(e) => {
+                    // Suppress known errors from corrupted/invalid images
+                    const errorStr = e.nativeEvent.error?.toString() || '';
+                    if (!errorStr.includes('unknown image format') && 
+                        !errorStr.includes('Error decoding image data')) {
+                      console.error('[ChatThread] Image load error for message:', item.id, e.nativeEvent.error);
+                    }
+                  }}
+                />
+              </TouchableOpacity>
             )}
           </View>
           
@@ -728,6 +733,38 @@ const ChatThreadScreen: React.FC<ChatThreadScreenProps> = (props) => {
         currentUserId={currentUserId || ''}
         currentChatUserIds={connection?.users || []}
       />
+
+      {/* Image Viewer Modal */}
+      <Modal
+        visible={!!enlargedImageUrl}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEnlargedImageUrl(null)}
+      >
+        <View style={styles.imageViewerContainer}>
+          <TouchableOpacity
+            style={styles.imageViewerOverlay}
+            activeOpacity={1}
+            onPress={() => setEnlargedImageUrl(null)}
+          >
+            <View style={styles.imageViewerContent}>
+              {enlargedImageUrl && (
+                <Image
+                  source={{ uri: enlargedImageUrl }}
+                  style={styles.enlargedImage}
+                  resizeMode="contain"
+                />
+              )}
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.imageViewerCloseButton}
+            onPress={() => setEnlargedImageUrl(null)}
+          >
+            <Ionicons name="close" size={30} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -918,6 +955,40 @@ const styles = StyleSheet.create({
     height: 200,
     borderRadius: 8,
     marginTop: 8,
+  },
+  imageViewerContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imageViewerOverlay: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imageViewerContent: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  enlargedImage: {
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').height,
+  },
+  imageViewerCloseButton: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 60 : 40,
+    right: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
   },
   messageTime: {
     fontSize: 11,

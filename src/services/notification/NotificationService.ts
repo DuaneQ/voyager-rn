@@ -42,10 +42,8 @@ export class NotificationService {
    * @returns Promise<boolean> - true if permission granted, false otherwise
    */
   async requestPermission(): Promise<boolean> {
-    console.log('🔔 NotificationService.requestPermission() called');
     
     if (Platform.OS === 'web') {
-      console.log('Push notifications not supported on web platform');
       return false;
     }
 
@@ -82,7 +80,6 @@ export class NotificationService {
         ]);
       }
 
-      console.log('📱 Requesting push notification permission...');
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
 
@@ -96,7 +93,6 @@ export class NotificationService {
         return false;
       }
 
-      console.log('✅ Push notification permission granted');
       return true;
     } catch (error) {
       console.error('❌ Error requesting push notification permission:', error);
@@ -117,11 +113,8 @@ export class NotificationService {
    * 
    * @returns Promise<string | null> - Device push token or null if unavailable
    */
-  async getFCMToken(): Promise<string | null> {
-    console.log('🔑 NotificationService.getFCMToken() called');
-    
+  async getFCMToken(): Promise<string | null> {    
     if (Platform.OS === 'web') {
-      console.log('⚠️ Skipping push token on web platform');
       return null;
     }
 
@@ -131,7 +124,6 @@ export class NotificationService {
     }
 
     try {
-      console.log('📱 Requesting device push token...');
       // getDevicePushTokenAsync returns native FCM token (Android) or APNs token (iOS)
       const tokenData = await Notifications.getDevicePushTokenAsync();
       let token = tokenData.data;
@@ -145,21 +137,13 @@ export class NotificationService {
 
       // iOS: APNs token must be converted to FCM registration token
       if (Platform.OS === 'ios') {
-        console.log('🍎 iOS detected — converting APNs token to FCM token...');
         const fcmToken = await this.convertAPNsToFCM(token);
         if (!fcmToken) {
           console.error('❌ Failed to convert APNs token to FCM token');
           return null;
         }
-        console.log('✅ FCM token obtained from APNs conversion:', 
-          fcmToken.substring(0, 30) + '...' + fcmToken.substring(fcmToken.length - 10)
-        );
         return fcmToken;
       }
-
-      console.log('✅ Device push token obtained:', 
-        token.substring(0, 30) + '...' + token.substring(token.length - 10)
-      );
       return token;
     } catch (error) {
       console.error('❌ Error getting device push token:', error);
@@ -199,17 +183,14 @@ export class NotificationService {
       try {
         const result = await registerFn({ apnsToken, sandbox: true });
         if (result.data.fcmToken) {
-          console.log('🍎 APNs → FCM conversion succeeded (sandbox)');
           return result.data.fcmToken;
         }
       } catch (sandboxError) {
-        console.log('🍎 Sandbox conversion failed, trying production...');
       }
 
       // Fall back to production (App Store builds)
       const result = await registerFn({ apnsToken, sandbox: false });
       if (result.data.fcmToken) {
-        console.log('🍎 APNs → FCM conversion succeeded (production)');
         return result.data.fcmToken;
       }
 
@@ -223,22 +204,21 @@ export class NotificationService {
   /**
    * Save push token to Firestore user document
    * Adds token to fcmTokens array field (idempotent - won't add duplicates)
+   * Also stores platform info to identify tokens later
    * 
    * @param userId - Firestore user ID
    * @param token - Device push token
    */
   async saveToken(userId: string, token: string): Promise<void> {
-    console.log('💾 NotificationService.saveToken() called', {
-      userId,
-      tokenPreview: token.substring(0, 30) + '...' + token.substring(token.length - 10)
-    });
     try {
-      const userRef = doc(this.db, 'users', userId);
-      console.log('📝 Saving push token to Firestore users/' + userId);
+      const userRef = doc(this.db, 'users', userId);      
+      // Save token with platform info for debugging
       await updateDoc(userRef, {
         fcmTokens: arrayUnion(token),
+        // Store last registered platform and timestamp for debugging
+        lastTokenPlatform: Platform.OS,
+        lastTokenRegistered: new Date().toISOString(),
       });
-      console.log('✅ Push token saved to Firestore successfully');
     } catch (error) {
       console.error('❌ Error saving push token to Firestore:', error);
       if (error instanceof Error) {
@@ -264,7 +244,6 @@ export class NotificationService {
       await updateDoc(userRef, {
         fcmTokens: arrayRemove(token),
       });
-      console.log('Push token removed from Firestore');
     } catch (error) {
       console.error('Error removing push token:', error);
       // Don't throw - sign-out should continue even if token cleanup fails
@@ -282,10 +261,11 @@ export class NotificationService {
       const userRef = doc(this.db, 'users', userId);
       await updateDoc(userRef, {
         fcmTokens: [],
+        lastTokenPlatform: null,
+        lastTokenRegistered: null,
       });
-      console.log('All push tokens removed from Firestore');
     } catch (error) {
-      console.error('Error removing all push tokens:', error);
+      console.error('❌ Error removing all push tokens:', error);
       // Don't throw - sign-out should continue even if token cleanup fails
     }
   }
@@ -303,11 +283,21 @@ export class NotificationService {
       return () => {}; // No-op on web
     }
 
-    const subscription = Notifications.addPushTokenListener((tokenData) => {
-      const token = typeof tokenData.data === 'string' ? tokenData.data : String(tokenData.data);
-      console.log('Push token refreshed:', token.substring(0, 20) + '...');
+    const subscription = Notifications.addPushTokenListener(async (tokenData) => {
+      let token = typeof tokenData.data === 'string' ? tokenData.data : String(tokenData.data);
       
-      // Save new token to Firestore
+      // iOS: The refreshed token is a raw APNs token — must convert to FCM
+      // before saving to Firestore (same as initial registration in getFCMToken)
+      if (Platform.OS === 'ios') {
+        const fcmToken = await this.convertAPNsToFCM(token);
+        if (!fcmToken) {
+          console.error('❌ Failed to convert refreshed APNs token to FCM, skipping save');
+          return;
+        }
+        token = fcmToken;
+      }
+
+      // Save converted (iOS) or raw (Android) token to Firestore
       this.saveToken(userId, token)
         .then(() => callback(token))
         .catch((error) => console.error('Error saving refreshed token:', error));
@@ -348,7 +338,6 @@ export class NotificationService {
 
     try {
       await Notifications.unregisterForNotificationsAsync();
-      console.log('Push token unregistered');
     } catch (error) {
       console.error('Error unregistering push token:', error);
     }

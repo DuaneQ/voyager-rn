@@ -12,6 +12,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  Platform,
 } from 'react-native';
 import { TravelPreferencesTab } from './TravelPreferencesTab';
 import { AIItineraryListTab } from './AIItineraryListTab';
@@ -46,15 +47,22 @@ export const AIItinerarySection: React.FC<AIItinerarySectionProps> = ({
     // Refresh user profile to get latest usage data from Firestore
     await refreshProfile();
     
-    // Check AI usage limit BEFORE opening modal
+    // Check AI usage limit BEFORE opening modal to prevent wasting user's time
     if (hasReachedAILimit()) {
       const remaining = getRemainingAICreations();
-      showAlert(
-        'error', 
-        `Daily AI limit reached (${remaining} remaining). Sign in on the web and tap the UPGRADE button on TravalMatch to get unlimited AI itineraries.`,
-        'https://travalpass.com/login',
-        'Sign In to Upgrade'
-      );
+      if (Platform.OS === 'web') {
+        showAlert(
+          'error',
+          `Daily AI limit reached (${remaining} remaining). Tap UPGRADE on TravalMatch page to get unlimited AI itineraries.`
+        );
+      } else {
+        showAlert(
+          'error',
+          `Daily AI limit reached (${remaining} remaining). Sign in on the web and tap the UPGRADE button on TravalMatch to get unlimited AI itineraries.`,
+          'https://travalpass.com/login',
+          'Sign In to Upgrade'
+        );
+      }
       return;
     }
     

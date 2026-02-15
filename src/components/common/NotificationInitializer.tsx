@@ -23,30 +23,30 @@ export function NotificationInitializer() {
   const { registerForPushNotifications } = useNotifications();
 
   useEffect(() => {
-    console.log('🔔 NotificationInitializer effect running', {
-      status,
-      hasUser: !!user,
-      userId: user?.uid,
-      platform: Platform.OS
-    });
-
     // Only proceed if auth has finished initializing
     if (status === 'loading' || status === 'idle') {
-      console.log('⏳ Auth still initializing, skipping notification registration');
       return;
     }
 
     if (!user?.uid) {
-      console.log('❌ No user found, skipping notification registration');
       return;
     }
 
     // Register for push notifications when user signs in
-    console.log('✅ User authenticated, registering for push notifications...');
-    registerForPushNotifications(user.uid).catch(error => {
-      console.error('❌ Failed to register for push notifications:', error);
-      // Don't block app startup on push notification failures
-    });
+    registerForPushNotifications(user.uid)
+      .then(() => {
+        console.log('✅ Push notification registration completed successfully');
+      })
+      .catch(error => {
+        console.error('❌ Failed to register for push notifications:', error);
+        if (error instanceof Error) {
+          console.error('Error details:', {
+            message: error.message,
+            stack: error.stack
+          });
+        }
+        // Don't block app startup on push notification failures
+      });
   }, [user?.uid, status, registerForPushNotifications]);
 
   // This component doesn't render anything; cleanup of push tokens on sign-out
