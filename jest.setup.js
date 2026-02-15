@@ -119,6 +119,11 @@ jest.mock('@react-navigation/native', () => ({
     reset: jest.fn(),
   }),
   NavigationContainer: ({ children }) => children,
+  createNavigationContainerRef: () => ({
+    isReady: jest.fn(() => false),
+    navigate: jest.fn(),
+    current: null,
+  }),
 }));
 
 jest.mock('@react-navigation/stack', () => ({

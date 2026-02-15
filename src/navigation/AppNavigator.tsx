@@ -17,6 +17,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
+import { navigationRef } from './navigationRef';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
@@ -205,7 +206,8 @@ const RootNavigator: React.FC = () => {
 
 // Main App Navigator (replicates Routes from PWA)
 const AppNavigator: React.FC = () => {
-  const navigationRef = useRef<NavigationContainerRef<any>>(null);
+  // Using shared navigationRef from navigationRef.ts
+  // This allows notification handlers to navigate from outside React components
 
   // Linking configuration for web URL routing
   const linking = {
@@ -248,8 +250,8 @@ const AppNavigator: React.FC = () => {
 // Profile Validation Wrapper - checks profile completeness after login
 const ProfileValidationWrapper: React.FC<{ 
   children: React.ReactNode; 
-  navigationRef: React.RefObject<NavigationContainerRef<any>>; 
-}> = ({ children, navigationRef }) => {
+  navigationRef: React.RefObject<NavigationContainerRef<any>> | typeof navigationRef; 
+}> = ({ children }) => {
   const { userProfile, isLoading } = useUserProfile();
   const { user } = useAuth();
   const hasPromptedUser = useRef(false); // Track if we've shown the prompt this session
