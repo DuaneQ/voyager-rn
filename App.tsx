@@ -54,12 +54,18 @@ export default function App() {
   useEffect(() => {
     if (Platform.OS === 'web') return;
 
+    const clearBadgeCount = () => {
+      void Notifications.setBadgeCountAsync(0).catch((error) => {
+        console.warn('Failed to clear notification badge count', error);
+      });
+    };
+
     // Clear badge immediately on mount
-    Notifications.setBadgeCountAsync(0);
+    clearBadgeCount();
 
     const subscription = AppState.addEventListener('change', (nextState) => {
       if (nextState === 'active') {
-        Notifications.setBadgeCountAsync(0);
+        clearBadgeCount();
       }
     });
 

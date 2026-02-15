@@ -48,9 +48,11 @@ export const CrossPlatformDatePicker: React.FC<CrossPlatformDatePickerProps> = (
 
   // Format date for display
   const formatDisplayDate = (date: Date): string => {
-    // Handle invalid dates
+    // Handle invalid dates - avoid surfacing raw JS "Invalid Date" string to users
     if (!date || isNaN(date.getTime())) {
-      return 'Invalid Date';
+      console.warn('[CrossPlatformDatePicker] Invalid date provided to formatDisplayDate:', date);
+      // Prefer provided errorMessage; otherwise, return empty string so UI can handle gracefully
+      return errorMessage || '';
     }
     return date.toLocaleDateString('en-US', {
       year: 'numeric',

@@ -207,10 +207,21 @@ export function parseLocalDate(dateString: string): Date {
     return new Date(NaN);
   }
   
+  // Basic range checks for month and day
+  if (month < 1 || month > 12 || day < 1 || day > 31) {
+    console.warn('[parseLocalDate] Out-of-range date components:', dateString);
+    return new Date(NaN);
+  }
+  
   // Create date and validate it's real (catches invalid dates like Feb 31)
   const date = new Date(year, month - 1, day);
-  if (isNaN(date.getTime())) {
-    console.warn('[parseLocalDate] Invalid date:', dateString);
+  if (
+    isNaN(date.getTime()) ||
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    console.warn('[parseLocalDate] Invalid date (non-existent calendar day):', dateString);
     return new Date(NaN);
   }
   
