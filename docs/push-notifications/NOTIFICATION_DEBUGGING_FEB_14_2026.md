@@ -1,5 +1,7 @@
 # Push Notification Debugging - February 14, 2026
 
+> **⚠️ SUPERSEDED**: The APNs→FCM conversion approach described below has been replaced in build 33 with `@react-native-firebase/messaging`. See [IOS_PUSH_DEBUG_STATUS.md](./IOS_PUSH_DEBUG_STATUS.md) for current status.
+
 ## ✅ RESOLVED - February 15, 2026
 
 **Root Cause Identified**: `NotificationService.onTokenRefresh()` was not converting APNs tokens to FCM format on iOS. When iOS silently refreshed the APNs token overnight, the raw APNs token was saved to Firestore. Cloud Functions then tried sending to an invalid token format, causing silent failures.
