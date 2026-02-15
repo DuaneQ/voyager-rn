@@ -1,6 +1,14 @@
 # Push Notification Debugging - February 14, 2026
 
-## Current Issue Summary
+## ✅ RESOLVED - February 15, 2026
+
+**Root Cause Identified**: `NotificationService.onTokenRefresh()` was not converting APNs tokens to FCM format on iOS. When iOS silently refreshed the APNs token overnight, the raw APNs token was saved to Firestore. Cloud Functions then tried sending to an invalid token format, causing silent failures.
+
+**Fix Applied**: Added APNs→FCM conversion in `onTokenRefresh` listener. See [NOTIFICATION_FIXES_FEB_15_2026.md](./NOTIFICATION_FIXES_FEB_15_2026.md) for complete fix details.
+
+---
+
+## Original Issue Summary (Feb 14, 2026)
 
 **Status**: Chat and video comment notifications are not being received on iOS device, despite server logs showing successful sends.
 

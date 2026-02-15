@@ -1,6 +1,15 @@
 # Push Notification Quick Checklist
 
-## Current Status (Feb 14, 2026)
+## ✅ RESOLVED - February 15, 2026
+
+**Root Cause**: iOS token refresh bug - `onTokenRefresh` listener was not converting APNs tokens to FCM format.  
+**Fix Applied**: Added APNs→FCM conversion in token refresh listener.  
+**Status**: All notification types now working on iOS & Android.  
+**Details**: See [NOTIFICATION_FIXES_FEB_15_2026.md](./NOTIFICATION_FIXES_FEB_15_2026.md)
+
+---
+
+## Original Status (Feb 14, 2026)
 
 ### ✅ Server Side - Working
 - [x] Cloud functions deployed and active

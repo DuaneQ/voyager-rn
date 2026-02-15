@@ -447,10 +447,56 @@ This React Native app replicates all voyager-pwa functionality:
 - **Cross-platform** - iOS, Android, and Web support
 - **Offline Support** - AsyncStorage for local data caching
 - **Real-time Updates** - Firebase real-time database integration
-- **Push Notifications** - Expo push notification system
+- **Push Notifications** - ✅ **Working** - Expo push notification system with FCM/APNs ([see docs](docs/push-notifications/))
+  - New match notifications
+  - Chat message notifications
+  - Video comment notifications
+  - iOS/Android support (Web excluded)
+  - Critical iOS token refresh bug fixed (Feb 15, 2026)
 - **Deep Linking** - Custom URL scheme support
 
-## 🔄 Migration from Current Structure
+## � Push Notifications
+
+**Status**: ✅ **Fully Working** (as of February 15, 2026)
+
+### Overview
+TravalPass uses `expo-notifications` with Firebase Cloud Messaging (FCM) for cross-platform push notifications:
+
+- **iOS**: APNs tokens automatically converted to FCM format via cloud function
+- **Android**: Native FCM tokens
+- **Web**: Not supported (intentionally excluded)
+
+### Notification Types
+1. **New Match Notifications** - When two travelers mutually like each other's itineraries
+2. **Chat Message Notifications** - Real-time alerts for new messages
+3. **Video Comment Notifications** - Alerts when someone comments on your video
+
+### Architecture
+- **Client**: `NotificationService` class handles permissions, token registration/refresh, and notification display
+- **Server**: Firebase Cloud Functions trigger on Firestore events (`onCreate`) to send notifications
+- **Token Storage**: FCM tokens stored as array field on user document (`users/{uid}.fcmTokens[]`)
+
+### Recent Critical Fixes (Feb 15, 2026)
+- ✅ **iOS Token Refresh Bug** - Fixed overnight notification failures caused by APNs→FCM conversion missing in token refresh listener
+- ✅ **Re-registration Loop** - Fixed infinite re-registration by adding `useCallback` memoization
+- ✅ **Privacy Violation** - Removed user IDs from production logs
+- ✅ **Security Risk** - Deleted debug utility that logged FCM tokens
+
+### Documentation
+- **[Push Notification Plan](docs/push-notifications/PUSH_NOTIFICATION_PLAN.md)** - Complete architecture and implementation guide
+- **[Recent Fixes (Feb 15, 2026)](docs/push-notifications/NOTIFICATION_FIXES_FEB_15_2026.md)** - Detailed fix documentation
+- **[Debugging Guide (Feb 14, 2026)](docs/push-notifications/NOTIFICATION_DEBUGGING_FEB_14_2026.md)** - Original issue investigation
+- **[Quick Checklist](docs/push-notifications/NOTIFICATION_CHECKLIST.md)** - Troubleshooting checklist
+
+### Known Issues (Low Priority)
+- Badge count hardcoded to 1 (not actual unread count)
+- No periodic token cleanup (stale tokens accumulate)
+- Missing `collapseKey` on match/video notifications
+- Dev/prod Firebase config mismatch potential
+
+See [NOTIFICATION_FIXES_FEB_15_2026.md](docs/push-notifications/NOTIFICATION_FIXES_FEB_15_2026.md) for details.
+
+## �🔄 Migration from Current Structure
 
 The project is designed to gradually migrate from the current structure to the improved architecture:
 

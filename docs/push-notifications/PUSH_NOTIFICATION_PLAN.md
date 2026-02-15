@@ -1,11 +1,12 @@
 # Push Notification Implementation Plan — TravalPass (iOS & Android)
 
 > **Created**: June 2025  
-> **Updated**: February 14, 2026 (Switched to expo-notifications, verified on Android)  
-> **Status**: ✅ Implemented — New Match & Chat Message notifications working  
+> **Updated**: February 15, 2026 (Critical iOS token refresh bug fixed)  
+> **Status**: ✅ **Fully Working** — All notification types working on iOS & Android  
 > **Platforms**: iOS (APNs), Android (FCM), Web (not supported — excluded)  
 > **Framework**: React Native Expo (SDK 54)  
-> **Library**: `expo-notifications` (replaced `@react-native-firebase/messaging`)
+> **Library**: `expo-notifications` (replaced `@react-native-firebase/messaging`)  
+> **Recent Fixes**: See [NOTIFICATION_FIXES_FEB_15_2026.md](./NOTIFICATION_FIXES_FEB_15_2026.md)
 
 ---
 
@@ -42,6 +43,15 @@ Implement push notifications across iOS and Android to notify users of:
 - **Architecture**: `NotificationService` class (permissions + token CRUD + Firestore), `useNotifications` hook (state management), handler at module level in `App.tsx`
 - **MVP Scope**: All notifications enabled by default, settings UI deferred to post-launch
 - **Library Change (Feb 14, 2026)**: Switched from `@react-native-firebase/messaging` to `expo-notifications` — eliminates native module linking issues, uses same FCM tokens, zero cost difference
+
+### Recent Critical Fixes (February 15, 2026)
+
+- ✅ **iOS Token Refresh Bug** - Fixed overnight notification failures caused by missing APNs→FCM conversion in `onTokenRefresh` listener
+- ✅ **Re-registration Loop** - Fixed infinite re-registration by wrapping functions in `useCallback`
+- ✅ **Privacy Violation** - Removed user IDs (PII) from all production logs
+- ✅ **Security Risk** - Deleted `debugNotifications.ts` utility that logged FCM tokens
+
+**Complete Details**: See [NOTIFICATION_FIXES_FEB_15_2026.md](./NOTIFICATION_FIXES_FEB_15_2026.md)
 
 ### Key Constraints
 
