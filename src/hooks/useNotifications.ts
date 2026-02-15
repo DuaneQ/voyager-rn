@@ -89,7 +89,7 @@ export function useNotifications(): UseNotificationsReturn {
    * Gets device push token and saves to Firestore
    * Web: No-op (returns immediately)
    */
-  const registerForPushNotifications = async (userId: string): Promise<void> => {
+  const registerForPushNotifications = useCallback(async (userId: string): Promise<void> => {
     if (Platform.OS === 'web') {
       return;
     }
@@ -138,7 +138,7 @@ export function useNotifications(): UseNotificationsReturn {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   /**
    * Unregister device from push notifications
@@ -146,7 +146,7 @@ export function useNotifications(): UseNotificationsReturn {
    * This ensures other devices remain registered for notifications
    * Web: No-op (returns immediately)
    */
-  const unregisterPushNotifications = async (userId: string): Promise<void> => {
+  const unregisterPushNotifications = useCallback(async (userId: string): Promise<void> => {
     if (Platform.OS === 'web') {
       return;
     }
@@ -177,7 +177,7 @@ export function useNotifications(): UseNotificationsReturn {
     } catch (error) {
       console.error('Error unregistering push notifications:', error);
     }
-  };
+  }, [fcmToken]);
 
   /**
    * Set up notification listeners for foreground and interaction events

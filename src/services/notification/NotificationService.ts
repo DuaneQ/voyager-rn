@@ -315,11 +315,24 @@ export class NotificationService {
       return () => {}; // No-op on web
     }
 
-    const subscription = Notifications.addPushTokenListener((tokenData) => {
-      const token = typeof tokenData.data === 'string' ? tokenData.data : String(tokenData.data);
-      console.log('Push token refreshed:', token.substring(0, 20) + '...');
+    const subscription = Notifications.addPushTokenListener(async (tokenData) => {
+      let token = typeof tokenData.data === 'string' ? tokenData.data : String(tokenData.data);
+      console.log('Push token refreshed (raw):', token.substring(0, 20) + '...');
       
-      // Save new token to Firestore
+      // iOS: The refreshed token is a raw APNs token — must convert to FCM
+      // before saving to Firestore (same as initial registration in getFCMToken)
+      if (Platform.OS === 'ios') {
+        console.log('🍎 iOS token refresh — converting APNs token to FCM...');
+        const fcmToken = await this.convertAPNsToFCM(token);
+        if (!fcmToken) {
+          console.error('❌ Failed to convert refreshed APNs token to FCM, skipping save');
+          return;
+        }
+        token = fcmToken;
+        console.log('✅ Refreshed APNs token converted to FCM successfully');
+      }
+
+      // Save converted (iOS) or raw (Android) token to Firestore
       this.saveToken(userId, token)
         .then(() => callback(token))
         .catch((error) => console.error('Error saving refreshed token:', error));
