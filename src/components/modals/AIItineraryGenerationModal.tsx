@@ -294,9 +294,6 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
       }
       return;
     }
-    
-    console.log('[AIItineraryGenerationModal] ✅ AI limit check passed - starting generation');
-
     try {
       // Get user ID from Firebase Auth (not userProfile which doesn't have uid)
       // Resolve at call-time from the firebase config module so tests that
@@ -340,9 +337,7 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
         throw e;
       }
 
-      if (result.success) {
-        console.log('[AIItineraryGenerationModal] 🎉 Generation successful - tracking usage now');
-        
+      if (result.success) {        
         // Track AI creation usage (matching PWA)
         const tracked = await trackAICreation?.();
         if (!tracked) {

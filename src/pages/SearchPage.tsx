@@ -205,12 +205,6 @@ const SearchPage: React.FC = () => {
       return;
     }
 
-    console.log('[SearchPage] 👍 handleLike START:', {
-      itineraryId: itinerary.id,
-      destination: itinerary.destination,
-      userId
-    });
-
     // Track usage (checks limit with fresh data internally)
     const success = await trackView();
     if (!success) {
@@ -227,9 +221,6 @@ const SearchPage: React.FC = () => {
       }
       return;
     }
-
-    console.log('[SearchPage] ✅ trackView succeeded - processing like');
-
     try {
 
       // Save as viewed
@@ -312,12 +303,6 @@ const SearchPage: React.FC = () => {
       return;
     }
 
-    console.log('[SearchPage] 👎 handleDislike START:', {
-      itineraryId: itinerary.id,
-      destination: itinerary.destination,
-      userId
-    });
-
     // Track usage (checks limit with fresh data internally)
     const success = await trackView();
     if (!success) {
@@ -334,9 +319,6 @@ const SearchPage: React.FC = () => {
       }
       return;
     }
-
-    console.log('[SearchPage] ✅ trackView succeeded - processing dislike');
-
     try {
       // Save as viewed
       saveViewedItinerary(itinerary.id);

@@ -70,7 +70,6 @@ export class ContactDiscoveryRepository {
     try {
       // Validate input
       if (!hashedIdentifiers || hashedIdentifiers.length === 0) {
-        console.log('[ContactDiscoveryRepository] Empty hashedIdentifiers array');
         return [];
       }
 
