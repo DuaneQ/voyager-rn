@@ -205,9 +205,16 @@ const SearchPage: React.FC = () => {
       return;
     }
 
+    console.log('[SearchPage] 👍 handleLike START:', {
+      itineraryId: itinerary.id,
+      destination: itinerary.destination,
+      userId
+    });
+
     // Track usage (checks limit with fresh data internally)
     const success = await trackView();
     if (!success) {
+      console.error('[SearchPage] ⛔ Like BLOCKED: trackView returned false (limit reached)');
       if (Platform.OS === 'web') {
         showAlert('info', 'Daily limit reached. Tap Upgrade for unlimited views and AI Itineraries');
       } else {
@@ -220,6 +227,8 @@ const SearchPage: React.FC = () => {
       }
       return;
     }
+
+    console.log('[SearchPage] ✅ trackView succeeded - processing like');
 
     try {
 
@@ -303,9 +312,16 @@ const SearchPage: React.FC = () => {
       return;
     }
 
+    console.log('[SearchPage] 👎 handleDislike START:', {
+      itineraryId: itinerary.id,
+      destination: itinerary.destination,
+      userId
+    });
+
     // Track usage (checks limit with fresh data internally)
     const success = await trackView();
     if (!success) {
+      console.error('[SearchPage] ⛔ Dislike BLOCKED: trackView returned false (limit reached)');
       if (Platform.OS === 'web') {
         showAlert('info', 'Daily limit reached. Tap Upgrade for unlimited views and 20 AI Itineraries per day');
       } else {
@@ -318,6 +334,8 @@ const SearchPage: React.FC = () => {
       }
       return;
     }
+
+    console.log('[SearchPage] ✅ trackView succeeded - processing dislike');
 
     try {
       // Save as viewed

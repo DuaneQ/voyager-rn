@@ -43,10 +43,20 @@ export function NotificationInitializer() {
 
     // Register for push notifications when user signs in
     console.log('✅ User authenticated, registering for push notifications...');
-    registerForPushNotifications(user.uid).catch(error => {
-      console.error('❌ Failed to register for push notifications:', error);
-      // Don't block app startup on push notification failures
-    });
+    registerForPushNotifications(user.uid)
+      .then(() => {
+        console.log('✅ Push notification registration completed successfully');
+      })
+      .catch(error => {
+        console.error('❌ Failed to register for push notifications:', error);
+        if (error instanceof Error) {
+          console.error('Error details:', {
+            message: error.message,
+            stack: error.stack
+          });
+        }
+        // Don't block app startup on push notification failures
+      });
   }, [user?.uid, status, registerForPushNotifications]);
 
   // This component doesn't render anything; cleanup of push tokens on sign-out

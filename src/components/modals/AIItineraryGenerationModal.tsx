@@ -29,6 +29,7 @@ import { useUsageTracking } from '../../hooks/useUsageTracking';
 import { AIGenerationRequest } from '../../types/AIGeneration';
 import ProfileValidationService from '../../services/ProfileValidationService';
 import AirportSelector from '../common/AirportSelector';
+import { useAlert } from '../../context/AlertContext';
 
 // Input limits matching PWA exactly
 const MAX_TAGS = 10;
@@ -97,6 +98,9 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
 
   // Usage tracking hook for AI creation limits
   const { hasReachedAILimit, trackAICreation } = useUsageTracking();
+  
+  // Alert system for cross-platform notifications
+  const { showAlert } = useAlert();
 
   // Form state matching PWA exactly
   const [formData, setFormData] = useState<AIGenerationRequest>({
@@ -269,8 +273,29 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
       return;
     }
 
-    // Note: AI usage limit is checked before opening the modal in AIItinerarySection.tsx
-    // We only track usage after successful generation (see below after result.success)
+    // CRITICAL: Check AI usage limit (defense-in-depth)
+    // Prevents race conditions if user clicks Generate multiple times or has multiple tabs open
+    if (hasReachedAILimit && hasReachedAILimit()) {
+      console.error('[AIItineraryGenerationModal] ⛔ AI limit reached - blocking generation');
+      
+      // Use cross-platform alert with web-specific upgrade instructions
+      if (Platform.OS === 'web') {
+        showAlert(
+          'error',
+          'Daily AI limit reached. Tap UPGRADE on TravalMatch page to get unlimited AI itineraries.'
+        );
+      } else {
+        showAlert(
+          'error',
+          'Daily AI limit reached. Sign in on the web and tap the UPGRADE button on TravalMatch to get unlimited AI itineraries.',
+          'https://travalpass.com/login',
+          'Sign In to Upgrade'
+        );
+      }
+      return;
+    }
+    
+    console.log('[AIItineraryGenerationModal] ✅ AI limit check passed - starting generation');
 
     try {
       // Get user ID from Firebase Auth (not userProfile which doesn't have uid)
@@ -316,10 +341,14 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
       }
 
       if (result.success) {
+        console.log('[AIItineraryGenerationModal] 🎉 Generation successful - tracking usage now');
+        
         // Track AI creation usage (matching PWA)
         const tracked = await trackAICreation?.();
         if (!tracked) {
-          console.warn('[AIItineraryGenerationModal] trackAICreation failed');
+          console.error('[AIItineraryGenerationModal] ❌ trackAICreation failed - usage NOT incremented!');
+        } else {
+          console.log('[AIItineraryGenerationModal] ✅ trackAICreation succeeded - usage incremented');
         }
         
         setShowSuccessState(true);

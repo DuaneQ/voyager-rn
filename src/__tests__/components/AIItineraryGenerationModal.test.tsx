@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
+import { AlertProvider } from '../../context/AlertContext';
 
 // Mocks
 jest.mock('../../hooks/useAIGenerationV2');
@@ -78,6 +79,11 @@ jest.mock('../../components/common/CrossPlatformDatePicker', () => {
 import { AIItineraryGenerationModal } from '../../components/modals/AIItineraryGenerationModal';
 const { useAIGenerationV2 } = require('../../hooks/useAIGenerationV2');
 
+// Helper to render with AlertProvider
+const renderWithProvider = (component: React.ReactElement) => {
+  return render(<AlertProvider>{component}</AlertProvider>);
+};
+
 describe('AIItineraryGenerationModal', () => {
   beforeEach(() => {
     jest.resetAllMocks();
@@ -97,7 +103,7 @@ describe('AIItineraryGenerationModal', () => {
       cancelGeneration: jest.fn()
     });
 
-    const { getByText } = render(
+    const { getByText } = renderWithProvider(
       <AIItineraryGenerationModal
         visible={true}
         onClose={jest.fn()}
@@ -120,7 +126,7 @@ describe('AIItineraryGenerationModal', () => {
     });
 
     const onClose = jest.fn();
-    const { getByText, getByRole, queryByText } = render(
+    const { getByText, getByRole, queryByText } = renderWithProvider(
       <AIItineraryGenerationModal
         visible={true}
         onClose={onClose}
@@ -154,7 +160,7 @@ describe('AIItineraryGenerationModal', () => {
     const onGenerated = jest.fn();
     const onClose = jest.fn();
 
-    const { getByText } = render(
+    const { getByText } = renderWithProvider(
       <AIItineraryGenerationModal
         visible={true}
         onClose={onClose}
@@ -186,7 +192,7 @@ describe('AIItineraryGenerationModal', () => {
       cancelGeneration: jest.fn()
     });
 
-    const { getByText } = render(
+    const { getByText } = renderWithProvider(
       <AIItineraryGenerationModal
         visible={true}
         onClose={jest.fn()}
@@ -194,7 +200,7 @@ describe('AIItineraryGenerationModal', () => {
       />
     );
 
-    const { queryByText } = render(
+    const { queryByText } = renderWithProvider(
       <AIItineraryGenerationModal
         visible={true}
         onClose={jest.fn()}
@@ -216,7 +222,7 @@ describe('AIItineraryGenerationModal', () => {
       cancelGeneration: jest.fn()
     });
 
-    const { getByText, getByTestId, queryByText } = render(
+    const { getByText, getByTestId, queryByText } = renderWithProvider(
       <AIItineraryGenerationModal
         visible={true}
         onClose={jest.fn()}
@@ -253,7 +259,7 @@ describe('AIItineraryGenerationModal', () => {
       cancelGeneration: mockCancel
     });
 
-    const { getByText } = render(
+    const { getByText } = renderWithProvider(
       <AIItineraryGenerationModal
         visible={true}
         onClose={jest.fn()}

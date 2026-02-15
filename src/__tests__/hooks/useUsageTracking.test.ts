@@ -23,11 +23,21 @@ import { useUsageTracking } from '../../hooks/useUsageTracking';
 import { setMockUser, clearMockUser } from '../../testUtils/mockAuth';
 
 describe('useUsageTracking', () => {
-  const getTodayString = () => new Date().toISOString().split('T')[0];
+  // Match the new local timezone implementation in the hook
+  const getTodayString = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
   const getYesterdayString = () => {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
-    return yesterday.toISOString().split('T')[0];
+    const year = yesterday.getFullYear();
+    const month = String(yesterday.getMonth() + 1).padStart(2, '0');
+    const day = String(yesterday.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   const mockFreeUser = {
@@ -405,7 +415,10 @@ describe('useUsageTracking', () => {
       });
 
       expect(success).toBe(false);
-      expect(console.error).toHaveBeenCalledWith('Error tracking view:', expect.any(Error));
+      expect(console.error).toHaveBeenCalledWith(
+        '[useUsageTracking] ❌ trackView FAILED: Firestore error', 
+        expect.any(Error)
+      );
     });
 
     it('should handle missing user profile during tracking', async () => {
@@ -573,7 +586,7 @@ describe('useUsageTracking', () => {
         expect(result.current.userProfile).not.toBeNull();
       });
 
-      expect(result.current.getRemainingAICreations()).toBe(3); // 5 - 2
+      expect(result.current.getRemainingAICreations()).toBe(1); // 3 - 2
     });
 
     it('should calculate remaining AI creations for premium user', async () => {
@@ -616,7 +629,7 @@ describe('useUsageTracking', () => {
         expect(result.current.userProfile).not.toBeNull();
       });
 
-      expect(result.current.getRemainingAICreations()).toBe(5); // Full limit
+      expect(result.current.getRemainingAICreations()).toBe(3); // Full limit
 
       let success;
       await act(async () => {
@@ -1209,7 +1222,7 @@ describe('useUsageTracking', () => {
 
       // Should NOT be limited because it's a new day
       expect(result.current.hasReachedAILimit()).toBe(false);
-      expect(result.current.getRemainingAICreations()).toBe(5); // Full limit available
+      expect(result.current.getRemainingAICreations()).toBe(3); // Full limit available
 
       // Should successfully track AI creation on new day
       let success;
@@ -1260,8 +1273,8 @@ describe('useUsageTracking', () => {
       // Day 2: Should be able to create AI itineraries again
       expect(result.current.hasReachedAILimit()).toBe(false);
 
-      // Create 5 AI itineraries on day 2
-      for (let i = 1; i <= 5; i++) {
+      // Create 3 AI itineraries on day 2
+      for (let i = 1; i <= 3; i++) {
         // Mock fresh data showing current count
         const userDay2Progress = {
           ...userDay1Limit,
@@ -1287,14 +1300,14 @@ describe('useUsageTracking', () => {
         expect(success).toBe(true);
       }
 
-      // After 5 creations on day 2, should now be limited
+      // After 3 creations on day 2, should now be limited
       const userDay2Limit = {
         ...userDay1Limit,
         dailyUsage: {
           ...userDay1Limit.dailyUsage,
           aiItineraries: {
             date: getTodayString(),
-            count: 5, // Hit limit on day 2
+            count: 3, // Hit limit on day 2
           },
         },
       };
@@ -1347,7 +1360,7 @@ describe('useUsageTracking', () => {
       // Both limits should be reset for new day
       expect(result.current.hasReachedLimit()).toBe(false);
       expect(result.current.hasReachedAILimit()).toBe(false);
-      expect(result.current.getRemainingAICreations()).toBe(5);
+      expect(result.current.getRemainingAICreations()).toBe(3);
 
       // Should successfully track view on new day
       let viewSuccess;

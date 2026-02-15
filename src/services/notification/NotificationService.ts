@@ -58,6 +58,7 @@ export class NotificationService {
       // Android 13+: Create notification channels first (required for permission prompt)
       // Channel IDs must match what cloud functions send to: 'default', 'matches', 'chat-messages'
       if (Platform.OS === 'android') {
+        console.log('📱 Creating Android notification channels...');
         await Promise.all([
           Notifications.setNotificationChannelAsync('default', {
             name: 'Default',
@@ -80,6 +81,7 @@ export class NotificationService {
             lightColor: '#FF6B35',
           }),
         ]);
+        console.log('✅ Android notification channels created successfully');
       }
 
       console.log('📱 Requesting push notification permission...');
@@ -223,6 +225,7 @@ export class NotificationService {
   /**
    * Save push token to Firestore user document
    * Adds token to fcmTokens array field (idempotent - won't add duplicates)
+   * Also stores platform info to identify tokens later
    * 
    * @param userId - Firestore user ID
    * @param token - Device push token
@@ -230,13 +233,19 @@ export class NotificationService {
   async saveToken(userId: string, token: string): Promise<void> {
     console.log('💾 NotificationService.saveToken() called', {
       userId,
+      platform: Platform.OS,
       tokenPreview: token.substring(0, 30) + '...' + token.substring(token.length - 10)
     });
     try {
       const userRef = doc(this.db, 'users', userId);
       console.log('📝 Saving push token to Firestore users/' + userId);
+      
+      // Save token with platform info for debugging
       await updateDoc(userRef, {
         fcmTokens: arrayUnion(token),
+        // Store last registered platform and timestamp for debugging
+        lastTokenPlatform: Platform.OS,
+        lastTokenRegistered: new Date().toISOString(),
       });
       console.log('✅ Push token saved to Firestore successfully');
     } catch (error) {
@@ -280,12 +289,15 @@ export class NotificationService {
   async removeAllTokens(userId: string): Promise<void> {
     try {
       const userRef = doc(this.db, 'users', userId);
+      console.log('🗑️ Removing ALL push tokens for user:', userId);
       await updateDoc(userRef, {
         fcmTokens: [],
+        lastTokenPlatform: null,
+        lastTokenRegistered: null,
       });
-      console.log('All push tokens removed from Firestore');
+      console.log('✅ All push tokens removed from Firestore');
     } catch (error) {
-      console.error('Error removing all push tokens:', error);
+      console.error('❌ Error removing all push tokens:', error);
       // Don't throw - sign-out should continue even if token cleanup fails
     }
   }

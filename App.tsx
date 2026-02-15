@@ -3,7 +3,7 @@ import 'react-native-get-random-values';
 import './patches/react-native-fetch-polyfill'; // Fix Android sendRequest bug
 
 import React, { useEffect, useState } from 'react';
-import { Platform, ActivityIndicator, View, StyleSheet } from 'react-native';
+import { Platform, ActivityIndicator, View, StyleSheet, AppState } from 'react-native';
 import { enableScreens } from 'react-native-screens';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as Font from 'expo-font';
@@ -49,6 +49,22 @@ enableScreens(true);
  */
 export default function App() {
   const [fontsLoaded, setFontsLoaded] = useState(false);
+
+  // Clear badge count when app comes to foreground
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+
+    // Clear badge immediately on mount
+    Notifications.setBadgeCountAsync(0);
+
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        Notifications.setBadgeCountAsync(0);
+      }
+    });
+
+    return () => subscription.remove();
+  }, []);
 
   useEffect(() => {
     async function loadFonts() {

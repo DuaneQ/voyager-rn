@@ -130,14 +130,38 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
     setIsDestinationValid(true); // Existing itineraries have valid destinations
     
     // CRITICAL: Use parseLocalDate to avoid timezone shifts (same as EditProfileModal)
-    // itinerary.startDate is "2026-02-06" (YYYY-MM-DD string from Firestore)
-    // new Date("2026-02-06") interprets as UTC midnight → shifts to previous day in PST
-    // parseLocalDate manually parses components → Feb 6 stays Feb 6
-    const parsedStartDate = parseLocalDate(itinerary.startDate);
-    const parsedEndDate = parseLocalDate(itinerary.endDate);
+    // itinerary.startDate may be in different formats:
+    // - YYYY-MM-DD: "2026-02-06" (from Firestore)
+    // - ISO string: "2026-02-06T00:00:00.000Z" (from some itineraries)
+    // Extract YYYY-MM-DD part if it's an ISO string (before the 'T')
+    const startDateString = typeof itinerary.startDate === 'string' && itinerary.startDate.includes('T')
+      ? itinerary.startDate.split('T')[0]
+      : itinerary.startDate;
+    const endDateString = typeof itinerary.endDate === 'string' && itinerary.endDate.includes('T')
+      ? itinerary.endDate.split('T')[0]
+      : itinerary.endDate;
     
-    setStartDate(parsedStartDate);
-    setEndDate(parsedEndDate);
+    const parsedStartDate = parseLocalDate(startDateString);
+    const parsedEndDate = parseLocalDate(endDateString);
+    
+    // Validate parsed dates - fallback to defaults if invalid
+    if (isNaN(parsedStartDate.getTime()) || isNaN(parsedEndDate.getTime())) {
+      console.error('[AddItineraryModal] Invalid dates in itinerary:', {
+        id: itineraryId,
+        startDate: itinerary.startDate,
+        endDate: itinerary.endDate,
+        extractedStart: startDateString,
+        extractedEnd: endDateString,
+        parsedStart: parsedStartDate,
+        parsedEnd: parsedEndDate,
+      });
+      // Use default dates if parsing failed
+      setStartDate(new Date());
+      setEndDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
+    } else {
+      setStartDate(parsedStartDate);
+      setEndDate(parsedEndDate);
+    }
     setDescription(itinerary.description || '');
     
     // Parse activities from JSON string or array

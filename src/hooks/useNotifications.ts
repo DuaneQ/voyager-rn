@@ -115,10 +115,13 @@ export function useNotifications(): UseNotificationsReturn {
       setFcmToken(token);
 
       // Save token to Firestore
+      console.log('💾 Saving FCM token to Firestore for user:', userId);
       await notificationService.saveToken(userId, token);
+      console.log('✅ FCM token saved successfully');
       
       // Store token locally for device-specific cleanup on sign-out
       await AsyncStorage.setItem(CURRENT_DEVICE_TOKEN_KEY, token);
+      console.log('✅ FCM token stored in AsyncStorage');
 
       // Set up token refresh listener
       if (tokenRefreshUnsubscribe.current) {
@@ -188,7 +191,13 @@ export function useNotifications(): UseNotificationsReturn {
 
     // Listen for notifications received while app is in foreground
     const notificationListener = Notifications.addNotificationReceivedListener(
-      (_notification) => {
+      (notification) => {
+        console.log('🔔 Notification received in foreground:', {
+          title: notification.request.content.title,
+          body: notification.request.content.body,
+          data: notification.request.content.data,
+          identifier: notification.request.identifier,
+        });
         // Could trigger in-app UI updates here (e.g., update chat badge, show toast)
       }
     );
@@ -196,6 +205,12 @@ export function useNotifications(): UseNotificationsReturn {
     // Listen for notification interactions (taps)
     const responseListener = Notifications.addNotificationResponseReceivedListener(
       (response) => {
+        console.log('👆 Notification tapped:', {
+          title: response.notification.request.content.title,
+          body: response.notification.request.content.body,
+          data: response.notification.request.content.data,
+          actionIdentifier: response.actionIdentifier,
+        });
         const data = response.notification.request.content.data;
         handleNotificationNavigation(data);
       }
