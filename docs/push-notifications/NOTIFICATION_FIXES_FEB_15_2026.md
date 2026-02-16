@@ -1,5 +1,7 @@
 # Push Notification Fixes - February 15, 2026
 
+> **⚠️ SUPERSEDED**: The `convertAPNsToFCM` / `registerAPNsToken` approach described below has been **replaced** in build 33. The IID batchImport API is deprecated by Google. See [IOS_PUSH_DEBUG_STATUS.md](./IOS_PUSH_DEBUG_STATUS.md) for the current architecture using `@react-native-firebase/messaging`.
+
 ## Critical Fixes Completed ✅
 
 ### 1. iOS Token Refresh Bug (CRITICAL) 🔴→🟢

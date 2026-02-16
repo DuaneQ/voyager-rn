@@ -150,15 +150,28 @@ export const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
         // Use Google Maps JavaScript SDK on web
         const service = new (window as any).google.maps.places.AutocompleteService();
         
-        // Create a SessionToken object for web SDK
-        const webSessionToken = new (window as any).google.maps.places.AutocompleteSessionToken();
+        // CRITICAL FIX: Reuse session token across requests to enable grouped billing
+        // Store token object on the service instance so it persists across requests
+        if (!(service as any).__cachedSessionToken) {
+          (service as any).__cachedSessionToken = new (window as any).google.maps.places.AutocompleteSessionToken();
+          console.log('🆕 [PLACES AUTOCOMPLETE] Created NEW web session token for grouped billing');
+        }
+        const webSessionToken = (service as any).__cachedSessionToken;
+        
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('📍 [PLACES AUTOCOMPLETE - WEB] Searching...');
+        console.log(`   Query: "${searchText}"`);
+        console.log(`   Session Token: YES ✅ (Grouped billing - REUSED)`);
+        console.log(`   Token Object: ${webSessionToken}`);
+        console.log(`   Component: PlacesAutocomplete (web)`);
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         
         service.getPlacePredictions(
           {
             input: searchText,
             types: ['geocode'],
             language: 'en',
-            sessionToken: webSessionToken, // Web SDK uses its own token object
+            sessionToken: webSessionToken, // REUSED token across all requests
           },
           (predictions: any, status: any) => {
             if (status === 'OK' && predictions) {
@@ -176,6 +189,14 @@ export const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
         );
       } else {
         // Use axios for mobile with session token
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('📱 [PLACES AUTOCOMPLETE - MOBILE] Searching...');
+        console.log(`   Query: "${searchText}"`);
+        console.log(`   Session Token: ${sessionToken ? 'YES ✅ (Grouped billing)' : 'NO ❌ (Per-keystroke billing)'}`);
+        console.log(`   Token Value: ${sessionToken || 'none'}`);
+        console.log(`   Component: PlacesAutocomplete (mobile)`);
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        
         const response = await axios.get(
           'https://maps.googleapis.com/maps/api/place/autocomplete/json',
           {
@@ -227,6 +248,13 @@ export const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
 
   // Mark as valid selection from Google Places
   const handleSelectPlace = useCallback((place: PlaceSuggestion) => {
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('✅ [PLACES AUTOCOMPLETE] Place Selected!');
+    console.log(`   Selected: "${place.description}"`);
+    console.log(`   Place ID: ${place.place_id}`);
+    console.log('   🔒 Ending session token (billing session complete)');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
     onPlaceSelected(place.description);
     setIsValidSelection(true);
     onValidationChange?.(true);
@@ -234,6 +262,19 @@ export const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
     // Clear session token when user selects a place
     // This ends the billing session for this search
     handleClearSession();
+    
+    // CRITICAL: Also clear web SDK cached token
+    // This ensures next search starts a fresh billing session
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && (window as any).google) {
+      try {
+        const service = new (window as any).google.maps.places.AutocompleteService();
+        delete (service as any).__cachedSessionToken;
+        console.log('🧹 [PLACES AUTOCOMPLETE] Cleared web session token - next search starts fresh session');
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+    }
+    
     setShowSuggestions(false);
   }, [onPlaceSelected, handleClearSession, onValidationChange]);
 

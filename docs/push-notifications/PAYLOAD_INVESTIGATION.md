@@ -1,5 +1,7 @@
 # Cloud Function Payload Investigation
 
+> **Note**: References to `registerAPNsToken` below are outdated. As of build 33, the client uses `@react-native-firebase/messaging` for native FCM token management. See [IOS_PUSH_DEBUG_STATUS.md](./IOS_PUSH_DEBUG_STATUS.md).
+
 ## Video Comment Notification Payload (Current)
 
 **File**: `functions/src/notifications/sendVideoCommentNotification.ts`
