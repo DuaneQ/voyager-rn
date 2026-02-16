@@ -11,9 +11,14 @@
  *   (Fixes gRPC-Core module map errors)
  * - Adds $RNFirebaseAsStaticFramework = true flag
  *   (Required for React Native Firebase with use_modular_headers!)
+ * - Inserts FirebaseApp.configure() in AppDelegate.swift
+ *   (Workaround: @react-native-firebase/app plugin can't find insertion point
+ *    in Expo SDK 54's new AppDelegate format using ExpoReactNativeFactory)
  */
 
-const { withPodfile } = require('@expo/config-plugins');
+const { withPodfile, withDangerousMod } = require('@expo/config-plugins');
+const fs = require('fs');
+const path = require('path');
 
 function applyImplementation(contents, find, add, addBefore = false) {
   // Make sure the project does not have the settings already
@@ -28,7 +33,8 @@ function applyImplementation(contents, find, add, addBefore = false) {
 }
 
 module.exports = function withFirebaseModularHeaders(config) {
-  return withPodfile(config, (config) => {
+  // Step 1: Patch the Podfile for modular headers and build settings
+  config = withPodfile(config, (config) => {
     let { contents } = config.modResults;
 
     // 1. Add use_modular_headers! (required for React Native Firebase)
@@ -84,4 +90,46 @@ module.exports = function withFirebaseModularHeaders(config) {
     config.modResults.contents = contents;
     return config;
   });
+
+  // Step 2: Patch AppDelegate.swift to add FirebaseApp.configure()
+  // The @react-native-firebase/app plugin looks for `self.moduleName = "..."`
+  // which doesn't exist in Expo SDK 54's new AppDelegate format.
+  config = withDangerousMod(config, [
+    'ios',
+    async (config) => {
+      const appDelegatePath = path.join(
+        config.modRequest.projectRoot,
+        'ios',
+        config.modRequest.projectName || 'TravalPass',
+        'AppDelegate.swift'
+      );
+
+      if (fs.existsSync(appDelegatePath)) {
+        let contents = fs.readFileSync(appDelegatePath, 'utf-8');
+
+        // Add import if missing
+        if (!contents.includes('import FirebaseCore')) {
+          contents = contents.replace(
+            'import Expo',
+            'import Expo\nimport FirebaseCore'
+          );
+        }
+
+        // Add FirebaseApp.configure() if missing
+        if (!contents.includes('FirebaseApp.configure()')) {
+          // Insert before the first `let` in didFinishLaunchingWithOptions
+          contents = contents.replace(
+            /(\) -> Bool \{)\n(\s*let delegate)/,
+            '$1\n    FirebaseApp.configure()\n\n$2'
+          );
+        }
+
+        fs.writeFileSync(appDelegatePath, contents);
+      }
+
+      return config;
+    },
+  ]);
+
+  return config;
 };
