@@ -43,7 +43,7 @@
     },
     "android": {
       "package": "com.travalpass.app",
-      "versionCode": 25,
+      "versionCode": 26,
       "googleServicesFile": "./google-services.json",
       "icon": "./AppIcons/playstore.png",
       "softwareKeyboardLayoutMode": "resize",
@@ -90,6 +90,8 @@
           "defaultChannel": "default"
         }
       ],
+      "./plugins/withAndroidManifestFix",
+      "./plugins/withFirebaseModularHeaders",
       "expo-audio"
     ],
     "extra": {
