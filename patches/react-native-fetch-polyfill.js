@@ -21,15 +21,7 @@ if (Platform.OS === 'android') {
   global.fetch = async function(url, options = {}) {
     const urlString = typeof url === 'string' ? url : url.url;
     
-    // Always log all fetch calls to see what's happening
-    if (__DEV__) {
-      console.log('[Axios Fetch] Intercepted:', {
-        url: urlString.substring(0, 150),
-        method: options.method || 'GET',
-        isSymbolicate: urlString.includes('/symbolicate'),
-        isGooglePlaces: urlString.includes('googleapis.com') || urlString.includes('maps.googleapis'),
-      });
-    }
+
     
     // Skip our replacement for symbolicate requests (let original fetch handle these)
     if (urlString.includes('/symbolicate')) {
@@ -42,10 +34,6 @@ if (Platform.OS === 'android') {
     }
     
     try {
-      if (__DEV__) {
-        console.log('[Axios Fetch] Using axios for:', urlString.substring(0, 100));
-      }
-      
       // Convert fetch options to axios config
       const axiosConfig = {
         url: urlString,
@@ -87,13 +75,6 @@ if (Platform.OS === 'android') {
         clone: function() { return this; },
       };
     } catch (error) {
-      if (__DEV__) {
-        console.error('[Axios Fetch] Error:', {
-          url: urlString.substring(0, 100),
-          error: error.message,
-        });
-      }
-      
       // Convert axios error to fetch-style error
       if (error.response) {
         // Server responded with error status
@@ -121,8 +102,6 @@ if (Platform.OS === 'android') {
       throw new TypeError(`Network request failed: ${error.message}`);
     }
   };
-  
-  console.log('[Axios Fetch] Axios-based fetch replacement installed for Android');
 
   /**
    * Patch XMLHttpRequest.send() to ensure timeout is always set
@@ -140,13 +119,6 @@ if (Platform.OS === 'android') {
     }
     
     open(method, url, async, user, password) {
-      if (__DEV__) {
-        console.log('[Patched XHR] Opening request:', {
-          method,
-          url: typeof url === 'string' ? url.substring(0, 100) : url,
-          isGooglePlaces: url && (url.includes('googleapis.com') || url.includes('maps.googleapis')),
-        });
-      }
       return super.open(method, url, async, user, password);
     }
     
@@ -154,14 +126,10 @@ if (Platform.OS === 'android') {
       // Ensure timeout is always set before sending (critical fix for Android)
       if (!this.timeout || this.timeout === 0) {
         this.timeout = 60000;
-        if (__DEV__) {
-          console.log('[Patched XHR] Setting default timeout: 60000ms');
-        }
       }
       return super.send(body);
     }
   }
   
   global.XMLHttpRequest = PatchedXMLHttpRequest;
-  console.log('[Patched XHR] XMLHttpRequest timeout patch installed for Android');
 }
