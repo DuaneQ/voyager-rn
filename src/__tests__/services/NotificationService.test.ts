@@ -246,6 +246,74 @@ describe('NotificationService (@react-native-firebase/messaging)', () => {
       unsubscribe();
       expect(mockUnsubscribe).toHaveBeenCalled();
     });
+
+    it('should save new token and call callback on token refresh', async () => {
+      const mockUnsubscribe = jest.fn();
+      const newToken = 'new-refreshed-token-xyz';
+      let tokenRefreshHandler: ((token: string) => void) | null = null;
+
+      // Capture the handler passed to onTokenRefresh
+      (mockMessaging() as any).onTokenRefresh.mockImplementation((handler: any) => {
+        tokenRefreshHandler = handler;
+        return mockUnsubscribe;
+      });
+
+      const mockDoc = doc as jest.Mock;
+      const mockUpdateDoc = updateDoc as jest.Mock;
+      mockDoc.mockReturnValue({ path: `users/${mockUserId}` });
+      mockUpdateDoc.mockResolvedValue(undefined);
+
+      const callback = jest.fn();
+      service.onTokenRefresh(mockUserId, callback);
+
+      // Simulate token refresh
+      await tokenRefreshHandler!(newToken);
+
+      // Verify saveToken was called (via Firestore updateDoc)
+      expect(mockUpdateDoc).toHaveBeenCalledWith(
+        { path: `users/${mockUserId}` },
+        expect.objectContaining({
+          fcmTokens: [newToken],
+        })
+      );
+
+      // Verify user callback was invoked with new token
+      expect(callback).toHaveBeenCalledWith(newToken);
+    });
+
+    it('should catch and log errors during token save without crashing', async () => {
+      const mockUnsubscribe = jest.fn();
+      const newToken = 'new-refreshed-token-xyz';
+      let tokenRefreshHandler: ((token: string) => void) | null = null;
+
+      (mockMessaging() as any).onTokenRefresh.mockImplementation((handler: any) => {
+        tokenRefreshHandler = handler;
+        return mockUnsubscribe;
+      });
+
+      const mockDoc = doc as jest.Mock;
+      const mockUpdateDoc = updateDoc as jest.Mock;
+      mockDoc.mockReturnValue({ path: `users/${mockUserId}` });
+      mockUpdateDoc.mockRejectedValue(new Error('Firestore write failed'));
+
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      const callback = jest.fn();
+      service.onTokenRefresh(mockUserId, callback);
+
+      // Simulate token refresh with Firestore failure
+      await tokenRefreshHandler!(newToken);
+
+      // Verify error was logged
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Error saving refreshed FCM token:',
+        expect.any(Error)
+      );
+
+      // Verify callback was NOT called (error occurred before callback)
+      expect(callback).not.toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
+    });
   });
 
   describe('deleteToken', () => {
