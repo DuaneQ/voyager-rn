@@ -52,7 +52,7 @@ function handleNotificationNavigation(data: Record<string, unknown> | undefined)
       break;
     }
     default:
-      console.log('Unknown notification type, skipping navigation:', type);
+      // Debug log removed for production
   }
 }
 

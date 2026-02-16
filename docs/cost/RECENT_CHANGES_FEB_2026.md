@@ -187,3 +187,42 @@ When modifying VideoCardV2, remember it's used on iOS, Android, and Web. Test br
 
 **Last Updated:** February 9, 2026  
 **Next Review:** After Android device testing
+
+---
+
+## 💰 Google Places API Cost Reduction
+
+### 3. Airport Mappings Massive Expansion ✅
+**Date:** February 16, 2026  
+**Issue:** $272.58 Google Places API cost spike due to expensive Text Search fallback calls  
+**Root Cause:** `AirportSelector.tsx` fallback logic triggered $0.032/call when cities not in curated mappings  
+**Solution:** Expanded curated airport mappings from 642 to **892 destinations** (+250 cities)
+
+**Cost Impact:**
+- **Before:** 10,123 Text Search calls = $163.94 in 16 days (~$305/month)
+- **After:** Expected 85-90% reduction = $30-50/month  
+- **Annual Savings:** ~$3,060-3,300 💰
+
+**New Coverage Added:**
+- ✅ **European Islands:** Santorini, Mykonos, Ibiza, Dubrovnik, Reykjavik (+27 cities)
+- ✅ **Asian Beach Destinations:** Phuket, Langkawi, Boracay, Nha Trang (+22 cities)  
+- ✅ **Pacific Islands:** Fiji, Tahiti, Cook Islands (+10 cities)
+- ✅ **Caribbean Complete:** Cuba, Bahamas, Dominican Republic (+20 cities)
+- ✅ **African Safari:** Victoria Falls, Zanzibar, Arusha (+12 cities)
+- ✅ **South American Gems:** La Paz, Quito, Cartagena (+12 cities)
+- ✅ **Eastern Europe:** Vilnius, Riga, Sarajevo (+10 cities)
+- ✅ **Middle East Complete:** Muscat, Kuwait City, Beirut (+7 cities)
+
+**Real-World Impact:**
+- 🏝️ "Santorini honeymoon" → JTR (free vs. $0.032)
+- 🏖️ "Phuket beach vacation" → HKT (free vs. $0.032)
+- 🦁 "Victoria Falls safari" → VFA (free vs. $0.032)
+- ❄️ "Reykjavik northern lights" → KEF (free vs. $0.032)
+
+**Files Changed:** `src/data/cityAirportMappings.ts`  
+**Documentation:** [AIRPORT_MAPPINGS_COST_REDUCTION.md](./cost/AIRPORT_MAPPINGS_COST_REDUCTION.md)
+
+---
+
+**Last Updated:** February 16, 2026  
+**Next Review:** Monitor Google Cloud billing for 30 days to confirm 85-90% cost reduction

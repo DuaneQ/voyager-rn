@@ -94,11 +94,6 @@ const docRef = doc((firebaseCfg as any).db, 'users', userIdNow);
     }
     
     const reached = dailyUsage.viewCount >= FREE_DAILY_LIMIT;
-    if (reached) {
-      console.log('[useUsageTracking] ⛔ View limit REACHED:', `${dailyUsage.viewCount}/${FREE_DAILY_LIMIT}`);
-    } else {
-      console.log('[useUsageTracking] ✅ View limit OK:', `${dailyUsage.viewCount}/${FREE_DAILY_LIMIT}`);
-    }
     return reached;
   }, [userProfile, hasPremium]);
 
@@ -109,10 +104,6 @@ const docRef = doc((firebaseCfg as any).db, 'users', userIdNow);
       console.error('[useUsageTracking] ❌ trackView: No user ID found');
       return false;
     }
-
-    console.log('[useUsageTracking] 🚀 trackView START:', {
-      localViewCount: userProfile?.dailyUsage?.viewCount || 0
-    });
 
     // Fetch fresh data from Firestore before checking limit
     try {
@@ -139,7 +130,6 @@ const docRef = doc((firebaseCfg as any).db, 'users', userIdNow);
         }
         
         if (isPremium) {
-          console.log('[useUsageTracking] ⭐ Premium user - view tracking skipped');
           return true; // Premium users unlimited
         }
         
@@ -159,12 +149,6 @@ const docRef = doc((firebaseCfg as any).db, 'users', userIdNow);
         if (dailyUsage && dailyUsage.date === today) {
           newViewCount = (dailyUsage.viewCount || 0) + 1;
         }
-
-        console.log('[useUsageTracking] ➡️ Incrementing view count:', {
-          oldCount: dailyUsage?.viewCount || 0,
-          newCount: newViewCount,
-          limit: FREE_DAILY_LIMIT
-        });
 
         const updatedUsage = {
           date: today,
