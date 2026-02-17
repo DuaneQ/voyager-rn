@@ -1,8 +1,8 @@
 # iOS Push Notification Debug Status
 
-**Last Updated**: February 15, 2026  
-**Status**: FIXED — Replaced deprecated IID batchImport with @react-native-firebase/messaging  
-**Build**: 1.7.4 build 33 (iOS), versionCode 26 (Android)
+**Last Updated**: February 16, 2026  
+**Status**: FIXED — Full push notifications working on iOS & Android  
+**Build**: 1.7.4 build 34 (iOS), versionCode 28 (Android)
 
 ---
 
@@ -55,7 +55,7 @@ Re-installed `@react-native-firebase/messaging` which handles APNs→FCM token m
 | src/services/notification/NotificationService.ts | Rewrote to use `messaging().getToken()`, `messaging().requestPermission()`, `messaging().onTokenRefresh()`, `messaging().deleteToken()` |
 | __mocks__/@react-native-firebase/messaging.ts | Created — Jest mock for tests |
 | src/__tests__/services/NotificationService.test.ts | Updated to mock `messaging` instead of expo-notifications for tokens |
-| app.json | buildNumber: 32→33, versionCode: 24→25 |
+| app.json | buildNumber: 32→34, versionCode: 24→28 |
 
 ### What was removed
 - `convertAPNsToFCM()` private method (no longer needed)
@@ -74,17 +74,35 @@ Re-installed `@react-native-firebase/messaging` which handles APNs→FCM token m
 
 ### Client Flow (NotificationService.ts) — Build 33+
 ```
-requestPermission() → messaging().requestPermission()
-  → iOS: Firebase iOS SDK registers APNs automatically
-  → Android: Permissions via system API
+requestPermission()
+  → iOS: messaging().requestPermission() — Firebase iOS SDK registers APNs automatically
+  → Android: expo-notifications requestPermissionsAsync() — triggers POST_NOTIFICATIONS dialog
+    (RNFB requestPermission() on Android only checks FCM-level auth, always returns AUTHORIZED)
 → messaging().getToken()
   → iOS: Firebase SDK handles APNs→FCM natively (no cloud function needed)
-  → Android: FCM token directly
+  → Android: FCM token directly (fallback: expo-notifications getDevicePushTokenAsync())
 → saveToken(userId, fcmToken) → Firestore users/{uid}.fcmTokens: [token]
 
 Token refresh:
   messaging().onTokenRefresh(token => saveToken(userId, token))
   → FCM tokens directly on both platforms (no conversion needed)
+```
+
+### Android RNFB Message Bridge (App.tsx) — Build 28+
+```
+On Android, RNFB FirebaseMessagingService intercepts ALL incoming FCM messages
+BEFORE expo-notifications can see them. Without bridging, messages are silently dropped.
+
+Foreground (app open):
+  messaging().onMessage() → scheduleNotificationAsync() → system notification displayed
+
+Background/Quit:
+  messaging().setBackgroundMessageHandler() → Android shows notification automatically
+  (notification-type messages are displayed by the system tray natively)
+
+iOS does NOT use this bridge — expo-notifications handles foreground display
+natively via UNUserNotificationCenter. Adding onMessage on iOS would cause
+DOUBLE notifications.
 ```
 
 ### Server Flow (sendChatNotification.ts) — Unchanged
@@ -107,6 +125,7 @@ Firestore trigger: connections/{id}/messages/{id} created
 | Purpose | File |
 |---|---|
 | Client notification service | src/services/notification/NotificationService.ts |
+| RNFB message bridge (Android) | App.tsx (module-level onMessage + setBackgroundMessageHandler) |
 | Messaging platform adapter (mobile) | src/services/notification/messaging.native.ts |
 | Messaging platform adapter (web) | src/services/notification/messaging.ts |
 | Client notification hook | src/hooks/useNotifications.ts |
@@ -127,8 +146,8 @@ Firestore trigger: connections/{id}/messages/{id} created
 | Bundle ID | com.travalpass.app |
 | APNs Key (correct, sandbox+prod) | Z64B4S2GC7 |
 | Team ID | 77WCFLF5AV |
-| iOS Build Number | 33 |
-| Android versionCode | 26 |
+| iOS Build Number | 34 |
+| Android versionCode | 28 |
 | App Version | 1.7.4 |
 
 ---

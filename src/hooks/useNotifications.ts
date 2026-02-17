@@ -104,9 +104,7 @@ export function useNotifications(): UseNotificationsReturn {
    * Web: No-op (returns immediately)
    */
   const registerForPushNotifications = useCallback(async (userId: string): Promise<void> => {
-    console.log('🔔 registerForPushNotifications called - userId:', userId, 'platform:', Platform.OS);
     if (Platform.OS === 'web') {
-      console.log('🔔 Skipping - web platform');
       return;
     }
 
@@ -120,10 +118,8 @@ export function useNotifications(): UseNotificationsReturn {
     try {
       // Request permission
       diagnostics.step = 'requesting_permission';
-      console.log('🔔 Step: requesting_permission...');
       const granted = await notificationService.requestPermission();
       diagnostics.permissionGranted = granted;
-      console.log('🔔 Permission result:', granted);
       setPermissionStatus(granted ? 'granted' : 'denied');
 
       if (!granted) {
@@ -136,11 +132,9 @@ export function useNotifications(): UseNotificationsReturn {
 
       // Get device push token (FCM on Android, APNs on iOS)
       diagnostics.step = 'getting_token';
-      console.log('🔔 Step: getting_token...');
       const token = await notificationService.getFCMToken();
       diagnostics.tokenReceived = !!token;
       diagnostics.tokenLength = token?.length ?? 0;
-      console.log('🔔 Token received:', !!token, 'length:', token?.length ?? 0);
 
       if (!token) {
         diagnostics.step = 'token_null';
@@ -153,13 +147,10 @@ export function useNotifications(): UseNotificationsReturn {
 
       // Save token to Firestore
       diagnostics.step = 'saving_token';
-      console.log('🔔 Step: saving_token...');
       await notificationService.saveToken(userId, token);
-      console.log('🔔 Token saved to Firestore successfully');
       
       // Store token locally for device-specific cleanup on sign-out
       await AsyncStorage.setItem(CURRENT_DEVICE_TOKEN_KEY, token);
-      console.log('🔔 Token saved to AsyncStorage');
       // Set up token refresh listener
       if (tokenRefreshUnsubscribe.current) {
         tokenRefreshUnsubscribe.current();

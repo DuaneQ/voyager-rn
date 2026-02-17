@@ -52,7 +52,6 @@ export class NotificationService {
    * @returns Promise<boolean> - true if permission granted, false otherwise
    */
   async requestPermission(): Promise<boolean> {
-    console.log('🔔 requestPermission() called - platform:', Platform.OS, 'isDevice:', Device.isDevice, 'messaging available:', !!messaging);
     if (Platform.OS === 'web') {
       return false;
     }
@@ -94,18 +93,14 @@ export class NotificationService {
       // Android: RNFB requestPermission() does NOT trigger the Android 13+ POST_NOTIFICATIONS
       //          runtime permission dialog — it only checks FCM-level auth (always AUTHORIZED).
       //          We MUST use expo-notifications requestPermissionsAsync() on Android.
-      console.log('🔔 requestPermission: messaging available?', !!messaging);
       if (Platform.OS === 'ios' && messaging) {
         try {
-          console.log('🔔 iOS: Calling messaging().requestPermission()...');
           const authStatus = await messaging().requestPermission();
-          console.log('🔔 RNFB authStatus:', authStatus, 'AUTHORIZED:', messaging.AuthorizationStatus.AUTHORIZED, 'PROVISIONAL:', messaging.AuthorizationStatus.PROVISIONAL);
           const enabled =
             authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
             authStatus === messaging.AuthorizationStatus.PROVISIONAL;
 
           if (enabled) {
-            console.log('🔔 iOS: RNFB permission GRANTED');
             return true;
           }
           console.warn(`⚠️ iOS: RNFB permission status: ${authStatus}`);
@@ -116,15 +111,12 @@ export class NotificationService {
       }
 
       // Android (and iOS fallback): Use expo-notifications for runtime permission dialog
-      console.log('🔔 Requesting permission via expo-notifications...');
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
-      console.log('🔔 Existing permission status:', existingStatus);
       if (existingStatus === 'granted') {
         return true;
       }
 
       const { status } = await Notifications.requestPermissionsAsync();
-      console.log('🔔 Requested permission result:', status);
       if (status === 'granted') {
         return true;
       }
@@ -168,12 +160,9 @@ export class NotificationService {
     }
 
     // Try RNFB messaging first (works on both platforms, handles APNs→FCM on iOS)
-    console.log('🔔 getFCMToken: messaging available?', !!messaging);
     if (messaging) {
       try {
-        console.log('🔔 Calling messaging().getToken()...');
         const token = await messaging().getToken();
-        console.log('🔔 RNFB getToken result:', token ? `token received (${token.length} chars)` : 'NULL');
         if (token) {
           return token;
         }
@@ -190,12 +179,9 @@ export class NotificationService {
     // This returns a native FCM token on Android (same format as RNFB)
     if (Platform.OS === 'android') {
       try {
-        console.log('🔔 FALLBACK: Trying expo-notifications getDevicePushTokenAsync()...');
         const tokenData = await Notifications.getDevicePushTokenAsync();
-        console.log('🔔 FALLBACK tokenData:', JSON.stringify({ type: tokenData.type, dataLength: typeof tokenData.data === 'string' ? tokenData.data.length : 0 }));
         const token = typeof tokenData.data === 'string' ? tokenData.data : String(tokenData.data);
         if (token) {
-          console.log('🔔 FALLBACK: Got token via expo-notifications (' + token.length + ' chars)');
           return token;
         }
       } catch (fallbackError) {
@@ -217,7 +203,6 @@ export class NotificationService {
    * @param token - FCM device registration token
    */
   async saveToken(userId: string, token: string): Promise<void> {
-    console.log('🔔 saveToken called - userId:', userId, 'token length:', token.length);
     try {
       const userRef = doc(this.db, 'users', userId);
       // REPLACE all tokens with current one — prevents stale token accumulation
@@ -228,7 +213,6 @@ export class NotificationService {
         lastTokenPlatform: Platform.OS,
         lastTokenRegistered: new Date().toISOString(),
       });
-      console.log('🔔 saveToken SUCCESS - token saved to Firestore');
     } catch (error) {
       console.error('❌ Error saving FCM token to Firestore:', error);
       if (error instanceof Error) {

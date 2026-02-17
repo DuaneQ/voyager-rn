@@ -23,24 +23,17 @@ export function NotificationInitializer() {
   const { registerForPushNotifications } = useNotifications();
 
   useEffect(() => {
-    console.log('🔔 NotificationInitializer useEffect fired - status:', status, 'uid:', user?.uid ?? 'none');
     // Only proceed if auth has finished initializing
     if (status === 'loading' || status === 'idle') {
-      console.log('🔔 Skipping - auth status is:', status);
       return;
     }
 
     if (!user?.uid) {
-      console.log('🔔 Skipping - no user uid');
       return;
     }
 
-    console.log('🔔 Starting push notification registration for user:', user.uid);
     // Register for push notifications when user signs in
     registerForPushNotifications(user.uid)
-      .then(() => {
-        console.log('✅ Push notification registration completed successfully');
-      })
       .catch(error => {
         console.error('❌ Failed to register for push notifications:', error);
         if (error instanceof Error) {

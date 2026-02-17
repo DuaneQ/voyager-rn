@@ -47,7 +47,6 @@ if (Platform.OS !== 'web') {
 if (Platform.OS === 'android' && messaging) {
   // Foreground: RNFB intercepts the message, we schedule a local notification via expo-notifications
   messaging().onMessage(async (remoteMessage) => {
-    console.log('🔔 RNFB onMessage (foreground):', JSON.stringify(remoteMessage.notification));
     await Notifications.scheduleNotificationAsync({
       content: {
         title: remoteMessage.notification?.title ?? 'TravalPass',
@@ -62,8 +61,8 @@ if (Platform.OS === 'android' && messaging) {
   // Background/Quit: Prevents the "No background message handler" warning.
   // For notification-type messages (which we use), Android shows them
   // automatically from the system tray — no extra work needed here.
-  messaging().setBackgroundMessageHandler(async (remoteMessage) => {
-    console.log('🔔 RNFB background message:', JSON.stringify(remoteMessage.notification));
+  messaging().setBackgroundMessageHandler(async (_remoteMessage) => {
+    // Background notification-type messages are shown automatically by Android system tray
   });
 }
 
