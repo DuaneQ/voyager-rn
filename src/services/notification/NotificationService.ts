@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { Platform, PermissionsAndroid } from 'react-native';
 import { getFirestore, doc, updateDoc, arrayRemove } from 'firebase/firestore';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
@@ -90,9 +90,6 @@ export class NotificationService {
       }
 
       // iOS: Use RNFB messaging for permission (handles APNs registration natively)
-      // Android: RNFB requestPermission() does NOT trigger the Android 13+ POST_NOTIFICATIONS
-      //          runtime permission dialog — it only checks FCM-level auth (always AUTHORIZED).
-      //          We MUST use expo-notifications requestPermissionsAsync() on Android.
       if (Platform.OS === 'ios' && messaging) {
         try {
           const authStatus = await messaging().requestPermission();
@@ -110,7 +107,43 @@ export class NotificationService {
         }
       }
 
-      // Android (and iOS fallback): Use expo-notifications for runtime permission dialog
+      // Android 13+ (API 33+): Use PermissionsAndroid directly for POST_NOTIFICATIONS.
+      // CRITICAL: Do NOT use expo-notifications getPermissionsAsync() here!
+      // When @react-native-firebase/messaging is installed, RNFB sets up notification
+      // infrastructure (FirebaseMessagingService, channels) that causes expo-notifications'
+      // getPermissionsAsync() to return 'granted' even when the actual Android runtime
+      // POST_NOTIFICATIONS permission hasn't been user-approved.
+      // PermissionsAndroid checks the real OS-level permission state.
+      if (Platform.OS === 'android') {
+        const apiLevel = typeof Platform.Version === 'number' ? Platform.Version : parseInt(String(Platform.Version), 10);
+        if (apiLevel >= 33) {
+          const alreadyGranted = await PermissionsAndroid.check(
+            'android.permission.POST_NOTIFICATIONS' as any
+          );
+          if (alreadyGranted) {
+            return true;
+          }
+
+          const result = await PermissionsAndroid.request(
+            'android.permission.POST_NOTIFICATIONS' as any,
+            {
+              title: 'Enable Notifications',
+              message: 'TravalPass needs notification permission to alert you about new matches and messages.',
+              buttonPositive: 'Allow',
+              buttonNegative: 'Not Now',
+            }
+          );
+          if (result === PermissionsAndroid.RESULTS.GRANTED) {
+            return true;
+          }
+          console.warn(`⚠️ Android: POST_NOTIFICATIONS permission result: ${result}`);
+          return false;
+        }
+        // Android <13: Notifications auto-granted at install time
+        return true;
+      }
+
+      // Fallback (iOS expo-notifications if RNFB failed above)
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       if (existingStatus === 'granted') {
         return true;
