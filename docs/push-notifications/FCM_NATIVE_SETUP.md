@@ -1,8 +1,12 @@
-# Push Notifications Setup — expo-notifications
+# Push Notifications Setup — FCM Token Management
 
-> **Updated**: February 14, 2026  
-> **Status**: ✅ Implemented & Verified on Android  
-> **Library**: `expo-notifications` (replaced `@react-native-firebase/messaging`)
+> **⚠️ OUTDATED**: This document was written for the expo-notifications token approach (pre-build 33).  
+> The app now uses `@react-native-firebase/messaging` for FCM token management.  
+> See [IOS_PUSH_DEBUG_STATUS.md](./IOS_PUSH_DEBUG_STATUS.md) for the **current authoritative architecture**.
+>
+> **Updated**: February 15, 2026  
+> **Status**: SUPERSEDED — See IOS_PUSH_DEBUG_STATUS.md  
+> **Library**: `@react-native-firebase/messaging` (re-installed in build 33, replaces expo-notifications token approach)
 
 ## Overview
 

@@ -1,12 +1,13 @@
 # Push Notification Implementation Plan — TravalPass (iOS & Android)
 
 > **Created**: June 2025  
-> **Updated**: February 15, 2026 (Critical iOS token refresh bug fixed)  
+> **Updated**: February 16, 2026 (Documentation updated to reflect RNFB messaging architecture)  
 > **Status**: ✅ **Fully Working** — All notification types working on iOS & Android  
 > **Platforms**: iOS (APNs), Android (FCM), Web (not supported — excluded)  
 > **Framework**: React Native Expo (SDK 54)  
-> **Library**: `expo-notifications` (replaced `@react-native-firebase/messaging`)  
-> **Recent Fixes**: See [NOTIFICATION_FIXES_FEB_15_2026.md](./NOTIFICATION_FIXES_FEB_15_2026.md)
+> **Library**: `@react-native-firebase/messaging` (re-installed in build 33; replaces expo-notifications token approach)  
+> **Current Architecture**: See [IOS_PUSH_DEBUG_STATUS.md](./IOS_PUSH_DEBUG_STATUS.md)  
+> **Historical Fixes**: See [NOTIFICATION_FIXES_FEB_15_2026.md](./NOTIFICATION_FIXES_FEB_15_2026.md)
 
 ---
 
@@ -37,12 +38,15 @@ Implement push notifications across iOS and Android to notify users of:
 - **Vidoe  comment** — distinct notification for comments on videos.
 ### Approach (SIMPLIFIED for MVP)
 
-- **Client**: `expo-notifications` library for token registration, permission handling, foreground/background notification handling, and deep linking
+- **Client**: `@react-native-firebase/messaging` for FCM token management (build 33+); `expo-notifications` for permission handling, notification channels, badge management, foreground/background notification handling, and deep linking
 - **Server**: Firebase Cloud Functions with Firestore `onCreate` triggers to send FCM messages server-side (never client-initiated pushes)
 - **Token Storage**: FCM tokens stored as **array field on user document** (`users/{uid}.fcmTokens: string[]`) — simpler than subcollection
-- **Architecture**: `NotificationService` class (permissions + token CRUD + Firestore), `useNotifications` hook (state management), handler at module level in `App.tsx`
+- **Architecture**: `NotificationService` class (permissions + token CRUD + Firestore), `useNotifications` hook (state management), handler at module level in `App.tsx`, platform adapters (`messaging.native.ts` / `messaging.ts`)
 - **MVP Scope**: All notifications enabled by default, settings UI deferred to post-launch
-- **Library Change (Feb 14, 2026)**: Switched from `@react-native-firebase/messaging` to `expo-notifications` — eliminates native module linking issues, uses same FCM tokens, zero cost difference
+- **Library History**:
+  - Originally used `@react-native-firebase/messaging` → erroneously removed Feb 14, 2026
+  - Switched to `expo-notifications` for token management → IID batchImport API deprecated
+  - **Re-installed `@react-native-firebase/messaging`** in build 33 (Feb 15, 2026) — handles APNs→FCM natively, no cloud function conversion needed
 
 ### Recent Critical Fixes (February 15, 2026)
 

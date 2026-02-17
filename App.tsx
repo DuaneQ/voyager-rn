@@ -16,6 +16,7 @@ import * as Notifications from 'expo-notifications';
 import ErrorBoundary from './src/components/common/ErrorBoundary';
 import { NotificationInitializer } from './src/components/common/NotificationInitializer';
 import { setupGlobalErrorHandlers } from './src/utils/globalErrorHandler';
+import messaging from './src/services/notification/messaging';
 
 // Initialize global error handlers for uncaught errors and unhandled promise rejections
 setupGlobalErrorHandlers();
@@ -26,13 +27,43 @@ setupGlobalErrorHandlers();
 if (Platform.OS !== 'web') {
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
-      shouldShowAlert: true,
       shouldShowBanner: true,
       shouldShowList: true,
       shouldPlaySound: true,
       shouldSetBadge: true,
       priority: Notifications.AndroidNotificationPriority.HIGH,
     }),
+  });
+}
+
+// RNFB Messaging Handlers (Android ONLY)
+// On Android, @react-native-firebase/messaging's FirebaseMessagingService intercepts
+// ALL incoming FCM messages BEFORE expo-notifications can see them.
+// We must bridge RNFB → expo-notifications so notifications actually display.
+//
+// iOS does NOT need this bridge — expo-notifications handles foreground display
+// natively via UNUserNotificationCenter, and RNFB messaging on iOS only manages
+// APNs→FCM token mapping. Adding onMessage on iOS would cause DOUBLE notifications.
+if (Platform.OS === 'android' && messaging) {
+  // Foreground: RNFB intercepts the message, we schedule a local notification via expo-notifications
+  messaging().onMessage(async (remoteMessage) => {
+    console.log('🔔 RNFB onMessage (foreground):', JSON.stringify(remoteMessage.notification));
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: remoteMessage.notification?.title ?? 'TravalPass',
+        body: remoteMessage.notification?.body ?? '',
+        data: remoteMessage.data ?? {},
+        sound: 'default',
+      },
+      trigger: null, // Show immediately
+    });
+  });
+
+  // Background/Quit: Prevents the "No background message handler" warning.
+  // For notification-type messages (which we use), Android shows them
+  // automatically from the system tray — no extra work needed here.
+  messaging().setBackgroundMessageHandler(async (remoteMessage) => {
+    console.log('🔔 RNFB background message:', JSON.stringify(remoteMessage.notification));
   });
 }
 

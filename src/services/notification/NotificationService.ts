@@ -47,10 +47,13 @@ export class NotificationService {
    * Android 13+: Must create a notification channel BEFORE requesting permission
    * for the system prompt to appear.
    * 
+   * Strategy: Try RNFB messaging first, fall back to expo-notifications if needed.
+   * 
    * @returns Promise<boolean> - true if permission granted, false otherwise
    */
   async requestPermission(): Promise<boolean> {
-    if (Platform.OS === 'web' || !messaging) {
+    console.log('🔔 requestPermission() called - platform:', Platform.OS, 'isDevice:', Device.isDevice, 'messaging available:', !!messaging);
+    if (Platform.OS === 'web') {
       return false;
     }
 
@@ -87,19 +90,47 @@ export class NotificationService {
         ]);
       }
 
-      // Use @react-native-firebase/messaging for permission request
-      // This properly registers APNs on iOS and returns authorization status
-      const authStatus = await messaging().requestPermission();
-      const enabled =
-        authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-        authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+      // iOS: Use RNFB messaging for permission (handles APNs registration natively)
+      // Android: RNFB requestPermission() does NOT trigger the Android 13+ POST_NOTIFICATIONS
+      //          runtime permission dialog — it only checks FCM-level auth (always AUTHORIZED).
+      //          We MUST use expo-notifications requestPermissionsAsync() on Android.
+      console.log('🔔 requestPermission: messaging available?', !!messaging);
+      if (Platform.OS === 'ios' && messaging) {
+        try {
+          console.log('🔔 iOS: Calling messaging().requestPermission()...');
+          const authStatus = await messaging().requestPermission();
+          console.log('🔔 RNFB authStatus:', authStatus, 'AUTHORIZED:', messaging.AuthorizationStatus.AUTHORIZED, 'PROVISIONAL:', messaging.AuthorizationStatus.PROVISIONAL);
+          const enabled =
+            authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+            authStatus === messaging.AuthorizationStatus.PROVISIONAL;
 
-      if (!enabled) {
-        console.warn('⚠️ Push notification permission denied by user');
-        return false;
+          if (enabled) {
+            console.log('🔔 iOS: RNFB permission GRANTED');
+            return true;
+          }
+          console.warn(`⚠️ iOS: RNFB permission status: ${authStatus}`);
+          return false;
+        } catch (rnfbError) {
+          console.error('❌ iOS: RNFB requestPermission failed, trying expo-notifications fallback:', rnfbError);
+        }
       }
 
-      return true;
+      // Android (and iOS fallback): Use expo-notifications for runtime permission dialog
+      console.log('🔔 Requesting permission via expo-notifications...');
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      console.log('🔔 Existing permission status:', existingStatus);
+      if (existingStatus === 'granted') {
+        return true;
+      }
+
+      const { status } = await Notifications.requestPermissionsAsync();
+      console.log('🔔 Requested permission result:', status);
+      if (status === 'granted') {
+        return true;
+      }
+
+      console.warn('⚠️ Push notification permission denied by user');
+      return false;
     } catch (error) {
       console.error('❌ Error requesting push notification permission:', error);
       if (error instanceof Error) {
@@ -115,17 +146,19 @@ export class NotificationService {
   /**
    * Get the FCM device token for this device
    * 
-   * Uses @react-native-firebase/messaging.getToken() which:
-   * - Android: Returns FCM registration token directly
-   * - iOS: Gets APNs token, maps it to FCM token via Firebase iOS SDK natively
-   *   (no cloud function or IID batchImport needed)
+   * Strategy: Try @react-native-firebase/messaging first, fall back to
+   * expo-notifications on Android if RNFB fails.
+   * 
+   * - Android: Both RNFB messaging().getToken() and expo-notifications
+   *   getDevicePushTokenAsync() return FCM registration tokens directly.
+   * - iOS: RNFB handles APNs→FCM mapping natively via Firebase iOS SDK.
    * 
    * Requires notification permissions to be granted first.
    * 
    * @returns Promise<string | null> - FCM token or null if unavailable
    */
   async getFCMToken(): Promise<string | null> {
-    if (Platform.OS === 'web' || !messaging) {
+    if (Platform.OS === 'web') {
       return null;
     }
 
@@ -134,27 +167,44 @@ export class NotificationService {
       return null;
     }
 
-    try {
-      // messaging().getToken() returns a proper FCM registration token on both platforms.
-      // On iOS, the Firebase SDK handles APNs→FCM mapping natively.
-      const token = await messaging().getToken();
-
-      if (!token) {
-        console.warn('⚠️ FCM token is null — may need permissions or physical device');
-        return null;
+    // Try RNFB messaging first (works on both platforms, handles APNs→FCM on iOS)
+    console.log('🔔 getFCMToken: messaging available?', !!messaging);
+    if (messaging) {
+      try {
+        console.log('🔔 Calling messaging().getToken()...');
+        const token = await messaging().getToken();
+        console.log('🔔 RNFB getToken result:', token ? `token received (${token.length} chars)` : 'NULL');
+        if (token) {
+          return token;
+        }
+        console.warn('⚠️ RNFB messaging().getToken() returned null/empty');
+      } catch (error) {
+        console.error('❌ RNFB messaging().getToken() failed:', error);
+        if (error instanceof Error) {
+          console.error('RNFB error details:', error.message);
+        }
       }
-
-      return token;
-    } catch (error) {
-      console.error('❌ Error getting FCM token:', error);
-      if (error instanceof Error) {
-        console.error('Error details:', {
-          message: error.message,
-          stack: error.stack
-        });
-      }
-      return null;
     }
+
+    // Fallback for Android: use expo-notifications getDevicePushTokenAsync()
+    // This returns a native FCM token on Android (same format as RNFB)
+    if (Platform.OS === 'android') {
+      try {
+        console.log('🔔 FALLBACK: Trying expo-notifications getDevicePushTokenAsync()...');
+        const tokenData = await Notifications.getDevicePushTokenAsync();
+        console.log('🔔 FALLBACK tokenData:', JSON.stringify({ type: tokenData.type, dataLength: typeof tokenData.data === 'string' ? tokenData.data.length : 0 }));
+        const token = typeof tokenData.data === 'string' ? tokenData.data : String(tokenData.data);
+        if (token) {
+          console.log('🔔 FALLBACK: Got token via expo-notifications (' + token.length + ' chars)');
+          return token;
+        }
+      } catch (fallbackError) {
+        console.error('❌ Fallback getDevicePushTokenAsync() also failed:', fallbackError);
+      }
+    }
+
+    console.warn('⚠️ FCM token is null — may need permissions or physical device');
+    return null;
   }
 
   /**
@@ -167,6 +217,7 @@ export class NotificationService {
    * @param token - FCM device registration token
    */
   async saveToken(userId: string, token: string): Promise<void> {
+    console.log('🔔 saveToken called - userId:', userId, 'token length:', token.length);
     try {
       const userRef = doc(this.db, 'users', userId);
       // REPLACE all tokens with current one — prevents stale token accumulation
@@ -177,6 +228,7 @@ export class NotificationService {
         lastTokenPlatform: Platform.OS,
         lastTokenRegistered: new Date().toISOString(),
       });
+      console.log('🔔 saveToken SUCCESS - token saved to Firestore');
     } catch (error) {
       console.error('❌ Error saving FCM token to Firestore:', error);
       if (error instanceof Error) {

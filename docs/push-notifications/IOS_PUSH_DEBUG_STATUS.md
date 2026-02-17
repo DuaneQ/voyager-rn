@@ -2,7 +2,7 @@
 
 **Last Updated**: February 15, 2026  
 **Status**: FIXED — Replaced deprecated IID batchImport with @react-native-firebase/messaging  
-**Build**: 1.7.4 build 33 (iOS), versionCode 25 (Android)
+**Build**: 1.7.4 build 33 (iOS), versionCode 26 (Android)
 
 ---
 
@@ -128,7 +128,7 @@ Firestore trigger: connections/{id}/messages/{id} created
 | APNs Key (correct, sandbox+prod) | Z64B4S2GC7 |
 | Team ID | 77WCFLF5AV |
 | iOS Build Number | 33 |
-| Android versionCode | 25 |
+| Android versionCode | 26 |
 | App Version | 1.7.4 |
 
 ---

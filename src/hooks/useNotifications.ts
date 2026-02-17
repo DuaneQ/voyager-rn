@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
+import { getFirestore, doc, updateDoc } from 'firebase/firestore';
 import { notificationService } from '../services/notification/NotificationService';
 import { navigateFromNotification } from '../navigation/navigationRef';
 
@@ -18,11 +19,11 @@ export interface UseNotificationsReturn {
 }
 
 /**
- * Hook for managing push notifications via expo-notifications
+ * Hook for managing push notifications
  * Handles permissions, token registration, and notification listeners
  * 
- * Uses expo-notifications getDevicePushTokenAsync() for native FCM/APNs tokens
- * compatible with Firebase Admin SDK backend.
+ * Uses @react-native-firebase/messaging for FCM token management (via NotificationService).
+ * Uses expo-notifications for notification channels, badge, and listeners.
  */
 
 /**
@@ -64,6 +65,22 @@ export function useNotifications(): UseNotificationsReturn {
   const tokenRefreshUnsubscribe = useRef<(() => void) | null>(null);
 
   /**
+   * Save notification registration diagnostics to Firestore
+   * Allows remote debugging of silent registration failures
+   */
+  const saveDiagnostics = async (userId: string, diagnostics: Record<string, unknown>) => {
+    try {
+      const db = getFirestore();
+      const userRef = doc(db, 'users', userId);
+      await updateDoc(userRef, {
+        notificationDiagnostics: diagnostics,
+      });
+    } catch {
+      // Silently fail - diagnostics should never break the app
+    }
+  };
+
+  /**
    * Request notification permissions
    */
   const requestPermission = async (): Promise<boolean> => {
@@ -87,35 +104,62 @@ export function useNotifications(): UseNotificationsReturn {
    * Web: No-op (returns immediately)
    */
   const registerForPushNotifications = useCallback(async (userId: string): Promise<void> => {
+    console.log('🔔 registerForPushNotifications called - userId:', userId, 'platform:', Platform.OS);
     if (Platform.OS === 'web') {
+      console.log('🔔 Skipping - web platform');
       return;
     }
 
     setIsLoading(true);
+    const diagnostics: Record<string, unknown> = {
+      platform: Platform.OS,
+      timestamp: new Date().toISOString(),
+      step: 'started',
+    };
+
     try {
       // Request permission
+      diagnostics.step = 'requesting_permission';
+      console.log('🔔 Step: requesting_permission...');
       const granted = await notificationService.requestPermission();
+      diagnostics.permissionGranted = granted;
+      console.log('🔔 Permission result:', granted);
       setPermissionStatus(granted ? 'granted' : 'denied');
 
       if (!granted) {
+        diagnostics.step = 'permission_denied';
         console.warn('Push notification permission not granted');
+        // Save diagnostics even on failure so we can debug remotely
+        await saveDiagnostics(userId, diagnostics);
         return;
       }
 
       // Get device push token (FCM on Android, APNs on iOS)
+      diagnostics.step = 'getting_token';
+      console.log('🔔 Step: getting_token...');
       const token = await notificationService.getFCMToken();
+      diagnostics.tokenReceived = !!token;
+      diagnostics.tokenLength = token?.length ?? 0;
+      console.log('🔔 Token received:', !!token, 'length:', token?.length ?? 0);
+
       if (!token) {
-        console.warn('Failed to get device push token');
+        diagnostics.step = 'token_null';
+        console.warn('🔔 Failed to get device push token');
+        await saveDiagnostics(userId, diagnostics);
         return;
       }
 
       setFcmToken(token);
 
       // Save token to Firestore
+      diagnostics.step = 'saving_token';
+      console.log('🔔 Step: saving_token...');
       await notificationService.saveToken(userId, token);
+      console.log('🔔 Token saved to Firestore successfully');
       
       // Store token locally for device-specific cleanup on sign-out
       await AsyncStorage.setItem(CURRENT_DEVICE_TOKEN_KEY, token);
+      console.log('🔔 Token saved to AsyncStorage');
       // Set up token refresh listener
       if (tokenRefreshUnsubscribe.current) {
         tokenRefreshUnsubscribe.current();
@@ -126,8 +170,19 @@ export function useNotifications(): UseNotificationsReturn {
           setFcmToken(newToken);
         }
       );
+
+      diagnostics.step = 'completed';
+      await saveDiagnostics(userId, diagnostics);
     } catch (error) {
+      diagnostics.step = 'error';
+      diagnostics.error = error instanceof Error ? error.message : String(error);
       console.error('Error registering for push notifications:', error);
+      // Try to save diagnostics even on error
+      try {
+        await saveDiagnostics(userId, diagnostics);
+      } catch {
+        // Ignore diagnostics save failure
+      }
     } finally {
       setIsLoading(false);
     }
