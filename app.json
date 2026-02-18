@@ -2,7 +2,7 @@
   "expo": {
     "name": "TravalPass",
     "slug": "voyager-rn",
-    "version": "1.7.4",
+    "version": "1.7.5",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "icon": "./assets/icon.png",
@@ -43,7 +43,7 @@
     },
     "android": {
       "package": "com.travalpass.app",
-      "versionCode": 28,
+      "versionCode": 30,
       "googleServicesFile": "./google-services.json",
       "icon": "./AppIcons/playstore.png",
       "softwareKeyboardLayoutMode": "resize",
