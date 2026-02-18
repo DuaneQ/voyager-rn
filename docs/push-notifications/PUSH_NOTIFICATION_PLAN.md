@@ -1,12 +1,13 @@
 # Push Notification Implementation Plan — TravalPass (iOS & Android)
 
 > **Created**: June 2025  
-> **Updated**: February 15, 2026 (Critical iOS token refresh bug fixed)  
+> **Updated**: February 16, 2026 (Documentation updated to reflect RNFB messaging architecture)  
 > **Status**: ✅ **Fully Working** — All notification types working on iOS & Android  
 > **Platforms**: iOS (APNs), Android (FCM), Web (not supported — excluded)  
 > **Framework**: React Native Expo (SDK 54)  
-> **Library**: `expo-notifications` (replaced `@react-native-firebase/messaging`)  
-> **Recent Fixes**: See [NOTIFICATION_FIXES_FEB_15_2026.md](./NOTIFICATION_FIXES_FEB_15_2026.md)
+> **Library**: `@react-native-firebase/messaging` (re-installed in build 33; replaces expo-notifications token approach)  
+> **Current Architecture**: See [IOS_PUSH_DEBUG_STATUS.md](./IOS_PUSH_DEBUG_STATUS.md)  
+> **Historical Fixes**: See [NOTIFICATION_FIXES_FEB_15_2026.md](./NOTIFICATION_FIXES_FEB_15_2026.md)
 
 ---
 
@@ -37,12 +38,32 @@ Implement push notifications across iOS and Android to notify users of:
 - **Vidoe  comment** — distinct notification for comments on videos.
 ### Approach (SIMPLIFIED for MVP)
 
-- **Client**: `expo-notifications` library for token registration, permission handling, foreground/background notification handling, and deep linking
+- **Client**: `@react-native-firebase/messaging` for FCM token management (build 33+); `expo-notifications` for Android permission prompts, notification channels, badge management, and deep linking; RNFB message bridge in `App.tsx` for Android foreground/background notification display
 - **Server**: Firebase Cloud Functions with Firestore `onCreate` triggers to send FCM messages server-side (never client-initiated pushes)
 - **Token Storage**: FCM tokens stored as **array field on user document** (`users/{uid}.fcmTokens: string[]`) — simpler than subcollection
-- **Architecture**: `NotificationService` class (permissions + token CRUD + Firestore), `useNotifications` hook (state management), handler at module level in `App.tsx`
+- **Architecture**: `NotificationService` class (permissions + token CRUD + Firestore), `useNotifications` hook (state management), RNFB→expo-notifications bridge at module level in `App.tsx` (Android only), platform adapters (`messaging.native.ts` / `messaging.ts`)
 - **MVP Scope**: All notifications enabled by default, settings UI deferred to post-launch
-- **Library Change (Feb 14, 2026)**: Switched from `@react-native-firebase/messaging` to `expo-notifications` — eliminates native module linking issues, uses same FCM tokens, zero cost difference
+- **Library History**:
+  - Originally used `@react-native-firebase/messaging` → erroneously removed Feb 14, 2026
+  - Switched to `expo-notifications` for token management → IID batchImport API deprecated
+  - **Re-installed `@react-native-firebase/messaging`** in build 33 (Feb 15, 2026) — handles APNs→FCM natively
+  - **Android message bridge added** in build 28 (Feb 16, 2026) — RNFB intercepts FCM on Android, must bridge to expo-notifications for display
+
+### Platform-Specific Permission Handling (Critical)
+
+| Platform | Permission Method | Why |
+|----------|------------------|-----|
+| **iOS** | `messaging().requestPermission()` (RNFB) | Triggers iOS system dialog AND registers APNs in one call |
+| **Android** | `Notifications.requestPermissionsAsync()` (expo-notifications) | RNFB's `requestPermission()` on Android only checks FCM-level auth (always returns AUTHORIZED) — does NOT show the Android 13+ POST_NOTIFICATIONS runtime dialog |
+
+### Android RNFB Message Bridge (Critical)
+
+On Android, `@react-native-firebase/messaging`'s native `FirebaseMessagingService` intercepts ALL incoming FCM messages BEFORE expo-notifications can see them. Without explicit handlers, messages are **silently dropped**.
+
+| Handler | Purpose | iOS? |
+|---------|---------|------|
+| `messaging().onMessage()` | Foreground: bridges to `scheduleNotificationAsync()` for display | **NO** — iOS handles foreground via `UNUserNotificationCenter` natively; adding this on iOS causes double notifications |
+| `messaging().setBackgroundMessageHandler()` | Background: prevents "No handler" warning; Android shows notification-type messages automatically | **NO** — not needed on iOS |
 
 ### Recent Critical Fixes (February 15, 2026)
 

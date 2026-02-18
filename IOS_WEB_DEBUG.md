@@ -1,103 +1,27 @@
-# iOS Safari Landing Page Debugging Log
+# ⚠️ ARCHIVED: iOS Safari Landing Page Debugging Log
 
-## Problem
-Landing page shows blank white screen on iOS Safari with `RangeError: Maximum call stack size exceeded`
-Works fine on Android.
+**Status:** Historical debugging documentation - The issues documented here were specific to local development on physical iOS devices and have been resolved.
 
-## Root Cause Investigation
-- Error trace shows: `reportFatalError` → `(anonymous function)` → `a` from AppEntry bundle
-- Network shows two iframes loading with spinners
-- Page loads successfully on Android at `http://192.168.1.171:8082`
+## Summary
+- **Issue**: Landing page blank on iOS Safari (local dev only)
+- **Root Cause**: iOS ATS (App Transport Security) blocks HTTP from local IP addresses
+- **Resolution**: Use simulator for iOS web development; physical device requires HTTPS or Expo Go app
+- **Production**: Not applicable - production uses HTTPS and works correctly
 
-## Attempted Fixes (All Reverted)
-1. ❌ Disabled YouTube iframe embed on iOS - still blank
-2. ❌ Disabled video background on iOS - still blank  
-3. ❌ Removed all HTML elements (div, video, iframe, a tags) - **broke scrolling on Android too**
+## Key Findings
+- ✅ iOS Simulator with Safari: Works fine
+- ✅ Android: Works fine  
+- ❌ Physical iPhone with Safari via local IP: Blocked by ATS
+- ✅ Physical iPhone via Expo Go app: Works (native app bypasses Safari security)
+- ✅ Production Firebase URLs: Work fine on all platforms
 
-## Current Approach
-Starting minimal and building up component by component to isolate the failing element.
+**This was a browser/OS security limitation, not a code issue.**
 
----
+For current development, use:
+- `npx expo run:ios` for iOS simulator
+- `npm start → i` for Expo Go on physical device
+- `npm run start:web` for web browser testing
 
-## Minimal Test - Step 1
-Creating bare-bones landing page with only:
-- Simple Text component
-- Basic View wrapper
-- No external HTML, no videos, no complex layouts
-
-File: `src/pages/LandingPage.web.tsx` - **MINIMAL VERSION CREATED**
-- Removed: ScrollView, Image, StyleSheet, modals, video, iframes, all HTML
-- Kept: Basic View + Text + TouchableOpacity only
-- Lines of code: ~45 (was ~850)
-
-**Next**: Test on iPhone at `http://192.168.1.171:8082` to verify basic rendering works.
-
-### Test Result - Step 1
-- ✅ Android: All elements visible including "Get Started" button
-- ❌ iOS: Button NOT visible (title/subtitle may be visible)
-- **Issue**: iOS Safari not rendering the button - likely flex layout or viewport issue
-
-### Step 2 - Fix iOS Viewport/Layout
-Trying explicit height instead of `flex: 1` and adding ScrollView wrapper.
-
-**Result**: ❌ Still blank on iOS, works on Android
-
-**Issue**: `minHeight: '100vh'` string syntax may not work in React Native Web inline styles for iOS Safari.
-
-### Step 3 - Use Dimensions API
-Switching to numeric dimensions using React Native Dimensions API instead of CSS viewport units.
-
-**Result**: ❌ Still blank on iOS
-
-**Hypothesis**: The issue may not be layout-related. Could be:
-1. Navigation/Auth context hooks causing errors on iOS
-2. Component mounting/rendering issue
-3. Some iOS-specific React Native Web incompatibility
-
-### Step 4 - Remove All Dependencies
-Creating absolutely minimal component with zero hooks, zero context, zero imports except RN core.
-
-**Result**: 
-- ✅ iOS Simulator Safari: Red box with "Hello iOS Safari" visible
-- ✅ Android device: Works
-- ❌ Physical iPhone 17 Pro: Blank screen
-
-**CRITICAL FINDING**: The code works fine! Issue is specific to physical iOS device accessing local dev server.
-
-**Possible causes**:
-1. iOS devices may block HTTP on local network (require HTTPS)
-2. Network firewall/settings on physical device
-3. Safari security settings on physical device
-4. DNS/network routing issue
-
-### Step 5 - Test Network Connectivity
-Check if physical iPhone can access the dev server at all.
-
-**Results**:
-1. ❌ Safari can't load `http://192.168.1.171:8082` (blank screen)
-2. ✅ Both devices on same WiFi
-3. ✅ Expo Go app works via QR code
-
-**ROOT CAUSE IDENTIFIED**: 
-Physical iOS Safari blocks HTTP content from local IP addresses due to iOS security restrictions (App Transport Security).
-- Expo Go app works because it's native (bypasses Safari security)
-- Simulator Safari works because it has relaxed security
-- Android works because Android allows HTTP for local development
-
-**This is NOT a code issue.** The landing page code works perfectly.
-
-## SOLUTION FOR PRODUCTION
-
-The local dev server issue is SEPARATE from the production Firebase itinerary share issue we originally fixed.
-
-**Production fix already deployed**:
-- Fixed nested transportation data unwrapping in `itinerarySharing.ts`
-- Deployed to both dev and prod Firebase
-
-**To test the actual production issue on physical iPhone**:
-Test the REAL Firebase Cloud Function URL (not local dev server):
-- Dev: `https://us-central1-mundo1-dev.cloudfunctions.net/itineraryShare?itineraryId=gen_1769549653816_oaj3puquk`
-- Prod: `https://us-central1-mundo1-1.cloudfunctions.net/itineraryShare?itineraryId=<your-itinerary-id>`
 
 These use HTTPS and will work on physical iOS devices.
 

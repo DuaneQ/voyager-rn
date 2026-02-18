@@ -1,15 +1,23 @@
-import { Platform } from 'react-native';
-import { getFirestore, doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
-import { getFunctions, httpsCallable } from 'firebase/functions';
+import { Platform, PermissionsAndroid } from 'react-native';
+import { getFirestore, doc, updateDoc, arrayRemove } from 'firebase/firestore';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
+// Platform-specific import: messaging.native.ts on iOS/Android, messaging.ts on web
+// Metro bundler automatically picks the right one based on platform
+import messaging from './messaging';
 
 /**
- * NotificationService - Push notification service using expo-notifications
+ * NotificationService - Push notification service
  * 
- * Uses expo-notifications to get native push tokens:
- * - Android: FCM device registration token (compatible with Firebase Admin SDK)
- * - iOS: APNs device token → converted to FCM token via registerAPNsToken cloud function
+ * Uses @react-native-firebase/messaging for FCM token management:
+ * - Android: FCM device registration token (native)
+ * - iOS: APNs → FCM token mapping handled natively by Firebase iOS SDK
+ *   (no deprecated IID batchImport API needed)
+ * 
+ * Uses expo-notifications for:
+ * - Permission handling and notification channels (Android)
+ * - Badge management
+ * - Notification listeners and deep linking
  * 
  * Token Storage: Firestore users/{uid}.fcmTokens array
  * Backend: Firebase Admin SDK messaging().send() - uses FCM tokens on both platforms
@@ -32,17 +40,18 @@ export class NotificationService {
 
   /**
    * Request notification permissions from the user
-   * iOS: Shows system permission dialog
+   * iOS: Shows system permission dialog via @react-native-firebase/messaging
    * Android: Auto-granted on <API 33, runtime permission on API 33+
    * Web: Returns false (not supported)
    * 
    * Android 13+: Must create a notification channel BEFORE requesting permission
    * for the system prompt to appear.
    * 
+   * Strategy: Try RNFB messaging first, fall back to expo-notifications if needed.
+   * 
    * @returns Promise<boolean> - true if permission granted, false otherwise
    */
   async requestPermission(): Promise<boolean> {
-    
     if (Platform.OS === 'web') {
       return false;
     }
@@ -80,20 +89,73 @@ export class NotificationService {
         ]);
       }
 
+      // iOS: Use RNFB messaging for permission (handles APNs registration natively)
+      if (Platform.OS === 'ios' && messaging) {
+        try {
+          const authStatus = await messaging().requestPermission();
+          const enabled =
+            authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+            authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+
+          if (enabled) {
+            return true;
+          }
+          console.warn(`⚠️ iOS: RNFB permission status: ${authStatus}`);
+          return false;
+        } catch (rnfbError) {
+          console.error('❌ iOS: RNFB requestPermission failed, trying expo-notifications fallback:', rnfbError);
+        }
+      }
+
+      // Android 13+ (API 33+): Use PermissionsAndroid directly for POST_NOTIFICATIONS.
+      // CRITICAL: Do NOT use expo-notifications getPermissionsAsync() here!
+      // When @react-native-firebase/messaging is installed, RNFB sets up notification
+      // infrastructure (FirebaseMessagingService, channels) that causes expo-notifications'
+      // getPermissionsAsync() to return 'granted' even when the actual Android runtime
+      // POST_NOTIFICATIONS permission hasn't been user-approved.
+      // PermissionsAndroid checks the real OS-level permission state.
+      if (Platform.OS === 'android') {
+        const apiLevel = typeof Platform.Version === 'number' ? Platform.Version : parseInt(String(Platform.Version), 10);
+        if (apiLevel >= 33) {
+          const alreadyGranted = await PermissionsAndroid.check(
+            'android.permission.POST_NOTIFICATIONS' as any
+          );
+          if (alreadyGranted) {
+            return true;
+          }
+
+          const result = await PermissionsAndroid.request(
+            'android.permission.POST_NOTIFICATIONS' as any,
+            {
+              title: 'Enable Notifications',
+              message: 'TravalPass needs notification permission to alert you about new matches and messages.',
+              buttonPositive: 'Allow',
+              buttonNegative: 'Not Now',
+            }
+          );
+          if (result === PermissionsAndroid.RESULTS.GRANTED) {
+            return true;
+          }
+          console.warn(`⚠️ Android: POST_NOTIFICATIONS permission result: ${result}`);
+          return false;
+        }
+        // Android <13: Notifications auto-granted at install time
+        return true;
+      }
+
+      // Fallback (iOS expo-notifications if RNFB failed above)
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
-      let finalStatus = existingStatus;
-
-      if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
+      if (existingStatus === 'granted') {
+        return true;
       }
 
-      if (finalStatus !== 'granted') {
-        console.warn('⚠️ Push notification permission denied by user');
-        return false;
+      const { status } = await Notifications.requestPermissionsAsync();
+      if (status === 'granted') {
+        return true;
       }
 
-      return true;
+      console.warn('⚠️ Push notification permission denied by user');
+      return false;
     } catch (error) {
       console.error('❌ Error requesting push notification permission:', error);
       if (error instanceof Error) {
@@ -107,13 +169,20 @@ export class NotificationService {
   }
 
   /**
-   * Get the native device push token (FCM on Android, APNs on iOS)
-   * Returns the token string compatible with Firebase Admin SDK
-   * Requires notification permissions to be granted first
+   * Get the FCM device token for this device
    * 
-   * @returns Promise<string | null> - Device push token or null if unavailable
+   * Strategy: Try @react-native-firebase/messaging first, fall back to
+   * expo-notifications on Android if RNFB fails.
+   * 
+   * - Android: Both RNFB messaging().getToken() and expo-notifications
+   *   getDevicePushTokenAsync() return FCM registration tokens directly.
+   * - iOS: RNFB handles APNs→FCM mapping natively via Firebase iOS SDK.
+   * 
+   * Requires notification permissions to be granted first.
+   * 
+   * @returns Promise<string | null> - FCM token or null if unavailable
    */
-  async getFCMToken(): Promise<string | null> {    
+  async getFCMToken(): Promise<string | null> {
     if (Platform.OS === 'web') {
       return null;
     }
@@ -123,104 +192,62 @@ export class NotificationService {
       return null;
     }
 
-    try {
-      // getDevicePushTokenAsync returns native FCM token (Android) or APNs token (iOS)
-      const tokenData = await Notifications.getDevicePushTokenAsync();
-      let token = tokenData.data;
-      
-      if (!token) {
-        console.warn('⚠️ Device push token is null');
-        return null;
-      }
-
-      token = typeof token === 'string' ? token : String(token);
-
-      // iOS: APNs token must be converted to FCM registration token
-      if (Platform.OS === 'ios') {
-        const fcmToken = await this.convertAPNsToFCM(token);
-        if (!fcmToken) {
-          console.error('❌ Failed to convert APNs token to FCM token');
-          return null;
-        }
-        return fcmToken;
-      }
-      return token;
-    } catch (error) {
-      console.error('❌ Error getting device push token:', error);
-      if (error instanceof Error) {
-        console.error('Error details:', {
-          message: error.message,
-          stack: error.stack
-        });
-      }
-      return null;
-    }
-  }
-
-  /**
-   * Convert an iOS APNs device token to an FCM registration token
-   * via the registerAPNsToken cloud function.
-   * 
-   * APNs sandbox vs production:
-   * - Development builds + TestFlight → sandbox (true)
-   * - App Store builds → production (false)
-   * 
-   * Strategy: try sandbox first, fall back to production.
-   * This handles TestFlight (release build but sandbox APNs) correctly.
-   * 
-   * @param apnsToken - Raw APNs device token (hex string)
-   * @returns FCM registration token or null on failure
-   */
-  private async convertAPNsToFCM(apnsToken: string): Promise<string | null> {
-    try {
-      const functions = getFunctions();
-      const registerFn = httpsCallable<
-        { apnsToken: string; sandbox: boolean },
-        { fcmToken: string }
-      >(functions, 'registerAPNsToken');
-
-      // Try sandbox first (covers dev builds + TestFlight)
+    // Try RNFB messaging first (works on both platforms, handles APNs→FCM on iOS)
+    if (messaging) {
       try {
-        const result = await registerFn({ apnsToken, sandbox: true });
-        if (result.data.fcmToken) {
-          return result.data.fcmToken;
+        const token = await messaging().getToken();
+        if (token) {
+          return token;
         }
-      } catch (sandboxError) {
+        console.warn('⚠️ RNFB messaging().getToken() returned null/empty');
+      } catch (error) {
+        console.error('❌ RNFB messaging().getToken() failed:', error);
+        if (error instanceof Error) {
+          console.error('RNFB error details:', error.message);
+        }
       }
-
-      // Fall back to production (App Store builds)
-      const result = await registerFn({ apnsToken, sandbox: false });
-      if (result.data.fcmToken) {
-        return result.data.fcmToken;
-      }
-
-      return null;
-    } catch (error) {
-      console.error('❌ APNs → FCM conversion failed:', error);
-      return null;
     }
+
+    // Fallback for Android: use expo-notifications getDevicePushTokenAsync()
+    // This returns a native FCM token on Android (same format as RNFB)
+    if (Platform.OS === 'android') {
+      try {
+        const tokenData = await Notifications.getDevicePushTokenAsync();
+        const token = typeof tokenData.data === 'string' ? tokenData.data : String(tokenData.data);
+        if (token) {
+          return token;
+        }
+      } catch (fallbackError) {
+        console.error('❌ Fallback getDevicePushTokenAsync() also failed:', fallbackError);
+      }
+    }
+
+    console.warn('⚠️ FCM token is null — may need permissions or physical device');
+    return null;
   }
 
   /**
-   * Save push token to Firestore user document
-   * Adds token to fcmTokens array field (idempotent - won't add duplicates)
-   * Also stores platform info to identify tokens later
+   * Save FCM token to Firestore user document
+   * REPLACES all existing tokens with the new one to prevent stale token accumulation.
+   * Each device/app instance should have exactly one active token.
+   * Also stores platform info to identify tokens later.
    * 
    * @param userId - Firestore user ID
-   * @param token - Device push token
+   * @param token - FCM device registration token
    */
   async saveToken(userId: string, token: string): Promise<void> {
     try {
-      const userRef = doc(this.db, 'users', userId);      
-      // Save token with platform info for debugging
+      const userRef = doc(this.db, 'users', userId);
+      // REPLACE all tokens with current one — prevents stale token accumulation
+      // Old approach used arrayUnion which caused "1/2 succeeded" failures
+      // because stale tokens from old builds/environments accumulated
       await updateDoc(userRef, {
-        fcmTokens: arrayUnion(token),
-        // Store last registered platform and timestamp for debugging
+        fcmTokens: [token],
         lastTokenPlatform: Platform.OS,
         lastTokenRegistered: new Date().toISOString(),
       });
     } catch (error) {
-      console.error('❌ Error saving push token to Firestore:', error);
+      console.error('❌ Error saving FCM token to Firestore:', error);
       if (error instanceof Error) {
         console.error('Error details:', {
           message: error.message,
@@ -232,11 +259,11 @@ export class NotificationService {
   }
 
   /**
-   * Remove push token from Firestore user document
+   * Remove FCM token from Firestore user document
    * Called on sign-out or when token is invalidated
    * 
    * @param userId - Firestore user ID
-   * @param token - Device push token to remove
+   * @param token - FCM device registration token to remove
    */
   async removeToken(userId: string, token: string): Promise<void> {
     try {
@@ -245,13 +272,13 @@ export class NotificationService {
         fcmTokens: arrayRemove(token),
       });
     } catch (error) {
-      console.error('Error removing push token:', error);
+      console.error('Error removing FCM token:', error);
       // Don't throw - sign-out should continue even if token cleanup fails
     }
   }
 
   /**
-   * Remove all push tokens for a user
+   * Remove all FCM tokens for a user
    * Called on sign-out when we don't have the specific token
    * 
    * @param userId - Firestore user ID
@@ -265,45 +292,37 @@ export class NotificationService {
         lastTokenRegistered: null,
       });
     } catch (error) {
-      console.error('❌ Error removing all push tokens:', error);
+      console.error('❌ Error removing all FCM tokens:', error);
       // Don't throw - sign-out should continue even if token cleanup fails
     }
   }
 
   /**
-   * Listen for push token refresh events
-   * Tokens can be refreshed by the system, so we need to update Firestore
+   * Listen for FCM token refresh events
+   * Uses @react-native-firebase/messaging.onTokenRefresh() which provides
+   * proper FCM tokens directly (no APNs→FCM conversion needed on refresh).
    * 
    * @param userId - Firestore user ID
    * @param callback - Function to call when token is refreshed
    * @returns Unsubscribe function
    */
   onTokenRefresh(userId: string, callback: (token: string) => void): () => void {
-    if (Platform.OS === 'web') {
+    if (Platform.OS === 'web' || !messaging) {
       return () => {}; // No-op on web
     }
 
-    const subscription = Notifications.addPushTokenListener(async (tokenData) => {
-      let token = typeof tokenData.data === 'string' ? tokenData.data : String(tokenData.data);
-      
-      // iOS: The refreshed token is a raw APNs token — must convert to FCM
-      // before saving to Firestore (same as initial registration in getFCMToken)
-      if (Platform.OS === 'ios') {
-        const fcmToken = await this.convertAPNsToFCM(token);
-        if (!fcmToken) {
-          console.error('❌ Failed to convert refreshed APNs token to FCM, skipping save');
-          return;
-        }
-        token = fcmToken;
+    // messaging().onTokenRefresh provides FCM tokens directly on both platforms
+    // No APNs→FCM conversion needed — the SDK handles it natively
+    const unsubscribe = messaging().onTokenRefresh(async (token: string) => {
+      try {
+        await this.saveToken(userId, token);
+        callback(token);
+      } catch (error) {
+        console.error('Error saving refreshed FCM token:', error);
       }
-
-      // Save converted (iOS) or raw (Android) token to Firestore
-      this.saveToken(userId, token)
-        .then(() => callback(token))
-        .catch((error) => console.error('Error saving refreshed token:', error));
     });
 
-    return () => subscription.remove();
+    return unsubscribe;
   }
 
   /**
@@ -328,18 +347,18 @@ export class NotificationService {
   }
 
   /**
-   * Unregister from push notifications
+   * Delete FCM token (revoke on server)
    * Call this when user explicitly disables notifications
    */
   async deleteToken(): Promise<void> {
-    if (Platform.OS === 'web') {
+    if (Platform.OS === 'web' || !messaging) {
       return;
     }
 
     try {
-      await Notifications.unregisterForNotificationsAsync();
+      await messaging().deleteToken();
     } catch (error) {
-      console.error('Error unregistering push token:', error);
+      console.error('Error deleting FCM token:', error);
     }
   }
 }

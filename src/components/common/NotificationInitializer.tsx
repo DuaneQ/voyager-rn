@@ -34,9 +34,6 @@ export function NotificationInitializer() {
 
     // Register for push notifications when user signs in
     registerForPushNotifications(user.uid)
-      .then(() => {
-        console.log('✅ Push notification registration completed successfully');
-      })
       .catch(error => {
         console.error('❌ Failed to register for push notifications:', error);
         if (error instanceof Error) {
