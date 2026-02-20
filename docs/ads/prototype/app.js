@@ -72,5 +72,14 @@
   Object.keys(navMap).forEach(k=>{ const el = qs(k); if(el) el.addEventListener('click',()=>{ showView(navMap[k]); }) });
 
   // init
-  renderCampaigns(); showView('home'); updateStepper();
+  renderCampaigns();
+  // Support deep-link from landing page: index.html#create or ?create=1
+  const hash = location.hash.replace('#','').toLowerCase();
+  const params = new URLSearchParams(location.search);
+  if(hash === 'create' || params.get('create') === '1'){
+    showView('create');
+  } else {
+    showView('home');
+  }
+  updateStepper();
 })();

@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>TravalPass Ads — Reach Travelers</title>
+  <style>
+    :root{--accent:#0b66c3;--muted:#6b7280;--card:#ffffff;--bg:#f8fafc}
+    body{font-family:Inter, system-ui, Arial, sans-serif;margin:0;background:var(--bg);color:#0f172a}
+    .wrap{max-width:1100px;margin:32px auto;padding:20px}
+    header.hero{display:flex;gap:24px;align-items:center}
+    .hero-left{flex:1}
+    h1{margin:0 0 12px;font-size:28px}
+    p.lead{margin:0 0 18px;color:var(--muted)}
+    .cta{display:inline-block;background:var(--accent);color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none;margin-right:8px}
+    .secondary{background:transparent;border:1px solid #e6eef9;color:var(--accent)}
+    .feature-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:22px}
+    .card{background:var(--card);border-radius:10px;padding:14px;box-shadow:0 1px 3px rgba(2,6,23,0.06)}
+    .muted{color:var(--muted);font-size:14px}
+    section{margin-top:28px}
+    .two-col{display:grid;grid-template-columns:1fr 420px;gap:20px}
+    iframe.preview{width:100%;height:360px;border:1px solid #e6eef9;border-radius:8px}
+    footer{margin-top:40px;color:var(--muted);font-size:13px}
+    pre.events{background:#0b1220;color:#e6f0ff;padding:12px;border-radius:8px;font-size:13px;overflow:auto}
+    @media(max-width:880px){.two-col{grid-template-columns:1fr}.hero{flex-direction:column}.hero-left{width:100%}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="hero-left">
+        <h1>Reach travelers when they plan — native ads in TravalPass</h1>
+        <p class="lead">Create, preview and launch campaigns targeted by destination, travel dates and interests. Native placements in the Video Feed and Itinerary Feed drive high engagement.</p>
+        <a class="cta" href="index.html#create" target="_blank">Start a campaign (prototype)</a>
+        <a class="secondary" href="#features">See features</a>
+
+        <div class="feature-grid">
+          <div class="card"><strong>Native placements</strong><div class="muted">Video Feed, Itinerary Feed, Promotion slots</div></div>
+          <div class="card"><strong>Simple pricing</strong><div class="muted">CPM primary, CPC optional — prepay balance</div></div>
+          <div class="card"><strong>Targeting</strong><div class="muted">Destination, dates, location, interest buckets</div></div>
+          <div class="card"><strong>Quick setup</strong><div class="muted">Templates for Awareness, Traffic, Conversions</div></div>
+        </div>
+      </div>
+      <div class="hero-right">
+        <div class="card" style="width:360px;text-align:center">
+          <strong>Live preview</strong>
+          <div style="margin-top:12px;color:var(--muted);font-size:13px">Prototype preview (opens in new tab)</div>
+          <a class="cta" href="index.html#create" target="_blank" style="display:inline-block;margin-top:12px">Open demo</a>
+        </div>
+      </div>
+    </header>
+
+    <section id="how">
+      <h2>How it works — 3 steps</h2>
+      <div class="two-col">
+        <div>
+          <div class="card"><strong>1. Create campaign</strong><div class="muted">Pick an objective (Awareness, Traffic, Conversions), choose placement and destination.</div></div>
+          <div class="card" style="margin-top:10px"><strong>2. Upload creative</strong><div class="muted">Image or video + headline, body, CTA. Live preview for each placement.</div></div>
+          <div class="card" style="margin-top:10px"><strong>3. Launch & measure</strong><div class="muted">Prepay, track impressions/clicks/conversions and export reports.</div></div>
+        </div>
+        <div>
+          <iframe class="preview" src="index.html" title="TravalPass Ads prototype preview"></iframe>
+        </div>
+      </div>
+    </section>
+
+    <section id="features">
+      <h2>Key features</h2>
+      <div class="feature-grid">
+        <div class="card"><strong>Placement controls</strong><div class="muted">Choose where ads appear and preview per placement.</div></div>
+        <div class="card"><strong>Targeting</strong><div class="muted">Destination, travel window, location radius, interests.</div></div>
+        <div class="card"><strong>Creative builder</strong><div class="muted">Headline, body, CTA, thumbnails and aspect ratio presets.</div></div>
+        <div class="card"><strong>Billing & pricing</strong><div class="muted">Daily budgets, CPM/CPC, prepay balance with Stripe.</div></div>
+      </div>
+    </section>
+
+    <section id="specs">
+      <h2>Creative & analytics</h2>
+      <div class="card">
+        <p class="muted">Image and video specs mirror industry norms. Below are the recommended analytics event names to wire into GA/Firebase for experiments.</p>
+        <pre class="events">{
+  "events": [
+    "ad_impression",
+    "ad_click",
+    "ad_conversion",
+    "ad_video_play",
+    "ad_video_watch_time_ms"
+  ]
+}</pre>
+      </div>
+    </section>
+
+    <section id="pricing">
+      <h2>Pricing & pilot offers</h2>
+      <div class="card"><strong>Example</strong>
+        <div class="muted">CPM tiers: $5 CPM (estimated 20k impressions per $100), $10 CPM (recommended for high-priority placements). For pilot partners we can offer ad credits — contact us.</div>
+      </div>
+    </section>
+
+    <section id="faq">
+      <h2>FAQ & policy</h2>
+      <div class="card"><strong>Moderation</strong><div class="muted">Automated checks at upload; users can flag ads for review.</div></div>
+      <div class="card" style="margin-top:10px"><strong>Privacy</strong><div class="muted">We use hashed identifiers for targeting and provide an opt-out for personalized ads. See full requirements: <a href="../ADS_REQUIREMENTS.md">ADS_REQUIREMENTS.md</a></div></div>
+    </section>
+
+    <section id="cta">
+      <h2>Get started</h2>
+      <a class="cta" href="index.html#create" target="_blank">Open prototype and create campaign</a>
+      <a class="secondary" href="mailto:ads@travalpass.com">Contact sales</a>
+    </section>
+
+    <footer>
+      <div class="muted">© TravalPass — Ads pilot. This is a prototype for internal/testing use.</div>
+    </footer>
+  </div>
+</body>
+</html>

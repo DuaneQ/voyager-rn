@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" viewBox="0 0 1200 1200">
+  <defs>
+    <linearGradient id="g1" x1="0" x2="1">
+      <stop offset="0%" stop-color="#ffb199"/>
+      <stop offset="100%" stop-color="#ffdd94"/>
+    </linearGradient>
+    <style>
+      .bg { fill: url(#g1); }
+      .headline { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; font-weight:700; font-size:56px; fill:#0f1724; }
+      .sub { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; font-size:20px; fill:#0f1724; opacity:0.9; }
+    </style>
+  </defs>
+  <rect class="bg" width="1200" height="1200" rx="24"/>
+  <g transform="translate(80,380)">
+    <text class="headline">
+      Wanted a travel buddy lately?
+    </text>
+    <text class="sub" y="80">Tell us in one line — what stopped you?</text>
+  </g>
+  <g transform="translate(80,980)">
+    <rect x="0" y="0" width="320" height="40" rx="8" fill="#ffffff" opacity="0.12"/>
+    <text class="sub" x="16" y="28">From a fellow traveler</text>
+  </g>
+</svg>

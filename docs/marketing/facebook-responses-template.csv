@@ -1,0 +1,4 @@
+timestamp,group,variant,respondent_id,travels_per_year,planning_pain,current_solution,wtp_bucket,opt_in_chat,email,notes
+2026-02-18 12:00:00,DigitalNomads,A,resp-0001,6+,Finding good wifi and affordable coworking,Use Google + Facebook groups,$10-$30,yes,example@example.com,Sample response
+2026-02-18 12:02:00,BudgetBackpackers,B,resp-0002,2-5,Too many flight options and price chasing,Skyscanner+manual search,$5-$10,no,,Sample response 2
+
