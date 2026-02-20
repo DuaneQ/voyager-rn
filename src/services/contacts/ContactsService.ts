@@ -24,7 +24,10 @@ import {
 export interface IContactsService {
   requestPermission(): Promise<ContactPermissionStatus>;
   getPermissionStatus(): Promise<ContactPermissionStatus>;
-  syncContacts(): Promise<ContactSyncResult>;
+  // Keep optional forceRefresh parameter for backwards compatibility
+  syncContacts(forceRefresh?: boolean): Promise<ContactSyncResult>;
+  // Compatibility shim: clear any local caches (may be a no-op)
+  clearCache(): Promise<void>;
   isSupported(): boolean;
 }
 
@@ -57,7 +60,9 @@ export class ContactsService implements IContactsService {
    * 4. Send hashes to server for matching
    * 5. Return matched and unmatched contacts
    */
-  async syncContacts(): Promise<ContactSyncResult> {
+  // Accept optional forceRefresh for compatibility; current implementation
+  // ignores it and always performs a fresh sync.
+  async syncContacts(forceRefresh = false): Promise<ContactSyncResult> {
     const errors: string[] = [];
     
     try {
@@ -100,6 +105,18 @@ export class ContactsService implements IContactsService {
       errors.push(`Sync failed: ${error}`);
       throw new Error(`Contact sync failed: ${error}`);
     }
+  }
+
+  /**
+   * Compatibility method: clear any cached contact sync state.
+   * The previous implementation used AsyncStorage; current branch may
+   * not persist caches — provide a no-op implementation so callers
+   * (e.g. ProfilePage) don't throw.
+   */
+  async clearCache(): Promise<void> {
+    // Intentionally no-op for now. If caching is re-introduced,
+    // implement removal of CACHE_KEY and related items here.
+    return;
   }
 
   isSupported(): boolean {
