@@ -98,5 +98,8 @@ Status: Draft — single source of truth for Ads PWA (ads.travalpass.com)
 - Confirm prepay vs postpay for MVP (recommend prepay).
 - Confirm which demographic fields can be used for targeting (product/legal).
 
+18. Google Ads comparison
+- A concise field-by-field mapping and recommended MVP priorities is available in `docs/ads/compare-google-ads.md`. Implement the recommended prototype fields (objective, type, budget, targeting, creative builder, event hooks) before adding advanced Google-like features.
+
 Document history
 - Created: 2026-02-07

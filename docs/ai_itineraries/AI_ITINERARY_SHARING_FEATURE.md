@@ -746,7 +746,7 @@ Clear documentation of "why direct Firestore write" prevents future confusion an
 ## Related Documentation
 
 ### Internal Docs
-- **SHARE_FEATURE_FIX.md** - Detailed fix documentation (404 error resolution)
+ - Previous standalone share-fix documentation has been integrated into this file; the separate `SHARE_FEATURE_FIX.md` has been removed.
 - **AI_DISPLAY.md** - AI itinerary display component overview
 - **AI_ITINERARY_FIX.md** - General AI itinerary implementation fixes
 

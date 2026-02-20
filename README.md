@@ -21,6 +21,12 @@ A React Native Expo replica of the **voyager-pwa** project with improved archite
 
 See [IMPLEMENTATION_COMPLETE.md](IMPLEMENTATION_COMPLETE.md) for full details.
 
+## 📚 Docs and Cleanup
+
+- Consolidated marketing guidance into a single canonical playbook: [docs/marketing/marketing-playbook.md](docs/marketing/marketing-playbook.md).
+- Removed several outdated draft docs and cleaned duplicates on 2026-02-18; if you need an archived copy, check the repo history or ask to recreate an archive snapshot.
+
+
 ---
 
 ## ✅ Recent Simplification: Firebase Web SDK Authentication (Jan 2025)
@@ -507,7 +513,7 @@ TravalPass uses `expo-notifications` with Firebase Cloud Messaging (FCM) for cro
 - **[Push Notification Plan](docs/push-notifications/PUSH_NOTIFICATION_PLAN.md)** - Complete architecture and implementation guide
 - **[Recent Fixes (Feb 15, 2026)](docs/push-notifications/NOTIFICATION_FIXES_FEB_15_2026.md)** - Detailed fix documentation
 - **[Debugging Guide (Feb 14, 2026)](docs/push-notifications/NOTIFICATION_DEBUGGING_FEB_14_2026.md)** - Original issue investigation
-- **[Quick Checklist](docs/push-notifications/NOTIFICATION_CHECKLIST.md)** - Troubleshooting checklist
+ - **Quick troubleshooting checklist included in the recent fixes document** (see `docs/push-notifications/NOTIFICATION_FIXES_FEB_15_2026.md`)
 
 ### Known Issues (Low Priority)
 - Badge count hardcoded to 1 (not actual unread count)

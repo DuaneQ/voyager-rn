@@ -224,7 +224,7 @@ SearchPage
 8. ✅ Consider migrating to RPC-based search (vs Firestore)
 
 ## Related Documentation
-- [SEARCHPAGE_BUSINESS_LOGIC_FIXES.md](./SEARCHPAGE_BUSINESS_LOGIC_FIXES.md) - Usage tracking fixes
+- See `SEARCHPAGE_FIX_COMPLETE.md` for usage tracking and integration fixes.
 - [PWA copilot-instructions.md](../../voyager-pwa/.github/copilot-instructions.md) - Reference architecture
 
 ---

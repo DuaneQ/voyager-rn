@@ -13,7 +13,7 @@
 | [AI_SYSTEM_ARCHITECTURE.md](AI_SYSTEM_ARCHITECTURE.md) | **Complete system architecture**, callable function contracts, database schema, and API reference |
 | [DATA_CONTRACT_BACKWARDS_COMPATIBILITY.md](DATA_CONTRACT_BACKWARDS_COMPATIBILITY.md) | **⚠️ CRITICAL**: Production data structure requirements and transformation layer |
 | [AI_ENRICHMENT_ROADMAP.md](AI_ENRICHMENT_ROADMAP.md) | **4-phase improvement plan** with cost analysis and effort estimates |
-| [CURRENT_STATE_ASSESSMENT.md](CURRENT_STATE_ASSESSMENT.md) | **Quick reference** for current issues and gaps |
+| (Current issues summarized in `AI_ENRICHMENT_ROADMAP.md`) | **Quick reference** for current issues and gaps |
 
 ### Implementation Docs
 
@@ -31,7 +31,7 @@
 | [AI_ITINERARY_SAVE_FIX.md](AI_ITINERARY_SAVE_FIX.md) | Save functionality fixes |
 | [AI_ITINERARY_EDITING.md](AI_ITINERARY_EDITING.md) | Editing feature implementation |
 | [AI_ITINERARY_SHARING_FEATURE.md](AI_ITINERARY_SHARING_FEATURE.md) | Sharing feature implementation |
-| [SHARE_FEATURE_FIX.md](SHARE_FEATURE_FIX.md) | Share feature bug fixes |
+| (Share fix details integrated into `AI_ITINERARY_SHARING_FEATURE.md`) | Share feature bug fixes |
 
 ---
 

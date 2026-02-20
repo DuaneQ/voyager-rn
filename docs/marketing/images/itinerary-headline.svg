@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" viewBox="0 0 1200 1200">
+  <defs>
+    <linearGradient id="g2" x1="0" x2="1">
+      <stop offset="0%" stop-color="#9be7ff"/>
+      <stop offset="100%" stop-color="#cfeefd"/>
+    </linearGradient>
+    <style>
+      .bg { fill: url(#g2); }
+      .headline { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; font-weight:700; font-size:54px; fill:#052034; }
+      .sub { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; font-size:20px; fill:#052034; opacity:0.9; }
+    </style>
+  </defs>
+  <rect class="bg" width="1200" height="1200" rx="24"/>
+  <g transform="translate(80,360)">
+    <text class="headline">How long does trip planning take you?</text>
+    <text class="sub" y="84">One quick line — what part do you dread?</text>
+  </g>
+  <g transform="translate(80,980)">
+    <rect x="0" y="0" width="340" height="40" rx="8" fill="#ffffff" opacity="0.12"/>
+    <text class="sub" x="16" y="28">Just asking as a traveler</text>
+  </g>
+</svg>

@@ -26,7 +26,7 @@ export class MobileContactsProvider implements IContactsPlatformProvider {
       throw new Error('Contact permission not granted');
     }
 
-    try {      
+    try {
       // Fetch contacts with phone numbers and emails
       const { data } = await Contacts.getContactsAsync({
         fields: [
@@ -36,32 +36,14 @@ export class MobileContactsProvider implements IContactsPlatformProvider {
         ],
       });
 
-      // Map to our domain model with defensive checks
-      const mappedContacts = data.map(contact => {
-        const phones = contact.phoneNumbers?.map(p => p.number ?? '').filter(Boolean) || [];
-        const emails = contact.emails?.map(e => e.email ?? '').filter(Boolean) || [];
-        
-        return {
-          id: contact.id,
-          name: contact.name || undefined,
-          phoneNumbers: phones,
-          emails: emails,
-        };
-      });
-
-      // Count contacts with at least one identifier
-      const validContacts = mappedContacts.filter(
-        c => (c.phoneNumbers && c.phoneNumbers.length > 0) || (c.emails && c.emails.length > 0)
-      );
-      
-      // Log sample of first contact for debugging (without PII)
-      if (validContacts.length > 0) {
-        const sample = validContacts[0];
-      }
-
-      return mappedContacts;
+      // Map to our domain model
+      return data.map(contact => ({
+        id: contact.id,
+        name: contact.name || undefined,
+        phoneNumbers: contact.phoneNumbers?.map(p => p.number ?? '').filter(Boolean),
+        emails: contact.emails?.map(e => e.email ?? '').filter(Boolean),
+      }));
     } catch (error) {
-      console.error('[MobileContactsProvider] Error fetching contacts:', error);
       throw new Error(`Failed to fetch contacts: ${error}`);
     }
   }

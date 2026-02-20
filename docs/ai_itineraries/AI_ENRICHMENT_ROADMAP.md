@@ -8,6 +8,7 @@
 > - [AI_SYSTEM_ARCHITECTURE.md](AI_SYSTEM_ARCHITECTURE.md) - Complete system architecture and function contracts
 > - [DATA_CONTRACT_BACKWARDS_COMPATIBILITY.md](DATA_CONTRACT_BACKWARDS_COMPATIBILITY.md) - **CRITICAL: Production data structure requirements**
 > - [CURRENT_STATE_ASSESSMENT.md](CURRENT_STATE_ASSESSMENT.md) - Quick reference for current issues
+> (Current issues and quick references are included in this roadmap; the separate `CURRENT_STATE_ASSESSMENT.md` has been removed.)
 > - [README.md](README.md) - Documentation navigation guide
 
 ---

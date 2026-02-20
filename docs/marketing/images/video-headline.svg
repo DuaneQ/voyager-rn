@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" viewBox="0 0 1200 1200">
+  <defs>
+    <linearGradient id="g3" x1="0" x2="1">
+      <stop offset="0%" stop-color="#ffd6a5"/>
+      <stop offset="100%" stop-color="#ffdce1"/>
+    </linearGradient>
+    <style>
+      .bg { fill: url(#g3); }
+      .headline { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; font-weight:700; font-size:54px; fill:#2a1f2d; }
+      .sub { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; font-size:20px; fill:#2a1f2d; opacity:0.9; }
+    </style>
+  </defs>
+  <rect class="bg" width="1200" height="1200" rx="24"/>
+  <g transform="translate(80,360)">
+    <text class="headline">Where do you get fast travel tips?</text>
+    <text class="sub" y="84">One line — and do you trust it?</text>
+  </g>
+  <g transform="translate(80,980)">
+    <rect x="0" y="0" width="300" height="40" rx="8" fill="#ffffff" opacity="0.12"/>
+    <text class="sub" x="16" y="28">Curious as a traveler</text>
+  </g>
+</svg>
