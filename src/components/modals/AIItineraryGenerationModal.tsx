@@ -288,7 +288,7 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
         showAlert(
           'error',
           'Daily AI limit reached. Sign in on the web and tap the UPGRADE button on TravalMatch to get unlimited AI itineraries.',
-          'https://travalpass.com/login',
+          'https://travalpass.com/',
           'Sign In to Upgrade'
         );
       }
