@@ -215,7 +215,7 @@ const SearchPage: React.FC = () => {
         showAlert(
           'info', 
           'Daily limit reached. Sign in on the web and tap the UPGRADE button on TravalMatch for unlimited views.',
-          'https://travalpass.com/login',
+          'https://travalpass.com/',
           'Sign In to Upgrade'
         );
       }
