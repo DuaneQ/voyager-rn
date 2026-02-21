@@ -44,6 +44,8 @@ interface VideoCardV2Props {
   onShare: () => void;
   onReport?: () => void; // Report video for content moderation
   onViewTracked?: () => void;
+  /** Override the card height (pass safe-area-adjusted height to prevent bleeding under status bar) */
+  cardHeight?: number;
 }
 
 const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
@@ -56,6 +58,7 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
   onShare,
   onReport,
   onViewTracked,
+  cardHeight,
 }) => {
   // Player state
   const [player, setPlayer] = useState<IVideoPlayer | null>(null);
@@ -68,7 +71,13 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
   const [hasTrackedView, setHasTrackedView] = useState(false);
   // Web-specific: track if autoplay was blocked by browser policy
   const [autoplayBlocked, setAutoplayBlocked] = useState(false);
-  
+
+  // Merge static container style with optional safe-area-adjusted height so
+  // the card never bleeds behind the status bar or home indicator.
+  const containerStyle = cardHeight
+    ? [styles.container, { height: cardHeight }]
+    : styles.container;
+
   // Refs
   const viewTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isUnmountedRef = useRef(false);
@@ -495,7 +504,7 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
       : 'This video was uploaded before format conversion was enabled. The uploader needs to delete and re-upload it.';
     
     return (
-      <View style={styles.container}>
+      <View style={containerStyle}>
         <View style={styles.videoContainer}>
           {(video.muxThumbnailUrl || video.thumbnailUrl) ? (
             <Image
@@ -532,7 +541,7 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
       ? videoError.getUserMessage()
       : 'This video may have been removed or is temporarily unavailable';
     return (
-      <View style={styles.container}>
+      <View style={containerStyle}>
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle-outline" size={64} color="#fff" />
           <Text style={styles.errorText}>Video Unavailable</Text>
@@ -558,7 +567,7 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
    */
   if (!expoPlayer && Platform.OS !== 'android') {
     return (
-      <View style={styles.container}>
+      <View style={containerStyle}>
         {(video.muxThumbnailUrl || video.thumbnailUrl) ? (
           <Image
             source={{ uri: video.muxThumbnailUrl || video.thumbnailUrl }}
@@ -575,7 +584,7 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
   }
 
   return (
-    <View style={styles.container} testID="video-card-container">
+    <View style={containerStyle} testID="video-card-container">
       {/* Video player */}
       {/* Video player */}
       <View style={styles.videoContainer}>
@@ -662,6 +671,8 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
 };
 
 const styles = StyleSheet.create({
+  // NOTE: container height is overridden at render time via cardHeight prop
+  // to respect safe area insets (prevents video bleeding under status bar).
   container: {
     width,
     height,

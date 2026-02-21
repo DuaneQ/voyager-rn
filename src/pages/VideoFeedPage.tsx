@@ -17,6 +17,7 @@ import {
   Platform,
 } from 'react-native';
 import { setAudioModeAsync } from 'expo-audio';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 // Using new expo-video implementation
 import { VideoCardV2 as VideoCard } from '../components/video/VideoCardV2';
@@ -49,6 +50,9 @@ const { height } = Dimensions.get('window');
 
 const VideoFeedPage: React.FC = () => {
   const { showAlert } = useAlert();
+  const insets = useSafeAreaInsets();
+  // Height available to the FlatList after the OS status bar and home indicator
+  const availableHeight = height - insets.top - insets.bottom;
   
   const {
     videos,
@@ -371,11 +375,11 @@ const VideoFeedPage: React.FC = () => {
    */
   const getItemLayout = useCallback(
     (_data: any, index: number) => ({
-      length: height,
-      offset: height * index,
+      length: availableHeight,
+      offset: availableHeight * index,
       index,
     }),
-    []
+    [availableHeight]
   );
 
   /**
@@ -398,6 +402,7 @@ const VideoFeedPage: React.FC = () => {
           onShare={() => handleShare(index)}
           onReport={!isOwnVideo ? () => handleReportPress(index) : undefined}
           onViewTracked={() => handleViewTracked(item.id)}
+          cardHeight={availableHeight}
         />
       );
 
@@ -552,7 +557,7 @@ const VideoFeedPage: React.FC = () => {
         // CRITICAL for Android: pagingEnabled ensures ONLY one video visible
         // snapToInterval can show partial views of multiple videos
         pagingEnabled={Platform.OS !== 'web'} // pagingEnabled doesn't work well on web
-        snapToInterval={Platform.OS === 'ios' ? height : undefined}
+        snapToInterval={Platform.OS === 'ios' ? availableHeight : undefined}
         snapToAlignment="start"
         decelerationRate="fast"
         // Enable clipped subviews to release off-screen native views (Android memory)
