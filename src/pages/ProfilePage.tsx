@@ -11,6 +11,7 @@ import {
   Linking,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 // Note: useNavigation and useFocusEffect are imported conditionally to support web platform
 import { getFirestore, collection, query, where, orderBy, limit, getDocs, Timestamp } from 'firebase/firestore';
 import { app } from '../../firebase-config';
@@ -99,6 +100,9 @@ const useSafeFocusEffect = (callback: () => void, deps: any[]) => {
     }
   }
 };
+
+// Versioned AsyncStorage keys — ensures app upgrades invalidate stale contact cache
+const APP_VERSION = Constants.expoConfig?.version ?? '0';
 
 const ProfilePage: React.FC = () => {
   const routeParams = useRouteParams();
@@ -261,8 +265,8 @@ const ProfilePage: React.FC = () => {
 
     try {
       // Restore contact arrays from AsyncStorage (iOS fix)
-      const storedMatched = await AsyncStorage.getItem(`matched_contacts_${user.uid}`);
-      const storedToInvite = await AsyncStorage.getItem(`contacts_to_invite_${user.uid}`);
+      const storedMatched = await AsyncStorage.getItem(`matched_contacts_${user.uid}_${APP_VERSION}`);
+      const storedToInvite = await AsyncStorage.getItem(`contacts_to_invite_${user.uid}_${APP_VERSION}`);
       
       if (storedMatched) {
         const parsedMatched = JSON.parse(storedMatched);
@@ -345,8 +349,8 @@ const ProfilePage: React.FC = () => {
             onPress: async () => {
               // Clear cache and AsyncStorage to force fresh sync
               if (user?.uid) {
-                await AsyncStorage.removeItem(`matched_contacts_${user.uid}`);
-                await AsyncStorage.removeItem(`contacts_to_invite_${user.uid}`);
+                await AsyncStorage.removeItem(`matched_contacts_${user.uid}_${APP_VERSION}`);
+                await AsyncStorage.removeItem(`contacts_to_invite_${user.uid}_${APP_VERSION}`);
                 await contactsService.clearCache();
               }
               setPermissionModalVisible(true);
@@ -410,8 +414,8 @@ const ProfilePage: React.FC = () => {
       
       // Persist to AsyncStorage for iOS state restoration
       if (user?.uid) {
-        await AsyncStorage.setItem(`matched_contacts_${user.uid}`, JSON.stringify(syncResult.matched));
-        await AsyncStorage.setItem(`contacts_to_invite_${user.uid}`, JSON.stringify(inviteList));
+        await AsyncStorage.setItem(`matched_contacts_${user.uid}_${APP_VERSION}`, JSON.stringify(syncResult.matched));
+        await AsyncStorage.setItem(`contacts_to_invite_${user.uid}_${APP_VERSION}`, JSON.stringify(inviteList));
       }
       
       if (syncResult.matched.length > 0) {
