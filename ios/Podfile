@@ -26,6 +26,10 @@ target 'TravalPass' do
   # React Native Firebase
   pod 'Firebase/Core', :modular_headers => true
   pod 'Firebase/Messaging', :modular_headers => true
+  pod 'Firebase/RemoteConfig', :modular_headers => true
+  pod 'FirebaseCore', :modular_headers => true
+  pod 'FirebaseABTesting', :modular_headers => true
+  pod 'FirebaseInstallations', :modular_headers => true
   pod 'GoogleUtilities', :modular_headers => true
 
   if ENV['EXPO_USE_COMMUNITY_AUTOLINKING'] == '1'
