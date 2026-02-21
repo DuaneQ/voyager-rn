@@ -11,6 +11,7 @@
 
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 import { IContactsPlatformProvider } from './platform/IContactsPlatformProvider';
 import { MobileContactsProvider } from './platform/MobileContactsProvider';
 import { WebContactsProvider } from './platform/WebContactsProvider';
@@ -26,7 +27,9 @@ import {
 } from './types';
 
 // Cache configuration
-const CACHE_KEY = '@contacts_sync_cache';
+// Versioned by app version so upgrades automatically invalidate stale contact data
+const APP_VERSION = Constants.expoConfig?.version ?? '0';
+const CACHE_KEY = `@contacts_sync_cache_${APP_VERSION}`;
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 export interface IContactsService {

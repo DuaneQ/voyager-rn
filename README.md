@@ -140,6 +140,17 @@ gcloud beta services identity create --service=eventarc.googleapis.com --project
      npx expo start --ios
      ```
    
+   > **⚠️ Note:** After adding native modules (e.g., `expo-contacts`, contact invite functionality), use `npx expo run:ios` instead of `npx expo start`. This compiles native code directly to the simulator and is required when native dependencies change:
+   > ```bash
+   > npx expo run:ios
+   > 
+   > # If you need to clear the Metro cache:
+   > npx expo run:ios --clear
+   > 
+   > # If you need a full rebuild:
+   > npx expo run:ios --no-build-cache
+   > ```
+   
    **Testing Release Builds on Simulator (iPhone 17 Pro):**
    ```bash
    # Shutdown all simulators first

@@ -5,7 +5,7 @@ import './patches/react-native-fetch-polyfill'; // Fix Android sendRequest bug
 import React, { useEffect, useState } from 'react';
 import { Platform, ActivityIndicator, View, StyleSheet, AppState } from 'react-native';
 import { enableScreens } from 'react-native-screens';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import * as Font from 'expo-font';
 import { Ionicons } from '@expo/vector-icons';
 import AppNavigator from './src/navigation/AppNavigator';
@@ -15,6 +15,8 @@ import { UserProfileProvider } from './src/context/UserProfileContext';
 import * as Notifications from 'expo-notifications';
 import ErrorBoundary from './src/components/common/ErrorBoundary';
 import { NotificationInitializer } from './src/components/common/NotificationInitializer';
+import { ForceUpgradeModal } from './src/components/common/ForceUpgradeModal';
+import { useVersionCheck } from './src/hooks/useVersionCheck';
 import { setupGlobalErrorHandlers } from './src/utils/globalErrorHandler';
 import messaging from './src/services/notification/messaging';
 
@@ -79,6 +81,8 @@ enableScreens(true);
  */
 export default function App() {
   const [fontsLoaded, setFontsLoaded] = useState(false);
+  const [softUpdateDismissed, setSoftUpdateDismissed] = useState(false);
+  const { isForceUpgradeRequired, isUpdateAvailable, latestVersion } = useVersionCheck();
 
   // Clear badge count when app comes to foreground
   useEffect(() => {
@@ -136,12 +140,24 @@ export default function App() {
 
   return (
     <ErrorBoundary level="global">
-      <SafeAreaProvider>
+      <SafeAreaProvider initialMetrics={initialWindowMetrics}>
         <AuthProvider>
           <AlertProvider>
             <UserProfileProvider>
               <NotificationInitializer />
               <AppNavigator />
+              {/* Version upgrade modals — rendered above all navigation */}
+              <ForceUpgradeModal
+                visible={isForceUpgradeRequired}
+                isForced
+                latestVersion={latestVersion}
+              />
+              <ForceUpgradeModal
+                visible={!isForceUpgradeRequired && isUpdateAvailable && !softUpdateDismissed}
+                isForced={false}
+                latestVersion={latestVersion}
+                onDismiss={() => setSoftUpdateDismissed(true)}
+              />
             </UserProfileProvider>
           </AlertProvider>
         </AuthProvider>

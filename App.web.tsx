@@ -5,7 +5,7 @@ import './patches/react-native-fetch-polyfill'; // Fix Android sendRequest bug
 import React, { useEffect, useState } from 'react';
 import { Platform, ActivityIndicator, View, StyleSheet } from 'react-native';
 import { enableScreens } from 'react-native-screens';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import * as Font from 'expo-font';
 import { Ionicons } from '@expo/vector-icons';
 import AppNavigator from './src/navigation/AppNavigator';
@@ -62,7 +62,7 @@ export default function App() {
 
   return (
     <ErrorBoundary level="global">
-      <SafeAreaProvider>
+      <SafeAreaProvider initialMetrics={initialWindowMetrics}>
         <AuthProvider>
           <AlertProvider>
             <UserProfileProvider>
