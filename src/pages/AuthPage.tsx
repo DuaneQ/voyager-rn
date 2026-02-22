@@ -37,7 +37,9 @@ type AuthMode = 'login' | 'register' | 'forgot' | 'resend';
 const getInitialMode = (): AuthMode => {
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
     const param = new URLSearchParams(window.location.search).get('mode');
-    if (param === 'register') return 'register';
+    if (param === 'login' || param === 'register') {
+      return param as AuthMode;
+    }
   }
   return 'login';
 };
