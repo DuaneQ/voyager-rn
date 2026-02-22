@@ -1,66 +1,59 @@
 /**
- * COMPREHENSIVE Integration Test for AI Itinerary Generation Cloud Functions
- * 
- * This test calls LIVE Firebase cloud functions via HTTP (like searchItineraries.real.test):
- * 1. searchAccommodations - fetch hotels from Google Places
- * 2. searchActivities - fetch activities & restaurants from Google Places  
- * 3. searchFlights - fetch flights from SerpAPI (only if transportation is 'airplane')
- * 
- * Test validates:
- * - All transportation modes (airplane, train, rental, public, walking, bus)
- * - Multiple trip durations (3, 7, 14 days)
- * - Different destinations (Europe, Asia, South America)
- * - Flight recommendations with complete data (when transportation is 'airplane')
- * - Hotel recommendations with names, locations, ratings
- * - Activity recommendations with enrichment data
- * - Restaurant/meal recommendations
- * 
- * Test Flow:
- * 1. Authenticate to get auth token
- * 2. Call cloud functions directly via HTTP POST with fetch()
- * 3. Assert responses have correct structure and data quality
+ * Integration Tests for AI Itinerary Generation - Production Architecture
+ *
+ * Tests the ACTUAL production flow as called by useAIGenerationV2:
+ *   1. generateFullItinerary - OpenAI generates the full itinerary (0 Places API calls)
+ *   2. searchAccommodations  - Google Places finds hotels (1 Places Text Search call)
+ *   3. searchFlights         - SerpAPI finds flights (airplane mode only, 0 Places calls)
+ *
+ * NOTE: searchActivities is NOT part of the production flow and is NOT tested here.
+ * It was used in a legacy architecture and has been fully replaced by generateFullItinerary.
+ * Confirmed: zero client-side calls to searchActivities exist in useAIGenerationV2 or any
+ * production code path.
+ *
+ * Cost per full test run:
+ *   - generateFullItinerary: ~$0.01–0.03 per call (OpenAI gpt-3.5-turbo)
+ *   - searchAccommodations:  ~$0.032 per call (Google Places Text Search, 3 calls total)
+ *   - searchFlights:         Uses SerpAPI (separate billing, not Google Places)
  */
 
 import generateTestPreferenceProfiles, { TestPreferenceProfile } from './data/testPreferenceProfiles';
+import { formatDateLocal } from '../../utils/formatDate';
 
 const TEST_USER_EMAIL = 'feedback@travalpass.com';
 const TEST_PASSWORD = '1111111111';
-const TEST_USER_ID = 'Frj7COBIYEMqpHvTI7TQDRdJCwG3';
 const FUNCTION_URL = 'https://us-central1-mundo1-dev.cloudfunctions.net';
 
-describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
+describe('AI Itinerary Generation - Production Architecture Integration Tests', () => {
   let testProfiles: TestPreferenceProfile[];
   let authToken: string;
 
   beforeAll(async () => {
-    
-    
-    // Authenticate to get ID token
-    const authResponse = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=AIzaSyCbckV9cMuKUM4ZnvYDJZUvfukshsZfvM0`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: TEST_USER_EMAIL,
-        password: TEST_PASSWORD,
-        returnSecureToken: true,
-      }),
-    });
+    const authResponse = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=AIzaSyCbckV9cMuKUM4ZnvYDJZUvfukshsZfvM0`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: TEST_USER_EMAIL,
+          password: TEST_PASSWORD,
+          returnSecureToken: true,
+        }),
+      }
+    );
 
     const authData = await authResponse.json();
     if (!authData.idToken) {
       throw new Error('Authentication failed: ' + JSON.stringify(authData));
     }
     authToken = authData.idToken;
-    
-
-    // Generate test preference profiles
     testProfiles = generateTestPreferenceProfiles();
-    testProfiles.forEach((profile) => {
-      // profile metadata available for debugging if needed
-    });
   }, 30000);
 
-  // Helper to call cloud functions via HTTP
+  // Calls a deployed Firebase Cloud Function and returns the data payload.
+  // generateFullItinerary → response.data = { aiOutput, transportation?, metadata }
+  // searchAccommodations  → response.data = { hotels: [...], searchId }
+  // searchFlights         → response (no data wrapper) = { success, flights: [...] }
   const callCloudFunction = async (functionName: string, payload: any) => {
     const response = await fetch(`${FUNCTION_URL}/${functionName}`, {
       method: 'POST',
@@ -72,7 +65,7 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
     });
 
     const result = await response.json();
-    
+
     if (result?.result?.success) {
       return result.result.data || result.result;
     }
@@ -80,469 +73,260 @@ describe('AI Itinerary Generation - Comprehensive Integration Tests', () => {
     throw new Error(`${functionName} failed: ${result?.result?.error || JSON.stringify(result)}`);
   };
 
-  // Helper to extract array data from response
-  const extractArray = (response: any, ...keys: string[]): any[] => {
-    for (const key of keys) {
-      if (Array.isArray(response[key])) {
-        return response[key];
-      }
-    }
-    return [];
-  };
+  // ==========================================================================
+  // generateFullItinerary
+  // OpenAI gpt-3.5-turbo generates the full itinerary. Zero Google Places calls.
+  // Response shape: { aiOutput: { travel_agent_summary, daily_plans, hotel_recommendation },
+  //                   transportation?, metadata: { tripDays, destination, generatedBy, ... } }
+  // ==========================================================================
+  describe('generateFullItinerary - AI Output Quality', () => {
+    it('should generate a valid 7-day itinerary with activities and meals for each day', async () => {
+      const profile = testProfiles[0];
 
-  describe('Transportation Mode Validation', () => {
-    it('should return FLIGHT recommendations when transportation is airplane', async () => {
+      const payload = {
+        destination: 'Paris, France',
+        startDate: '2026-06-01',
+        endDate: '2026-06-07',
+        preferenceProfile: profile,
+        groupSize: 2,
+        userInfo: { uid: 'test-user-123', displayName: 'Test User' },
+      };
+
+      const response = await callCloudFunction('generateFullItinerary', payload);
+
+      // Top-level structure
+      expect(response).toBeDefined();
+      expect(response.aiOutput).toBeDefined();
+      expect(response.metadata).toBeDefined();
+
+      const { aiOutput, metadata } = response;
+
+      // Metadata fields
+      expect(metadata.tripDays).toBe(7);
+      expect(metadata.destination).toBe('Paris, France');
+      expect(metadata.generatedBy).toBe('ai-first-v2');
+      expect(metadata.processingTimeMs).toBeGreaterThan(0);
+
+      // AI output structure
+      expect(aiOutput.travel_agent_summary).toBeTruthy();
+      expect(aiOutput.travel_agent_summary.length).toBeGreaterThan(20);
+      expect(Array.isArray(aiOutput.daily_plans)).toBe(true);
+      expect(aiOutput.daily_plans.length).toBe(7);
+
+      // Each day has required fields
+      const day = aiOutput.daily_plans[0];
+      expect(day.day).toBe(1);
+      expect(day.theme).toBeTruthy();
+      expect(Array.isArray(day.activities)).toBe(true);
+      expect(day.activities.length).toBeGreaterThan(0);
+      expect(Array.isArray(day.meals)).toBe(true);
+      expect(day.meals.length).toBeGreaterThan(0);
+
+      // Activity has required fields
+      const activity = day.activities[0];
+      expect(activity.name).toBeTruthy();
+      expect(activity.type).toBeTruthy();
+
+      // Meal has required fields
+      const meal = day.meals[0];
+      expect(meal.name).toBeTruthy();
+      expect(meal.cuisine).toBeTruthy();
+    }, 60000);
+
+    it('should generate a 3-day itinerary with the correct number of days', async () => {
+      const profile = testProfiles[0];
+
+      const payload = {
+        destination: 'Barcelona, Spain',
+        startDate: '2026-06-01',
+        endDate: '2026-06-03',
+        preferenceProfile: profile,
+        groupSize: 1,
+        userInfo: { uid: 'test-user-123' },
+      };
+
+      const response = await callCloudFunction('generateFullItinerary', payload);
+
+      expect(response.aiOutput.daily_plans.length).toBe(3);
+      expect(response.metadata.tripDays).toBe(3);
+    }, 60000);
+
+    it('should generate a valid itinerary for a non-flight transport profile when origin is provided', async () => {
+      const trainProfile = testProfiles.find(p => p.transportation.primaryMode === 'train')!;
+
+      const payload = {
+        destination: 'Rome, Italy',
+        origin: 'Paris, France',
+        startDate: '2026-06-01',
+        endDate: '2026-06-07',
+        preferenceProfile: trainProfile,
+        groupSize: 2,
+        userInfo: { uid: 'test-user-123', displayName: 'Test User' },
+      };
+
+      const response = await callCloudFunction('generateFullItinerary', payload);
+
+      // Verify the itinerary is generated correctly for a non-flight transport profile.
+      // Note: in the production client (useAIGenerationV2) transportation recommendations are
+      // fetched via a separate generateItineraryWithAI call, not from this response field.
+      expect(response.aiOutput.daily_plans.length).toBeGreaterThan(0);
+      expect(response.metadata.tripDays).toBe(7);
+      expect(response.metadata.destination).toBe('Rome, Italy');
+    }, 60000);
+  });
+
+  // ==========================================================================
+  // searchAccommodations
+  // 1 Google Places Text Search call per invocation. ~$0.032 per test.
+  // Response shape (via data wrapper): { hotels: [...], searchId }
+  // ==========================================================================
+  describe('searchAccommodations - Hotel Data Quality', () => {
+    it('should return hotels with required fields for a European destination', async () => {
+      const profile = testProfiles[0];
+
+      const payload = {
+        destination: 'Paris, France',
+        startDate: '2026-06-01',
+        endDate: '2026-06-07',
+        days: 7,
+        preferenceProfile: profile,
+      };
+
+      const response = await callCloudFunction('searchAccommodations', payload);
+
+      expect(response).toBeDefined();
+      expect(Array.isArray(response.hotels)).toBe(true);
+      expect(response.hotels.length).toBeGreaterThan(0);
+
+      const hotel = response.hotels[0];
+      expect(hotel.name).toBeTruthy();
+      expect(hotel.placeId || hotel.id).toBeTruthy();
+      expect(hotel.rating).toBeGreaterThan(0);
+      // Address is returned in one of these fields
+      expect(hotel.address || hotel.vicinity).toBeTruthy();
+    }, 30000);
+
+    it('should return hotels for an Asian destination', async () => {
+      const profile = testProfiles[1];
+
+      const payload = {
+        destination: 'Tokyo, Japan',
+        startDate: '2026-06-01',
+        endDate: '2026-06-07',
+        days: 7,
+        preferenceProfile: profile,
+      };
+
+      const response = await callCloudFunction('searchAccommodations', payload);
+
+      expect(Array.isArray(response.hotels)).toBe(true);
+      expect(response.hotels.length).toBeGreaterThan(0);
+      expect(response.hotels[0].name).toBeTruthy();
+    }, 30000);
+  });
+
+  // ==========================================================================
+  // Full Production Flow
+  // Mirrors exactly what useAIGenerationV2 does: both functions run in parallel.
+  // Total cost per run: ~$0.01–0.03 (OpenAI) + $0.032 (Places) = ~$0.04–0.06
+  // ==========================================================================
+  describe('Full Production Flow - generateFullItinerary + searchAccommodations in parallel', () => {
+    it('should produce a complete itinerary package matching the production pipeline', async () => {
+      const profile = testProfiles[0];
+
+      const destination = 'Amsterdam, Netherlands';
+      const startDate = '2026-06-01';
+      const endDate = '2026-06-07';
+
+      const itineraryPayload = {
+        destination,
+        startDate,
+        endDate,
+        preferenceProfile: profile,
+        groupSize: 2,
+        userInfo: { uid: 'test-user-123', displayName: 'Test User' },
+      };
+
+      // Compute tripDays inclusive, matching how useAIGenerationV2 calculates it
+      const tripDays = Math.round(
+        (new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24)
+      ) + 1;
+
+      const accommodationsPayload = {
+        destination,
+        startDate,
+        endDate,
+        days: tripDays,
+        preferenceProfile: profile,
+      };
+
+      // Run in parallel, exactly as useAIGenerationV2 does
+      const [aiResponse, accommodationsResponse] = await Promise.all([
+        callCloudFunction('generateFullItinerary', itineraryPayload),
+        callCloudFunction('searchAccommodations', accommodationsPayload),
+      ]);
+
+      // AI itinerary
+      expect(aiResponse.aiOutput.daily_plans.length).toBe(7);
+      expect(aiResponse.aiOutput.travel_agent_summary).toBeTruthy();
+      expect(aiResponse.metadata.tripDays).toBe(7);
+
+      // Each day has at least 1 activity and 1 meal
+      const activityCount = aiResponse.aiOutput.daily_plans.reduce(
+        (sum: number, day: any) => sum + day.activities.length, 0
+      );
+      const mealCount = aiResponse.aiOutput.daily_plans.reduce(
+        (sum: number, day: any) => sum + day.meals.length, 0
+      );
+      expect(activityCount).toBeGreaterThanOrEqual(7);
+      expect(mealCount).toBeGreaterThanOrEqual(7);
+
+      // Hotels from searchAccommodations
+      expect(accommodationsResponse.hotels.length).toBeGreaterThan(0);
+      expect(accommodationsResponse.hotels[0].name).toBeTruthy();
+    }, 60000);
+  });
+
+  // ==========================================================================
+  // searchFlights
+  // Only called when transportation mode is 'airplane'. Uses SerpAPI — not
+  // Google Places. No Places Text Search cost.
+  // ==========================================================================
+  describe('searchFlights - Airplane Transportation Mode Only', () => {
+    it('should return flight options with required fields', async () => {
       const airplaneProfile = testProfiles.find(p => p.transportation.primaryMode === 'airplane')!;
-      
-      // Use future dates for flight search (flight APIs don't return past dates)
+
       const today = new Date();
-      const futureDate = new Date(today);
-      futureDate.setDate(today.getDate() + 30); // 30 days in future
-      const returnDate = new Date(futureDate);
-      returnDate.setDate(futureDate.getDate() + 7); // 7 day trip
-      
-      const departureDateStr = futureDate.toISOString().split('T')[0];
-      const returnDateStr = returnDate.toISOString().split('T')[0];
-      
+      const departureDate = new Date(today);
+      departureDate.setDate(today.getDate() + 30);
+      const returnDate = new Date(departureDate);
+      returnDate.setDate(departureDate.getDate() + 7);
+
       const payload = {
         destination: 'Paris, France',
         departure: 'New York, NY',
         departureAirportCode: 'JFK',
         destinationAirportCode: 'CDG',
-        departureDate: departureDateStr,
-        returnDate: returnDateStr,
-        startDate: departureDateStr,
-        endDate: returnDateStr,
+        departureDate: formatDateLocal(departureDate),
+        returnDate: formatDateLocal(returnDate),
+        startDate: formatDateLocal(departureDate),
+        endDate: formatDateLocal(returnDate),
         tripDays: 7,
         preferenceProfile: airplaneProfile,
       };
 
-      
-      
-      // Call searchFlights (should return flights for airplane mode)
       const response = await callCloudFunction('searchFlights', payload);
 
-      // Validate response structure
       expect(response).toBeDefined();
       expect(response.success).toBe(true);
-      expect(response.flights).toBeDefined();
       expect(Array.isArray(response.flights)).toBe(true);
       expect(response.flights.length).toBeGreaterThan(0);
-      
+
       const flight = response.flights[0];
       expect(flight).toHaveProperty('departure');
       expect(flight).toHaveProperty('arrival');
       expect(flight).toHaveProperty('price');
-
-      
-    }, 30000);
-
-    it('should return accommodations and activities for TRAIN mode', async () => {
-      const trainProfile = testProfiles.find(p => p.transportation.primaryMode === 'train')!;
-      
-      const payload = {
-        destination: 'Rome, Italy',
-        departure: 'Paris, France',
-        startDate: '2026-01-15',
-        endDate: '2026-01-21',
-        tripDays: 7,
-        preferenceProfile: trainProfile,
-      };
-
-      
-      
-      // Call searchAccommodations
-      const accommodationsResponse = await callCloudFunction('searchAccommodations', payload);
-      
-      // Call searchActivities
-      const activitiesResponse = await callCloudFunction('searchActivities', payload);
-
-      // Validate accommodations
-      expect(accommodationsResponse).toBeDefined();
-      const accommodations = extractArray(accommodationsResponse, 'accommodations', 'hotels');
-      expect(Array.isArray(accommodations)).toBe(true);
-      expect(accommodations.length).toBeGreaterThan(0);
-      
-      const hotel = accommodations[0];
-      expect(hotel).toHaveProperty('name');
-
-      // Validate activities
-      expect(activitiesResponse).toBeDefined();
-      const activities = extractArray(activitiesResponse, 'activities');
-      expect(Array.isArray(activities)).toBe(true);
-      expect(activities.length).toBeGreaterThan(0);
-
-      
-    }, 30000);
-
-    it('should return data for RENTAL CAR mode', async () => {
-      const rentalProfile = testProfiles.find(p => p.transportation.primaryMode === 'rental')!;
-      
-      const payload = {
-        destination: 'Los Angeles, CA, USA',
-        departure: 'San Francisco, CA, USA',
-        startDate: '2026-01-15',
-        endDate: '2026-01-21',
-        tripDays: 7,
-        preferenceProfile: rentalProfile,
-      };
-
-      
-      
-      const accommodationsResponse = await callCloudFunction('searchAccommodations', payload);
-      const activitiesResponse = await callCloudFunction('searchActivities', payload);
-
-      const accommodations = extractArray(accommodationsResponse, 'accommodations', 'hotels');
-      const activities = extractArray(activitiesResponse, 'activities');
-
-      expect(accommodations.length).toBeGreaterThan(0);
-      expect(activities.length).toBeGreaterThan(0);
-
-      
-    }, 30000);
-
-    it('should return data for PUBLIC TRANSIT mode', async () => {
-      const publicProfile = testProfiles.find(p => p.transportation.primaryMode === 'public')!;
-      
-      const payload = {
-        destination: 'Tokyo, Japan',
-        departure: 'Kyoto, Japan',
-        startDate: '2026-01-15',
-        endDate: '2026-01-21',
-        tripDays: 7,
-        preferenceProfile: publicProfile,
-      };
-
-      
-      
-      const accommodationsResponse = await callCloudFunction('searchAccommodations', payload);
-      const activitiesResponse = await callCloudFunction('searchActivities', payload);
-
-      const accommodations = extractArray(accommodationsResponse, 'accommodations', 'hotels');
-      const activities = extractArray(activitiesResponse, 'activities');
-
-      expect(accommodations.length).toBeGreaterThan(0);
-      expect(activities.length).toBeGreaterThan(0);
-
-      
-    }, 30000);
-
-    it('should return data for WALKING mode', async () => {
-      const walkingProfile = testProfiles.find(p => p.transportation.primaryMode === 'walking')!;
-      
-      const payload = {
-        destination: 'Barcelona, Spain',
-        departure: 'Madrid, Spain',
-        startDate: '2026-01-15',
-        endDate: '2026-01-21',
-        tripDays: 7,
-        preferenceProfile: walkingProfile,
-      };
-
-      
-      
-      const accommodationsResponse = await callCloudFunction('searchAccommodations', payload);
-      const activitiesResponse = await callCloudFunction('searchActivities', payload);
-
-      const accommodations = extractArray(accommodationsResponse, 'accommodations', 'hotels');
-      const activities = extractArray(activitiesResponse, 'activities');
-
-      expect(accommodations.length).toBeGreaterThan(0);
-      expect(activities.length).toBeGreaterThan(0);
-
-      
-    }, 30000);
-
-    it('should return data for BUS mode', async () => {
-      const busProfile = testProfiles.find(p => p.transportation.primaryMode === 'bus')!;
-      
-      const payload = {
-        destination: 'Amsterdam, Netherlands',
-        departure: 'Brussels, Belgium',
-        startDate: '2026-01-15',
-        endDate: '2026-01-21',
-        tripDays: 7,
-        preferenceProfile: busProfile,
-      };
-
-      
-      
-      const accommodationsResponse = await callCloudFunction('searchAccommodations', payload);
-      const activitiesResponse = await callCloudFunction('searchActivities', payload);
-
-      const accommodations = extractArray(accommodationsResponse, 'accommodations', 'hotels');
-      const activities = extractArray(activitiesResponse, 'activities');
-
-      expect(accommodations.length).toBeGreaterThan(0);
-      expect(activities.length).toBeGreaterThan(0);
-
-      
-    }, 30000);
-  });
-
-  describe('Trip Duration Validation', () => {
-    it('should return appropriate data for 3-day trip', async () => {
-      const profile = testProfiles[0];
-      
-      const payload = {
-        destination: 'Paris, France',
-        departure: 'London, UK',
-        startDate: '2026-01-15',
-        endDate: '2026-01-17',
-        tripDays: 3,
-        preferenceProfile: profile,
-      };
-
-      
-      
-      const accommodationsResponse = await callCloudFunction('searchAccommodations', payload);
-      const activitiesResponse = await callCloudFunction('searchActivities', payload);
-
-      const accommodations = extractArray(accommodationsResponse, 'accommodations', 'hotels');
-      const activities = extractArray(activitiesResponse, 'activities');
-
-      expect(accommodations.length).toBeGreaterThan(0);
-      expect(activities.length).toBeGreaterThan(0);
-      
-  // For 3-day trip, expect at least 3 activities (1 per day minimum)
-  expect(activities.length).toBeGreaterThanOrEqual(3);
-    }, 30000);
-
-    it('should return appropriate data for 7-day trip', async () => {
-      const profile = testProfiles[1];
-      
-      const payload = {
-        destination: 'Tokyo, Japan',
-        departure: 'Seoul, South Korea',
-        startDate: '2026-01-15',
-        endDate: '2026-01-21',
-        tripDays: 7,
-        preferenceProfile: profile,
-      };
-
-      
-      
-      const accommodationsResponse = await callCloudFunction('searchAccommodations', payload);
-      const activitiesResponse = await callCloudFunction('searchActivities', payload);
-
-      const accommodations = extractArray(accommodationsResponse, 'accommodations', 'hotels');
-      const activities = extractArray(activitiesResponse, 'activities');
-
-      expect(accommodations.length).toBeGreaterThan(0);
-      expect(activities.length).toBeGreaterThan(0);
-      
-  // For 7-day trip, expect at least 7 activities
-  expect(activities.length).toBeGreaterThanOrEqual(7);
-    }, 30000);
-
-    it('should return appropriate data for 14-day trip', async () => {
-      const profile = testProfiles[2];
-      
-      const payload = {
-        destination: 'Barcelona, Spain',
-        departure: 'Lisbon, Portugal',
-        startDate: '2026-01-15',
-        endDate: '2026-01-28',
-        tripDays: 14,
-        preferenceProfile: profile,
-      };
-
-      
-      
-      const accommodationsResponse = await callCloudFunction('searchAccommodations', payload);
-      const activitiesResponse = await callCloudFunction('searchActivities', payload);
-
-      const accommodations = extractArray(accommodationsResponse, 'accommodations', 'hotels');
-      const activities = extractArray(activitiesResponse, 'activities');
-
-      expect(accommodations.length).toBeGreaterThan(0);
-      expect(activities.length).toBeGreaterThan(0);
-      
-  // For 14-day trip, expect at least 14 activities
-  expect(activities.length).toBeGreaterThanOrEqual(14);
-    }, 30000);
-  });
-
-  describe('Data Quality and Enrichment Validation', () => {
-    it('should include hotel recommendations with complete data', async () => {
-      const profile = testProfiles[0];
-      
-      const payload = {
-        destination: 'Paris, France',
-        departure: 'London, UK',
-        startDate: '2026-01-15',
-        endDate: '2026-01-21',
-        tripDays: 7,
-        preferenceProfile: profile,
-      };
-
-      
-      
-      const accommodationsResponse = await callCloudFunction('searchAccommodations', payload);
-      const accommodations = extractArray(accommodationsResponse, 'accommodations', 'hotels');
-
-      expect(accommodations.length).toBeGreaterThan(0);
-      
-      const hotel = accommodations[0];
-      
-      // Validate required fields
-      expect(hotel).toHaveProperty('name');
-      expect(hotel.name).toBeTruthy();
-      
-      // Location can be in different formats
-      expect(hotel.location || hotel.address || hotel.vicinity).toBeTruthy();
-      
-  // Should have either rating or price
-  expect(hotel.rating || hotel.price).toBeTruthy();
-    }, 30000);
-
-    it('should include restaurants/meals data', async () => {
-      const profile = testProfiles[1];
-      
-      const payload = {
-        destination: 'Rome, Italy',
-        departure: 'Florence, Italy',
-        startDate: '2026-01-15',
-        endDate: '2026-01-21',
-        tripDays: 7,
-        preferenceProfile: profile,
-      };
-
-      
-      
-      const activitiesResponse = await callCloudFunction('searchActivities', payload);
-      const activities = extractArray(activitiesResponse, 'activities');
-
-      // Activities should include restaurants (Google Places returns restaurants as activities)
-      expect(activities.length).toBeGreaterThan(0);
-      
-      // Check if some activities are restaurants (they should have types or categories)
-      const hasRestaurants = activities.some((activity: any) => 
-        activity.type === 'restaurant' || 
-        activity.types?.includes('restaurant') ||
-        activity.name?.toLowerCase().includes('restaurant') ||
-        activity.name?.toLowerCase().includes('café')
-      );
-      
-      expect(hasRestaurants || activities.length > 10).toBe(true); // Either explicit restaurants or many activities
-
-      
-    }, 30000);
-
-    it('should include enriched activities with contact information', async () => {
-      const profile = testProfiles[2];
-      
-      const payload = {
-        destination: 'Barcelona, Spain',
-        departure: 'Madrid, Spain',
-        startDate: '2026-01-15',
-        endDate: '2026-01-21',
-        tripDays: 7,
-        preferenceProfile: profile,
-      };
-
-      
-      
-      const activitiesResponse = await callCloudFunction('searchActivities', payload);
-      const activities = extractArray(activitiesResponse, 'activities');
-
-      expect(activities.length).toBeGreaterThan(0);
-      
-      const activity = activities[0];
-      
-      // Validate basic fields
-      expect(activity).toHaveProperty('name');
-      expect(activity.name).toBeTruthy();
-      
-      // Location can be in different formats
-      expect(activity.location || activity.address || activity.vicinity).toBeTruthy();
-      
-      // Enriched data (at least some should have these)
-      const hasEnrichment = activities.some((act: any) => 
-        act.phone || act.website || act.price_level || act.rating
-      );
-      
-  expect(hasEnrichment).toBe(true);
-    }, 30000);
-  });
-
-  describe('Different Destinations', () => {
-    it('should generate itinerary for European destination', async () => {
-      const profile = testProfiles[0];
-      
-      const payload = {
-        destination: 'Amsterdam, Netherlands',
-        departure: 'Brussels, Belgium',
-        startDate: '2026-01-15',
-        endDate: '2026-01-21',
-        tripDays: 7,
-        preferenceProfile: profile,
-      };
-
-      
-      
-      const accommodationsResponse = await callCloudFunction('searchAccommodations', payload);
-      const activitiesResponse = await callCloudFunction('searchActivities', payload);
-
-      const accommodations = extractArray(accommodationsResponse, 'accommodations', 'hotels');
-      const activities = extractArray(activitiesResponse, 'activities');
-
-      expect(accommodations.length).toBeGreaterThan(0);
-      expect(activities.length).toBeGreaterThan(0);
-
-      
-    }, 30000);
-
-    it('should generate itinerary for Asian destination', async () => {
-      const profile = testProfiles[1];
-      
-      const payload = {
-        destination: 'Bangkok, Thailand',
-        departure: 'Singapore',
-        startDate: '2026-01-15',
-        endDate: '2026-01-21',
-        tripDays: 7,
-        preferenceProfile: profile,
-      };
-
-      
-      
-      const accommodationsResponse = await callCloudFunction('searchAccommodations', payload);
-      const activitiesResponse = await callCloudFunction('searchActivities', payload);
-
-      const accommodations = extractArray(accommodationsResponse, 'accommodations', 'hotels');
-      const activities = extractArray(activitiesResponse, 'activities');
-
-      expect(accommodations.length).toBeGreaterThan(0);
-      expect(activities.length).toBeGreaterThan(0);
-
-      
-    }, 30000);
-
-    it.skip('should generate itinerary for South American destination', async () => {
-      const profile = testProfiles[2];
-      
-      const payload = {
-        destination: 'Buenos Aires, Argentina',
-        departure: 'São Paulo, Brazil',
-        startDate: '2026-01-15',
-        endDate: '2026-01-21',
-        tripDays: 7,
-        preferenceProfile: profile,
-      };
-
-      
-      
-      const accommodationsResponse = await callCloudFunction('searchAccommodations', payload);
-      const activitiesResponse = await callCloudFunction('searchActivities', payload);
-
-      const accommodations = extractArray(accommodationsResponse, 'accommodations', 'hotels');
-      const activities = extractArray(activitiesResponse, 'activities');
-
-      expect(accommodations.length).toBeGreaterThan(0);
-      expect(activities.length).toBeGreaterThan(0);
-
-      
     }, 30000);
   });
 });
+

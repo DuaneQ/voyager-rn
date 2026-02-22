@@ -132,6 +132,30 @@
 
 ---
 
+### 🚨 ALWAYS DELETE TESTS WHEN REMOVING CODE 🚨
+
+**ABSOLUTE RULE**: When you remove or delete any function, module, or file, you MUST also remove ALL tests associated with it.
+
+**This includes**:
+- Unit test files that import or test the removed code
+- Integration tests that call the removed function (even indirectly)
+- Test helpers, fixtures, or mock data created solely for the removed code
+
+**How to find associated tests before removing code**:
+1. ✅ Search for the function/module name across all test files: `grep -r "functionName" src/__tests__/ functions/src/__tests__/`
+2. ✅ Check for import statements referencing the file being removed
+3. ✅ Remove test files that exclusively test the removed code
+4. ✅ Remove individual test cases from shared files that reference the removed code
+
+**Why this matters**:
+- Tests for removed code provide false confidence — they pass without testing anything real
+- Dead test code calling live APIs (e.g., cloud functions) can silently run up API costs in CI
+- Leaving orphaned tests is how `searchActivities` cost $335 in 2 months: the function was deprecated in production but its integration tests kept running on every CI push, making real Google Places API calls
+
+**If you violate this rule, you leave behind tests that waste money and mislead developers. NO EXCEPTIONS.**
+
+---
+
 ## Project Overview
 This is a **React Native Expo** replica of the **voyager-pwa** project, maintaining **exact same functionality** for mobile platforms while implementing **improved architecture** following S.O.L.I.D principles. The app shares the same Firebase database and business logic as the PWA but with better code organization and reusability.
 
