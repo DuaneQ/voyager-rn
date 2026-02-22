@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
+import { AppState } from 'react-native';
 import { AlertProvider } from '../../context/AlertContext';
 
 // Mocks
@@ -87,6 +88,9 @@ const renderWithProvider = (component: React.ReactElement) => {
 describe('AIItineraryGenerationModal', () => {
   beforeEach(() => {
     jest.resetAllMocks();
+    // resetAllMocks strips mock implementations; restore AppState.addEventListener so
+    // the useUsageTracking cleanup function (subscription.remove()) doesn't crash.
+    (AppState.addEventListener as jest.Mock).mockImplementation((_event: string, _handler: () => void) => ({ remove: jest.fn() }));
     setMockUser();
   });
 

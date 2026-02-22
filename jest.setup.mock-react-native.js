@@ -138,6 +138,14 @@ jest.mock(
 			addEventListener: jest.fn(),
 			removeEventListener: jest.fn(),
 		},			Alert: { alert: jest.fn(() => {}) },
+			AppState: {
+				currentState: 'active',
+				addEventListener: jest.fn((event, handler) => ({ remove: jest.fn() })),
+			},
+			BackHandler: {
+				addEventListener: jest.fn(() => ({ remove: jest.fn() })),
+				removeEventListener: jest.fn(),
+			},
 		};
 	},
 	{ virtual: true }

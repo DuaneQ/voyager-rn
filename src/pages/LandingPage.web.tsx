@@ -30,9 +30,9 @@ import { CookiePolicyModal } from '../components/modals/legal/CookiePolicyModal'
 
 // Platform-safe useNavigation
 const useNavigation = () => ({
-  navigate: (screen: string) => {
+  navigate: (screen: string, mode?: 'login' | 'register') => {
     if (screen === 'Auth') {
-      window.location.href = '/auth';
+      window.location.href = mode ? `/auth?mode=${mode}` : '/auth';
     }
   }
 });
@@ -124,13 +124,11 @@ export const LandingPage: React.FC = () => {
   }
 
   const handleGetStarted = () => {
-    // @ts-ignore - Navigation types are complex, but this works at runtime
-    navigation.navigate('Auth');
+    navigation.navigate('Auth', 'register');
   };
 
   const handleSignIn = () => {
-    // @ts-ignore - Navigation types are complex, but this works at runtime
-    navigation.navigate('Auth');
+    navigation.navigate('Auth', 'login');
   };
 
   const scrollToSection = (sectionId: string) => {

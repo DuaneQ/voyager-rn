@@ -1441,4 +1441,167 @@ describe('useUsageTracking', () => {
       expect(firestore.updateDoc).not.toHaveBeenCalled(); // Premium users don't update Firestore
     });
   });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // AppState foreground refresh
+  // When a user purchases on the web and returns to the native app, the OS
+  // transitions AppState from 'background' → 'active'. The hook must re-fetch
+  // the Firestore profile so that premium entitlements are reflected without
+  // requiring a manual app restart.
+  // ─────────────────────────────────────────────────────────────────────────
+  describe('AppState foreground refresh', () => {
+    let capturedHandler: ((state: string) => void) | null = null;
+    let mockRemove: jest.Mock;
+
+    beforeEach(() => {
+      capturedHandler = null;
+      mockRemove = jest.fn();
+
+      // Capture the change listener so tests can trigger transitions
+      const { AppState } = require('react-native');
+      (AppState.addEventListener as jest.Mock).mockImplementation(
+        (_event: string, handler: (state: string) => void) => {
+          capturedHandler = handler;
+          return { remove: mockRemove };
+        }
+      );
+      // Start with app in foreground
+      AppState.currentState = 'active';
+    });
+
+    it('calls loadUserProfile when app transitions from background to active', async () => {
+      (firestore.getDoc as jest.Mock).mockResolvedValue({
+        exists: () => true,
+        data: () => mockFreeUser,
+      });
+
+      const { result } = renderHook(() => useUsageTracking());
+
+      // Wait for initial load
+      await waitFor(() => expect(result.current.userProfile).not.toBeNull());
+
+      const initialCallCount = (firestore.getDoc as jest.Mock).mock.calls.length;
+
+      // Simulate background → active transition
+      await act(async () => {
+        capturedHandler?.('background');
+        capturedHandler?.('active');
+      });
+
+      // getDoc should have been called again for refresh
+      expect((firestore.getDoc as jest.Mock).mock.calls.length).toBeGreaterThan(initialCallCount);
+    });
+
+    it('does NOT call loadUserProfile when app merely goes to background', async () => {
+      (firestore.getDoc as jest.Mock).mockResolvedValue({
+        exists: () => true,
+        data: () => mockFreeUser,
+      });
+
+      const { result } = renderHook(() => useUsageTracking());
+      await waitFor(() => expect(result.current.userProfile).not.toBeNull());
+
+      const callCountAfterMount = (firestore.getDoc as jest.Mock).mock.calls.length;
+
+      await act(async () => {
+        capturedHandler?.('background');
+      });
+
+      // No extra Firestore call when going to background
+      expect((firestore.getDoc as jest.Mock).mock.calls.length).toBe(callCountAfterMount);
+    });
+
+    it('does NOT re-fetch when app transitions from active to inactive (no prior background)', async () => {
+      (firestore.getDoc as jest.Mock).mockResolvedValue({
+        exists: () => true,
+        data: () => mockFreeUser,
+      });
+
+      const { result } = renderHook(() => useUsageTracking());
+      await waitFor(() => expect(result.current.userProfile).not.toBeNull());
+
+      const callCountAfterMount = (firestore.getDoc as jest.Mock).mock.calls.length;
+
+      // active → inactive (phone locked, never went background first)
+      await act(async () => {
+        capturedHandler?.('inactive');
+      });
+
+      expect((firestore.getDoc as jest.Mock).mock.calls.length).toBe(callCountAfterMount);
+    });
+
+    it('reflects updated subscription after foreground refresh (free → premium)', async () => {
+      // Initial load: free user
+      (firestore.getDoc as jest.Mock).mockResolvedValueOnce({
+        exists: () => true,
+        data: () => mockFreeUser,
+      });
+
+      const { result } = renderHook(() => useUsageTracking());
+      await waitFor(() => expect(result.current.userProfile).not.toBeNull());
+
+      expect(result.current.hasPremium()).toBe(false);
+
+      // User purchased on web → Firestore now has premium data
+      (firestore.getDoc as jest.Mock).mockResolvedValue({
+        exists: () => true,
+        data: () => mockPremiumUser,
+      });
+
+      // Simulate returning from browser (background → active)
+      await act(async () => {
+        capturedHandler?.('background');
+        capturedHandler?.('active');
+      });
+
+      await waitFor(() => expect(result.current.hasPremium()).toBe(true));
+    });
+
+    it('removes the AppState listener when the hook unmounts', async () => {
+      (firestore.getDoc as jest.Mock).mockResolvedValue({
+        exists: () => true,
+        data: () => mockFreeUser,
+      });
+
+      const { result, unmount } = renderHook(() => useUsageTracking());
+      await waitFor(() => expect(result.current.userProfile).not.toBeNull());
+
+      unmount();
+
+      expect(mockRemove).toHaveBeenCalled();
+    });
+
+    it('registers the AppState listener on mount', async () => {
+      (firestore.getDoc as jest.Mock).mockResolvedValue({
+        exists: () => true,
+        data: () => mockFreeUser,
+      });
+
+      const { AppState } = require('react-native');
+
+      renderHook(() => useUsageTracking());
+
+      expect(AppState.addEventListener).toHaveBeenCalledWith('change', expect.any(Function));
+    });
+
+    it('skips AppState listener on web platform', async () => {
+      const { Platform, AppState } = require('react-native');
+      const savedOS = Platform.OS;
+      Platform.OS = 'web';
+
+      (firestore.getDoc as jest.Mock).mockResolvedValue({
+        exists: () => true,
+        data: () => mockFreeUser,
+      });
+
+      // Reset call count before test
+      (AppState.addEventListener as jest.Mock).mockClear();
+
+      renderHook(() => useUsageTracking());
+
+      expect(AppState.addEventListener).not.toHaveBeenCalled();
+
+      Platform.OS = savedOS;
+    });
+  });
 });

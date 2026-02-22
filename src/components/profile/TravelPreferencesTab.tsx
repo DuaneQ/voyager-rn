@@ -5,18 +5,15 @@
  * Sub-tab of AI Itineraries tab with simplified mobile UX
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
-  ScrollView,
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
   StyleSheet,
-  Platform,
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
 import Slider from '@react-native-community/slider';
 import { CrossPlatformPicker, PickerItem } from '../common/CrossPlatformPicker';
 import { useTravelPreferences } from '../../hooks/useTravelPreferences';

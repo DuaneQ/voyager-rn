@@ -129,6 +129,10 @@ const Stub = {
   Alert: {
     alert: jest.fn(() => {}),
   },
+  AppState: {
+    currentState: 'active',
+    addEventListener: jest.fn((event, handler) => ({ remove: jest.fn() })),
+  },
   BackHandler: {
     addEventListener: jest.fn(() => ({
       remove: jest.fn(),

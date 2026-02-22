@@ -3,7 +3,8 @@
  * Handles daily usage limits for free users and premium subscription validation
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { AppState, AppStateStatus, Platform } from 'react-native';
 import { getFirestore, doc, updateDoc, getDoc } from 'firebase/firestore';
 import * as firebaseCfg from '../config/firebaseConfig';
 
@@ -53,6 +54,21 @@ const docRef = doc((firebaseCfg as any).db, 'users', userIdNow);
 
   useEffect(() => {
     loadUserProfile();
+  }, [loadUserProfile]);
+
+  // Re-fetch subscription state when app returns to foreground
+  // This ensures a purchase made in the web browser is reflected immediately
+  // without requiring the user to manually refresh the app.
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+  useEffect(() => {
+    if (Platform.OS === 'web') return; // Web handles this via page navigation
+    const subscription = AppState.addEventListener('change', (nextState: AppStateStatus) => {
+      if (appStateRef.current.match(/inactive|background/) && nextState === 'active') {
+        loadUserProfile();
+      }
+      appStateRef.current = nextState;
+    });
+    return () => subscription.remove();
   }, [loadUserProfile]);
 
   // Check if user is premium (same logic as PWA)

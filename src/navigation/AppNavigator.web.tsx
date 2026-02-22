@@ -249,7 +249,11 @@ const RootNavigator: React.FC = () => {
         path="/auth" 
         element={
           isAuthenticated ? (
-            <Navigate to="/app/videos" replace />
+            <Navigate to={(() => {
+              const redirectParam = new URLSearchParams(window.location.search).get('redirect');
+              // Only allow safe internal redirects to prevent open-redirect attacks
+              return (redirectParam && redirectParam.startsWith('/app/')) ? redirectParam : '/app/videos';
+            })()} replace />
           ) : (
             <AuthPage />
           )
