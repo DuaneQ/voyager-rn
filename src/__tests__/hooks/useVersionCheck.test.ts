@@ -18,7 +18,7 @@ import { useVersionCheck } from '../../hooks/useVersionCheck';
 
 // The mock module is at __mocks__/@react-native-firebase/remote-config.ts.
 // We grab the mocked instance so individual tests can override getValue.
-const mockRCInstance = (remoteConfig as jest.Mock)();
+const mockRCInstance = (remoteConfig as unknown as jest.Mock)();
 
 // Helper: override what Remote Config returns for a given test
 const setRemoteConfigVersions = (min: string, latest: string) => {

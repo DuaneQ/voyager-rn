@@ -18,7 +18,7 @@
  */
 
 import generateTestPreferenceProfiles, { TestPreferenceProfile } from './data/testPreferenceProfiles';
-import { formatDateLocal } from '../../../utils/formatDate';
+import { formatDateLocal } from '../../utils/formatDate';
 
 const TEST_USER_EMAIL = 'feedback@travalpass.com';
 const TEST_PASSWORD = '1111111111';
