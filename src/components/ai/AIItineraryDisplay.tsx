@@ -3,7 +3,7 @@
  * Displays detailed AI-generated itinerary matching PWA functionality with collapsible accordions
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -15,7 +15,6 @@ import {
   Image,
   Alert,
   TextInput,
-  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';

@@ -44,7 +44,9 @@ function handleNotificationNavigation(data: Record<string, unknown> | undefined)
       if (connectionId) {
         navigateFromNotification('ChatThread', { connectionId });
       } else {
-        console.warn(`Missing connectionId for ${type} notification`);
+        // No specific thread ID — fall back to the Chat tab
+        console.warn(`Missing connectionId for ${type} notification, falling back to Chat tab`);
+        navigateFromNotification('MainApp', { screen: 'Chat' });
       }
       break;
     }

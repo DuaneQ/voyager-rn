@@ -154,42 +154,68 @@ describe('LandingPage.web', () => {
       mockLocation.href = '';
     });
 
-    it('navigates to Auth page when Get Started Free is clicked', () => {
+    it('navigates to /auth?mode=register when Get Started Free is clicked', () => {
       const { getByText } = renderComponent();
-      
+      mockLocation.href = '';
+
       const getStartedButton = getByText('Get Started Free');
       fireEvent.press(getStartedButton);
-      
-      expect(mockLocation.href).toBe('/auth');
+
+      expect(mockLocation.href).toBe('/auth?mode=register');
     });
 
-    it('navigates to Auth page when Sign In is clicked from hero', () => {
+    it('navigates to /auth?mode=login when Sign In is clicked from hero', () => {
       const { getAllByText } = renderComponent();
-      
+      mockLocation.href = '';
+
       // Get the first "Sign In" button (in hero section)
       const signInButtons = getAllByText('Sign In');
       fireEvent.press(signInButtons[0]);
-      
-      expect(mockLocation.href).toBe('/auth');
+
+      expect(mockLocation.href).toBe('/auth?mode=login');
     });
 
-    it('navigates to Auth page when Sign Up Now is clicked in footer CTA', () => {
+    it('navigates to /auth?mode=register when Sign Up Now is clicked in footer CTA', () => {
       const { getByText } = renderComponent();
-      
+      mockLocation.href = '';
+
       const signUpButton = getByText('Sign Up Now');
       fireEvent.press(signUpButton);
-      
-      expect(mockLocation.href).toBe('/auth');
+
+      expect(mockLocation.href).toBe('/auth?mode=register');
     });
 
-    it('navigates to Auth page when Sign In is clicked in footer CTA', () => {
+    it('navigates to /auth?mode=login when Sign In is clicked in footer CTA', () => {
       const { getAllByText } = renderComponent();
-      
+      mockLocation.href = '';
+
       // Get all "Sign In" buttons and click the last one (footer)
       const signInButtons = getAllByText('Sign In');
       fireEvent.press(signInButtons[signInButtons.length - 1]);
-      
-      expect(mockLocation.href).toBe('/auth');
+
+      expect(mockLocation.href).toBe('/auth?mode=login');
+    });
+
+    it('Get Started and Sign Up buttons route to register, Sign In buttons route to login', () => {
+      const { getByText, getAllByText } = renderComponent();
+      mockLocation.href = '';
+
+      // Sign In buttons should all go to login
+      const signInButtons = getAllByText('Sign In');
+      signInButtons.forEach(btn => {
+        mockLocation.href = '';
+        fireEvent.press(btn);
+        expect(mockLocation.href).toBe('/auth?mode=login');
+      });
+
+      // Sign Up / Get Started buttons should all go to register
+      mockLocation.href = '';
+      fireEvent.press(getByText('Get Started Free'));
+      expect(mockLocation.href).toBe('/auth?mode=register');
+
+      mockLocation.href = '';
+      fireEvent.press(getByText('Sign Up Now'));
+      expect(mockLocation.href).toBe('/auth?mode=register');
     });
   });
 

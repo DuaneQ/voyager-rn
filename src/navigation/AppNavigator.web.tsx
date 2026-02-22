@@ -249,7 +249,24 @@ const RootNavigator: React.FC = () => {
         path="/auth" 
         element={
           isAuthenticated ? (
-            <Navigate to="/app/videos" replace />
+            <Navigate to={(() => {
+              const redirectParam = new URLSearchParams(window.location.search).get('redirect');
+              // Whitelist of valid post-auth redirect destinations.
+              // Explicit check prevents path-traversal attacks (e.g. /app/../admin).
+              const ALLOWED_REDIRECTS: readonly string[] = [
+                '/app/search',
+                '/app/videos',
+                '/app/chat',
+                '/app/profile',
+              ];
+              if (redirectParam && (
+                ALLOWED_REDIRECTS.includes(redirectParam) ||
+                redirectParam.startsWith('/app/chat/')   // deep-link into a specific chat
+              )) {
+                return redirectParam;
+              }
+              return '/app/videos';
+            })()} replace />
           ) : (
             <AuthPage />
           )

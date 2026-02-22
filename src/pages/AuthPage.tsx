@@ -33,8 +33,19 @@ import ResendVerificationForm from '../components/auth/forms/ResendVerificationF
 
 type AuthMode = 'login' | 'register' | 'forgot' | 'resend';
 
+/** Read initial mode from ?mode= query param on web, default to 'login' */
+const getInitialMode = (): AuthMode => {
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    const param = new URLSearchParams(window.location.search).get('mode');
+    if (param === 'login' || param === 'register') {
+      return param as AuthMode;
+    }
+  }
+  return 'login';
+};
+
 const AuthPage: React.FC = () => {
-  const [mode, setMode] = useState<AuthMode>('login');
+  const [mode, setMode] = useState<AuthMode>(getInitialMode);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const { signIn, signUp, sendPasswordReset, resendVerification, status, signInWithGoogle, signUpWithGoogle, signInWithApple, signUpWithApple } = useAuth();
