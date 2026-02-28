@@ -174,6 +174,43 @@ export interface AccommodationRecommendation {
   userRating?: number;
 }
 
+// Ad promotion shown inside AI itineraries (ai_slot placement)
+export interface AdPromotion {
+  // Identity
+  businessName: string;
+  businessType: 'restaurant' | 'hotel' | 'tour' | 'experience' | 'transport' | 'shop' | 'activity' | 'other';
+  logoUrl?: string;
+  imageUrl?: string;
+
+  // Copy
+  headline: string;         // Short hook displayed prominently (≤60 chars)
+  description?: string;     // Optional longer body text
+
+  // Contact & location
+  website?: string;
+  address?: string;        // Business address
+  phone?: string;           // Phone number
+  email?: string;           // Email address
+  googleMapsUrl?: string;
+
+  // Offer
+  cta: string;              // Call-to-action label e.g. "Book Now", "Learn More"
+  promoCode?: string;
+  offerDetails?: string;    // e.g. "10% off your first booking"
+  offerExpiry?: string;     // YYYY-MM-DD
+
+  // Meta
+  priceRange?: '$' | '$$' | '$$$' | '$$$$';
+  rating?: number;          // 1–5
+  operatingHours?: string;
+  tags?: string[];          // Display chips e.g. ["Italian", "Outdoor Seating"]
+
+  // Ad identifiers (populated server-side)
+  adId?: string;
+  campaignId?: string;
+  landingUrl?: string;      // Resolved click-through URL (may differ from website)
+}
+
 // Flight information
 export interface FlightRecommendation {
   id: string;
@@ -214,7 +251,7 @@ export interface Itinerary {
   activities?: Activity[];
   flights?: FlightRecommendation[];
   accommodations?: AccommodationRecommendation[];
-  
+  promotions?: AdPromotion[];
   // External API data
   externalData?: {
     hotelRecommendations?: any[];

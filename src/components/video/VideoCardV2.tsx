@@ -656,6 +656,14 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
       {/* Action buttons */}
       {renderActionButtons()}
       
+      {/* TODO: Ad CTA overlay — when this card renders an ad creative (has a landingUrl),
+           render a small tappable pill/card anchored to the bottom of the frame showing
+           primaryText snippet + CTA label (e.g. "Book Now →") that opens landingUrl in
+           the browser via Linking.openURL(). Pattern: TikTok "Shop Now" bar / Reels CTA
+           pill. Requires VideoCardV2Props to accept an optional `ad` prop with
+           { primaryText, cta, landingUrl } so the component stays decoupled from the
+           campaign data model. */}
+
       {/* Mute button */}
       <View style={[styles.muteButtonWrapper, { pointerEvents: 'box-none' }]}>
         <TouchableOpacity onPress={handleMuteToggle} style={styles.muteButton}>
