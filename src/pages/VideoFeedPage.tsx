@@ -24,8 +24,13 @@ import { VideoCardV2 as VideoCard } from '../components/video/VideoCardV2';
 import { VideoCommentsModal } from '../components/video/VideoCommentsModal';
 import { VideoUploadModal } from '../components/modals/VideoUploadModal';
 import { ReportVideoModal } from '../components/modals/ReportVideoModal';
+import { SponsoredVideoCard } from '../components/ads/SponsoredVideoCard';
 import { useVideoFeed, VideoFilter } from '../hooks/video/useVideoFeed';
 import { useVideoUpload } from '../hooks/video/useVideoUpload';
+import { useAdDelivery, useAdTracking, useAdFrequency } from '../hooks/ads';
+import { useUserProfile } from '../context/UserProfileContext';
+import { calculateAge } from '../utils/calculateAge';
+import { useTravelPreferences } from '../hooks/useTravelPreferences';
 import { useAlert } from '../context/AlertContext';
 import { shareVideo } from '../utils/videoSharing';
 import { videoPlaybackManagerV2 as videoPlaybackManager } from '../services/video/VideoPlaybackManagerV2';
@@ -77,6 +82,39 @@ const VideoFeedPage: React.FC = () => {
       showAlert('error', message);
     },
   });
+
+  // ── Ad delivery hooks ─────────────────────────────────────────────────────
+  const { ads: videoAds, fetchAds: fetchVideoAds } = useAdDelivery('video_feed');
+  const { trackImpression, trackClick, trackQuartile } = useAdTracking();
+  const { spliceAdsIntoList, resetSessionCount } = useAdFrequency();
+  const { userProfile } = useUserProfile();
+  const { defaultProfile: travelProfile } = useTravelPreferences();
+
+  // Fetch ads on mount and on refresh — pass demographic + travel preference context for targeting
+  useEffect(() => {
+    const ctx: Record<string, string | number | string[] | undefined> = {};
+    if (userProfile?.gender) ctx.gender = userProfile.gender;
+    if (userProfile?.dob) {
+      const age = calculateAge(userProfile.dob);
+      if (age > 0) ctx.age = age;
+    }
+    // Enrich with travel preferences from user's default profile
+    if (travelProfile?.activities && travelProfile.activities.length > 0) {
+      ctx.activityPreferences = travelProfile.activities;
+    }
+    if (travelProfile?.travelStyle) {
+      ctx.travelStyles = [travelProfile.travelStyle];
+    }
+    fetchVideoAds(Object.keys(ctx).length > 0 ? ctx as any : undefined);
+  }, [fetchVideoAds, userProfile?.gender, userProfile?.dob, travelProfile?.activities, travelProfile?.travelStyle]);
+
+  // Build mixed feed: organic videos + sponsored ads
+  type FeedItem =
+    | { type: 'video'; item: (typeof videos)[number] }
+    | { type: 'ad'; ad: import('../types/AdDelivery').AdUnit };
+  const mixedFeed: FeedItem[] = React.useMemo(() => {
+    return spliceAdsIntoList(videos, videoAds) as FeedItem[];
+  }, [videos, videoAds, spliceAdsIntoList]);
   
   // Get auth instance for user ID checks
   const resolvedAuth = typeof (require('../config/firebaseConfig') as any).getAuthInstance === 'function'
@@ -215,13 +253,28 @@ const VideoFeedPage: React.FC = () => {
    */
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
+    resetSessionCount(); // Reset ad frequency session count
     await refreshVideos();
+    // Re-fetch ads on refresh with demographic + travel preference context
+    const ctx: Record<string, string | number | string[] | undefined> = {};
+    if (userProfile?.gender) ctx.gender = userProfile.gender;
+    if (userProfile?.dob) {
+      const age = calculateAge(userProfile.dob);
+      if (age > 0) ctx.age = age;
+    }
+    if (travelProfile?.activities && travelProfile.activities.length > 0) {
+      ctx.activityPreferences = travelProfile.activities;
+    }
+    if (travelProfile?.travelStyle) {
+      ctx.travelStyles = [travelProfile.travelStyle];
+    }
+    fetchVideoAds(Object.keys(ctx).length > 0 ? ctx as any : undefined);
     setIsRefreshing(false);
     // Scroll to top after refresh
     if (flatListRef.current && videos.length > 0) {
       flatListRef.current.scrollToIndex({ index: 0, animated: false });
     }
-  }, [refreshVideos, videos.length]);
+  }, [refreshVideos, videos.length, resetSessionCount, fetchVideoAds, userProfile?.gender, userProfile?.dob]);
 
   /**
    * Handle comment button press
@@ -383,10 +436,25 @@ const VideoFeedPage: React.FC = () => {
   );
 
   /**
-   * Render individual video card
+   * Render individual video card OR sponsored ad card
    */
-  const renderVideoCard = useCallback(
-    ({ item, index }: { item: any; index: number }) => {
+  const renderFeedItem = useCallback(
+    ({ item: feedItem, index }: { item: FeedItem; index: number }) => {
+      // ── Sponsored ad ──────────────────────────────────────────────────
+      if (feedItem.type === 'ad') {
+        return (
+          <SponsoredVideoCard
+            ad={feedItem.ad}
+            isActive={index === currentVideoIndex && isScreenFocused}
+            cardHeight={availableHeight}
+            onImpression={trackImpression}
+            onCtaPress={trackClick}
+          />
+        );
+      }
+
+      // ── Organic video ─────────────────────────────────────────────────
+      const item = feedItem.item;
       const currentUserId = resolvedAuth?.currentUser?.uid;
       const isOwnVideo = item.userId === currentUserId;
 
@@ -416,7 +484,7 @@ const VideoFeedPage: React.FC = () => {
 
       return videoCard;
     },
-    [currentVideoIndex, isScreenFocused, isMuted, handleLike, handleCommentPress, handleShare, handleReportPress, handleViewTracked, resolvedAuth]
+    [currentVideoIndex, isScreenFocused, isMuted, handleLike, handleCommentPress, handleShare, handleReportPress, handleViewTracked, resolvedAuth, availableHeight, trackImpression, trackClick]
   );
 
   /**
@@ -548,9 +616,13 @@ const VideoFeedPage: React.FC = () => {
       {/* Video feed */}
       <FlatList
         ref={flatListRef}
-        data={videos}
-        renderItem={renderVideoCard}
-        keyExtractor={(item) => item.id}
+        data={mixedFeed}
+        renderItem={renderFeedItem}
+        keyExtractor={(feedItem) =>
+          feedItem.type === 'ad'
+            ? `ad-${feedItem.ad.campaignId}`
+            : feedItem.item.id
+        }
         showsVerticalScrollIndicator={false}
         // REMOVED explicit height - was causing Android freeze on scroll
         // FlatList fills available space via flex:1 in container

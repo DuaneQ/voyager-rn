@@ -3,7 +3,7 @@
  * Displays detailed AI-generated itinerary matching PWA functionality with collapsible accordions
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -23,6 +23,11 @@ import { ShareAIItineraryModal } from '../modals/ShareAIItineraryModal';
 import { db } from '../../config/firebaseConfig';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useUpdateItinerary } from '../../hooks/useUpdateItinerary';
+import { useAdDelivery, useAdTracking } from '../../hooks/ads';
+import { useUserProfile } from '../../context/UserProfileContext';
+import { calculateAge } from '../../utils/calculateAge';
+import { useTravelPreferences } from '../../hooks/useTravelPreferences';
+import type { AdUnit } from '../../types/AdDelivery';
 
 interface AIItineraryDisplayProps {
   itinerary: AIGeneratedItinerary;
@@ -41,6 +46,66 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
   // Hooks for data management
   const { refreshItineraries } = useAIGeneratedItineraries();
   const { updateItinerary } = useUpdateItinerary();
+
+  // ─── Ad delivery hooks ───────────────────────────────────────────
+  const { ads: realAds, fetchAds: fetchSlotAds } = useAdDelivery('ai_slot');
+  const { trackImpression, trackClick, flush: flushAdEvents } = useAdTracking();
+  const { userProfile } = useUserProfile();
+  const { defaultProfile: travelProfile } = useTravelPreferences();
+
+  // Fetch ads with itinerary destination + demographic + travel pref context for targeting
+  useEffect(() => {
+    const dest =
+      (itinerary as any)?.destination ||
+      (itinerary as any)?.response?.data?.destination ||
+      undefined;
+    const startDate =
+      (itinerary as any)?.startDate ||
+      (itinerary as any)?.response?.data?.startDate ||
+      undefined;
+    const endDate =
+      (itinerary as any)?.endDate ||
+      (itinerary as any)?.response?.data?.endDate ||
+      undefined;
+
+    // Build targeting context
+    const ctx: Record<string, string | number | string[] | undefined> = {
+      ...(dest ? { destination: dest } : {}),
+      ...(startDate ? { travelStartDate: startDate } : {}),
+      ...(endDate ? { travelEndDate: endDate } : {}),
+    };
+    // Demographic context from user profile
+    if (userProfile?.gender) ctx.gender = userProfile.gender;
+    if (userProfile?.dob) {
+      const age = calculateAge(userProfile.dob);
+      if (age > 0) ctx.age = age;
+    }
+    // AI itinerary may carry trip type and travel preferences
+    const tripType = (itinerary as any)?.tripType || (itinerary as any)?.response?.data?.tripType;
+    if (tripType && typeof tripType === 'string') ctx.tripTypes = [tripType] as any;
+    const travelStyle =
+      (itinerary as any)?.travelStyle ||
+      (itinerary as any)?.response?.data?.metadata?.travelStyle ||
+      (itinerary as any)?.travelPreferences?.travelStyle;
+    if (travelStyle && typeof travelStyle === 'string') ctx.travelStyles = [travelStyle] as any;
+    // Enrich with travel preferences from user's default profile
+    if (travelProfile?.activities && travelProfile.activities.length > 0) {
+      // Merge with any existing activity preferences, avoiding duplicates
+      const existing = new Set((ctx.activityPreferences as string[] || []).map((s: string) => s.toLowerCase()));
+      const merged = [...(ctx.activityPreferences as string[] || [])];
+      for (const act of travelProfile.activities) {
+        if (!existing.has(act.toLowerCase())) merged.push(act);
+      }
+      if (merged.length > 0) ctx.activityPreferences = merged;
+    }
+    // Fall back to user's default travel style if itinerary doesn't have one
+    if (!ctx.travelStyles && travelProfile?.travelStyle) {
+      ctx.travelStyles = [travelProfile.travelStyle];
+    }
+
+    fetchSlotAds(ctx as any);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itinerary.id]);
 
   // Local itinerary state to immediately reflect saved changes
   const [localItinerary, setLocalItinerary] = useState<AIGeneratedItinerary>(itinerary);
@@ -378,7 +443,33 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
   const hasFlights = flights && flights.length > 0;
   
   // Promotions (ad_slot campaigns targeting this itinerary's destination)
-  const promotions: any[] = (itineraryData as any)?.promotions || (currentItinerary as any)?.promotions || [];
+  const aiPromotions: any[] = (itineraryData as any)?.promotions || (currentItinerary as any)?.promotions || [];
+
+  // Map real ads (AdUnit) to the same shape the existing promotion renderer expects
+  const realAdPromotions: any[] = useMemo(
+    () =>
+      realAds.map((ad: AdUnit) => ({
+        // Core fields the renderer uses
+        businessName: ad.businessName,
+        headline: ad.primaryText,
+        description: ad.primaryText,
+        cta: ad.cta || 'Learn More',
+        landingUrl: ad.landingUrl,
+        website: ad.landingUrl,
+        imageUrl: ad.imageUrl || ad.assetUrl || null,
+        promoCode: ad.promoCode || null,
+        // Mark as tracked campaign ad (used for tracking callbacks)
+        _campaignId: ad.campaignId,
+        _isRealAd: true,
+      })),
+    [realAds],
+  );
+
+  // Merge real campaign ads at the top of the promotions list
+  const promotions: any[] = useMemo(
+    () => [...realAdPromotions, ...aiPromotions],
+    [realAdPromotions, aiPromotions],
+  );
 
   // Determine if we should show the travel recommendations section
   const shouldShowRecommendations = Boolean(
@@ -1457,8 +1548,13 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
           />
           {isSectionExpanded('promotions') && (
             <View style={styles.accordionContent}>
-              {promotions.map((promo: any, index: number) => (
-                <View key={index} style={styles.promotionCard}>
+              {promotions.map((promo: any, index: number) => {
+                // Track impression for real campaign ads when expanded
+                if (promo._isRealAd && promo._campaignId) {
+                  trackImpression(promo._campaignId);
+                }
+                return (
+                <View key={promo._campaignId ?? index} style={styles.promotionCard}>
                   {/* Banner image */}
                   {promo.imageUrl ? (
                     <Image
@@ -1567,6 +1663,10 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                         <TouchableOpacity
                           style={styles.promotionCtaButton}
                           onPress={() => {
+                            // Track click for real campaign ads
+                            if (promo._isRealAd && promo._campaignId) {
+                              trackClick(promo._campaignId);
+                            }
                             const url = promo.landingUrl || promo.website;
                             if (url) Linking.openURL(url);
                           }}
@@ -1591,7 +1691,8 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
                     </View>
                   </View>
                 </View>
-              ))}
+                );
+              })}
             </View>
           )}
         </View>

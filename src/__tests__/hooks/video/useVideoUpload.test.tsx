@@ -48,6 +48,29 @@ jest.mock('../../../services/video/VideoService', () => ({
 // Use centralized manual mock for firebaseConfig
 jest.mock('../../../config/firebaseConfig');
 
+// Override centralized firebase/firestore mock so onSnapshot provides a
+// document snapshot (with exists/data) that satisfies waitForMuxProcessing.
+// The callback is deferred to the next microtask so that `const unsub = onSnapshot(...)`
+// is already assigned when the callback calls `unsub()`.
+jest.mock('firebase/firestore', () => ({
+  onSnapshot: jest.fn((_ref: unknown, callback: (snap: { exists: () => boolean; data: () => Record<string, unknown>; id: string }) => void) => {
+    Promise.resolve().then(() => {
+      callback({
+        exists: () => true,
+        data: () => ({ muxStatus: 'ready', muxPlaybackUrl: 'https://stream.mux.com/test.m3u8' }),
+        id: 'mock-doc-id',
+      });
+    });
+    return jest.fn(); // unsubscribe
+  }),
+  doc: jest.fn(() => ({ id: 'mock-doc-ref', path: 'videos/mock' })),
+  Timestamp: {
+    now: jest.fn(() => ({ seconds: Date.now() / 1000, nanoseconds: 0 })),
+    fromDate: jest.fn((date: Date) => ({ seconds: date.getTime() / 1000, nanoseconds: 0 })),
+    fromMillis: jest.fn((ms: number) => ({ seconds: ms / 1000, nanoseconds: 0 })),
+  },
+}));
+
 jest.mock('../../../utils/videoValidation', () => ({
   validateVideoFile: (...args: any[]) => mockValidateVideoFile(...args),
   validateVideoMetadata: (...args: any[]) => mockValidateVideoMetadata(...args),

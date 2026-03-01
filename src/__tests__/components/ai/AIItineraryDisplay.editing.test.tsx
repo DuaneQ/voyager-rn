@@ -33,6 +33,21 @@ jest.mock('firebase/firestore', () => ({
   serverTimestamp: jest.fn(() => 'mock-timestamp'),
 }));
 
+// Mock ad delivery and user context hooks added by ad targeting
+jest.mock('../../../hooks/ads', () => ({
+  useAdDelivery: () => ({ ads: [], fetchAds: jest.fn() }),
+  useAdTracking: () => ({ trackImpression: jest.fn(), trackClick: jest.fn(), flush: jest.fn() }),
+}));
+jest.mock('../../../context/UserProfileContext', () => ({
+  useUserProfile: () => ({ userProfile: null }),
+}));
+jest.mock('../../../utils/calculateAge', () => ({
+  calculateAge: () => 0,
+}));
+jest.mock('../../../hooks/useTravelPreferences', () => ({
+  useTravelPreferences: () => ({ defaultProfile: null, profiles: [], preferences: null, loading: false, error: null }),
+}));
+
 const mockUseAIGeneratedItineraries = useAIGeneratedItineraries as jest.MockedFunction<typeof useAIGeneratedItineraries>;
 const mockUseUpdateItinerary = useUpdateItinerary as jest.MockedFunction<typeof useUpdateItinerary>;
 
