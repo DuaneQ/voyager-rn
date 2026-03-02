@@ -68,18 +68,18 @@ const injectSEOMetaTags = () => {
 
   // Open Graph / Facebook
   setMetaTag('og:type', 'website', true);
-  setMetaTag('og:url', 'https://app.travalpass.com/', true);
+  setMetaTag('og:url', 'https://travalpass.com/', true);
   setMetaTag('og:title', 'Planning a Trip Solo? Find Your Travel Match | TravalPass', true);
   setMetaTag('og:description', 'Match with travelers by destination and dates. Create AI itineraries. Chat safely. Free to start.', true);
-  setMetaTag('og:image', 'https://app.travalpass.com/assets/icon.png', true);
+  setMetaTag('og:image', 'https://travalpass.com/assets/icon.png', true);
   setMetaTag('og:site_name', 'TravalPass', true);
 
   // Twitter
   setMetaTag('twitter:card', 'summary_large_image', true);
-  setMetaTag('twitter:url', 'https://app.travalpass.com/', true);
+  setMetaTag('twitter:url', 'https://travalpass.com/', true);
   setMetaTag('twitter:title', 'Planning a Trip Solo? Find Your Travel Match | TravalPass', true);
   setMetaTag('twitter:description', 'Match with travelers by destination and dates. Create AI itineraries. Chat safely. Free to start.', true);
-  setMetaTag('twitter:image', 'https://app.travalpass.com/assets/icon.png', true);
+  setMetaTag('twitter:image', 'https://travalpass.com/assets/icon.png', true);
 
   // Canonical URL
   let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement;
@@ -88,7 +88,7 @@ const injectSEOMetaTags = () => {
     canonical.rel = 'canonical';
     document.head.appendChild(canonical);
   }
-  canonical.href = 'https://app.travalpass.com/';
+  canonical.href = 'https://travalpass.com/';
 };
 
 // ── Itinerary Match Mockup ──────────────────────────────────────────────
