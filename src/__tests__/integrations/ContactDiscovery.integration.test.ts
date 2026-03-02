@@ -23,6 +23,21 @@ const SERVICE_ACCOUNT_PATH = path.resolve(
   __dirname, '..', '..', '..', 'mundo1-dev-firebase-adminsdk-fbsvc-bb26c2ec85.json'
 );
 
+// ── Admin SDK setup ─────────────────────────────────────────────────────────
+let adminApp: admin.app.App;
+function getAdminDb(): admin.firestore.Firestore {
+  if (!adminApp) {
+    adminApp = admin.initializeApp(
+      { credential: admin.credential.cert(SERVICE_ACCOUNT_PATH) },
+      `contactDiscovery-test-${Date.now()}`
+    );
+  }
+  return adminApp.firestore();
+}
+
+const canRunLive = fs.existsSync(SERVICE_ACCOUNT_PATH);
+const describeIfLive = canRunLive ? describe : describe.skip;
+
 const FUNCTION_URL = 'https://us-central1-mundo1-dev.cloudfunctions.net';
 const TEST_USER_EMAIL = 'usertravaltest@gmail.com';
 const TEST_USER_PASSWORD = '1234567890';
@@ -39,7 +54,7 @@ const hashEmail = (email: string): string => {
   return crypto.createHash('sha256').update(normalized).digest('hex');
 };
 
-describe('Contact Discovery Integration Tests', () => {
+describeIfLive('Contact Discovery Integration Tests', () => {
   let authToken: string;
   let testUserId: string;
   const inviteHashesCreated: string[] = [];
@@ -66,17 +81,14 @@ describe('Contact Discovery Integration Tests', () => {
     authToken = authData.idToken;
     testUserId = authData.localId;
 
-    // Initialize Admin SDK for afterAll cleanup
-    if (!admin.apps.length) {
-      const serviceAccount = JSON.parse(fs.readFileSync(SERVICE_ACCOUNT_PATH, 'utf-8'));
-      admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-    }
+    // Trigger lazy Admin SDK init so getAdminDb() is ready for afterAll cleanup
+    getAdminDb();
   }, 30000);
 
   afterAll(async () => {
     // Delete invite records created by sendContactInvite tests to prevent DB pollution
     if (inviteHashesCreated.length > 0 && testUserId) {
-      const db = admin.firestore();
+      const db = getAdminDb();
       const snapshot = await db.collection('contactInvites')
         .where('inviterUserId', '==', testUserId)
         .where('contactIdentifier', 'in', inviteHashesCreated)

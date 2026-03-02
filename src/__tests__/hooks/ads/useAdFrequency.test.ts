@@ -4,19 +4,16 @@
  * Tests ad insertion frequency logic, including:
  * - Ad insertion index calculation
  * - Content list splicing
- * - Session count tracking and limits
- * - Reset on pull-to-refresh
  * - Edge cases (empty lists, more ads than slots, etc.)
  */
 
-import { renderHook, act } from '@testing-library/react-native';
+import { renderHook } from '@testing-library/react-native';
 import { useAdFrequency } from '../../../hooks/ads/useAdFrequency';
 import type { AdUnit } from '../../../types/AdDelivery';
 
 // Constants from the hook (mirrored for test assertions)
 const FIRST_AD_AFTER = 4;
 const AD_INTERVAL = 5;
-const MAX_ADS_PER_SESSION = 10;
 
 const makeAd = (id: string): AdUnit => ({
   campaignId: id,
@@ -145,41 +142,6 @@ describe('useAdFrequency', () => {
       if (adItem?.type === 'ad') {
         expect(adItem.ad.campaignId).toBe('ad-1');
       }
-    });
-  });
-
-  describe('session count & MAX_ADS_PER_SESSION', () => {
-    it('should respect MAX_ADS_PER_SESSION across multiple splices', () => {
-      const { result } = renderHook(() => useAdFrequency());
-      const content = Array.from({ length: 100 }, (_, i) => `v-${i}`);
-      const ads = Array.from({ length: 15 }, (_, i) => makeAd(`ad-${i}`));
-
-      const mixed = result.current.spliceAdsIntoList(content, ads);
-      const adCount = mixed.filter((item) => item.type === 'ad').length;
-
-      expect(adCount).toBeLessThanOrEqual(MAX_ADS_PER_SESSION);
-    });
-  });
-
-  describe('resetSessionCount', () => {
-    it('should allow more ads after reset', () => {
-      const { result } = renderHook(() => useAdFrequency());
-      const content = Array.from({ length: 100 }, (_, i) => `v-${i}`);
-      const ads = Array.from({ length: 15 }, (_, i) => makeAd(`ad-${i}`));
-
-      // First splice uses up session slots
-      result.current.spliceAdsIntoList(content, ads);
-
-      // Reset
-      act(() => {
-        result.current.resetSessionCount();
-      });
-
-      // Should be able to splice ads again
-      const mixed2 = result.current.spliceAdsIntoList(content, ads);
-      const adCount = mixed2.filter((item) => item.type === 'ad').length;
-
-      expect(adCount).toBeGreaterThan(0);
     });
   });
 

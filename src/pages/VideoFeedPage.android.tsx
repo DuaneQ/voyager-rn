@@ -103,7 +103,7 @@ const VideoFeedPage: React.FC = () => {
   // ─── Ad delivery hooks ───────────────────────────────────────────
   const { ads: videoAds, fetchAds: fetchVideoAds } = useAdDelivery('video_feed');
   const { trackImpression, trackClick, flush: _flushAdEvents } = useAdTracking();
-  const { spliceAdsIntoList, resetSessionCount } = useAdFrequency();
+  const { spliceAdsIntoList } = useAdFrequency();
   const { userProfile } = useUserProfile();
   const { defaultProfile: travelProfile } = useTravelPreferences();
 
@@ -243,8 +243,7 @@ const VideoFeedPage: React.FC = () => {
     // Cleanup all video players before refreshing to prevent "shared object released" errors
     await videoPlaybackManager.deactivateAll();
     await refreshVideos();
-    // Reset ad session counter and re-fetch fresh ads with demographic context
-    resetSessionCount();
+    // Re-fetch fresh ads with demographic context
     const ctx: Record<string, string | number | string[] | undefined> = {};
     if (userProfile?.gender) ctx.gender = userProfile.gender;
     if (userProfile?.dob) {
@@ -262,7 +261,7 @@ const VideoFeedPage: React.FC = () => {
     if (recyclerRef.current && mixedFeed.length > 0) {
       recyclerRef.current.scrollToIndex(0, false);
     }
-  }, [refreshVideos, mixedFeed.length, resetSessionCount, fetchVideoAds, userProfile?.gender, userProfile?.dob, travelProfile?.activities, travelProfile?.travelStyle]);
+  }, [refreshVideos, mixedFeed.length, fetchVideoAds, userProfile?.gender, userProfile?.dob, travelProfile?.activities, travelProfile?.travelStyle]);
 
   /**
    * Handle comment button press

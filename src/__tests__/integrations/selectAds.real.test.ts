@@ -369,10 +369,10 @@ describeIfLive('selectAds — Live Integration Tests', () => {
 
     it('location-campaign still returns (score 0) when destination does not match', async () => {
       // Score 0 is still eligible — the function has no hard destination filter.
-      // We verify the campaign appears even when there is no match (limit=50).
+      // We verify the campaign appears even when there is no match (limit=20, MAX_LIMIT).
       const result = await callCloudFunction('selectAds', {
         placement: 'video_feed',
-        limit: 50,
+        limit: 20,
         userContext: {
           destination: 'Berlin, Germany',
         },
@@ -384,7 +384,7 @@ describeIfLive('selectAds — Live Integration Tests', () => {
       const locationAd = result.result.ads.find(
         (ad: any) => ad.campaignId === LOCATION_CAMPAIGN_ID
       );
-      // Campaign with no Berlin targeting is still eligible — must appear in full list
+      // Campaign with no Berlin targeting is still eligible — must appear in results
       expect(locationAd).toBeDefined();
     }, 20000);
   });
@@ -420,7 +420,7 @@ describeIfLive('selectAds — Live Integration Tests', () => {
 
       const result = await callCloudFunction('selectAds', {
         placement: 'video_feed',
-        limit: 50,
+        limit: 20,
       });
 
       const pausedAd = result.result.ads.find((ad: any) => ad.campaignId === id);
@@ -452,7 +452,7 @@ describeIfLive('selectAds — Live Integration Tests', () => {
 
       const result = await callCloudFunction('selectAds', {
         placement: 'video_feed',
-        limit: 50,
+        limit: 20,
       });
 
       const exhaustedAd = result.result.ads.find((ad: any) => ad.campaignId === id);
@@ -484,7 +484,7 @@ describeIfLive('selectAds — Live Integration Tests', () => {
 
       const result = await callCloudFunction('selectAds', {
         placement: 'video_feed',
-        limit: 50,
+        limit: 20,
       });
 
       const expiredAd = result.result.ads.find((ad: any) => ad.campaignId === id);
@@ -516,7 +516,7 @@ describeIfLive('selectAds — Live Integration Tests', () => {
 
       const result = await callCloudFunction('selectAds', {
         placement: 'video_feed',
-        limit: 50,
+        limit: 20,
       });
 
       const reviewAd = result.result.ads.find((ad: any) => ad.campaignId === id);

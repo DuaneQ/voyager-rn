@@ -16,7 +16,7 @@
  *   const mixedList = spliceAdsIntoList(videos, ads)
  */
 
-import { useCallback, useRef } from 'react'
+import { useCallback } from 'react'
 import type { AdUnit } from '../../types/AdDelivery'
 
 /** Show first ad after this many content items. */
@@ -24,9 +24,6 @@ const FIRST_AD_AFTER = 4
 
 /** Show subsequent ads every N content items. */
 const AD_INTERVAL = 5
-
-/** Maximum ads to show in a single feed session. */
-const MAX_ADS_PER_SESSION = 10
 
 export interface UseAdFrequencyReturn {
   /**
@@ -53,21 +50,14 @@ export interface UseAdFrequencyReturn {
     ads: AdUnit[],
   ) => Array<{ type: 'content'; item: T } | { type: 'ad'; ad: AdUnit }>
 
-  /** Reset the session ad counter (e.g. on pull-to-refresh). */
-  resetSessionCount: () => void
 }
 
 export function useAdFrequency(): UseAdFrequencyReturn {
-  const sessionCountRef = useRef(0)
-
   const getAdInsertionIndices = useCallback(
     (contentLength: number, availableAds: number): number[] => {
       if (contentLength === 0 || availableAds === 0) return []
 
-      const remaining = MAX_ADS_PER_SESSION - sessionCountRef.current
-      if (remaining <= 0) return []
-
-      const maxSlots = Math.min(availableAds, remaining)
+      const maxSlots = availableAds
       const indices: number[] = []
 
       // First slot after FIRST_AD_AFTER items, then every AD_INTERVAL items
@@ -104,7 +94,6 @@ export function useAdFrequency(): UseAdFrequencyReturn {
         // Insert ad BEFORE this content item at the designated indices
         if (indicesSet.has(i) && adIdx < ads.length) {
           result.push({ type: 'ad', ad: ads[adIdx] })
-          sessionCountRef.current++
           adIdx++
         }
         result.push({ type: 'content', item: contentItems[i] })
@@ -115,9 +104,5 @@ export function useAdFrequency(): UseAdFrequencyReturn {
     [getAdInsertionIndices],
   )
 
-  const resetSessionCount = useCallback(() => {
-    sessionCountRef.current = 0
-  }, [])
-
-  return { getAdInsertionIndices, spliceAdsIntoList, resetSessionCount }
+  return { getAdInsertionIndices, spliceAdsIntoList }
 }

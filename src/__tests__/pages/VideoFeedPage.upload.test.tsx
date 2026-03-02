@@ -135,7 +135,7 @@ jest.mock('../../utils/videoSharing', () => ({
 jest.mock('../../hooks/ads', () => ({
   useAdDelivery: () => ({ ads: [], fetchAds: jest.fn() }),
   useAdTracking: () => ({ trackImpression: jest.fn(), trackClick: jest.fn(), trackQuartile: jest.fn(), flush: jest.fn() }),
-  useAdFrequency: () => ({ spliceAdsIntoList: (videos: any[]) => videos.map((v: any) => ({ type: 'video', item: v })), resetSessionCount: jest.fn() }),
+  useAdFrequency: () => ({ spliceAdsIntoList: (videos: any[]) => videos.map((v: any) => ({ type: 'video', item: v })) }),
 }));
 jest.mock('../../context/UserProfileContext', () => ({
   useUserProfile: () => ({ userProfile: null }),

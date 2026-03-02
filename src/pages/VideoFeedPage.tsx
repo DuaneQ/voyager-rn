@@ -86,7 +86,7 @@ const VideoFeedPage: React.FC = () => {
   // ── Ad delivery hooks ─────────────────────────────────────────────────────
   const { ads: videoAds, fetchAds: fetchVideoAds } = useAdDelivery('video_feed');
   const { trackImpression, trackClick, trackQuartile } = useAdTracking();
-  const { spliceAdsIntoList, resetSessionCount } = useAdFrequency();
+  const { spliceAdsIntoList } = useAdFrequency();
   const { userProfile } = useUserProfile();
   const { defaultProfile: travelProfile } = useTravelPreferences();
 
@@ -253,7 +253,6 @@ const VideoFeedPage: React.FC = () => {
    */
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
-    resetSessionCount(); // Reset ad frequency session count
     await refreshVideos();
     // Re-fetch ads on refresh with demographic + travel preference context
     const ctx: Record<string, string | number | string[] | undefined> = {};
@@ -274,7 +273,7 @@ const VideoFeedPage: React.FC = () => {
     if (flatListRef.current && videos.length > 0) {
       flatListRef.current.scrollToIndex({ index: 0, animated: false });
     }
-  }, [refreshVideos, videos.length, resetSessionCount, fetchVideoAds, userProfile?.gender, userProfile?.dob, travelProfile?.activities, travelProfile?.travelStyle]);
+  }, [refreshVideos, videos.length, fetchVideoAds, userProfile?.gender, userProfile?.dob, travelProfile?.activities, travelProfile?.travelStyle]);
 
   /**
    * Handle comment button press

@@ -191,7 +191,7 @@ function PromotionCardComponent({
                   trackClick(promo._campaignId);
                 }
                 const url = promo.landingUrl || promo.website;
-                if (url) Linking.openURL(url);
+                if (url) Linking.openURL(url).catch(() => {});
               }}
               activeOpacity={0.7}
               accessibilityLabel={promo.cta || 'Learn More'}
@@ -203,7 +203,7 @@ function PromotionCardComponent({
           {promo.googleMapsUrl && (
             <TouchableOpacity
               style={styles.mapsButton}
-              onPress={() => Linking.openURL(promo.googleMapsUrl!)}
+              onPress={() => Linking.openURL(promo.googleMapsUrl!).catch(() => {})}
               activeOpacity={0.7}
               accessibilityLabel="View on Google Maps"
               accessibilityRole="link"
