@@ -3,7 +3,7 @@
  * Displays detailed AI-generated itinerary matching PWA functionality with collapsible accordions
  */
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -32,6 +32,161 @@ import type { AdUnit } from '../../types/AdDelivery';
 interface AIItineraryDisplayProps {
   itinerary: AIGeneratedItinerary;
 }
+
+/** Promotion card that tracks impression via useEffect (not during render). */
+const PromotionCard: React.FC<{
+  promo: any;
+  index: number;
+  trackImpression: (campaignId: string) => void;
+  trackClick: (campaignId: string) => void;
+  styles: any;
+}> = React.memo(({ promo, index, trackImpression, trackClick, styles }) => {
+  // Fire impression once when the card mounts (section expanded)
+  useEffect(() => {
+    if (promo._isRealAd && promo._campaignId) {
+      trackImpression(promo._campaignId);
+    }
+  }, [promo._isRealAd, promo._campaignId, trackImpression]);
+
+  return (
+    <View key={promo._campaignId ?? index} style={styles.promotionCard}>
+      {/* Banner image */}
+      {promo.imageUrl ? (
+        <Image
+          source={{ uri: promo.imageUrl }}
+          style={styles.promotionImage}
+          resizeMode="cover"
+          accessibilityLabel={`${promo.businessName} promotional image`}
+        />
+      ) : (
+        <View style={styles.promotionImagePlaceholder}>
+          <Text style={styles.promotionImagePlaceholderText}>
+            {promo.businessType === 'restaurant' ? '🍽️'
+              : promo.businessType === 'hotel' ? '🏨'
+              : promo.businessType === 'tour' ? '🗺️'
+              : promo.businessType === 'experience' ? '🎭'
+              : promo.businessType === 'transport' ? '🚗'
+              : promo.businessType === 'shop' ? '🛍️'
+              : '📢'}
+          </Text>
+        </View>
+      )}
+
+      <View style={styles.promotionBody}>
+        {/* Sponsored label */}
+        <View style={styles.promotionSponsoredRow}>
+          <Text style={styles.promotionSponsoredLabel}>Sponsored</Text>
+          {promo.businessType && (
+            <View style={styles.promotionTypeChip}>
+              <Text style={styles.promotionTypeChipText}>
+                {promo.businessType.charAt(0).toUpperCase() + promo.businessType.slice(1)}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Business name & headline */}
+        <Text style={styles.promotionBusinessName}>{promo.businessName}</Text>
+        <Text style={styles.promotionHeadline}>{promo.headline}</Text>
+
+        {promo.description ? (
+          <Text style={styles.promotionDescription}>{promo.description}</Text>
+        ) : null}
+
+        {/* Meta chips row: rating, price range, operating hours */}
+        <View style={styles.promotionMetaRow}>
+          {promo.rating != null && (
+            <View style={styles.promotionChip}>
+              <Text style={styles.promotionChipText}>⭐ {promo.rating}</Text>
+            </View>
+          )}
+          {promo.priceRange && (
+            <View style={styles.promotionChip}>
+              <Text style={styles.promotionChipText}>{promo.priceRange}</Text>
+            </View>
+          )}
+          {promo.operatingHours && (
+            <View style={styles.promotionChip}>
+              <Text style={styles.promotionChipText}>🕐 {promo.operatingHours}</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Tags */}
+        {promo.tags && promo.tags.length > 0 && (
+          <View style={styles.promotionTagsRow}>
+            {promo.tags.map((tag: string, tagIndex: number) => (
+              <View key={tagIndex} style={styles.promotionTag}>
+                <Text style={styles.promotionTagText}>{tag}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Offer details */}
+        {(promo.offerDetails || promo.promoCode) && (
+          <View style={styles.promotionOfferBox}>
+            {promo.offerDetails && (
+              <Text style={styles.promotionOfferDetails}>🏷️ {promo.offerDetails}</Text>
+            )}
+            {promo.promoCode && (
+              <View style={styles.promotionPromoCodeRow}>
+                <Text style={styles.promotionPromoCodeLabel}>Code: </Text>
+                <Text style={styles.promotionPromoCode}>{promo.promoCode}</Text>
+              </View>
+            )}
+            {promo.offerExpiry && (
+              <Text style={styles.promotionOfferExpiry}>Expires: {promo.offerExpiry}</Text>
+            )}
+          </View>
+        )}
+
+        {/* Address / contact */}
+        {promo.address && (
+          <Text style={styles.promotionAddress}>📍 {promo.address}</Text>
+        )}
+        {promo.phone && (
+          <Text style={styles.promotionContact}>📞 {promo.phone}</Text>
+        )}
+        {promo.email && (
+          <Text style={styles.promotionContact}>✉️ {promo.email}</Text>
+        )}
+
+        {/* Action buttons */}
+        <View style={styles.promotionActions}>
+          {(promo.landingUrl || promo.website) && (
+            <TouchableOpacity
+              style={styles.promotionCtaButton}
+              onPress={() => {
+                if (promo._isRealAd && promo._campaignId) {
+                  trackClick(promo._campaignId);
+                }
+                const url = promo.landingUrl || promo.website;
+                if (url) Linking.openURL(url);
+              }}
+              activeOpacity={0.7}
+              accessibilityLabel={promo.cta || 'Learn More'}
+              accessibilityRole="button"
+            >
+              <Text style={styles.promotionCtaText}>{promo.cta || 'Learn More'}</Text>
+            </TouchableOpacity>
+          )}
+          {promo.googleMapsUrl && (
+            <TouchableOpacity
+              style={styles.promotionMapsButton}
+              onPress={() => Linking.openURL(promo.googleMapsUrl)}
+              activeOpacity={0.7}
+              accessibilityLabel="View on Google Maps"
+              accessibilityRole="link"
+            >
+              <Text style={styles.promotionMapsText}>📍 Maps</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+    </View>
+  );
+});
 
 export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerary }) => {
   // Handle null/missing itinerary gracefully
@@ -104,8 +259,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
     }
 
     fetchSlotAds(ctx as any);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [itinerary.id]);
+  }, [itinerary.id, userProfile?.gender, userProfile?.dob, travelProfile?.activities?.join(','), travelProfile?.travelStyle, fetchSlotAds]);
 
   // Local itinerary state to immediately reflect saved changes
   const [localItinerary, setLocalItinerary] = useState<AIGeneratedItinerary>(itinerary);
@@ -1548,151 +1702,16 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
           />
           {isSectionExpanded('promotions') && (
             <View style={styles.accordionContent}>
-              {promotions.map((promo: any, index: number) => {
-                // Track impression for real campaign ads when expanded
-                if (promo._isRealAd && promo._campaignId) {
-                  trackImpression(promo._campaignId);
-                }
-                return (
-                <View key={promo._campaignId ?? index} style={styles.promotionCard}>
-                  {/* Banner image */}
-                  {promo.imageUrl ? (
-                    <Image
-                      source={{ uri: promo.imageUrl }}
-                      style={styles.promotionImage}
-                      resizeMode="cover"
-                      accessibilityLabel={`${promo.businessName} promotional image`}
-                    />
-                  ) : (
-                    <View style={styles.promotionImagePlaceholder}>
-                      <Text style={styles.promotionImagePlaceholderText}>
-                        {promo.businessType === 'restaurant' ? '🍽️'
-                          : promo.businessType === 'hotel' ? '🏨'
-                          : promo.businessType === 'tour' ? '🗺️'
-                          : promo.businessType === 'experience' ? '🎭'
-                          : promo.businessType === 'transport' ? '🚗'
-                          : promo.businessType === 'shop' ? '🛍️'
-                          : '📢'}
-                      </Text>
-                    </View>
-                  )}
-
-                  <View style={styles.promotionBody}>
-                    {/* Sponsored label */}
-                    <View style={styles.promotionSponsoredRow}>
-                      <Text style={styles.promotionSponsoredLabel}>Sponsored</Text>
-                      {promo.businessType && (
-                        <View style={styles.promotionTypeChip}>
-                          <Text style={styles.promotionTypeChipText}>
-                            {promo.businessType.charAt(0).toUpperCase() + promo.businessType.slice(1)}
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-
-                    {/* Business name & headline */}
-                    <Text style={styles.promotionBusinessName}>{promo.businessName}</Text>
-                    <Text style={styles.promotionHeadline}>{promo.headline}</Text>
-
-                    {promo.description ? (
-                      <Text style={styles.promotionDescription}>{promo.description}</Text>
-                    ) : null}
-
-                    {/* Meta chips row: rating, price range, operating hours */}
-                    <View style={styles.promotionMetaRow}>
-                      {promo.rating != null && (
-                        <View style={styles.promotionChip}>
-                          <Text style={styles.promotionChipText}>⭐ {promo.rating}</Text>
-                        </View>
-                      )}
-                      {promo.priceRange && (
-                        <View style={styles.promotionChip}>
-                          <Text style={styles.promotionChipText}>{promo.priceRange}</Text>
-                        </View>
-                      )}
-                      {promo.operatingHours && (
-                        <View style={styles.promotionChip}>
-                          <Text style={styles.promotionChipText}>🕐 {promo.operatingHours}</Text>
-                        </View>
-                      )}
-                    </View>
-
-                    {/* Tags */}
-                    {promo.tags && promo.tags.length > 0 && (
-                      <View style={styles.promotionTagsRow}>
-                        {promo.tags.map((tag: string, tagIndex: number) => (
-                          <View key={tagIndex} style={styles.promotionTag}>
-                            <Text style={styles.promotionTagText}>{tag}</Text>
-                          </View>
-                        ))}
-                      </View>
-                    )}
-
-                    {/* Offer details */}
-                    {(promo.offerDetails || promo.promoCode) && (
-                      <View style={styles.promotionOfferBox}>
-                        {promo.offerDetails && (
-                          <Text style={styles.promotionOfferDetails}>🏷️ {promo.offerDetails}</Text>
-                        )}
-                        {promo.promoCode && (
-                          <View style={styles.promotionPromoCodeRow}>
-                            <Text style={styles.promotionPromoCodeLabel}>Code: </Text>
-                            <Text style={styles.promotionPromoCode}>{promo.promoCode}</Text>
-                          </View>
-                        )}
-                        {promo.offerExpiry && (
-                          <Text style={styles.promotionOfferExpiry}>Expires: {promo.offerExpiry}</Text>
-                        )}
-                      </View>
-                    )}
-
-                    {/* Address / contact */}
-                    {promo.address && (
-                      <Text style={styles.promotionAddress}>📍 {promo.address}</Text>
-                    )}
-                    {promo.phone && (
-                      <Text style={styles.promotionContact}>📞 {promo.phone}</Text>
-                    )}
-                    {promo.email && (
-                      <Text style={styles.promotionContact}>✉️ {promo.email}</Text>
-                    )}
-
-                    {/* Action buttons */}
-                    <View style={styles.promotionActions}>
-                      {(promo.landingUrl || promo.website) && (
-                        <TouchableOpacity
-                          style={styles.promotionCtaButton}
-                          onPress={() => {
-                            // Track click for real campaign ads
-                            if (promo._isRealAd && promo._campaignId) {
-                              trackClick(promo._campaignId);
-                            }
-                            const url = promo.landingUrl || promo.website;
-                            if (url) Linking.openURL(url);
-                          }}
-                          activeOpacity={0.7}
-                          accessibilityLabel={promo.cta || 'Learn More'}
-                          accessibilityRole="button"
-                        >
-                          <Text style={styles.promotionCtaText}>{promo.cta || 'Learn More'}</Text>
-                        </TouchableOpacity>
-                      )}
-                      {promo.googleMapsUrl && (
-                        <TouchableOpacity
-                          style={styles.promotionMapsButton}
-                          onPress={() => Linking.openURL(promo.googleMapsUrl)}
-                          activeOpacity={0.7}
-                          accessibilityLabel="View on Google Maps"
-                          accessibilityRole="link"
-                        >
-                          <Text style={styles.promotionMapsText}>📍 Maps</Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  </View>
-                </View>
-                );
-              })}
+              {promotions.map((promo: any, index: number) => (
+                <PromotionCard
+                  key={promo._campaignId ?? index}
+                  promo={promo}
+                  index={index}
+                  trackImpression={trackImpression}
+                  trackClick={trackClick}
+                  styles={styles}
+                />
+              ))}
             </View>
           )}
         </View>

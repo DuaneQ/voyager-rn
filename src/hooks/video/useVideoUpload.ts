@@ -23,12 +23,14 @@ import { db } from '../../config/firebaseConfig';
  */
 function waitForMuxProcessing(videoId: string): Promise<void> {
   return new Promise((resolve) => {
+    let unsub: () => void = () => {};
+
     const timeout = setTimeout(() => {
       unsub();
       resolve();
     }, 90_000);
 
-    const unsub = onSnapshot(doc(db, 'videos', videoId), (snap) => {
+    unsub = onSnapshot(doc(db, 'videos', videoId), (snap) => {
       if (!snap.exists()) {
         clearTimeout(timeout);
         unsub();

@@ -93,7 +93,7 @@ const SearchPage: React.FC = () => {
 
   // ─── Ad delivery hooks ───────────────────────────────────────────
   const { ads: sponsoredAds, fetchAds: fetchSearchAds } = useAdDelivery('itinerary_feed');
-  const { trackImpression, trackClick, flush: flushAdEvents } = useAdTracking();
+  const { trackImpression, trackClick } = useAdTracking();
   const { defaultProfile: travelProfile } = useTravelPreferences();
 
   /** Show interstitial sponsored card after every N like/dislike actions. */

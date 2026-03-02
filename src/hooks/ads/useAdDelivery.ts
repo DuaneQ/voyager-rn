@@ -4,7 +4,7 @@
  *
  * - Calls `selectAds` via httpsCallable
  * - Returns ads[], loading, error, and a refetch trigger
- * - Caches the most recent result per placement to avoid redundant calls
+ * - Stores the latest fetched ads in component state
  * - Deduplicates in-flight requests
  *
  * Usage:

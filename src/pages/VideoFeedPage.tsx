@@ -110,10 +110,10 @@ const VideoFeedPage: React.FC = () => {
 
   // Build mixed feed: organic videos + sponsored ads
   type FeedItem =
-    | { type: 'video'; item: (typeof videos)[number] }
+    | { type: 'content'; item: (typeof videos)[number] }
     | { type: 'ad'; ad: import('../types/AdDelivery').AdUnit };
   const mixedFeed: FeedItem[] = React.useMemo(() => {
-    return spliceAdsIntoList(videos, videoAds) as FeedItem[];
+    return spliceAdsIntoList(videos, videoAds);
   }, [videos, videoAds, spliceAdsIntoList]);
   
   // Get auth instance for user ID checks
