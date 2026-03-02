@@ -12,6 +12,7 @@ const FUNCTION_URL = 'https://us-central1-mundo1-dev.cloudfunctions.net';
 describe('userProfile RPC integration tests', () => {
   let authToken: string;
   let profileUid: string | null = null;
+  let originalUsername: string | null = null;
 
   beforeAll(async () => {
     // Sign in to get ID token for authenticated calls
@@ -33,7 +34,35 @@ describe('userProfile RPC integration tests', () => {
       throw new Error('Authentication failed: ' + JSON.stringify(authData));
     }
     authToken = authData.idToken;
+
+    // Capture the original username so afterAll can restore it after the update test
+    const profileRes = await fetch(`${FUNCTION_URL}/getUserProfile`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({ data: {} }),
+    });
+    const profileBody = await profileRes.json();
+    if (profileBody?.result?.profile?.username) {
+      originalUsername = profileBody.result.profile.username;
+    }
   }, 30000);
+
+  afterAll(async () => {
+    // Restore the username that was overwritten by the updateUserProfile test
+    if (originalUsername && authToken) {
+      await fetch(`${FUNCTION_URL}/updateUserProfile`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({ data: { updates: { username: originalUsername } } }),
+      });
+    }
+  }, 20000);
 
   it('createUserProfile should create profile when missing (or return already-exists)', async () => {
     const profilePayload = {

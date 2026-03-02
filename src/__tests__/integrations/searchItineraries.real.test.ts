@@ -523,7 +523,7 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
   });
 
   describe('Excluded IDs Filtering', () => {
-    it.skip('should exclude itineraries in the excludedIds list', async () => {
+    it('should exclude itineraries in the excludedIds list', async () => {
       const now = Date.now();
       const twoWeeksLater = now + 14 * 24 * 60 * 60 * 1000;
 
@@ -566,7 +566,7 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
   });
 
   describe('Combined Filters', () => {
-    it.skip('should correctly apply multiple filters simultaneously', async () => {
+    it('should correctly apply multiple filters simultaneously', async () => {
       const now = Date.now();
       const twoWeeksLater = now + 14 * 24 * 60 * 60 * 1000;
 

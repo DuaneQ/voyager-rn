@@ -7,3 +7,6 @@ export type { SponsoredVideoCardProps } from './SponsoredVideoCard'
 
 export { SponsoredItineraryCard } from './SponsoredItineraryCard'
 export type { SponsoredItineraryCardProps } from './SponsoredItineraryCard'
+
+export { PromotionCard } from './PromotionCard'
+export type { PromotionCardProps, PromotionData } from './PromotionCard'

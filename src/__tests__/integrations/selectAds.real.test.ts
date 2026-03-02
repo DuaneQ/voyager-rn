@@ -154,9 +154,11 @@ describeIfLive('selectAds — Live Integration Tests', () => {
 
   describe('Basic ad selection', () => {
     it('should return ads for video_feed placement', async () => {
+      // Use limit: 20 (the function's MAX_LIMIT) to ensure TEST_CAMPAIGN_ID is
+      // always in the result set regardless of how many test campaigns exist in DB.
       const result = await callCloudFunction('selectAds', {
         placement: 'video_feed',
-        limit: 10,
+        limit: 20,
       });
 
       // Response shape: { result: { ads: [...] } }
@@ -195,13 +197,14 @@ describeIfLive('selectAds — Live Integration Tests', () => {
       expect(testAd).toBeUndefined();
     }, 20000);
 
-    it('should respect the limit parameter', async () => {
+    it('should return exactly the requested number of ads when enough campaigns exist', async () => {
+      // We have at least 1 active campaign seeded — limit: 1 must return exactly 1
       const result = await callCloudFunction('selectAds', {
         placement: 'video_feed',
         limit: 1,
       });
 
-      expect(result.result.ads.length).toBeLessThanOrEqual(1);
+      expect(result.result.ads.length).toBe(1);
     }, 20000);
   });
 
@@ -210,60 +213,97 @@ describeIfLive('selectAds — Live Integration Tests', () => {
   // ═══════════════════════════════════════════════════════════════════════════
 
   describe('Targeting and scoring', () => {
-    it('should boost score for matching destination', async () => {
-      const result = await callCloudFunction('selectAds', {
+    /**
+     * Prove that scoring actually works by seeding:
+     *   - A "high-score" campaign that matches every targeting field in the context
+     *   - A "blank" campaign with no targeting fields (will always score 0)
+     * With a fully-matching userContext, the high-score campaign must appear at
+     * a lower index (ranked higher) than the blank campaign in the sorted results.
+     */
+    it('ranks a campaign matching the user context above a campaign with no targeting', async () => {
+      const db = getAdminDb();
+      const highId = `__test_scoring_high_${Date.now()}`;
+      const blankId = `__test_scoring_blank_${Date.now() + 1}`;
+
+      await db.collection('ads_campaigns').doc(highId).set({
+        uid: 'test-advertiser-uid',
+        name: 'High Score Paris Campaign',
+        status: 'active',
         placement: 'video_feed',
-        limit: 10,
-        userContext: {
-          destination: 'Paris, France',
-        },
+        isUnderReview: false,
+        startDate: offsetDate(-7),
+        endDate: offsetDate(30),
+        creativeType: 'image',
+        assetUrl: 'https://example.com/high-score.jpg',
+        primaryText: 'High Score Paris Ad',
+        cta: 'Book Now',
+        landingUrl: 'https://example.com',
+        billingModel: 'cpm',
+        budgetAmount: '100.00',
+        budgetCents: 10000,
+        // Full targeting — all fields match the userContext below
+        targetDestination: 'Paris, France',
+        targetGender: 'Female',
+        targetTripTypes: ['romantic'],
+        targetActivityPreferences: ['Cultural'],
+        targetTravelStyles: ['luxury'],
+        targetTravelStartDate: offsetDate(-7),
+        targetTravelEndDate: offsetDate(30),
+        totalImpressions: 0,
+        totalClicks: 0,
       });
+      createdCampaignIds.push(highId);
 
-      expect(result.result).toBeDefined();
-      const testAd = result.result.ads.find(
-        (ad: any) => ad.campaignId === TEST_CAMPAIGN_ID
-      );
-      expect(testAd).toBeDefined();
-      // When destination matches, score is higher so our ad should be among the first
-    }, 20000);
+      // Blank campaign: no targeting fields → will always score 0
+      await db.collection('ads_campaigns').doc(blankId).set({
+        uid: 'test-advertiser-uid',
+        name: 'Blank Score Campaign',
+        status: 'active',
+        placement: 'video_feed',
+        isUnderReview: false,
+        startDate: offsetDate(-7),
+        endDate: offsetDate(30),
+        creativeType: 'image',
+        assetUrl: 'https://example.com/blank.jpg',
+        primaryText: 'Blank Ad — No Targeting',
+        cta: 'Learn More',
+        landingUrl: 'https://example.com/blank',
+        billingModel: 'cpm',
+        budgetAmount: '100.00',
+        budgetCents: 10000,
+        totalImpressions: 0,
+        totalClicks: 0,
+      });
+      createdCampaignIds.push(blankId);
 
-    it('should boost score for matching gender + trip types', async () => {
       const result = await callCloudFunction('selectAds', {
         placement: 'video_feed',
-        limit: 10,
+        limit: 20,
         userContext: {
           destination: 'Paris, France',
           gender: 'Female',
           tripTypes: ['romantic'],
           activityPreferences: ['Cultural'],
           travelStyles: ['luxury'],
-        },
-      });
-
-      const testAd = result.result.ads.find(
-        (ad: any) => ad.campaignId === TEST_CAMPAIGN_ID
-      );
-      expect(testAd).toBeDefined();
-    }, 20000);
-
-    it('should boost score for overlapping travel dates', async () => {
-      const result = await callCloudFunction('selectAds', {
-        placement: 'video_feed',
-        limit: 10,
-        userContext: {
-          destination: 'Paris, France',
           travelStartDate: todayYYYYMMDD(),
           travelEndDate: offsetDate(7),
         },
       });
 
-      const testAd = result.result.ads.find(
-        (ad: any) => ad.campaignId === TEST_CAMPAIGN_ID
-      );
-      expect(testAd).toBeDefined();
-    }, 20000);
+      expect(result.result).toBeDefined();
+      expect(Array.isArray(result.result.ads)).toBe(true);
 
-    it('should still return campaign with no user context (score 0 but eligible)', async () => {
+      const highIdx  = result.result.ads.findIndex((ad: any) => ad.campaignId === highId);
+      const blankIdx = result.result.ads.findIndex((ad: any) => ad.campaignId === blankId);
+
+      // Both must be present in the results
+      expect(highIdx).toBeGreaterThanOrEqual(0);
+      expect(blankIdx).toBeGreaterThanOrEqual(0);
+      // The fully-matched campaign must rank BEFORE (lower index) the blank campaign
+      expect(highIdx).toBeLessThan(blankIdx);
+    }, 30000);
+
+    it('returns an eligible campaign with no user context (scores 0 but still eligible)', async () => {
       const result = await callCloudFunction('selectAds', {
         placement: 'video_feed',
         limit: 20,
@@ -327,27 +367,161 @@ describeIfLive('selectAds — Live Integration Tests', () => {
       expect(locationAd.primaryText).toBe('Explore Tokyo!');
     }, 20000);
 
-    it('should not match location field against a different destination', async () => {
-      // Request ads with a destination that doesn't match
+    it('location-campaign still returns (score 0) when destination does not match', async () => {
+      // Score 0 is still eligible — the function has no hard destination filter.
+      // We verify the campaign appears even when there is no match (limit=50).
       const result = await callCloudFunction('selectAds', {
         placement: 'video_feed',
-        limit: 20,
+        limit: 50,
         userContext: {
           destination: 'Berlin, Germany',
         },
       });
 
       expect(result.result).toBeDefined();
-      // The ad should still appear (eligible) but score should be lower;
-      // if many campaigns exist with Berlin targeting, it may be pushed down.
-      // We just verify it's still returned (score 0 is still eligible).
+      expect(Array.isArray(result.result.ads)).toBe(true);
+
       const locationAd = result.result.ads.find(
         (ad: any) => ad.campaignId === LOCATION_CAMPAIGN_ID
       );
-      // It could appear or not depending on total campaign count + limit
-      // The key assertion is the previous test: matching destination DOES boost it
-      expect(result.result.ads).toBeDefined();
+      // Campaign with no Berlin targeting is still eligible — must appear in full list
+      expect(locationAd).toBeDefined();
     }, 20000);
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // selectAds — Eligibility hard filters
+  // Campaigns that fail these filters must NEVER appear in results.
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  describe('Eligibility hard filters — excluded campaigns never appear in results', () => {
+    it('excludes campaigns with status "paused" from results', async () => {
+      const id = `__test_paused_excl_${Date.now()}`;
+      await getAdminDb().collection('ads_campaigns').doc(id).set({
+        uid: 'test-advertiser-uid',
+        name: 'Paused Campaign',
+        status: 'paused',
+        placement: 'video_feed',
+        isUnderReview: false,
+        startDate: offsetDate(-7),
+        endDate: offsetDate(30),
+        creativeType: 'image',
+        assetUrl: 'https://example.com/paused.jpg',
+        primaryText: 'Paused Ad',
+        cta: 'Learn More',
+        landingUrl: 'https://example.com',
+        billingModel: 'cpm',
+        budgetAmount: '50.00',
+        budgetCents: 5000,
+        totalImpressions: 0,
+        totalClicks: 0,
+      });
+      createdCampaignIds.push(id);
+
+      const result = await callCloudFunction('selectAds', {
+        placement: 'video_feed',
+        limit: 50,
+      });
+
+      const pausedAd = result.result.ads.find((ad: any) => ad.campaignId === id);
+      expect(pausedAd).toBeUndefined();
+    }, 25000);
+
+    it('excludes campaigns with budgetCents <= 0 from results', async () => {
+      const id = `__test_no_budget_${Date.now()}`;
+      await getAdminDb().collection('ads_campaigns').doc(id).set({
+        uid: 'test-advertiser-uid',
+        name: 'Budget Exhausted Campaign',
+        status: 'active',
+        placement: 'video_feed',
+        isUnderReview: false,
+        startDate: offsetDate(-7),
+        endDate: offsetDate(30),
+        creativeType: 'image',
+        assetUrl: 'https://example.com/nobudget.jpg',
+        primaryText: 'No Budget Ad',
+        cta: 'Learn More',
+        landingUrl: 'https://example.com',
+        billingModel: 'cpm',
+        budgetAmount: '0.00',
+        budgetCents: 0,           // exhausted
+        totalImpressions: 0,
+        totalClicks: 0,
+      });
+      createdCampaignIds.push(id);
+
+      const result = await callCloudFunction('selectAds', {
+        placement: 'video_feed',
+        limit: 50,
+      });
+
+      const exhaustedAd = result.result.ads.find((ad: any) => ad.campaignId === id);
+      expect(exhaustedAd).toBeUndefined();
+    }, 25000);
+
+    it('excludes campaigns whose endDate is in the past from results', async () => {
+      const id = `__test_expired_${Date.now()}`;
+      await getAdminDb().collection('ads_campaigns').doc(id).set({
+        uid: 'test-advertiser-uid',
+        name: 'Expired Campaign',
+        status: 'active',
+        placement: 'video_feed',
+        isUnderReview: false,
+        startDate: offsetDate(-30),
+        endDate: offsetDate(-1),   // ended yesterday
+        creativeType: 'image',
+        assetUrl: 'https://example.com/expired.jpg',
+        primaryText: 'Expired Ad',
+        cta: 'Learn More',
+        landingUrl: 'https://example.com',
+        billingModel: 'cpm',
+        budgetAmount: '50.00',
+        budgetCents: 5000,
+        totalImpressions: 0,
+        totalClicks: 0,
+      });
+      createdCampaignIds.push(id);
+
+      const result = await callCloudFunction('selectAds', {
+        placement: 'video_feed',
+        limit: 50,
+      });
+
+      const expiredAd = result.result.ads.find((ad: any) => ad.campaignId === id);
+      expect(expiredAd).toBeUndefined();
+    }, 25000);
+
+    it('excludes campaigns with isUnderReview=true from results', async () => {
+      const id = `__test_review_excl_${Date.now()}`;
+      await getAdminDb().collection('ads_campaigns').doc(id).set({
+        uid: 'test-advertiser-uid',
+        name: 'Under Review Campaign',
+        status: 'active',
+        placement: 'video_feed',
+        isUnderReview: true,       // under review — must be excluded
+        startDate: offsetDate(-7),
+        endDate: offsetDate(30),
+        creativeType: 'image',
+        assetUrl: 'https://example.com/review.jpg',
+        primaryText: 'Under Review Ad',
+        cta: 'Learn More',
+        landingUrl: 'https://example.com',
+        billingModel: 'cpm',
+        budgetAmount: '50.00',
+        budgetCents: 5000,
+        totalImpressions: 0,
+        totalClicks: 0,
+      });
+      createdCampaignIds.push(id);
+
+      const result = await callCloudFunction('selectAds', {
+        placement: 'video_feed',
+        limit: 50,
+      });
+
+      const reviewAd = result.result.ads.find((ad: any) => ad.campaignId === id);
+      expect(reviewAd).toBeUndefined();
+    }, 25000);
   });
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -406,9 +580,11 @@ describeIfLive('selectAds — Live Integration Tests', () => {
 
   describe('AdUnit response structure', () => {
     it('should return all required AdUnit fields', async () => {
+      // Use limit: 20 (the function's MAX_LIMIT) to ensure TEST_CAMPAIGN_ID is
+      // always in the result set even when other test campaigns exist in the DB.
       const result = await callCloudFunction('selectAds', {
         placement: 'video_feed',
-        limit: 10,
+        limit: 20,
       });
 
       const testAd = result.result.ads.find(
