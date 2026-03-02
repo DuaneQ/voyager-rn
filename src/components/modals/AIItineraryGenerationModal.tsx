@@ -253,6 +253,38 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
     return errors;
   }, [formData, selectedProfile]);
 
+  // Handle modal close (matching PWA logic)
+  const handleClose = useCallback(() => {
+    if (isGenerating) {
+      cancelGeneration();
+    }
+    
+    setShowSuccessState(false);
+    setFormErrors({});
+    
+    // Reset form
+    setFormData({
+      destination: '',
+      destinationAirportCode: '',
+      departure: '',
+      departureAirportCode: '',
+      startDate: format(addDays(new Date(), 7), 'yyyy-MM-dd'),
+      endDate: format(addDays(new Date(), 14), 'yyyy-MM-dd'),
+      tripType: 'leisure',
+      preferenceProfileId: preferences?.profiles?.find((p: any) => p.isDefault)?.id || '',
+      specialRequests: '',
+      mustInclude: [],
+      mustAvoid: [],
+      flightPreferences: {
+        class: 'economy',
+        stopPreference: 'any',
+        preferredAirlines: []
+      }
+    });
+
+    onClose();
+  }, [isGenerating, cancelGeneration, onClose, preferences]);
+
   // Handle generation (matching PWA flow)
   const handleGenerate = useCallback(async () => {
     // First check if destination has value but is not from Google Places
@@ -359,39 +391,7 @@ export const AIItineraryGenerationModal: React.FC<AIItineraryGenerationModalProp
     } catch (err) {
       setFormErrors({ general: 'An unexpected error occurred' });
     }
-  }, [formData, userProfile, selectedProfile, validateForm, generateItinerary, onGenerated]);
-
-  // Handle modal close (matching PWA logic)
-  const handleClose = useCallback(() => {
-    if (isGenerating) {
-      cancelGeneration();
-    }
-    
-    setShowSuccessState(false);
-    setFormErrors({});
-    
-    // Reset form
-    setFormData({
-      destination: '',
-      destinationAirportCode: '',
-      departure: '',
-      departureAirportCode: '',
-      startDate: format(addDays(new Date(), 7), 'yyyy-MM-dd'),
-      endDate: format(addDays(new Date(), 14), 'yyyy-MM-dd'),
-      tripType: 'leisure',
-      preferenceProfileId: preferences?.profiles?.find((p: any) => p.isDefault)?.id || '',
-      specialRequests: '',
-      mustInclude: [],
-      mustAvoid: [],
-      flightPreferences: {
-        class: 'economy',
-        stopPreference: 'any',
-        preferredAirlines: []
-      }
-    });
-
-    onClose();
-  }, [isGenerating, cancelGeneration, onClose, preferences]);
+  }, [formData, userProfile, selectedProfile, validateForm, generateItinerary, onGenerated, handleClose, hasReachedAILimit, isDestinationValid, showAlert, trackAICreation]);
 
   // Handle tag addition (matching PWA logic)
   const handleTagAdd = useCallback((type: 'mustInclude' | 'mustAvoid', value: string) => {

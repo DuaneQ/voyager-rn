@@ -29,6 +29,14 @@ jest.mock('../../context/AlertContext', () => ({
   }),
 }));
 
+jest.mock('../../hooks/useStripePortal', () => ({
+  useStripePortal: () => ({
+    openPortal: jest.fn(),
+    loading: false,
+    error: null,
+  }),
+}));
+
 jest.mock('../../context/UserProfileContext', () => ({
   useUserProfile: () => ({
     userProfile: {
@@ -45,9 +53,11 @@ jest.mock('../../context/UserProfileContext', () => ({
 jest.mock('../../hooks/useUsageTracking', () => ({
   useUsageTracking: () => ({
     hasReachedLimit: jest.fn(() => false),
+    hasPremium: jest.fn(() => false),
     trackView: jest.fn(async () => true),
     dailyViewCount: 0,
     refreshProfile: jest.fn(async () => {}),
+    userProfile: null,
   }),
 }));
 

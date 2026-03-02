@@ -45,7 +45,7 @@ if (Platform.OS === 'web') {
     useEffect(() => {
       const cleanup = callback();
       return cleanup;
-    }, []);
+    }, [callback]);
   };
 } else {
   useFocusEffect = require('@react-navigation/native').useFocusEffect;
@@ -274,7 +274,7 @@ const VideoFeedPage: React.FC = () => {
     if (flatListRef.current && videos.length > 0) {
       flatListRef.current.scrollToIndex({ index: 0, animated: false });
     }
-  }, [refreshVideos, videos.length, resetSessionCount, fetchVideoAds, userProfile?.gender, userProfile?.dob]);
+  }, [refreshVideos, videos.length, resetSessionCount, fetchVideoAds, userProfile?.gender, userProfile?.dob, travelProfile?.activities, travelProfile?.travelStyle]);
 
   /**
    * Handle comment button press

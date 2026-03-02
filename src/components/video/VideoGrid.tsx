@@ -100,7 +100,7 @@ export const VideoGrid: React.FC = () => {
     } else {
       // upload returned null; no refresh
     }
-  }, [uploadVideo, refreshVideos, videos.length]);
+  }, [uploadVideo, refreshVideos]);
 
   /**
    * Handle upload modal close

@@ -43,11 +43,6 @@ const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
   const { showAlert } = useAlert();
   const [subscribing, setSubscribing] = useState(false);
 
-  // Only render on web platform
-  if (Platform.OS !== 'web') {
-    return null;
-  }
-
   const isPremium = hasPremium();
 
   /**
@@ -99,6 +94,11 @@ const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
     // The error message is meant for immediate feedback, not persistent display
     setIsLimbo(false);
   }, [userProfile]);
+
+  // Only render on web platform
+  if (Platform.OS !== 'web') {
+    return null;
+  }
 
   return (
     <View style={compact ? styles.compactCard : styles.fullCard}>

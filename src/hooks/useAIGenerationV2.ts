@@ -61,28 +61,28 @@ export interface UseAIGenerationV2Return {
   cancelGeneration: () => void;
 }
 
+// Helper function to create AI Generation errors (pure, no closures needed)
+const createAIError = (
+  type: AIGenerationErrorType, 
+  message: string, 
+  code?: string, 
+  details?: any
+): AIGenerationError => {
+  const error = new Error(message) as AIGenerationError;
+  error.type = type;
+  error.code = code;
+  error.details = details;
+  return error;
+};
+
 export const useAIGenerationV2 = (): UseAIGenerationV2Return => {
   const [progress, setProgress] = useState<AIGenerationProgress>(PROGRESS_STAGES.INITIALIZING);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<AIGenerationError | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Helper function to create AI Generation errors
-  const createAIError = (
-    type: AIGenerationErrorType, 
-    message: string, 
-    code?: string, 
-    details?: any
-  ): AIGenerationError => {
-    const error = new Error(message) as AIGenerationError;
-    error.type = type;
-    error.code = code;
-    error.details = details;
-    return error;
-  };
-
   // Exponential backoff retry mechanism
-  const retryWithBackoff = async <T>(
+  const retryWithBackoff = useCallback(async <T>(
     operation: () => Promise<T>,
     config: RetryConfig = DEFAULT_RETRY_CONFIG,
     errorType: AIGenerationErrorType = 'network_error'
@@ -158,10 +158,11 @@ export const useAIGenerationV2 = (): UseAIGenerationV2Return => {
     }
     
     throw createAIError(errorType, lastError!.message, undefined, lastError!);
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Firebase Cloud Function caller with retry logic
-  const callCloudFunction = async (
+  const callCloudFunction = useCallback(async (
     functionName: string, 
     data: any
   ): Promise<CloudFunctionResult> => {
@@ -176,7 +177,7 @@ export const useAIGenerationV2 = (): UseAIGenerationV2Return => {
       
       return functionResult;
     }, DEFAULT_RETRY_CONFIG, 'server_error');
-  };
+  }, [retryWithBackoff]);
 
   // Cancel current generation
   const cancelGeneration = useCallback(() => {
@@ -535,7 +536,7 @@ export const useAIGenerationV2 = (): UseAIGenerationV2Return => {
       setIsGenerating(false);
       abortControllerRef.current = null;
     }
-  }, []);
+  }, [callCloudFunction]);
 
   return {
     generateItinerary,

@@ -105,7 +105,7 @@ export function useConnections(userId: string | null): UseConnectionsResult {
         unsubscribeRef.current = null;
       }
     };
-  }, [userId]); // Only userId in dependencies, db is stable
+  }, [userId, db]);
 
   // Load more connections (pagination)
   const loadMore = useCallback(async () => {
@@ -141,7 +141,7 @@ export function useConnections(userId: string | null): UseConnectionsResult {
       console.error('Error loading more connections:', err);
       setError(err as Error);
     }
-  }, [userId, lastDoc, hasMore]); // Removed db from dependencies
+  }, [userId, lastDoc, hasMore, db]);
 
   // Refresh connections
   const refresh = useCallback(() => {
@@ -194,7 +194,7 @@ export function useConnections(userId: string | null): UseConnectionsResult {
     );
 
     unsubscribeRef.current = unsubscribe;
-  }, [userId]);
+  }, [userId, db]);
 // Optimistically remove connection from local state
   const removeConnectionOptimistic = useCallback((connectionId: string) => {
     setConnections((prev) => prev.filter((conn) => conn.id !== connectionId));

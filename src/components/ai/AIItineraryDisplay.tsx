@@ -3,7 +3,7 @@
  * Displays detailed AI-generated itinerary matching PWA functionality with collapsible accordions
  */
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -189,27 +189,26 @@ const PromotionCard: React.FC<{
 });
 
 export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerary }) => {
-  // Handle null/missing itinerary gracefully
-  if (!itinerary) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.noDataText}>No itinerary data available</Text>
-      </View>
-    );
-  }
-
-  // Hooks for data management
+  // Hooks for data management (must be called unconditionally – Rules of Hooks)
   const { refreshItineraries } = useAIGeneratedItineraries();
   const { updateItinerary } = useUpdateItinerary();
 
   // ─── Ad delivery hooks ───────────────────────────────────────────
   const { ads: realAds, fetchAds: fetchSlotAds } = useAdDelivery('ai_slot');
-  const { trackImpression, trackClick, flush: flushAdEvents } = useAdTracking();
+  const { trackImpression, trackClick, flush: _flushAdEvents } = useAdTracking();
   const { userProfile } = useUserProfile();
   const { defaultProfile: travelProfile } = useTravelPreferences();
 
+  // Extract primitive values for the dependency array (avoid complex expressions)
+  const activitiesKey = travelProfile?.activities?.join(',') ?? '';
+  const userTravelStyle = travelProfile?.travelStyle;
+  const itineraryId = itinerary?.id;
+  const userGender = userProfile?.gender;
+  const userDob = userProfile?.dob;
+
   // Fetch ads with itinerary destination + demographic + travel pref context for targeting
   useEffect(() => {
+    if (!itinerary) return; // guard for null itinerary
     const dest =
       (itinerary as any)?.destination ||
       (itinerary as any)?.response?.data?.destination ||
@@ -259,7 +258,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
     }
 
     fetchSlotAds(ctx as any);
-  }, [itinerary.id, userProfile?.gender, userProfile?.dob, travelProfile?.activities?.join(','), travelProfile?.travelStyle, fetchSlotAds]);
+  }, [itineraryId, itinerary, userGender, userDob, activitiesKey, userTravelStyle, fetchSlotAds, userProfile, travelProfile]);
 
   // Local itinerary state to immediately reflect saved changes
   const [localItinerary, setLocalItinerary] = useState<AIGeneratedItinerary>(itinerary);
@@ -597,7 +596,10 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
   const hasFlights = flights && flights.length > 0;
   
   // Promotions (ad_slot campaigns targeting this itinerary's destination)
-  const aiPromotions: any[] = (itineraryData as any)?.promotions || (currentItinerary as any)?.promotions || [];
+  const aiPromotions: any[] = useMemo(
+    () => (itineraryData as any)?.promotions || (currentItinerary as any)?.promotions || [],
+    [itineraryData, currentItinerary],
+  );
 
   // Map real ads (AdUnit) to the same shape the existing promotion renderer expects
   const realAdPromotions: any[] = useMemo(
@@ -790,6 +792,15 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
       </TouchableOpacity>
     );
   };
+
+  // Handle null/missing itinerary gracefully (after all hooks)
+  if (!itinerary) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.noDataText}>No itinerary data available</Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>

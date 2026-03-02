@@ -4,7 +4,7 @@
  * React Native implementation mirroring PWA functionality
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Modal,
   View,
@@ -80,16 +80,7 @@ export const VideoCommentsModal: React.FC<VideoCommentsModalProps> = ({
     };
   }, []);
 
-  // Load comments when modal opens
-  // Only reload when modal becomes visible or video ID changes
-  // Do NOT reload on video.comments changes to avoid re-opening after comment submission
-  useEffect(() => {
-    if (visible && video.id) {
-      loadComments();
-    }
-  }, [visible, video.id]);
-
-  const loadComments = async () => {
+  const loadComments = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -140,7 +131,16 @@ export const VideoCommentsModal: React.FC<VideoCommentsModalProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [video.id]);
+
+  // Load comments when modal opens
+  // Only reload when modal becomes visible or video ID changes
+  // Do NOT reload on video.comments changes to avoid re-opening after comment submission
+  useEffect(() => {
+    if (visible && video.id) {
+      loadComments();
+    }
+  }, [visible, video.id, loadComments]);
 
   const handleSubmitComment = async () => {
     if (!currentUser) {

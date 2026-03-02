@@ -37,7 +37,7 @@ if (Platform.OS === 'web') {
     useEffect(() => {
       const cleanup = callback();
       return cleanup;
-    }, []);
+    }, [callback]);
   };
 } else {
   useFocusEffect = require('@react-navigation/native').useFocusEffect;

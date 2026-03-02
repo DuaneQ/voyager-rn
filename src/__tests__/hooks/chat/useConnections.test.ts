@@ -13,8 +13,11 @@ const mockOrderBy = jest.fn();
 const mockLimit = jest.fn();
 const mockStartAfter = jest.fn();
 
+// Stable db reference to avoid infinite re-renders when db is in effect deps
+const mockDb = {};
+
 jest.mock('firebase/firestore', () => ({
-  getFirestore: jest.fn(() => ({})),
+  getFirestore: jest.fn(() => mockDb),
   collection: (...args: any[]) => mockCollection(...args),
   query: (...args: any[]) => mockQuery(...args),
   where: (...args: any[]) => mockWhere(...args),

@@ -102,7 +102,7 @@ const VideoFeedPage: React.FC = () => {
 
   // ─── Ad delivery hooks ───────────────────────────────────────────
   const { ads: videoAds, fetchAds: fetchVideoAds } = useAdDelivery('video_feed');
-  const { trackImpression, trackClick, flush: flushAdEvents } = useAdTracking();
+  const { trackImpression, trackClick, flush: _flushAdEvents } = useAdTracking();
   const { spliceAdsIntoList, resetSessionCount } = useAdFrequency();
   const { userProfile } = useUserProfile();
   const { defaultProfile: travelProfile } = useTravelPreferences();
@@ -122,7 +122,7 @@ const VideoFeedPage: React.FC = () => {
       ctx.travelStyles = [travelProfile.travelStyle];
     }
     fetchVideoAds(Object.keys(ctx).length > 0 ? ctx as any : undefined);
-  }, [userProfile?.gender, userProfile?.dob, travelProfile?.activities, travelProfile?.travelStyle]);
+  }, [userProfile?.gender, userProfile?.dob, travelProfile?.activities, travelProfile?.travelStyle, fetchVideoAds]);
 
   /** Discriminated union for feed items. */
   type FeedItem =
@@ -262,7 +262,7 @@ const VideoFeedPage: React.FC = () => {
     if (recyclerRef.current && mixedFeed.length > 0) {
       recyclerRef.current.scrollToIndex(0, false);
     }
-  }, [refreshVideos, mixedFeed.length, resetSessionCount, fetchVideoAds, userProfile?.gender, userProfile?.dob]);
+  }, [refreshVideos, mixedFeed.length, resetSessionCount, fetchVideoAds, userProfile?.gender, userProfile?.dob, travelProfile?.activities, travelProfile?.travelStyle]);
 
   /**
    * Handle comment button press

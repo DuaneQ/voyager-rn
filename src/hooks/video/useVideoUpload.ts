@@ -52,9 +52,13 @@ interface UseVideoUploadOptions {
 }
 
 export const useVideoUpload = (options?: UseVideoUploadOptions) => {
-  const showError = options?.onError || ((message: string, title?: string) => {
-    Alert.alert(title || 'Error', message);
-  });
+  const showError = useCallback((message: string, title?: string) => {
+    if (options?.onError) {
+      options.onError(message, title);
+    } else {
+      Alert.alert(title || 'Error', message);
+    }
+  }, [options]);
   const [uploadState, setUploadState] = useState<VideoUploadState>({
     loading: false,
     progress: 0,
@@ -85,7 +89,7 @@ export const useVideoUpload = (options?: UseVideoUploadOptions) => {
     }
 
     return granted;
-  }, [permissionGranted]);
+  }, [permissionGranted, showError]);
 
   /**
    * Select video from library
@@ -119,7 +123,7 @@ export const useVideoUpload = (options?: UseVideoUploadOptions) => {
       showError('Failed to select video', 'Error');
       return null;
     }
-  }, [requestPermission]);
+  }, [requestPermission, showError]);
 
   /**
    * Upload video with validation
@@ -276,7 +280,7 @@ export const useVideoUpload = (options?: UseVideoUploadOptions) => {
       );
       return false;
     }
-  }, []);
+  }, [showError]);
 
   /**
    * Load user videos
