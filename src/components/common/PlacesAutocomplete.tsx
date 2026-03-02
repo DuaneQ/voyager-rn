@@ -116,7 +116,7 @@ export const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
     }, SESSION_TIMEOUT_MS);
     
     return token;
-  }, []);
+  }, [SESSION_TIMEOUT_MS]);
   
   /**
    * Handle session cleanup when user selects a place

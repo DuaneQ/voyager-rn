@@ -43,12 +43,18 @@ import { shareVideo } from '../utils/videoSharing';
 import { videoPlaybackManagerV2 as videoPlaybackManager } from '../services/video/VideoPlaybackManagerV2';
 import { doc, getDocFromServer } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
+import { SponsoredVideoCard } from '../components/ads/SponsoredVideoCard';
+import { useAdDelivery, useAdTracking, useAdFrequency } from '../hooks/ads';
+import { useUserProfile } from '../context/UserProfileContext';
+import { calculateAge } from '../utils/calculateAge';
+import { useTravelPreferences } from '../hooks/useTravelPreferences';
 
 const { width, height } = Dimensions.get('window');
 
 // Layout types for RecyclerListView
 const ViewTypes = {
   VIDEO_CARD: 0,
+  AD_CARD: 1,
 };
 
 const VideoFeedPage: React.FC = () => {
@@ -94,6 +100,41 @@ const VideoFeedPage: React.FC = () => {
   
   const recyclerRef = useRef<RecyclerListView<any, any>>(null);
 
+  // ─── Ad delivery hooks ───────────────────────────────────────────
+  const { ads: videoAds, fetchAds: fetchVideoAds } = useAdDelivery('video_feed');
+  const { trackImpression, trackClick, flush: _flushAdEvents } = useAdTracking();
+  const { spliceAdsIntoList, resetSessionCount } = useAdFrequency();
+  const { userProfile } = useUserProfile();
+  const { defaultProfile: travelProfile } = useTravelPreferences();
+
+  // Fetch ads on mount with demographic + travel preference context for targeting
+  useEffect(() => {
+    const ctx: Record<string, string | number | string[] | undefined> = {};
+    if (userProfile?.gender) ctx.gender = userProfile.gender;
+    if (userProfile?.dob) {
+      const age = calculateAge(userProfile.dob);
+      if (age > 0) ctx.age = age;
+    }
+    if (travelProfile?.activities && travelProfile.activities.length > 0) {
+      ctx.activityPreferences = travelProfile.activities;
+    }
+    if (travelProfile?.travelStyle) {
+      ctx.travelStyles = [travelProfile.travelStyle];
+    }
+    fetchVideoAds(Object.keys(ctx).length > 0 ? ctx as any : undefined);
+  }, [userProfile?.gender, userProfile?.dob, travelProfile?.activities, travelProfile?.travelStyle, fetchVideoAds]);
+
+  /** Discriminated union for feed items. */
+  type FeedItem =
+    | { type: 'content'; item: typeof videos[0] }
+    | { type: 'ad'; ad: import('../types/AdDelivery').AdUnit };
+
+  /** Mixed feed: organic videos with sponsored ads spliced in. */
+  const mixedFeed: FeedItem[] = useMemo(
+    () => spliceAdsIntoList(videos, videoAds),
+    [videos, videoAds, spliceAdsIntoList],
+  );
+
   // Ref to track current video index without stale closures during rapid scrolling
   const currentVideoIndexRef = useRef(currentVideoIndex);
   // Keep ref in sync with state on every render
@@ -121,9 +162,9 @@ const VideoFeedPage: React.FC = () => {
   const dataProvider = useMemo(() => {
     // Clone from the previous DataProvider so RLV can diff old vs new rows.
     // Appended rows are treated as additions — scroll position is preserved.
-    dataProviderRef.current = dataProviderRef.current.cloneWithRows(videos);
+    dataProviderRef.current = dataProviderRef.current.cloneWithRows(mixedFeed);
     return dataProviderRef.current;
-  }, [videos]);
+  }, [mixedFeed]);
 
   /**
    * RecyclerListView Layout Provider
@@ -131,13 +172,17 @@ const VideoFeedPage: React.FC = () => {
    */
   const layoutProvider = useMemo(() => {
     return new LayoutProvider(
-      (index) => ViewTypes.VIDEO_CARD,
+      (index) => {
+        const item = mixedFeed[index];
+        return item?.type === 'ad' ? ViewTypes.AD_CARD : ViewTypes.VIDEO_CARD;
+      },
       (type, dim) => {
+        // Both video cards and ad cards use full screen height
         dim.width = width;
         dim.height = height;
       }
     );
-  }, []);
+  }, [mixedFeed]);
 
   /**
    * Stop video playback when navigating away
@@ -198,11 +243,26 @@ const VideoFeedPage: React.FC = () => {
     // Cleanup all video players before refreshing to prevent "shared object released" errors
     await videoPlaybackManager.deactivateAll();
     await refreshVideos();
+    // Reset ad session counter and re-fetch fresh ads with demographic context
+    resetSessionCount();
+    const ctx: Record<string, string | number | string[] | undefined> = {};
+    if (userProfile?.gender) ctx.gender = userProfile.gender;
+    if (userProfile?.dob) {
+      const age = calculateAge(userProfile.dob);
+      if (age > 0) ctx.age = age;
+    }
+    if (travelProfile?.activities && travelProfile.activities.length > 0) {
+      ctx.activityPreferences = travelProfile.activities;
+    }
+    if (travelProfile?.travelStyle) {
+      ctx.travelStyles = [travelProfile.travelStyle];
+    }
+    fetchVideoAds(Object.keys(ctx).length > 0 ? ctx as any : undefined);
     setIsRefreshing(false);
-    if (recyclerRef.current && videos.length > 0) {
+    if (recyclerRef.current && mixedFeed.length > 0) {
       recyclerRef.current.scrollToIndex(0, false);
     }
-  }, [refreshVideos, videos.length]);
+  }, [refreshVideos, mixedFeed.length, resetSessionCount, fetchVideoAds, userProfile?.gender, userProfile?.dob, travelProfile?.activities, travelProfile?.travelStyle]);
 
   /**
    * Handle comment button press
@@ -352,31 +412,45 @@ const VideoFeedPage: React.FC = () => {
 
   /**
    * Row renderer for RecyclerListView
+   * Handles both organic video cards and sponsored ad cards.
    */
   const rowRenderer = useCallback(
-    (type: string | number, data: any, index: number) => {
+    (type: string | number, data: FeedItem, index: number) => {
+      // ── Sponsored ad card ──
+      if (data.type === 'ad') {
+        const isActive = index === currentVideoIndexRef.current && isScreenFocused;
+        return (
+          <SponsoredVideoCard
+            ad={data.ad}
+            isActive={isActive}
+            onImpression={trackImpression}
+            onCtaPress={trackClick}
+            cardHeight={height}
+          />
+        );
+      }
+
+      // ── Organic video card ──
+      const video = data.item;
       const currentUserId = resolvedAuth?.currentUser?.uid;
-      const isOwnVideo = data.userId === currentUserId;
-      // Use REF for isActive — the ref is updated immediately in handleScroll,
-      // so even if this render cycle was triggered by a slightly-stale extendedState,
-      // the ref always has the latest scroll position.
+      const isOwnVideo = video.userId === currentUserId;
       const isActive = index === currentVideoIndexRef.current && isScreenFocused;
 
       return (
         <VideoCard
-          video={data}
+          video={video}
           isActive={isActive}
           isMuted={isMuted}
           onMuteToggle={setIsMuted}
-          onLike={() => handleLike(data)}
+          onLike={() => handleLike(video)}
           onComment={() => handleCommentPress(index)}
           onShare={() => handleShare(index)}
           onReport={!isOwnVideo ? () => handleReportPress(index) : undefined}
-          onViewTracked={() => handleViewTracked(data.id)}
+          onViewTracked={() => handleViewTracked(video.id)}
         />
       );
     },
-    [isScreenFocused, isMuted, handleLike, handleCommentPress, handleShare, handleReportPress, handleViewTracked, resolvedAuth]
+    [isScreenFocused, isMuted, handleLike, handleCommentPress, handleShare, handleReportPress, handleViewTracked, resolvedAuth, trackImpression, trackClick]
   );
 
   /**

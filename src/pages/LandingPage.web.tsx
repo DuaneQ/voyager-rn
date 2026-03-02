@@ -44,7 +44,7 @@ const injectSEOMetaTags = () => {
   if (typeof document === 'undefined') return;
 
   // Set page title
-  document.title = 'TravalPass – Find Your Perfect Travel Companion | Travel Buddies & Itineraries';
+  document.title = 'TravalPass — Planning a Trip Solo? Find Your Travel Match';
 
   // Helper to set/update meta tag
   const setMetaTag = (name: string, content: string, useProperty?: boolean) => {
@@ -63,22 +63,22 @@ const injectSEOMetaTags = () => {
   };
 
   // Primary Meta Tags
-  setMetaTag('description', 'Find your perfect travel companion, vacation buddy, or trip partner on TravalPass. Connect with like-minded travelers, share itineraries, discover travel tips, and explore the world together safely. Join our community of travel companions today!');
+  setMetaTag('description', 'Planning a trip solo? TravalPass matches you with travelers going to the same destination, on the same dates. Not a dating app — a real travel companion platform.');
   setMetaTag('keywords', 'travel companions, travel buddies, vacation buddy, vacation companions, trip companion, trip partner, travel partner, adventure companions, solo traveler, solo travel, travel match, travel matching, AI itinerary, travel planning, travel tips, find travel companions, trip planner, vacation planning');
 
   // Open Graph / Facebook
   setMetaTag('og:type', 'website', true);
   setMetaTag('og:url', 'https://app.travalpass.com/', true);
-  setMetaTag('og:title', 'TravalPass - Find Travel Companions & Vacation Buddies | Travel Match Platform', true);
-  setMetaTag('og:description', 'Find your perfect travel companion or vacation buddy. Travel match platform connecting adventure companions worldwide. Share itineraries, get travel tips, and explore together safely.', true);
+  setMetaTag('og:title', 'Planning a Trip Solo? Find Your Travel Match | TravalPass', true);
+  setMetaTag('og:description', 'Match with travelers by destination and dates. Create AI itineraries. Chat safely. Free to start.', true);
   setMetaTag('og:image', 'https://app.travalpass.com/assets/icon.png', true);
   setMetaTag('og:site_name', 'TravalPass', true);
 
   // Twitter
   setMetaTag('twitter:card', 'summary_large_image', true);
   setMetaTag('twitter:url', 'https://app.travalpass.com/', true);
-  setMetaTag('twitter:title', 'TravalPass - Find Travel Companions & Vacation Buddies | Travel Match Platform', true);
-  setMetaTag('twitter:description', 'Find your perfect travel companion or vacation buddy. Travel match platform connecting adventure companions worldwide. Share itineraries, get travel tips, and explore together safely.', true);
+  setMetaTag('twitter:title', 'Planning a Trip Solo? Find Your Travel Match | TravalPass', true);
+  setMetaTag('twitter:description', 'Match with travelers by destination and dates. Create AI itineraries. Chat safely. Free to start.', true);
   setMetaTag('twitter:image', 'https://app.travalpass.com/assets/icon.png', true);
 
   // Canonical URL
@@ -91,14 +91,329 @@ const injectSEOMetaTags = () => {
   canonical.href = 'https://app.travalpass.com/';
 };
 
+// ── Itinerary Match Mockup ──────────────────────────────────────────────
+// CSS-only visual demonstrating itinerary-based matching (no image dependency)
+const ItineraryMatchMockup: React.FC = () => (
+  <View
+    style={mockupStyles.wrapper}
+    accessibilityLabel="Example showing two travelers matched because their Paris itineraries overlap"
+  >
+    {/* Your Trip Card */}
+    <View style={mockupStyles.card}>
+      <Text style={mockupStyles.cardOwner}>🧳 Your Trip</Text>
+      <Text style={mockupStyles.cardDest}>Paris, France</Text>
+      <Text style={mockupStyles.cardDates}>Jun 1 – 7, 2026</Text>
+      <View style={mockupStyles.tags}>
+        <View style={mockupStyles.tag}><Text style={mockupStyles.tagText}>Museums</Text></View>
+        <View style={mockupStyles.tag}><Text style={mockupStyles.tagText}>Food Tours</Text></View>
+        <View style={mockupStyles.tag}><Text style={mockupStyles.tagText}>Walking</Text></View>
+      </View>
+    </View>
+
+    {/* Match Alert — positioned between the two cards */}
+    <View style={mockupStyles.matchAlertRow}>
+      <View style={mockupStyles.connectorLine} />
+      <View style={mockupStyles.matchAlert}>
+        <Text style={mockupStyles.matchAlertText}>It{"'" + "s"} a Traval Match!</Text>
+        <Text style={mockupStyles.matchAlertScore}>✨ 92% Itinerary Match</Text>
+      </View>
+      <View style={mockupStyles.connectorLine} />
+    </View>
+
+    {/* Alex's Trip Card */}
+    <View style={[mockupStyles.card, mockupStyles.matchedCard]}>
+      <Text style={mockupStyles.cardOwner}>✈️ Alex's Trip</Text>
+      <Text style={mockupStyles.cardDest}>Paris, France</Text>
+      <Text style={mockupStyles.cardDates}>Jun 2 – 8, 2026</Text>
+      <View style={mockupStyles.tags}>
+        <View style={mockupStyles.tag}><Text style={mockupStyles.tagText}>Art</Text></View>
+        <View style={mockupStyles.tag}><Text style={mockupStyles.tagText}>Cafés</Text></View>
+        <View style={mockupStyles.tag}><Text style={mockupStyles.tagText}>Walking</Text></View>
+      </View>
+    </View>
+  </View>
+);
+
+const mockupStyles = StyleSheet.create({
+  wrapper: {
+    alignItems: 'center',
+    paddingVertical: 16,
+    width: '100%',
+    maxWidth: 340,
+  },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    width: '100%',
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  matchedCard: {
+    borderWidth: 2,
+    borderColor: '#22c55e',
+    marginBottom: 0,
+  },
+  matchAlertRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    marginVertical: 4,
+  },
+  connectorLine: {
+    flex: 1,
+    height: 2,
+    backgroundColor: 'rgba(34,197,94,0.4)',
+  },
+  matchAlert: {
+    backgroundColor: '#22c55e',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 24,
+    alignItems: 'center',
+    shadowColor: '#22c55e',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  matchAlertText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  matchAlertScore: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  cardOwner: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1976d2',
+    marginBottom: 4,
+  },
+  cardDest: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#0f172a',
+    marginBottom: 2,
+  },
+  cardDates: {
+    fontSize: 14,
+    color: '#64748b',
+    marginBottom: 12,
+  },
+  tags: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  tag: {
+    backgroundColor: '#e8f4fd',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  tagText: {
+    fontSize: 12,
+    color: '#1976d2',
+    fontWeight: '500',
+  },
+});
+
+// ── App Screen Mockup ────────────────────────────────────────────────────
+// CSS-only visual simulating the TravalPass search/match screen (replaces stock photo)
+const AppScreenMockup: React.FC = () => (
+  <View
+    style={appMockStyles.phone}
+    accessibilityLabel="Mockup of the TravalPass app showing search results with matched travelers"
+  >
+    {/* Status bar */}
+    <View style={appMockStyles.statusBar}>
+      <Text style={appMockStyles.statusTime}>9:41</Text>
+      <Text style={appMockStyles.statusIcons}>📶 🔋</Text>
+    </View>
+
+    {/* App header */}
+    <View style={appMockStyles.appHeader}>
+      <Text style={appMockStyles.appLogo}>TravalPass</Text>
+      <Text style={appMockStyles.searchLabel}>📍 Paris · Jun 1–7</Text>
+    </View>
+
+    {/* Results */}
+    <View style={appMockStyles.resultCard}>
+      <View style={appMockStyles.resultTop}>
+        <View style={appMockStyles.avatar}>
+          <Text style={appMockStyles.avatarText}>A</Text>
+        </View>
+        <View style={appMockStyles.resultInfo}>
+          <Text style={appMockStyles.resultName}>Alex, 28</Text>
+          <Text style={appMockStyles.resultDates}>Jun 2 – 8 · Museums, Cafés</Text>
+        </View>
+        <View style={appMockStyles.matchPill}>
+          <Text style={appMockStyles.matchPillText}>92%</Text>
+        </View>
+      </View>
+    </View>
+
+    <View style={appMockStyles.resultCard}>
+      <View style={appMockStyles.resultTop}>
+        <View style={[appMockStyles.avatar, { backgroundColor: '#f59e0b' }]}>
+          <Text style={appMockStyles.avatarText}>M</Text>
+        </View>
+        <View style={appMockStyles.resultInfo}>
+          <Text style={appMockStyles.resultName}>Maria, 31</Text>
+          <Text style={appMockStyles.resultDates}>Jun 3 – 9 · Art, Walking</Text>
+        </View>
+        <View style={[appMockStyles.matchPill, { backgroundColor: '#e8f5e9' }]}>
+          <Text style={[appMockStyles.matchPillText, { color: '#2e7d32' }]}>87%</Text>
+        </View>
+      </View>
+    </View>
+
+    <View style={appMockStyles.resultCard}>
+      <View style={appMockStyles.resultTop}>
+        <View style={[appMockStyles.avatar, { backgroundColor: '#8b5cf6' }]}>
+          <Text style={appMockStyles.avatarText}>J</Text>
+        </View>
+        <View style={appMockStyles.resultInfo}>
+          <Text style={appMockStyles.resultName}>James, 25</Text>
+          <Text style={appMockStyles.resultDates}>Jun 1 – 6 · Food, Nightlife</Text>
+        </View>
+        <View style={[appMockStyles.matchPill, { backgroundColor: '#fff3e0' }]}>
+          <Text style={[appMockStyles.matchPillText, { color: '#e65100' }]}>74%</Text>
+        </View>
+      </View>
+    </View>
+  </View>
+);
+
+const appMockStyles = StyleSheet.create({
+  phone: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 24,
+    borderWidth: 3,
+    borderColor: '#1a1a1a',
+    width: '100%',
+    maxWidth: 300,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 8,
+    alignSelf: 'center',
+  },
+  statusBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 4,
+    backgroundColor: '#1976d2',
+  },
+  statusTime: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  statusIcons: {
+    fontSize: 10,
+  },
+  appHeader: {
+    backgroundColor: '#1976d2',
+    paddingHorizontal: 16,
+    paddingBottom: 14,
+  },
+  appLogo: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '800',
+    marginBottom: 6,
+  },
+  searchLabel: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  resultCard: {
+    backgroundColor: '#fff',
+    marginHorizontal: 10,
+    marginTop: 10,
+    borderRadius: 12,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  resultTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#1976d2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  avatarText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  resultInfo: {
+    flex: 1,
+  },
+  resultName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  resultDates: {
+    fontSize: 11,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  matchPill: {
+    backgroundColor: '#e3f2fd',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  matchPillText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#1565c0',
+  },
+});
+
 export const LandingPage: React.FC = () => {
   const navigation = useNavigation();
   const { user } = useAuth();
-  const [videoError, setVideoError] = useState(false);
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [showSafetyModal, setShowSafetyModal] = useState(false);
   const [showCookieModal, setShowCookieModal] = useState(false);
+  const [showStickyBar, setShowStickyBar] = useState(false);
+
+  // Show sticky CTA bar after 10 seconds
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const timer = setTimeout(() => setShowStickyBar(true), 10000);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Inject SEO meta tags on component mount (web only)
   useEffect(() => {
@@ -131,95 +446,8 @@ export const LandingPage: React.FC = () => {
     navigation.navigate('Auth', 'login');
   };
 
-  const scrollToSection = (sectionId: string) => {
-    if (typeof document !== 'undefined') {
-      const element = document.getElementById(sectionId);
-      element?.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
-
   const scrollViewContent = (
     <>
-      {/* Video Background - matching PWA implementation */}
-      {!videoError && Platform.OS === 'web' && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          zIndex: -1,
-          overflow: 'hidden',
-        }}>
-          <video
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="auto"
-            src="/TravalPass.mp4"
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              minWidth: '100%',
-              minHeight: '100%',
-              width: 'auto',
-              height: 'auto',
-              transform: 'translate(-50%, -50%)',
-              objectFit: 'cover',
-            }}
-            onError={(e) => {
-              console.error('[LandingPage] Video error:', e);
-              setVideoError(true);
-            }}
-          >
-            <source src="/TravalPass.mp4" type="video/mp4" />
-          </video>
-        </div>
-      )}
-      
-      {/* Fallback static background if video fails */}
-      {videoError && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100vw',
-          height: '100vh',
-          zIndex: -2,
-          overflow: 'hidden',
-        }}>
-          <Image
-            source={{
-              uri: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1920&auto=format&fit=crop&q=80',
-            }}
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: [{ translateX: '-50%' }, { translateY: '-50%' }],
-              minWidth: '100%',
-              minHeight: '100%',
-              width: 'auto',
-              height: 'auto',
-            }}
-          />
-        </div>
-      )}
-
-      {/* Gradient overlay */}
-      <div style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: 'linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.6))',
-        zIndex: 0,
-        pointerEvents: 'none',
-      }} />
-
       <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
         {/* Header Navigation */}
       <View style={styles.header}>
@@ -232,62 +460,160 @@ export const LandingPage: React.FC = () => {
       </View>
 
       {/* Hero Section */}
-      <View style={styles.heroSection}>
+      <div style={{
+        background: 'linear-gradient(135deg, #0a1628 0%, #1a365d 50%, #1e4e8c 100%)',
+        paddingTop: 100,
+        paddingBottom: 60,
+      }}>
         <View style={styles.heroContent}>
-          <Text style={styles.heroTitle}>Find Your Perfect Travel Companion</Text>
-          <Text style={styles.heroSubtitle}>
-            Connect with travel buddies and vacation companions headed to the same destination.
-            Build AI-powered itineraries in seconds. Get expert travel tips. Find your perfect
-            travel partner and explore the world together safely.
-          </Text>
+          <View style={styles.heroTextSide}>
+            <Text style={styles.heroTitle}>
+              Planning a trip solo?
+            </Text>
+            <Text style={styles.heroSubtitle}>
+              We match you with travelers going to the same place, on the same dates, with the same interests. Not just a profile — a real travel partner.
+            </Text>
 
-          <View style={styles.buttonContainer}>
             <TouchableOpacity
-              style={styles.primaryButton}
+              style={styles.heroCta}
               onPress={handleGetStarted}
-              accessibilityLabel="Sign up for TravalPass"
+              accessibilityLabel="Create your trip plan on TravalPass"
             >
-              <Text style={styles.primaryButtonText}>Get Started Free</Text>
+              <Text style={styles.heroCtaText}>Create My Trip Plan</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.secondaryButton}
-              onPress={() => scrollToSection('how-it-works')}
-            >
-              <Text style={styles.secondaryButtonText}>See How It Works</Text>
-            </TouchableOpacity>
+            <Text style={styles.microIncentive}>✨ Free · No credit card · Under 60 seconds</Text>
+
+            {/* App Store Download Buttons */}
+            {Platform.OS === 'web' && (
+              <View style={styles.appStoreContainer}>
+                <a
+                  href="https://apps.apple.com/us/app/travalpass-traval-together/id6756789856"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Download TravalPass on the App Store"
+                  style={{ textDecoration: 'none', marginRight: 16 }}
+                >
+                  <Image
+                    source={{ uri: 'https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg' }}
+                    style={styles.appStoreBadge}
+                    accessibilityLabel="Download on the App Store"
+                  />
+                </a>
+                <a
+                  href="https://play.google.com/store/apps/details?id=com.travalpass.app"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Get TravalPass on Google Play"
+                  style={{ textDecoration: 'none' }}
+                >
+                  <Image
+                    source={{ uri: 'https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png' }}
+                    style={styles.playStoreBadge}
+                    accessibilityLabel="Get it on Google Play"
+                  />
+                </a>
+              </View>
+            )}
           </View>
 
-          {/* App Store Download Buttons */}
+          <View style={styles.heroVisualSide}>
+            <ItineraryMatchMockup />
+          </View>
+        </View>
+      </div>
+
+      {/* Demo Videos — 3 focused tutorials */}
+      <View style={[styles.section, styles.demoSection]}>
+        <View style={styles.sectionContainer}>
+          <Text style={styles.mainTitle}>See TravalPass in Action</Text>
+          <Text style={styles.demoSubtitle}>
+            Short demos. Real features. See exactly how it works.
+          </Text>
+
           {Platform.OS === 'web' && (
-            <View style={styles.appStoreContainer}>
-              <a
-                href="https://apps.apple.com/us/app/travalpass-traval-together/id6756789856"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Download TravalPass on the App Store"
-                style={{ textDecoration: 'none', marginRight: 16 }}
-              >
-                <Image
-                  source={{ uri: 'https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg' }}
-                  style={styles.appStoreBadge}
-                  accessibilityLabel="Download on the App Store"
-                />
-              </a>
-              <a
-                href="https://play.google.com/store/apps/details?id=com.travalpass.app"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Get TravalPass on Google Play"
-                style={{ textDecoration: 'none' }}
-              >
-                <Image
-                  source={{ uri: 'https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png' }}
-                  style={styles.playStoreBadge}
-                  accessibilityLabel="Get it on Google Play"
-                />
-              </a>
-            </View>
+            <div style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              justifyContent: 'center',
+              gap: '32px',
+              marginTop: '32px',
+            }}>
+              {/* Video 1 — Matching */}
+              <div style={{ textAlign: 'center', maxWidth: '300px', flex: '1 1 280px' }}>
+                <video
+                  controls
+                  preload="metadata"
+                  playsInline
+                  poster="/Matching-poster.jpg"
+                  style={{
+                    width: '100%',
+                    maxWidth: '300px',
+                    height: '534px',
+                    borderRadius: '12px',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+                    backgroundColor: '#000',
+                    objectFit: 'cover',
+                  }}
+                  aria-label="Demo: How to find your travel match on TravalPass"
+                >
+                  <source src="/Matching.mp4" type="video/mp4" />
+                  Your browser does not support the video tag.
+                </video>
+                <p style={{ marginTop: '12px', fontWeight: 700, fontSize: '16px', color: '#1a1a1a' }}>Find Your Match</p>
+                <p style={{ fontSize: '14px', color: '#666', marginTop: '4px' }}>See how we connect you with travelers going to the same place.</p>
+              </div>
+
+              {/* Video 2 — AI Itinerary */}
+              <div style={{ textAlign: 'center', maxWidth: '300px', flex: '1 1 280px' }}>
+                <video
+                  controls
+                  preload="metadata"
+                  playsInline
+                  poster="/AIItineraryCreation-poster.jpg"
+                  style={{
+                    width: '100%',
+                    maxWidth: '300px',
+                    height: '534px',
+                    borderRadius: '12px',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+                    backgroundColor: '#000',
+                    objectFit: 'cover',
+                  }}
+                  aria-label="Demo: AI-powered itinerary creation on TravalPass"
+                >
+                  <source src="/AIItineraryCreation.mp4" type="video/mp4" />
+                  Your browser does not support the video tag.
+                </video>
+                <p style={{ marginTop: '12px', fontWeight: 700, fontSize: '16px', color: '#1a1a1a' }}>AI Plans Your Trip</p>
+                <p style={{ fontSize: '14px', color: '#666', marginTop: '4px' }}>Create a personalized itinerary in seconds with AI.</p>
+              </div>
+
+              {/* Video 3 — Manual Itinerary */}
+              <div style={{ textAlign: 'center', maxWidth: '300px', flex: '1 1 280px' }}>
+                <video
+                  controls
+                  preload="metadata"
+                  playsInline
+                  poster="/ManuallyItinerary-poster.jpg"
+                  style={{
+                    width: '100%',
+                    maxWidth: '300px',
+                    height: '534px',
+                    borderRadius: '12px',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+                    backgroundColor: '#000',
+                    objectFit: 'cover',
+                  }}
+                  aria-label="Demo: Manually creating an itinerary on TravalPass"
+                >
+                  <source src="/ManuallyItinerary.mp4" type="video/mp4" />
+                  Your browser does not support the video tag.
+                </video>
+                <p style={{ marginTop: '12px', fontWeight: 700, fontSize: '16px', color: '#1a1a1a' }}>Build It Your Way</p>
+                <p style={{ fontSize: '14px', color: '#666', marginTop: '4px' }}>Prefer full control? Create your own itinerary step by step.</p>
+              </div>
+            </div>
           )}
         </View>
       </View>
@@ -297,19 +623,13 @@ export const LandingPage: React.FC = () => {
         <View style={styles.sectionContainer}>
           <View style={styles.twoColumnLayout}>
             <View style={styles.column}>
-              <Image
-                source={{
-                  uri: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=800&auto=format&fit=crop',
-                }}
-                style={styles.sectionImage}
-                accessibilityLabel="Diverse group of friends planning travel together"
-              />
+              <AppScreenMockup />
             </View>
 
             <View style={styles.column}>
               <Text style={styles.sectionTitle}>Stop Planning Alone. Find Your Vacation Companion.</Text>
               <Text style={styles.sectionText}>
-                Whether you're a solo traveler seeking a travel buddy or planning a group adventure, TravalPass connects you with compatible vacation companions. Share travel tips, build collaborative itineraries with your travel partner, and explore destinations together safely. Join thousands who've found their perfect trip companion.
+                Whether you're a solo traveler seeking a travel buddy or planning a group adventure, TravalPass connects you with compatible vacation companions. Share travel tips, build collaborative itineraries with your travel partner, and explore destinations together safely.
               </Text>
               <TouchableOpacity style={styles.primaryButton} onPress={handleGetStarted}>
                 <Text style={styles.primaryButtonText}>Create Your Free Travel Profile</Text>
@@ -360,35 +680,6 @@ export const LandingPage: React.FC = () => {
         </View>
       </View>
 
-      {/* Demo Video Section */}
-      <View style={[styles.section, styles.demoSection]}>
-        <View style={styles.sectionContainer}>
-          <Text style={styles.mainTitle}>See TravalPass in Action</Text>
-          <Text style={styles.demoSubtitle}>
-            Watch how easy it is to plan, match, and travel together.
-          </Text>
-
-          {Platform.OS === 'web' && (
-            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 32 }}>
-              <iframe
-                src="https://www.youtube.com/embed/hyRvN9cHtRM"
-                title="TravalPass Tutorial - How to Find Travel Companions"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowFullScreen
-                style={{
-                  width: '100%',
-                  maxWidth: '340px',
-                  height: '600px',
-                  borderRadius: '12px',
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
-                  border: 0,
-                }}
-              />
-            </div>
-          )}
-        </View>
-      </View>
-
       {/* FAQ Section */}
       <View style={[styles.section, styles.faqSection]}>
         <View style={styles.sectionContainer}>
@@ -396,44 +687,44 @@ export const LandingPage: React.FC = () => {
 
           <View style={styles.faqGrid}>
             <View style={styles.faqCard}>
-              <Text style={styles.faqQuestion}>How do I find a travel companion on TravalPass?</Text>
+              <Text style={styles.faqQuestion}>Is this a dating app?</Text>
               <Text style={styles.faqAnswer}>
-                Simply create your free profile, enter your travel destination and dates, and our matching algorithm will connect you with compatible vacation companions heading to the same place. You can browse profiles, chat safely, and plan your adventure together.
+                No. TravalPass matches you by itinerary — same destination, overlapping dates, and shared travel interests. There are no swipe mechanics or romance features. It's built for people who want a travel companion, not a date.
               </Text>
             </View>
 
             <View style={styles.faqCard}>
-              <Text style={styles.faqQuestion}>Can I find a travel partner for international trips?</Text>
+              <Text style={styles.faqQuestion}>Is it safe to travel with someone I met online?</Text>
               <Text style={styles.faqAnswer}>
-                Yes! TravalPass connects travelers worldwide. Whether you're planning a European backpacking adventure, an Asian cultural tour, or a South American expedition, you can find compatible travel partners who share your destination and travel dates.
+                Safety is our top priority. You chat inside the app before sharing any personal info. You choose who to connect with and when to meet. We also provide safety guidelines and encourage video calls before any trip. Many solo female travelers use TravalPass specifically because the matching is trip-based, not profile-based.
               </Text>
             </View>
 
             <View style={styles.faqCard}>
-              <Text style={styles.faqQuestion}>Is TravalPass safe for solo travelers looking for travel buddies?</Text>
+              <Text style={styles.faqQuestion}>How is this different from Facebook travel groups?</Text>
               <Text style={styles.faqAnswer}>
-                Our secure chat system keeps your personal information private until you're ready to share. We also provide travel safety tips and best practices for meeting your trip companion.
+                Facebook groups are noisy — spam, scams, people who say they're interested but never follow through. TravalPass matches you with travelers who have actual trip plans with real dates and destinations. No posting into the void. No fake profiles promoting WhatsApp links.
               </Text>
             </View>
 
             <View style={styles.faqCard}>
-              <Text style={styles.faqQuestion}>How does the AI itinerary planner work with my travel buddy?</Text>
+              <Text style={styles.faqQuestion}>What does it cost?</Text>
               <Text style={styles.faqAnswer}>
-                Our AI creates personalized itineraries based on both travelers' preferences. Share the itinerary with your vacation companion, collaborate on activities, and make real-time adjustments together. It's the perfect way to plan your trip with your travel partner.
+                Creating an account, building itineraries, and matching with travelers is completely free. Premium features like AI-generated itineraries and unlimited matches are available through affordable subscription plans. No surprises — you can see pricing before you pay anything.
               </Text>
             </View>
 
             <View style={styles.faqCard}>
-              <Text style={styles.faqQuestion}>What's the difference between a travel companion and a vacation buddy?</Text>
+              <Text style={styles.faqQuestion}>What if my match doesn't follow through?</Text>
               <Text style={styles.faqAnswer}>
-                They're essentially the same! Whether you call them travel companions, vacation buddies, trip partners, or adventure companions, TravalPass helps you find like-minded travelers to share experiences with. Our platform matches you based on travel style, interests, and destination preferences.
+                We hear you — that's the #1 frustration in travel groups. TravalPass only matches you with people who've entered specific dates and destinations, so they have real plans. You can also see their match score and chat before committing to anything.
               </Text>
             </View>
 
             <View style={styles.faqCard}>
-              <Text style={styles.faqQuestion}>Is TravalPass free for finding travel companions?</Text>
+              <Text style={styles.faqQuestion}>Can I use it for solo travel too?</Text>
               <Text style={styles.faqAnswer}>
-                Yes! Basic features including profile creation, travel companion matching, and secure messaging are completely free. Premium features like AI-powered itinerary generation and unlimited matches are available with our affordable subscription plans.
+                Absolutely. Many users travel solo and use TravalPass to optionally meet up with compatible travelers at their destination. You're never obligated to travel together — it's about having the option when you want it.
               </Text>
             </View>
           </View>
@@ -477,7 +768,7 @@ export const LandingPage: React.FC = () => {
               <Text style={styles.legalLinkText}>Cookie Policy</Text>
             </TouchableOpacity>
           </View>
-          <Text style={styles.footerText}>© 2025 TravalPass. All rights reserved.</Text>
+          <Text style={styles.footerText}>© 2026 TravalPass. All rights reserved.</Text>
         </View>
       </View>
     </ScrollView>
@@ -498,6 +789,65 @@ export const LandingPage: React.FC = () => {
         }}>
           {scrollViewContent}
         </div>
+
+        {/* Sticky bottom CTA bar — appears after 10s */}
+        {showStickyBar && (
+          <div
+            style={{
+              position: 'fixed',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              backgroundColor: 'rgba(25, 118, 210, 0.97)',
+              backdropFilter: 'blur(8px)',
+              padding: '12px 24px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '16px',
+              zIndex: 50,
+              boxShadow: '0 -4px 20px rgba(0,0,0,0.15)',
+            }}
+            role="complementary"
+            aria-label="Sign up prompt"
+          >
+            <span style={{ color: '#fff', fontSize: '15px', fontWeight: 600 }}>
+              Still deciding? Create a free trip plan in 60 seconds.
+            </span>
+            <button
+              onClick={() => navigation.navigate('Auth', 'register')}
+              style={{
+                backgroundColor: '#fff',
+                color: '#1976d2',
+                border: 'none',
+                padding: '10px 24px',
+                borderRadius: '8px',
+                fontWeight: 700,
+                fontSize: '14px',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+              aria-label="Create your free trip plan"
+            >
+              Get Started Free
+            </button>
+            <button
+              onClick={() => setShowStickyBar(false)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'rgba(255,255,255,0.7)',
+                fontSize: '20px',
+                cursor: 'pointer',
+                padding: '4px 8px',
+                lineHeight: 1,
+              }}
+              aria-label="Dismiss sign up prompt"
+            >
+              ×
+            </button>
+          </div>
+        )}
 
         {/* Legal Modals */}
         <PrivacyPolicyModal visible={showPrivacyModal} onClose={() => setShowPrivacyModal(false)} />
@@ -525,7 +875,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 10,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    backgroundColor: 'transparent',
     paddingVertical: 16,
   },
   headerContainer: {
@@ -556,33 +906,60 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     maxWidth: 1200,
     width: '100%',
+    marginHorizontal: 'auto',
+    flexDirection: width < 768 ? 'column' : 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 40,
     zIndex: 2,
   },
+  heroTextSide: {
+    flex: 1,
+    maxWidth: width < 768 ? '100%' : 560,
+    alignItems: width < 768 ? 'center' : 'flex-start',
+  },
+  heroVisualSide: {
+    flex: 1,
+    maxWidth: 360,
+    alignItems: 'center',
+  },
   heroTitle: {
-    fontSize: width < 768 ? 28 : width < 1024 ? 42 : 56,
-    fontWeight: '700',
+    fontSize: width < 768 ? 28 : width < 1024 ? 36 : 46,
+    fontWeight: '800',
     color: '#fff',
-    textAlign: 'center',
+    textAlign: width < 768 ? 'center' : 'left',
     marginBottom: 16,
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 2, height: 2 },
-    textShadowRadius: 4,
-    width: '100%',
-    flexWrap: 'wrap',
+    lineHeight: width < 768 ? 36 : width < 1024 ? 46 : 58,
   },
   heroSubtitle: {
-    fontSize: width < 768 ? 16 : 20,
-    color: '#fff',
-    textAlign: 'center',
-    marginBottom: 32,
-    maxWidth: width < 768 ? '100%' : 800,
+    fontSize: width < 768 ? 16 : 18,
+    color: 'rgba(255,255,255,0.85)',
+    textAlign: width < 768 ? 'center' : 'left',
+    marginBottom: 24,
     lineHeight: 28,
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 3,
-    width: '100%',
-    flexWrap: 'wrap',
+    maxWidth: 520,
+  },
+  heroCta: {
+    backgroundColor: '#fff',
+    paddingVertical: 18,
+    paddingHorizontal: 40,
+    borderRadius: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 6,
+  },
+  heroCtaText: {
+    color: '#1976d2',
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  microIncentive: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 14,
+    marginTop: 12,
+    textAlign: width < 768 ? 'center' : 'left',
   },
   buttonContainer: {
     flexDirection: width < 768 ? 'column' : 'row',
@@ -664,11 +1041,6 @@ const styles = StyleSheet.create({
     minWidth: 0,
     maxWidth: '100%',
   },
-  sectionImage: {
-    width: '100%',
-    height: 300,
-    borderRadius: 12,
-  } as const,
   sectionTitle: {
     fontSize: 32,
     fontWeight: '700',

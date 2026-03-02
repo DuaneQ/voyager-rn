@@ -1,5 +1,5 @@
-import React, { useState, useRef, useMemo } from 'react';
-import { View, Text, StyleSheet, PanResponder, Animated } from 'react-native';
+import React, { useState, useRef, useMemo, useCallback } from 'react';
+import { View, StyleSheet, PanResponder, Animated } from 'react-native';
 
 interface RangeSliderProps {
   min: number;
@@ -27,21 +27,21 @@ const RangeSlider: React.FC<RangeSliderProps> = ({
   const highDragging = useRef(false);
 
   // Calculate thumb positions based on values
-  const getPositionFromValue = (value: number) => {
+  const getPositionFromValue = useCallback((value: number) => {
     if (sliderWidth === 0) return 0;
     const range = max - min;
     const percentage = (value - min) / range;
     return percentage * sliderWidth;
-  };
+  }, [sliderWidth, min, max]);
 
   // Calculate value from position
-  const getValueFromPosition = (position: number) => {
+  const getValueFromPosition = useCallback((position: number) => {
     if (sliderWidth === 0) return min;
     const percentage = position / sliderWidth;
     const rawValue = min + percentage * (max - min);
     const steppedValue = Math.round(rawValue / step) * step;
     return Math.max(min, Math.min(max, steppedValue));
-  };
+  }, [sliderWidth, min, max, step]);
 
   // Create pan responder for low thumb - useMemo to recreate when dependencies change
   const lowPanResponder = useMemo(
@@ -76,7 +76,7 @@ const RangeSlider: React.FC<RangeSliderProps> = ({
           onValueChange(newValue, highValue);
         },
       }),
-    [lowValue, highValue, step, sliderWidth, onValueChange, min, max]
+    [lowValue, highValue, step, sliderWidth, onValueChange, getPositionFromValue, getValueFromPosition, lowPosition]
   );
 
   // Create pan responder for high thumb - useMemo to recreate when dependencies change
@@ -115,7 +115,7 @@ const RangeSlider: React.FC<RangeSliderProps> = ({
           onValueChange(lowValue, newValue);
         },
       }),
-    [lowValue, highValue, step, sliderWidth, onValueChange, min, max]
+    [lowValue, highValue, step, sliderWidth, onValueChange, getPositionFromValue, getValueFromPosition, highPosition]
   );
 
   // Update thumb positions when values change (but not during dragging)
@@ -124,7 +124,7 @@ const RangeSlider: React.FC<RangeSliderProps> = ({
       lowPosition.setValue(getPositionFromValue(lowValue));
       highPosition.setValue(getPositionFromValue(highValue));
     }
-  }, [lowValue, highValue, sliderWidth]);
+  }, [lowValue, highValue, sliderWidth, getPositionFromValue, lowPosition, highPosition]);
 
   return (
     <View style={styles.container}>

@@ -46,7 +46,7 @@ describe('LandingPage.web', () => {
       Platform.OS = 'web';
       const { getByText } = renderComponent();
       
-      expect(getByText(/Find Your Perfect Travel Companion/i)).toBeTruthy();
+      expect(getByText(/Planning a trip solo/i)).toBeTruthy();
     });
 
     it('returns null on non-web platforms', () => {
@@ -65,22 +65,26 @@ describe('LandingPage.web', () => {
     it('renders hero section with main headline and subtitle', () => {
       const { getByText } = renderComponent();
       
-      expect(getByText(/Find Your Perfect Travel Companion/i)).toBeTruthy();
-      expect(getByText(/Connect with travel buddies and vacation companions/i)).toBeTruthy();
+      expect(getByText(/Planning a trip solo/i)).toBeTruthy();
+      expect(getByText(/same place.*same dates/i)).toBeTruthy();
     });
 
-    it('renders both CTA buttons in hero section', () => {
+    it('renders hero CTA button and micro-incentive', () => {
       const { getByText } = renderComponent();
       
-      expect(getByText('Get Started Free')).toBeTruthy();
+      expect(getByText('Create My Trip Plan')).toBeTruthy();
       expect(getByText('Sign In')).toBeTruthy();
+      expect(getByText(/Free .* No credit card/i)).toBeTruthy();
     });
 
-    it('renders "Stop Planning Alone" section', () => {
+    it('renders "Stop Planning Alone" section with app mockup', () => {
       const { getByText } = renderComponent();
       
       expect(getByText(/Stop Planning Alone/i)).toBeTruthy();
       expect(getByText(/Find Your Vacation Companion/i)).toBeTruthy();
+      // App screen mockup replaces stock photo
+      expect(getByText(/Alex, 28/i)).toBeTruthy();
+      expect(getByText(/Maria, 31/i)).toBeTruthy();
     });
 
     it('renders all four feature cards', () => {
@@ -97,7 +101,7 @@ describe('LandingPage.web', () => {
       const { getByText } = renderComponent();
       
       expect(getByText(/See TravalPass in Action/i)).toBeTruthy();
-      expect(getByText(/Watch how easy it is/i)).toBeTruthy();
+      expect(getByText(/Short demos. Real features/i)).toBeTruthy();
     });
 
     it('renders FAQ section with all questions', () => {
@@ -107,8 +111,8 @@ describe('LandingPage.web', () => {
       expect(getByText(/Frequently Asked Questions/i)).toBeTruthy();
       
       // Check for some FAQ questions (match actual text)
-      expect(getByText(/How do I find a travel companion/i)).toBeTruthy();
-      expect(getByText(/Is TravalPass free for finding travel companions/i)).toBeTruthy();
+      expect(getByText(/Is this a dating app/i)).toBeTruthy();
+      expect(getByText(/What does it cost/i)).toBeTruthy();
     });
 
     it('renders CTA footer section', () => {
@@ -130,21 +134,24 @@ describe('LandingPage.web', () => {
     it('renders copyright footer', () => {
       const { getByText } = renderComponent();
       
-      expect(getByText(/© 2025 TravalPass/i)).toBeTruthy();
+      expect(getByText(/© 2026 TravalPass/i)).toBeTruthy();
     });
   });
 
-  describe('Video Background', () => {
+  describe('Itinerary Match Mockup', () => {
     beforeEach(() => {
       Platform.OS = 'web';
     });
 
-    it('renders video element on web platform', () => {
-      const { UNSAFE_getByType } = renderComponent() as any;
+    it('renders the itinerary match visual', () => {
+      const { getByText, getAllByText } = renderComponent();
       
-      // LandingPage renders on web, video is part of the component
-      // Just verify the component renders without errors
-      expect(true).toBe(true);
+      // Verify mockup cards are rendered
+      expect(getAllByText(/Your Trip/i).length).toBeGreaterThanOrEqual(1);
+      expect(getByText(/Alex's Trip/i)).toBeTruthy();
+      // Verify match alert between cards
+      expect(getByText(/Traval Match/i)).toBeTruthy();
+      expect(getByText(/92% Itinerary Match/i)).toBeTruthy();
     });
   });
 
@@ -154,12 +161,12 @@ describe('LandingPage.web', () => {
       mockLocation.href = '';
     });
 
-    it('navigates to /auth?mode=register when Get Started Free is clicked', () => {
+    it('navigates to /auth?mode=register when Create My Trip Plan is clicked', () => {
       const { getByText } = renderComponent();
       mockLocation.href = '';
 
-      const getStartedButton = getByText('Get Started Free');
-      fireEvent.press(getStartedButton);
+      const ctaButton = getByText('Create My Trip Plan');
+      fireEvent.press(ctaButton);
 
       expect(mockLocation.href).toBe('/auth?mode=register');
     });
@@ -208,9 +215,9 @@ describe('LandingPage.web', () => {
         expect(mockLocation.href).toBe('/auth?mode=login');
       });
 
-      // Sign Up / Get Started buttons should all go to register
+      // Sign Up / Create My Trip Plan buttons should all go to register
       mockLocation.href = '';
-      fireEvent.press(getByText('Get Started Free'));
+      fireEvent.press(getByText('Create My Trip Plan'));
       expect(mockLocation.href).toBe('/auth?mode=register');
 
       mockLocation.href = '';
@@ -349,7 +356,7 @@ describe('LandingPage.web', () => {
       const { getByText } = renderComponent();
       
       // Component should still render its content (even though AppNavigator prevents this)
-      expect(getByText(/Find Your Perfect Travel Companion/i)).toBeTruthy();
+      expect(getByText(/Planning a trip solo/i)).toBeTruthy();
     });
 
     it('renders normally when user is null', () => {
@@ -361,7 +368,7 @@ describe('LandingPage.web', () => {
 
       const { getByText } = renderComponent();
       
-      expect(getByText(/Find Your Perfect Travel Companion/i)).toBeTruthy();
+      expect(getByText(/Planning a trip solo/i)).toBeTruthy();
       // No navigation should have occurred
       expect(mockLocation.href).toBe('');
     });

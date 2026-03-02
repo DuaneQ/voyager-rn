@@ -1,42 +1,90 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Allow authenticated users to upload/read chat images
+
+    // ─── Chat images ──────────────────────────────────────────────────────────
     match /chatImages/{allPaths=**} {
       allow read, write: if request.auth != null;
     }
-    // Allow users to upload their own profile or slot photos, but anyone can read
+
+    // ─── User profile / slot photos ──────────────────────────────────────────
     match /photos/{userId}/{slot}/{allPaths=**} {
-      allow write: if request.auth != null && request.auth.uid == userId;
-      allow read: if request.auth != null;
-      allow delete: if request.auth != null && request.auth.uid == userId; // Allow deletion during account deletion
+      allow write: if request.auth != null
+        && request.auth.uid == userId
+        && isValidImageFile();
+      allow read:  if request.auth != null;
+      allow delete: if request.auth != null && request.auth.uid == userId;
     }
-      // Helper function to validate video files
-  function isValidVideoFile() {
-    return resource.size < 100 * 1024 * 1024 // 100MB limit
-      && resource.contentType.matches('video/.*')
-      && resource.contentType in ['video/mp4', 'video/mov'];
-  }
-  
-  // Helper function to validate image files
-  function isValidImageFile() {
-    return resource.size < 10 * 1024 * 1024 // 10MB limit
-      && resource.contentType.matches('image/.*')
-      && resource.contentType in ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-  }
-      // Users can upload and manage their own videos and thumbnails
+
+    // ─── User videos (video sharing feature, processed by Mux) ───────────────
     match /users/{userId}/videos/{videoFilename} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null 
-        && request.auth.uid == userId;
-      allow delete: if request.auth != null && request.auth.uid == userId; // Allow deletion during account deletion
+      allow read:  if request.auth != null;
+      allow write: if request.auth != null
+        && request.auth.uid == userId
+        && isValidVideoFile();
+      allow delete: if request.auth != null && request.auth.uid == userId;
     }
-    
+
     match /users/{userId}/thumbnails/{thumbnailFilename} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null 
-        && request.auth.uid == userId;
-      allow delete: if request.auth != null && request.auth.uid == userId; // Allow deletion during account deletion
+      allow read:  if request.auth != null;
+      allow write: if request.auth != null
+        && request.auth.uid == userId
+        && isValidImageFile();
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // ─── Ad creative assets (voyager-ads advertiser platform) ─────────────────
+    //
+    // Path: ads/{uid}/{timestamp}_{sanitized-filename}
+    //
+    // • Owner-scoped: uid in path must match the authenticated caller.
+    // • MIME type enforced server-side to back client-side CampaignAssetService validation.
+    // • No client-side delete: retraction after admin review is handled by a backend function.
+    // • Constraints match Google Ads / Meta Ads standards:
+    //     Image: max 10 MB · JPEG / PNG / WebP
+    //     Video: max 500 MB · MP4 / QuickTime — Mux handles transcoding
+    match /ads/{uid}/{filename} {
+      allow read: if request.auth != null
+        && request.auth.uid == uid;
+
+      allow write: if request.auth != null
+        && request.auth.uid == uid
+        && (isValidAdImageFile() || isValidAdVideoFile());
+
+      // No client delete — handled by backend on campaign rejection.
+    }
+
+    // ─── Helper functions ─────────────────────────────────────────────────────
+
+    // User-content video (video sharing, 100 MB): uses request.resource for writes
+    function isValidVideoFile() {
+      return request.resource.size < 100 * 1024 * 1024
+        && request.resource.contentType.matches('video/.*')
+        && request.resource.contentType in ['video/mp4', 'video/quicktime'];
+    }
+
+    // User-content image (profile photos, thumbnails, 10 MB)
+    function isValidImageFile() {
+      return request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*')
+        && request.resource.contentType in ['image/jpeg', 'image/png', 'image/webp'];
+    }
+
+    // Ad creative image (itinerary_feed / ai_slot)
+    // 10 MB upper bound covers both placements; the stricter ai_slot 5 MB limit
+    // is enforced in CampaignAssetService before bytes are transferred.
+    function isValidAdImageFile() {
+      return request.resource.size <= 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*')
+        && request.resource.contentType in ['image/jpeg', 'image/png', 'image/webp'];
+    }
+
+    // Ad creative video (video_feed) — Mux-compatible containers
+    // Duration validation is client-side only; Storage rules cannot inspect video duration.
+    function isValidAdVideoFile() {
+      return request.resource.size <= 500 * 1024 * 1024
+        && request.resource.contentType.matches('video/.*')
+        && request.resource.contentType in ['video/mp4', 'video/quicktime'];
     }
   }
 }

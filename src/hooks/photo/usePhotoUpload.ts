@@ -276,7 +276,7 @@ export const usePhotoUpload = (userId?: string): UsePhotoUploadReturn => {
         return null;
       }
     },
-    [userProfile, updateUserProfile, clearState, requestMediaLibraryPermission, handleProgress]
+    [userProfile, updateUserProfile, clearState, requestMediaLibraryPermission, handleProgress, userId]
   );
 
   /**
@@ -341,7 +341,7 @@ export const usePhotoUpload = (userId?: string): UsePhotoUploadReturn => {
         Alert.alert('Delete Failed', errorMessage, [{ text: 'OK' }]);
       }
     },
-    [userProfile, updateUserProfile]
+    [userProfile, updateUserProfile, userId]
   );
 
   return {
