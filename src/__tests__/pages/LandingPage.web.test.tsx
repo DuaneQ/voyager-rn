@@ -57,6 +57,38 @@ describe('LandingPage.web', () => {
     });
   });
 
+  describe('SEO Meta Tags', () => {
+    beforeEach(() => {
+      // Clean up meta tags between tests
+      document.querySelectorAll('meta[property^="og:"], meta[name^="twitter:"], link[rel="canonical"]').forEach(el => el.remove());
+    });
+
+    it('sets canonical URL to travalpass.com', () => {
+      renderComponent();
+      const canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement;
+      expect(canonical).toBeTruthy();
+      expect(canonical.href).toContain('travalpass.com');
+      expect(canonical.href).not.toContain('app.travalpass.com');
+    });
+
+    it('sets og:url to travalpass.com', () => {
+      renderComponent();
+      const ogUrl = document.querySelector('meta[property="og:url"]') as HTMLMetaElement;
+      expect(ogUrl).toBeTruthy();
+      expect(ogUrl.content).toBe('https://travalpass.com/');
+    });
+
+    it('sets twitter:url using name attribute (not property)', () => {
+      renderComponent();
+      const twitterUrl = document.querySelector('meta[name="twitter:url"]') as HTMLMetaElement;
+      expect(twitterUrl).toBeTruthy();
+      expect(twitterUrl.content).toBe('https://travalpass.com/');
+      // Should NOT exist as property
+      const wrongTwitterUrl = document.querySelector('meta[property="twitter:url"]');
+      expect(wrongTwitterUrl).toBeNull();
+    });
+  });
+
   describe('Content Rendering', () => {
     beforeEach(() => {
       Platform.OS = 'web';
