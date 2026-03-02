@@ -17,6 +17,7 @@
 
 import * as admin from 'firebase-admin';
 import * as path from 'path';
+import * as fs from 'fs';
 
 // These integration tests call the LIVE dev Cloud Functions, not emulators.
 // The jest.integration.setup.js sets emulator env vars; remove them so the
@@ -50,7 +51,11 @@ function getAdminDb(): admin.firestore.Firestore {
   return adminApp.firestore();
 }
 
-describe('logAdEvents — Live Integration Tests', () => {
+// Skip entire suite when service account file is missing (e.g., CI runners)
+const canRunLive = fs.existsSync(SERVICE_ACCOUNT_PATH);
+const describeIfLive = canRunLive ? describe : describe.skip;
+
+describeIfLive('logAdEvents — Live Integration Tests', () => {
   let authToken: string;
 
   const testCampaign = {
