@@ -27,7 +27,7 @@ import { useAdDelivery, useAdTracking } from '../../hooks/ads';
 import { useUserProfile } from '../../context/UserProfileContext';
 import { calculateAge } from '../../utils/calculateAge';
 import { useTravelPreferences } from '../../hooks/useTravelPreferences';
-import type { AdUnit } from '../../types/AdDelivery';
+import type { AdUnit, UserAdContext } from '../../types/AdDelivery';
 import { PromotionCard } from '../ads/PromotionCard';
 import type { PromotionData } from '../ads/PromotionCard';
 
@@ -55,56 +55,59 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
 
   // Fetch ads with itinerary destination + demographic + travel pref context for targeting
   useEffect(() => {
-    if (!itinerary) return; // guard for null itinerary
-    const dest =
-      (itinerary as any)?.destination ||
-      (itinerary as any)?.response?.data?.destination ||
-      undefined;
-    const startDate =
-      (itinerary as any)?.startDate ||
-      (itinerary as any)?.response?.data?.startDate ||
-      undefined;
-    const endDate =
-      (itinerary as any)?.endDate ||
-      (itinerary as any)?.response?.data?.endDate ||
-      undefined;
+    if (!itinerary) return;
 
-    // Build targeting context
-    const ctx: Record<string, string | number | string[] | undefined> = {
+    // Top-level fields are typed on AIGeneratedItinerary — no casting needed.
+    // If absent (empty string), omit from context so the ad server does not
+    // apply a destination filter and returns ads for all geographies.
+    const dest = itinerary.destination || undefined;
+    const startDate = itinerary.startDate || undefined;
+    const endDate = itinerary.endDate || undefined;
+
+    // response.data is untyped (AI output varies); extract opportunistically.
+    const responseData = itinerary.response?.data;
+    const tripType: string | undefined =
+      typeof responseData?.tripType === 'string' ? responseData.tripType : undefined;
+    const travelStyle: string | undefined =
+      typeof responseData?.metadata?.travelStyle === 'string'
+        ? responseData.metadata.travelStyle
+        : typeof responseData?.travelPreferences?.travelStyle === 'string'
+        ? responseData.travelPreferences.travelStyle
+        : undefined;
+
+    // Build a typed targeting context — omitted keys mean "no filter on that dimension".
+    const ctx: UserAdContext = {
       ...(dest ? { destination: dest } : {}),
       ...(startDate ? { travelStartDate: startDate } : {}),
       ...(endDate ? { travelEndDate: endDate } : {}),
     };
+
     // Demographic context from user profile
     if (userProfile?.gender) ctx.gender = userProfile.gender;
     if (userProfile?.dob) {
       const age = calculateAge(userProfile.dob);
       if (age > 0) ctx.age = age;
     }
-    // AI itinerary may carry trip type and travel preferences
-    const tripType = (itinerary as any)?.tripType || (itinerary as any)?.response?.data?.tripType;
-    if (tripType && typeof tripType === 'string') ctx.tripTypes = [tripType] as any;
-    const travelStyle =
-      (itinerary as any)?.travelStyle ||
-      (itinerary as any)?.response?.data?.metadata?.travelStyle ||
-      (itinerary as any)?.travelPreferences?.travelStyle;
-    if (travelStyle && typeof travelStyle === 'string') ctx.travelStyles = [travelStyle] as any;
+
+    if (tripType) ctx.tripTypes = [tripType];
+    if (travelStyle) ctx.travelStyles = [travelStyle];
+
     // Enrich with travel preferences from user's default profile
     if (travelProfile?.activities && travelProfile.activities.length > 0) {
-      // Merge with any existing activity preferences, avoiding duplicates
-      const existing = new Set((ctx.activityPreferences as string[] || []).map((s: string) => s.toLowerCase()));
-      const merged = [...(ctx.activityPreferences as string[] || [])];
+      const existing = new Set((ctx.activityPreferences ?? []).map((s) => s.toLowerCase()));
+      const merged = [...(ctx.activityPreferences ?? [])];
       for (const act of travelProfile.activities) {
         if (!existing.has(act.toLowerCase())) merged.push(act);
       }
       if (merged.length > 0) ctx.activityPreferences = merged;
     }
+
     // Fall back to user's default travel style if itinerary doesn't have one
     if (!ctx.travelStyles && travelProfile?.travelStyle) {
       ctx.travelStyles = [travelProfile.travelStyle];
     }
 
-    fetchSlotAds(ctx as any);
+    fetchSlotAds(ctx);
   }, [itineraryId, itinerary, userGender, userDob, activitiesKey, userTravelStyle, fetchSlotAds, userProfile, travelProfile]);
 
   // Local itinerary state to immediately reflect saved changes
