@@ -39,6 +39,9 @@ const useNavigation = () => ({
 
 const { width } = Dimensions.get('window');
 
+// Base URL for meta tags — single source of truth for share/SEO URLs
+const BASE_URL = 'https://travalpass.com';
+
 // SEO meta tags injection helper for web
 const injectSEOMetaTags = () => {
   if (typeof document === 'undefined') return;
@@ -66,20 +69,20 @@ const injectSEOMetaTags = () => {
   setMetaTag('description', 'Planning a trip solo? TravalPass matches you with travelers going to the same destination, on the same dates. Not a dating app — a real travel companion platform.');
   setMetaTag('keywords', 'travel companions, travel buddies, vacation buddy, vacation companions, trip companion, trip partner, travel partner, adventure companions, solo traveler, solo travel, travel match, travel matching, AI itinerary, travel planning, travel tips, find travel companions, trip planner, vacation planning');
 
-  // Open Graph / Facebook
+  // Open Graph / Facebook (use property attribute)
   setMetaTag('og:type', 'website', true);
-  setMetaTag('og:url', 'https://app.travalpass.com/', true);
+  setMetaTag('og:url', `${BASE_URL}/`, true);
   setMetaTag('og:title', 'Planning a Trip Solo? Find Your Travel Match | TravalPass', true);
   setMetaTag('og:description', 'Match with travelers by destination and dates. Create AI itineraries. Chat safely. Free to start.', true);
-  setMetaTag('og:image', 'https://app.travalpass.com/assets/icon.png', true);
+  setMetaTag('og:image', `${BASE_URL}/assets/icon.png`, true);
   setMetaTag('og:site_name', 'TravalPass', true);
 
-  // Twitter
-  setMetaTag('twitter:card', 'summary_large_image', true);
-  setMetaTag('twitter:url', 'https://app.travalpass.com/', true);
-  setMetaTag('twitter:title', 'Planning a Trip Solo? Find Your Travel Match | TravalPass', true);
-  setMetaTag('twitter:description', 'Match with travelers by destination and dates. Create AI itineraries. Chat safely. Free to start.', true);
-  setMetaTag('twitter:image', 'https://app.travalpass.com/assets/icon.png', true);
+  // Twitter (use name attribute, not property)
+  setMetaTag('twitter:card', 'summary_large_image');
+  setMetaTag('twitter:url', `${BASE_URL}/`);
+  setMetaTag('twitter:title', 'Planning a Trip Solo? Find Your Travel Match | TravalPass');
+  setMetaTag('twitter:description', 'Match with travelers by destination and dates. Create AI itineraries. Chat safely. Free to start.');
+  setMetaTag('twitter:image', `${BASE_URL}/assets/icon.png`);
 
   // Canonical URL
   let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement;
@@ -88,7 +91,7 @@ const injectSEOMetaTags = () => {
     canonical.rel = 'canonical';
     document.head.appendChild(canonical);
   }
-  canonical.href = 'https://app.travalpass.com/';
+  canonical.href = `${BASE_URL}/`;
 };
 
 // ── Itinerary Match Mockup ──────────────────────────────────────────────
