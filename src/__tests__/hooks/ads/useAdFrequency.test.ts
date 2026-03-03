@@ -53,15 +53,20 @@ describe('useAdFrequency', () => {
     it('should space subsequent ads by AD_INTERVAL', () => {
       const { result } = renderHook(() => useAdFrequency());
 
+      // 30 items → slots at 4, 9, 14, 19, 24, 29 (all valid positions)
       const indices = result.current.getAdInsertionIndices(30, 5);
-      expect(indices).toEqual([4, 9, 14, 19, 24]);
+      expect(indices).toEqual([4, 9, 14, 19, 24, 29]);
     });
 
-    it('should not exceed available ads count', () => {
+    it('should generate all slots regardless of ad pool size', () => {
       const { result } = renderHook(() => useAdFrequency());
 
+      // 100 items, only 2 unique ads — but slots should fill the whole feed
       const indices = result.current.getAdInsertionIndices(100, 2);
-      expect(indices).toHaveLength(2);
+      // Slots at 4, 9, 14, ... 99 → 20 slots
+      expect(indices).toHaveLength(20);
+      expect(indices[0]).toBe(FIRST_AD_AFTER);
+      expect(indices[1]).toBe(FIRST_AD_AFTER + AD_INTERVAL);
     });
 
     it('should not place ads beyond content length', () => {
@@ -105,20 +110,48 @@ describe('useAdFrequency', () => {
 
       const mixed = result.current.spliceAdsIntoList(content, ads);
 
-      // Total items: 15 content + 2 ads = 17
-      expect(mixed).toHaveLength(17);
+      // Total items: 15 content + 3 ad slots (at indices 4, 9, 14) = 18
+      expect(mixed).toHaveLength(18);
 
-      // Ad at index 4 (before content[4])
-      expect(mixed[4].type).toBe('ad');
-      if (mixed[4].type === 'ad') {
-        expect(mixed[4].ad.campaignId).toBe('ad-1');
+      // Ad at index 5 (after content[4]) — inserts AFTER the slot item
+      expect(mixed[5].type).toBe('ad');
+      if (mixed[5].type === 'ad') {
+        expect(mixed[5].ad.campaignId).toBe('ad-1');
       }
 
-      // Ad at index 10 (before content[9], shifted by 1 from previous ad insertion)
-      expect(mixed[10].type).toBe('ad');
-      if (mixed[10].type === 'ad') {
-        expect(mixed[10].ad.campaignId).toBe('ad-2');
+      // Ad at index 11 (after content[9], shifted by 1 from previous ad insertion)
+      expect(mixed[11].type).toBe('ad');
+      if (mixed[11].type === 'ad') {
+        expect(mixed[11].ad.campaignId).toBe('ad-2');
       }
+    });
+
+    it('should cycle ads when more slots than unique ads', () => {
+      const { result } = renderHook(() => useAdFrequency());
+      // 10 content items → slots at index 4 and 9
+      const content = Array.from({ length: 10 }, (_, i) => `v-${i}`);
+      const ads = [makeAd('ad-1')]; // only one unique ad
+
+      const mixed = result.current.spliceAdsIntoList(content, ads);
+      // 10 content + 2 ad slots = 12
+      expect(mixed).toHaveLength(12);
+      const adItems = mixed.filter((item) => item.type === 'ad');
+      expect(adItems).toHaveLength(2);
+      adItems.forEach((item) => {
+        if (item.type === 'ad') expect(item.ad.campaignId).toBe('ad-1');
+      });
+    });
+
+    it('should fill ad slots indefinitely for a large feed', () => {
+      const { result } = renderHook(() => useAdFrequency());
+      // 50 content items → slots at 4, 9, 14, 19, 24, 29, 34, 39, 44, 49 = 10 slots
+      const content = Array.from({ length: 50 }, (_, i) => `v-${i}`);
+      const ads = [makeAd('a1'), makeAd('a2')];
+
+      const mixed = result.current.spliceAdsIntoList(content, ads);
+      expect(mixed).toHaveLength(60); // 50 content + 10 ad slots
+      const adItems = mixed.filter((item) => item.type === 'ad');
+      expect(adItems).toHaveLength(10);
     });
 
     it('should tag content items correctly', () => {
@@ -176,7 +209,8 @@ describe('useAdFrequency', () => {
 
       const mixed = result.current.spliceAdsIntoList(content, [makeAd('1')]);
       expect(mixed).toHaveLength(FIRST_AD_AFTER + 2); // content + 1 ad
-      expect(mixed[FIRST_AD_AFTER].type).toBe('ad');
+      // Ad appears AFTER content[FIRST_AD_AFTER], i.e. the last position
+      expect(mixed[FIRST_AD_AFTER + 1].type).toBe('ad');
     });
   });
 });

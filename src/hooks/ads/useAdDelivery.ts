@@ -36,8 +36,8 @@ export interface UseAdDeliveryReturn {
   loading: boolean
   /** Last error message, or null. */
   error: string | null
-  /** Trigger a fetch with optional user targeting context. */
-  fetchAds: (userContext?: UserAdContext) => Promise<void>
+  /** Trigger a fetch with optional user targeting context and seen campaign IDs. */
+  fetchAds: (userContext?: UserAdContext, seenCampaignIds?: string[]) => Promise<void>
 }
 
 export function useAdDelivery(
@@ -61,7 +61,7 @@ export function useAdDelivery(
   )
 
   const fetchAds = useCallback(
-    async (userContext?: UserAdContext) => {
+    async (userContext?: UserAdContext, seenCampaignIds?: string[]) => {
       // Deduplicate in-flight requests
       if (inFlightRef.current) return
       inFlightRef.current = true
@@ -69,22 +69,26 @@ export function useAdDelivery(
       setError(null)
 
       try {
+        console.log(`[AdDelivery] fetching placement=${placement} limit=${limit}`, userContext ?? 'no context')
         const result = await selectAdsFn({
           placement,
           limit,
           userContext,
+          seenCampaignIds,
         })
 
         const response = result.data
         if (response && Array.isArray(response.ads)) {
+          console.log(`[AdDelivery] ✓ ${response.ads.length} ad(s) received for ${placement}:`, response.ads.map(a => a.campaignId))
           setAds(response.ads)
         } else {
+          console.warn(`[AdDelivery] no ads in response for ${placement}`)
           setAds([])
         }
       } catch (err: unknown) {
         const message =
           err instanceof Error ? err.message : 'Failed to load ads'
-        console.error(`[useAdDelivery] fetchAds error (${placement}):`, err)
+        console.error(`[AdDelivery] ✗ fetchAds error (${placement}):`, err)
         setError(message)
         // Don't clear existing ads on error — stale ads are better than none
       } finally {

@@ -69,6 +69,11 @@ export interface SelectAdsRequest {
   placement: Placement
   limit?: number
   userContext?: UserAdContext
+  /**
+   * Campaign IDs the viewer has already seen (current session or stored locally).
+   * The server applies a ranking penalty so fresh ads surface ahead of repeat exposures.
+   */
+  seenCampaignIds?: string[]
 }
 
 export interface SelectAdsResponse {

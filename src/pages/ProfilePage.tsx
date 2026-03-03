@@ -115,8 +115,14 @@ const ProfilePage: React.FC = () => {
   
   const [activeTab, setActiveTab] = useState<TabType>('profile');
   const [editModalVisible, setEditModalVisible] = useState(false);
-  
-  // Initialize contact discovery service (handles full flow internally)
+
+  // When profile loading is done and no profile exists, open the edit modal automatically
+  // so the user is guided straight into onboarding rather than seeing a dead-end screen.
+  useEffect(() => {
+    if (!isLoading && !userProfile) {
+      setEditModalVisible(true);
+    }
+  }, [isLoading, userProfile]);
   const contactsService = new ContactsService();
   const contactDiscoveryRepo = new ContactDiscoveryRepository();
   
@@ -510,38 +516,21 @@ const ProfilePage: React.FC = () => {
     );
   }
 
-  // If no profile exists after loading completes, auto-open edit modal to create profile
-  // This handles cases where Firestore data was deleted or sign-up failed to create profile
+  // If no profile exists after loading completes, show a minimal welcome screen.
+  // The useEffect above will have already opened EditProfileModal automatically.
   if (!userProfile) {
-
-    // Show minimal UI with edit modal
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <Text style={styles.emptyStateTitle}>Profile Not Found</Text>
+          <Text style={styles.emptyStateTitle}>Welcome to TravalPass!</Text>
           <Text style={styles.emptyStateText}>
-            Let's create your profile to get started
+            Let's set up your profile to get started.
           </Text>
-          <TouchableOpacity 
-            style={styles.createProfileButton}
-            onPress={() => setEditModalVisible(true)}
-          >
-            <Text style={styles.createProfileButtonText}>Create Profile</Text>
-          </TouchableOpacity>
         </View>
-        
-        {/* Edit modal for creating new profile */}
+
         <EditProfileModal
           visible={editModalVisible}
-          onClose={() => {
-            // Allow user to dismiss the modal
-            setEditModalVisible(false);
-            Alert.alert(
-              'Profile Incomplete',
-              'Some features may be limited until you complete your profile. You can create it anytime from the Profile tab.',
-              [{ text: 'OK' }]
-            );
-          }}
+          onClose={() => setEditModalVisible(false)}
           onSave={handleSaveProfile}
           initialData={{
             username: '',

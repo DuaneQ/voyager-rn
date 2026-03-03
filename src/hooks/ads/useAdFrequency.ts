@@ -57,12 +57,13 @@ export function useAdFrequency(): UseAdFrequencyReturn {
     (contentLength: number, availableAds: number): number[] => {
       if (contentLength === 0 || availableAds === 0) return []
 
-      const maxSlots = availableAds
       const indices: number[] = []
 
-      // First slot after FIRST_AD_AFTER items, then every AD_INTERVAL items
+      // First slot after FIRST_AD_AFTER items, then every AD_INTERVAL items.
+      // No cap on total slots — ads cycle through the available pool so every
+      // 5th video has an ad regardless of how long the feed is.
       let nextSlot = FIRST_AD_AFTER
-      while (indices.length < maxSlots && nextSlot < contentLength) {
+      while (nextSlot < contentLength) {
         indices.push(nextSlot)
         nextSlot += AD_INTERVAL
       }
@@ -91,12 +92,13 @@ export function useAdFrequency(): UseAdFrequencyReturn {
       let adIdx = 0
 
       for (let i = 0; i < contentItems.length; i++) {
-        // Insert ad BEFORE this content item at the designated indices
-        if (indicesSet.has(i) && adIdx < ads.length) {
-          result.push({ type: 'ad', ad: ads[adIdx] })
+        result.push({ type: 'content', item: contentItems[i] })
+        // Insert ad AFTER this content item at the designated indices.
+        // Ads cycle through the available pool so the feed never runs dry.
+        if (indicesSet.has(i)) {
+          result.push({ type: 'ad', ad: ads[adIdx % ads.length] })
           adIdx++
         }
-        result.push({ type: 'content', item: contentItems[i] })
       }
 
       return result

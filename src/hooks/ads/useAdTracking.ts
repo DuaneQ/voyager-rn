@@ -49,6 +49,8 @@ export interface UseAdTrackingReturn {
   trackQuartile: (campaignId: string, quartile: VideoQuartile) => void
   /** Force-flush any buffered events (useful before navigation). */
   flush: () => Promise<void>
+  /** Return all campaign IDs for which an impression has been tracked this session. */
+  getSeenCampaignIds: () => string[]
 }
 
 export function useAdTracking(): UseAdTrackingReturn {
@@ -76,14 +78,21 @@ export function useAdTracking(): UseAdTrackingReturn {
     // Swap buffer to avoid double-sends
     bufferRef.current = []
 
+    const impressions = events.filter(e => e.type === 'impression').length
+    const clicks = events.filter(e => e.type === 'click').length
+    const quartiles = events.filter(e => e.type === 'video_quartile').length
+    const uniqueCampaigns = [...new Set(events.map(e => e.campaignId))]
+    console.log(
+      `[AdTracking] flushing ${events.length} event(s) — impressions=${impressions} clicks=${clicks} quartiles=${quartiles}` +
+      ` campaignIds=[${uniqueCampaigns.join(', ')}]`,
+    )
+
     try {
       const result = await logAdEventsFn({ events })
       const { processed, skipped } = result.data
+      console.log(`[AdTracking] ✓ flush complete processed=${processed} skipped=${skipped}`)
       if (skipped > 0) {
         console.warn(`[useAdTracking] ${skipped} events skipped by server`)
-      }
-      if (processed > 0) {
-        // Success — no action needed
       }
     } catch (err) {
       console.error('[useAdTracking] flush failed:', err)
@@ -128,9 +137,12 @@ export function useAdTracking(): UseAdTrackingReturn {
     (campaignId: string) => {
       if (!campaignId) return
       // Deduplicate within this session
-      if (impressionSetRef.current.has(campaignId)) return
+      if (impressionSetRef.current.has(campaignId)) {
+        console.log(`[AdTracking] impression deduped (already tracked) campaignId=${campaignId}`)
+        return
+      }
       impressionSetRef.current.add(campaignId)
-
+      console.log(`[AdTracking] impression queued campaignId=${campaignId}`)
       enqueue({
         type: 'impression',
         campaignId,
@@ -143,6 +155,7 @@ export function useAdTracking(): UseAdTrackingReturn {
   const trackClick = useCallback(
     (campaignId: string) => {
       if (!campaignId) return
+      console.log(`[AdTracking] click queued campaignId=${campaignId}`)
       enqueue({
         type: 'click',
         campaignId,
@@ -155,6 +168,7 @@ export function useAdTracking(): UseAdTrackingReturn {
   const trackQuartile = useCallback(
     (campaignId: string, quartile: VideoQuartile) => {
       if (!campaignId) return
+      console.log(`[AdTracking] quartile=${quartile}% queued campaignId=${campaignId}`)
       enqueue({
         type: 'video_quartile',
         campaignId,
@@ -165,5 +179,10 @@ export function useAdTracking(): UseAdTrackingReturn {
     [enqueue],
   )
 
-  return { trackImpression, trackClick, trackQuartile, flush }
+  const getSeenCampaignIds = useCallback(
+    () => [...impressionSetRef.current],
+    [],
+  )
+
+  return { trackImpression, trackClick, trackQuartile, flush, getSeenCampaignIds }
 }

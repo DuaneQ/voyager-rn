@@ -790,7 +790,10 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    borderRadius: 28,
+    padding: 10,
   },
   actionText: {
     fontSize: 12,
