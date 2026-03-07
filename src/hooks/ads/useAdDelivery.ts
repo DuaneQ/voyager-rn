@@ -16,6 +16,32 @@
 import { useState, useCallback, useRef, useMemo } from 'react'
 import { httpsCallable } from 'firebase/functions'
 import { functions } from '../../config/firebaseConfig'
+import type { Placement as _Placement } from '../../types/AdDelivery'
+import type { AdUnit as _AdUnit } from '../../types/AdDelivery'
+
+/**
+ * Module-level session cache keyed by placement.
+ *
+ * WHY: On web (React Router), navigating away from a tab unmounts the component
+ * and resets useState to []. When the user comes back and the network is down,
+ * the re-fetch fails and the feed appears empty even though we had ads moments ago.
+ *
+ * This cache survives component unmount/remount for the lifetime of the browser
+ * tab / JS module. It is cleared on sign-out so one user never sees another's ads.
+ *
+ * On native (React Navigation), tabs stay mounted so state already persists —
+ * the cache is a no-op there (just seeds the initial state that was already empty).
+ */
+const _sessionAdsCache = new Map<string, _AdUnit[]>()
+
+/** Clear cached ads for one or all placements. Call on sign-out. */
+export function clearAdsCache(placement?: _Placement): void {
+  if (placement) {
+    _sessionAdsCache.delete(placement)
+  } else {
+    _sessionAdsCache.clear()
+  }
+}
 
 /** Return today as YYYY-MM-DD in local time (avoids UTC-shift issues). */
 function todayLocalYYYYMMDD(): string {
@@ -87,7 +113,9 @@ export function useAdDelivery(
 ): UseAdDeliveryReturn {
   const { limit = 5 } = options
 
-  const [ads, setAds] = useState<AdUnit[]>([])
+  // Seed from cache so remounts (React Router web navigation) immediately
+  // show the last successfully fetched ads rather than an empty state.
+  const [ads, setAds] = useState<AdUnit[]>(() => _sessionAdsCache.get(placement) ?? [])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -138,6 +166,7 @@ export function useAdDelivery(
               ` stale ad(s) — ${valid.length} remain for placement=${placement}`,
             )
           }
+          _sessionAdsCache.set(placement, valid)
           setAds(valid)
         } else {
           console.warn(`[AdDelivery] no ads in response for ${placement}`)

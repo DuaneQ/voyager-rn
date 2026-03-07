@@ -68,14 +68,27 @@
 
 ### 2.2 No ads available (e.g. all campaigns paused or budget exhausted)
 
-- [ ] `[AdDelivery] no ads in response for video_feed` is logged
-- [ ] Feed renders normally with no sponsored cards (no crash, no blank slots)
+> **Observed 2026-03-07.** Set `status: "paused"` on all active campaigns in Firestore (note: `muxStatus: "paused"` is a separate Mux field — the campaign-level `status` field must be changed). Reloaded feed — server returned 0 ads. Feed loaded normally with no sponsored cards, no crash.
+
+- [x] `[AdDelivery] ✓ 0 ad(s) received from server for placement=video_feed: []` — **observed: ✅**
+- [x] Feed renders normally with no sponsored cards (no crash, no blank slots) — **observed: ✅**
 
 ### 2.3 selectAds error (network down / emulator offline)
 
-- [ ] `[AdDelivery] ✗ fetchAds error (video_feed): ...` is logged
-- [ ] Existing ads in state are **preserved** (stale ads stay rather than disappearing)
-- [ ] Feed remains usable
+> **Observed 2026-03-07 (web, Chrome DevTools → Offline).** Going offline while on the video feed and then navigating to another tab triggered a lazy-chunk load failure (`ProfilePage.bundle` could not be fetched). This propagated to the global `ErrorBoundary` and crashed the whole app. **Root cause:** `AppNavigator.web.tsx` Suspense wrappers had no local error boundary — chunk-load failures bubbled to the top.
+>
+> **Fix applied:** wrapped each lazy `<Suspense>` in `<ErrorBoundary level="page">` in `AppNavigator.web.tsx`. Chunk failures are now caught at the page slot and show an inline "This section encountered an error / Try Again" message — the rest of the app stays alive.
+>
+> **Re-test after fix:** go offline, navigate to a tab whose chunk is not yet cached → should see page-level error message, not full-app crash. Tab bar and other already-loaded tabs remain usable.
+
+> **Bug 3 observed 2026-03-07:** with only 3 offline video placeholders in the feed, `spliceAdsIntoList` never reached `FIRST_AD_AFTER=3` (the while-loop condition `3 < 3` is false) so the cached ad was silently dropped. **Fix:** trailing-ad fallback in `useAdFrequency.ts` — if no insertion slot was reached but ads are available, append one ad after all content. **Confirmed 2026-03-07 ✅**
+
+- [x] **Bug 1 fixed** — global app crash on offline lazy-chunk load (`AppNavigator.web.tsx`) — **fixed 2026-03-07 ✅**
+- [x] **Bug 2 fixed** — stale ad disappeared after navigation while offline — module-level session cache in `useAdDelivery`; `clearAdsCache()` called on sign-out — **fixed 2026-03-07 ✅**
+- [x] **Bug 3 fixed** — ad dropped when content count equals `FIRST_AD_AFTER` — trailing-ad fallback in `useAdFrequency.ts` — **fixed 2026-03-07 ✅**
+- [x] `[AdDelivery] ✗ fetchAds error (video_feed): ...` logged while offline — **confirmed 2026-03-07 ✅**
+- [x] Stale ad from before going offline is **still visible** on return to Videos tab (ad slot rendered, video stalled offline as expected) — **confirmed 2026-03-07 ✅**
+- [x] Feed tab bar remains responsive (no full-app crash) — **confirmed 2026-03-07 ✅**
 
 ---
 
@@ -139,12 +152,14 @@
 
 > **Goal:** Confirm that campaigns with more matching targeting dimensions rank higher in the returned array.
 
-### 4.1 Multi-dimension match outranks single-dimension match
+### 4.1 Age targeting — positive match ranks campaign first
 
-- [ ] Create Campaign A: targets gender + age (potential score = +1 + +2 = 3)
-- [ ] Create Campaign B: targets gender only (potential score = +1)
-- [ ] Log in as a user matching both campaigns fully
-- [ ] `[AdDelivery]` log — Campaign A appears **before** Campaign B in the returned array
+> **Observed 2026-03-07 (positive case).** Created campaign `kE4B1zQIfjkx0kKV7p6d` (Male age 18–30) with `ageFrom: "18"`, `ageTo: "34"`. Test user is age 25 → scores +2 for age match. Campaign appeared at **index 0** in the 4-ad response, ahead of all other campaigns which had no age targeting (score 0). Firestore `daily_metrics` 2026-03-07 updated: `impressions: 2, spend: 2, q25/50/75/100: 1` confirming delivery. ✅
+>
+> **Observed 2026-03-07 (negative case).** Changed `ageFrom: "30"`, `ageTo: "44"` — age 25 now outside range → score drops to 0. Campaign fell to **index 3** (last position); order became `L6HQIxUo → SjgNVINC → Sqcic5yf → kE4B1zQI` (pure alphabetical, all score 0). ✅
+
+- [x] Age-matched campaign appears at index 0 in response — **observed: ✅ (`kE4B1zQIfjkx0kKV7p6d` at index 0 with ageFrom=18 ageTo=34, user age=25)**
+- [x] Negative case: `ageFrom: "30"` ageTo=44 — campaign drops to index 3 (last) — **observed: ✅**
 
 ### 4.2 Seen campaign penalty
 
@@ -174,8 +189,9 @@
 
 ### 5.2 Server-side: not-yet-started campaign never returned
 
-- [ ] Set a campaign's `startDate` to tomorrow (`2026-03-08`)
-- [ ] Load feed — that campaign **does not appear** in `[AdDelivery]` response
+> **Observed 2026-03-07 (incidental).** Created campaign `NZ6hJztKIuzzoyuGqWEh` ("Amalfi") with `startDate: "2026-03-08"` (tomorrow), `status: "active"`, `isUnderReview: false`, `muxStatus: "ready"`. Feed returned 0 ads — Amalfi absent despite being otherwise eligible. Server date filter correctly excluded it.
+
+- [x] Campaign with `startDate` set to tomorrow does not appear in `[AdDelivery]` response — **observed: ✅ (`NZ6hJztKIuzzoyuGqWEh` absent; `[AdDelivery] ✓ 0 ad(s) received`)**
 
 ### 5.3 Client-side expiry guard (midnight boundary simulation)
 
@@ -399,10 +415,10 @@
 | Section | Tester | Date | Result |
 |---|---|---|---|
 | 1. Targeting Context | Support | 2026-03-07 | 🟡 1.1 ✅ 1.4 ✅ — 1.2 and 1.3 pending (need different test user accounts) |
-| 2. Ad Delivery | Support | 2026-03-07 | 🟡 2.1 ✅ — 2.2 and 2.3 pending |
+| 2. Ad Delivery | Support | 2026-03-07 | ✅ 2.1 ✅ 2.2 ✅ 2.3 ✅ |
 | 3. Targeting Accuracy | — | — | ⚪ Pending — all current campaigns have empty targeting arrays; needs new targeted campaigns |
-| 4. Ranking / Score | Support | 2026-03-07 | 🟡 4.3 ✅ (deterministic tie-break confirmed) — 4.1 and 4.2 pending |
-| 5. Ad Expiry | Support | 2026-03-07 | 🟡 5.1 ✅ (server excluded expired campaign, 5→4 ads) — 5.3 client guard pending (needs cache-then-expire test) |
+| 4. Ranking / Score | Support | 2026-03-07 | 🟡 4.1 ✅ (age targeting: positive + negative both confirmed) 4.3 ✅ — 4.2 pending |
+| 5. Ad Expiry | Support | 2026-03-07 | 🟡 5.1 ✅ 5.2 ✅ — 5.3/5.4/5.5 client guard pending |
 | 6. Feed Position | Support | 2026-03-07 | 🟡 6.1 ✅ (ad at slot 5 = index 4 = FIRST_AD_AFTER=3 correct) — 6.2, 6.3, 6.4 pending |
 | 7. Impression Tracking | Support | 2026-03-07 | ✅ 7.1 ✅ 7.2 ✅ 7.3 ✅ — Firestore confirmed `impressions=3`, portal chart matches |
 | 8. Click Tracking | Support | 2026-03-07 | 🟡 8.1 ✅ 8.2 ✅ 8.3 ✅ (Firestore clicks=1 confirmed) — landing URL open not verified on simulator |

@@ -5,7 +5,7 @@
  *   import { useAdDelivery, useAdTracking, useAdFrequency } from '../hooks/ads'
  */
 
-export { useAdDelivery } from './useAdDelivery'
+export { useAdDelivery, clearAdsCache } from './useAdDelivery'
 export type { UseAdDeliveryOptions, UseAdDeliveryReturn } from './useAdDelivery'
 
 export { useAdTracking } from './useAdTracking'

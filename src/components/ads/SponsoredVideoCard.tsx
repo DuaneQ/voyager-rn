@@ -25,6 +25,7 @@ import {
   Share,
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
+import { LinearGradient } from 'expo-linear-gradient'
 import { useVideoPlayer, VideoView } from 'expo-video'
 import type { AdUnit, VideoQuartile } from '../../types/AdDelivery'
 import type { Video } from '../../types/Video'
@@ -239,6 +240,13 @@ function SponsoredVideoCardComponent({
         />
       )}
 
+      {/* Bottom scrim — dark gradient so white text is legible over any video frame */}
+      <LinearGradient
+        colors={['transparent', 'rgba(0,0,0,0.72)']}
+        style={styles.bottomScrim}
+        pointerEvents="none"
+      />
+
       {/* Sponsored badge */}
       <View style={styles.sponsoredBadge} accessibilityRole="text">
         <Text style={styles.sponsoredText}>Sponsored</Text>
@@ -359,37 +367,51 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: 0.5,
   },
+  bottomScrim: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 260,
+    zIndex: 6,
+  },
   businessRow: {
     position: 'absolute',
-    bottom: 120,
+    bottom: Platform.select({ web: 170, default: 120 }),
     left: 16,
     right: 80,
+    zIndex: 10,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    alignSelf: 'flex-start',
   },
   businessName: {
     color: '#fff',
     fontSize: 15,
     fontWeight: '700',
-    textShadowColor: 'rgba(0,0,0,0.6)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
   },
   primaryTextContainer: {
     position: 'absolute',
-    bottom: 90,
+    bottom: Platform.select({ web: 140, default: 90 }),
     left: 16,
     right: 80,
+    zIndex: 10,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    alignSelf: 'flex-start',
   },
   primaryText: {
     color: '#fff',
     fontSize: 13,
-    textShadowColor: 'rgba(0,0,0,0.6)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
   },
   actionsContainer: {
     position: 'absolute',
     right: 16,
-    bottom: 140,
+    bottom: Platform.select({ web: 190, default: 140 }),
     alignItems: 'center',
     zIndex: 30,
     elevation: 15,
@@ -432,13 +454,14 @@ const styles = StyleSheet.create({
   },
   ctaButton: {
     position: 'absolute',
-    bottom: 44,
+    bottom: Platform.select({ web: 96, default: 44 }),
     left: 16,
     right: 80,
     backgroundColor: '#fff',
     borderRadius: 8,
     paddingVertical: 12,
     alignItems: 'center',
+    zIndex: 10,
   },
   ctaText: {
     color: '#000',

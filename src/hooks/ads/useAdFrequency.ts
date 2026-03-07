@@ -101,6 +101,13 @@ export function useAdFrequency(): UseAdFrequencyReturn {
         }
       }
 
+      // Trailing-ad fallback: if the feed was too short to reach the first
+      // insertion slot (e.g. only 3 videos offline) but we have cached ads,
+      // append one ad at the end so it still appears at "position 4".
+      if (adIdx === 0) {
+        result.push({ type: 'ad', ad: ads[0] })
+      }
+
       return result
     },
     [getAdInsertionIndices],

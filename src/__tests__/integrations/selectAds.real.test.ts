@@ -607,4 +607,674 @@ describeIfLive('selectAds — Live Integration Tests', () => {
       expect(testAd.businessType).toBe('tour');
     }, 20000);
   });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // selectAds — Per-dimension targeting / score contribution
+  //
+  // Each test seeds a "match" campaign and a "control" campaign, then verifies
+  // the match campaign ranks above the control in the sorted result.
+  // All seeded IDs are registered in createdCampaignIds for afterAll cleanup.
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  describe('Per-dimension targeting — score contribution', () => {
+    /** Seed a minimal valid campaign with optional targeting overrides. */
+    const seedTargetCampaign = async (id: string, overrides: Record<string, unknown> = {}): Promise<void> => {
+      await getAdminDb().collection('ads_campaigns').doc(id).set({
+        uid: 'test-advertiser-uid',
+        name: id,
+        status: 'active',
+        placement: 'video_feed',
+        isUnderReview: false,
+        startDate: offsetDate(-7),
+        endDate: offsetDate(30),
+        creativeType: 'image',
+        assetUrl: 'https://example.com/test.jpg',
+        primaryText: 'Targeting Test Ad',
+        cta: 'Learn More',
+        landingUrl: 'https://example.com',
+        billingModel: 'cpm',
+        budgetAmount: '100.00',
+        budgetCents: 10000,
+        totalImpressions: 0,
+        totalClicks: 0,
+        ...overrides,
+      });
+      createdCampaignIds.push(id);
+    };
+
+    // ── Age ---------------------------------------------------------------
+
+    it('age: in-range campaign (+2) ranks above no-targeting campaign (0)', async () => {
+      const ts = Date.now();
+      const matchId = `__test_age_in_${ts}`;
+      const noneId  = `__test_age_none_${ts + 1}`;
+
+      await seedTargetCampaign(matchId, { ageFrom: '20', ageTo: '30' });
+      await seedTargetCampaign(noneId);
+
+      const result = await callCloudFunction('selectAds', {
+        placement: 'video_feed', limit: 20,
+        userContext: { age: 25 },
+      });
+
+      const matchIdx = result.result.ads.findIndex((ad: any) => ad.campaignId === matchId);
+      const noneIdx  = result.result.ads.findIndex((ad: any) => ad.campaignId === noneId);
+      expect(matchIdx).toBeGreaterThanOrEqual(0);
+      expect(noneIdx).toBeGreaterThanOrEqual(0);
+      expect(matchIdx).toBeLessThan(noneIdx);
+    }, 30000);
+
+    it('age: out-of-range campaign (0) ranks below in-range campaign (+2)', async () => {
+      const ts = Date.now();
+      const inId  = `__test_age_inrange_${ts}`;
+      const outId = `__test_age_outrange_${ts + 1}`;
+
+      await seedTargetCampaign(inId,  { ageFrom: '20', ageTo: '30' });
+      await seedTargetCampaign(outId, { ageFrom: '35', ageTo: '50' });
+
+      const result = await callCloudFunction('selectAds', {
+        placement: 'video_feed', limit: 20,
+        userContext: { age: 25 },
+      });
+
+      const inIdx  = result.result.ads.findIndex((ad: any) => ad.campaignId === inId);
+      const outIdx = result.result.ads.findIndex((ad: any) => ad.campaignId === outId);
+      expect(inIdx).toBeGreaterThanOrEqual(0);
+      expect(outIdx).toBeGreaterThanOrEqual(0);
+      expect(inIdx).toBeLessThan(outIdx);
+    }, 30000);
+
+    it('age: "65+" upper bound is treated as no upper limit (age 80 scores +2)', async () => {
+      const ts = Date.now();
+      const seniorId = `__test_age_senior_${ts}`;
+      const noneId   = `__test_age_senior_none_${ts + 1}`;
+
+      await seedTargetCampaign(seniorId, { ageFrom: '65', ageTo: '65+' });
+      await seedTargetCampaign(noneId);
+
+      const result = await callCloudFunction('selectAds', {
+        placement: 'video_feed', limit: 20,
+        userContext: { age: 80 },
+      });
+
+      const seniorIdx = result.result.ads.findIndex((ad: any) => ad.campaignId === seniorId);
+      const noneIdx   = result.result.ads.findIndex((ad: any) => ad.campaignId === noneId);
+      expect(seniorIdx).toBeGreaterThanOrEqual(0);
+      expect(noneIdx).toBeGreaterThanOrEqual(0);
+      expect(seniorIdx).toBeLessThan(noneIdx);
+    }, 30000);
+
+    // ── Gender ------------------------------------------------------------
+
+    it('gender: matched campaign (+1) ranks above mismatched campaign (0 on gender)', async () => {
+      const ts = Date.now();
+      const matchId = `__test_gender_match_${ts}`;
+      const missId  = `__test_gender_miss_${ts + 1}`;
+
+      await seedTargetCampaign(matchId, { targetGender: 'Female' });
+      await seedTargetCampaign(missId,  { targetGender: 'Male' });
+
+      const result = await callCloudFunction('selectAds', {
+        placement: 'video_feed', limit: 20,
+        userContext: { gender: 'Female' },
+      });
+
+      const matchIdx = result.result.ads.findIndex((ad: any) => ad.campaignId === matchId);
+      const missIdx  = result.result.ads.findIndex((ad: any) => ad.campaignId === missId);
+      expect(matchIdx).toBeGreaterThanOrEqual(0);
+      expect(missIdx).toBeGreaterThanOrEqual(0);
+      expect(matchIdx).toBeLessThan(missIdx);
+    }, 30000);
+
+    it('gender: match is case-insensitive ("female" matches "Female" user)', async () => {
+      const ts = Date.now();
+      const matchId = `__test_gender_case_${ts}`;
+      const noneId  = `__test_gender_case_none_${ts + 1}`;
+
+      await seedTargetCampaign(matchId, { targetGender: 'female' }); // lowercase
+      await seedTargetCampaign(noneId);
+
+      const result = await callCloudFunction('selectAds', {
+        placement: 'video_feed', limit: 20,
+        userContext: { gender: 'Female' },
+      });
+
+      const matchIdx = result.result.ads.findIndex((ad: any) => ad.campaignId === matchId);
+      const noneIdx  = result.result.ads.findIndex((ad: any) => ad.campaignId === noneId);
+      expect(matchIdx).toBeGreaterThanOrEqual(0);
+      expect(noneIdx).toBeGreaterThanOrEqual(0);
+      expect(matchIdx).toBeLessThan(noneIdx);
+    }, 30000);
+
+    // ── Activity preferences ----------------------------------------------
+
+    it('activity preferences: overlap (+1) ranks above no-targeting (0)', async () => {
+      const ts = Date.now();
+      const matchId = `__test_act_match_${ts}`;
+      const noneId  = `__test_act_none_${ts + 1}`;
+
+      await seedTargetCampaign(matchId, { targetActivityPreferences: ['Cultural', 'Beach'] });
+      await seedTargetCampaign(noneId);
+
+      const result = await callCloudFunction('selectAds', {
+        placement: 'video_feed', limit: 20,
+        userContext: { activityPreferences: ['Cultural', 'Hiking'] }, // 'Cultural' overlaps
+      });
+
+      const matchIdx = result.result.ads.findIndex((ad: any) => ad.campaignId === matchId);
+      const noneIdx  = result.result.ads.findIndex((ad: any) => ad.campaignId === noneId);
+      expect(matchIdx).toBeGreaterThanOrEqual(0);
+      expect(noneIdx).toBeGreaterThanOrEqual(0);
+      expect(matchIdx).toBeLessThan(noneIdx);
+    }, 30000);
+
+    it('activity preferences: no overlap means campaign does not score +1', async () => {
+      const ts = Date.now();
+      const overlapId   = `__test_act_overlap_${ts}`;
+      const noOverlapId = `__test_act_nooverlap_${ts + 1}`;
+
+      await seedTargetCampaign(overlapId,   { targetActivityPreferences: ['Cultural'] });
+      await seedTargetCampaign(noOverlapId, { targetActivityPreferences: ['Surfing', 'Fishing'] });
+
+      const result = await callCloudFunction('selectAds', {
+        placement: 'video_feed', limit: 20,
+        userContext: { activityPreferences: ['Cultural', 'Hiking'] },
+      });
+
+      const overlapIdx   = result.result.ads.findIndex((ad: any) => ad.campaignId === overlapId);
+      const noOverlapIdx = result.result.ads.findIndex((ad: any) => ad.campaignId === noOverlapId);
+      expect(overlapIdx).toBeGreaterThanOrEqual(0);
+      expect(noOverlapIdx).toBeGreaterThanOrEqual(0);
+      expect(overlapIdx).toBeLessThan(noOverlapIdx);
+    }, 30000);
+
+    // ── Travel styles -----------------------------------------------------
+
+    it('travel styles: overlap (+1) ranks campaign above no-targeting (0)', async () => {
+      const ts = Date.now();
+      const matchId = `__test_style_match_${ts}`;
+      const noneId  = `__test_style_none_${ts + 1}`;
+
+      await seedTargetCampaign(matchId, { targetTravelStyles: ['luxury', 'adventure'] });
+      await seedTargetCampaign(noneId);
+
+      const result = await callCloudFunction('selectAds', {
+        placement: 'video_feed', limit: 20,
+        userContext: { travelStyles: ['luxury'] },
+      });
+
+      const matchIdx = result.result.ads.findIndex((ad: any) => ad.campaignId === matchId);
+      const noneIdx  = result.result.ads.findIndex((ad: any) => ad.campaignId === noneId);
+      expect(matchIdx).toBeGreaterThanOrEqual(0);
+      expect(noneIdx).toBeGreaterThanOrEqual(0);
+      expect(matchIdx).toBeLessThan(noneIdx);
+    }, 30000);
+
+    // ── Trip types --------------------------------------------------------
+
+    it('trip types: overlap (+1) ranks campaign above no-targeting (0)', async () => {
+      const ts = Date.now();
+      const matchId = `__test_trip_match_${ts}`;
+      const noneId  = `__test_trip_none_${ts + 1}`;
+
+      await seedTargetCampaign(matchId, { targetTripTypes: ['romantic', 'adventure'] });
+      await seedTargetCampaign(noneId);
+
+      const result = await callCloudFunction('selectAds', {
+        placement: 'video_feed', limit: 20,
+        userContext: { tripTypes: ['romantic'] },
+      });
+
+      const matchIdx = result.result.ads.findIndex((ad: any) => ad.campaignId === matchId);
+      const noneIdx  = result.result.ads.findIndex((ad: any) => ad.campaignId === noneId);
+      // matchIdx must always be present (score +1 keeps it in top 20)
+      expect(matchIdx).toBeGreaterThanOrEqual(0);
+      // noneIdx may be -1 if >20 eligible campaigns exist — being ranked off the
+      // list is itself evidence that noneId scored lower than matchId.
+      if (noneIdx >= 0) {
+        expect(matchIdx).toBeLessThan(noneIdx);
+      }
+    }, 30000);
+
+    // ── Travel dates ------------------------------------------------------
+
+    it('travel dates: overlapping date range (+2) ranks above no-date-targeting (0)', async () => {
+      const ts = Date.now();
+      const matchId = `__test_dates_match_${ts}`;
+      const noneId  = `__test_dates_none_${ts + 1}`;
+
+      await seedTargetCampaign(matchId, {
+        targetTravelStartDate: offsetDate(-5),
+        targetTravelEndDate:   offsetDate(14),
+      });
+      await seedTargetCampaign(noneId);
+
+      const result = await callCloudFunction('selectAds', {
+        placement: 'video_feed', limit: 20,
+        userContext: {
+          travelStartDate: offsetDate(0),
+          travelEndDate:   offsetDate(7),
+        },
+      });
+
+      const matchIdx = result.result.ads.findIndex((ad: any) => ad.campaignId === matchId);
+      const noneIdx  = result.result.ads.findIndex((ad: any) => ad.campaignId === noneId);
+      expect(matchIdx).toBeGreaterThanOrEqual(0);
+      expect(noneIdx).toBeGreaterThanOrEqual(0);
+      expect(matchIdx).toBeLessThan(noneIdx);
+    }, 30000);
+
+    it('travel dates: non-overlapping range does not score +2 (ranks at or after overlapping)', async () => {
+      const ts = Date.now();
+      const overlapId   = `__test_dates_overlap_${ts}`;
+      const noOverlapId = `__test_dates_noop_${ts + 1}`;
+
+      await seedTargetCampaign(overlapId, {
+        targetTravelStartDate: offsetDate(-5),
+        targetTravelEndDate:   offsetDate(10),
+      });
+      await seedTargetCampaign(noOverlapId, {
+        targetTravelStartDate: offsetDate(30),
+        targetTravelEndDate:   offsetDate(60), // user travelling now — no overlap
+      });
+
+      const result = await callCloudFunction('selectAds', {
+        placement: 'video_feed', limit: 20,
+        userContext: {
+          travelStartDate: offsetDate(0),
+          travelEndDate:   offsetDate(7),
+        },
+      });
+
+      const overlapIdx   = result.result.ads.findIndex((ad: any) => ad.campaignId === overlapId);
+      const noOverlapIdx = result.result.ads.findIndex((ad: any) => ad.campaignId === noOverlapId);
+      expect(overlapIdx).toBeGreaterThanOrEqual(0);
+      expect(noOverlapIdx).toBeGreaterThanOrEqual(0);
+      expect(overlapIdx).toBeLessThan(noOverlapIdx);
+    }, 30000);
+
+    // ── Destination / placeId --------------------------------------------
+
+    it('placeId exact match (+3) ranks above destination string match (+2) for the same location', async () => {
+      const ts = Date.now();
+      const placeMatchId = `__test_place_exact_${ts}`;
+      const destMatchId  = `__test_place_dest_${ts + 1}`;
+
+      // Campaign A: has both placeId + targetDestination — scores +3 on placeId
+      await seedTargetCampaign(placeMatchId, {
+        targetPlaceId:     'ChIJD7fiBh9u5kcRYJSMaMOCCwQ',
+        targetDestination: 'Paris, France',
+      });
+      // Campaign B: destination string only — scores +2
+      await seedTargetCampaign(destMatchId, {
+        targetDestination: 'Paris, France',
+      });
+
+      const result = await callCloudFunction('selectAds', {
+        placement: 'video_feed', limit: 20,
+        userContext: {
+          destination: 'Paris, France',
+          placeId:     'ChIJD7fiBh9u5kcRYJSMaMOCCwQ',
+        },
+      });
+
+      const placeIdx = result.result.ads.findIndex((ad: any) => ad.campaignId === placeMatchId);
+      const destIdx  = result.result.ads.findIndex((ad: any) => ad.campaignId === destMatchId);
+      expect(placeIdx).toBeGreaterThanOrEqual(0);
+      expect(destIdx).toBeGreaterThanOrEqual(0);
+      expect(placeIdx).toBeLessThan(destIdx);
+    }, 30000);
+
+    // ── Seen campaign penalty ---------------------------------------------
+
+    it('seenCampaignIds: seen campaign (-5 penalty) ranks below identically-targeted fresh campaign', async () => {
+      const ts = Date.now();
+      const seenId  = `__test_seen_${ts}`;
+      const freshId = `__test_fresh_${ts + 1}`;
+      // Use a unique destination to boost both campaigns above the ambient noise of
+      // other test campaigns, ensuring both appear within the limit-20 result set.
+      const uniqueDest = `SeenTest Destination ${ts}`;
+
+      await seedTargetCampaign(seenId,  { name: 'Seen Campaign',  location: uniqueDest });
+      await seedTargetCampaign(freshId, { name: 'Fresh Campaign', location: uniqueDest });
+
+      const result = await callCloudFunction('selectAds', {
+        placement: 'video_feed', limit: 20,
+        seenCampaignIds: [seenId],
+        userContext: { destination: uniqueDest },
+      });
+
+      const seenIdx  = result.result.ads.findIndex((ad: any) => ad.campaignId === seenId);
+      const freshIdx = result.result.ads.findIndex((ad: any) => ad.campaignId === freshId);
+      // fresh scores +2 (dest match), seen scores +2−5 = −3.
+      // Both should be in results; fresh must appear before seen.
+      expect(freshIdx).toBeGreaterThanOrEqual(0);
+      // seenIdx may be absent if too many negatively-ranked campaigns are cut off —
+      // absence is still a valid pass: it ranked below fresh.
+      if (seenIdx >= 0) {
+        expect(freshIdx).toBeLessThan(seenIdx);
+      }
+    }, 30000);
+
+    // ── Edge cases --------------------------------------------------------
+
+    it('startDate = today is eligible (campaign starts on the current day)', async () => {
+      const ts = Date.now();
+      const todayId = `__test_start_today_${ts}`;
+      // Use a unique destination to ensure this campaign scores +2 and surfaces
+      // in the top 20 even when many other test campaigns are active in the DB.
+      const uniqueDest = `StartToday Destination ${ts}`;
+
+      await seedTargetCampaign(todayId, {
+        startDate: todayYYYYMMDD(),
+        location: uniqueDest,
+      });
+
+      const result = await callCloudFunction('selectAds', {
+        placement: 'video_feed', limit: 20,
+        userContext: { destination: uniqueDest },
+      });
+
+      const ad = result.result.ads.find((ad: any) => ad.campaignId === todayId);
+      expect(ad).toBeDefined();
+    }, 25000);
+
+    it('endDate = today is eligible (campaign ends on the current day)', async () => {
+      const ts = Date.now();
+      const todayEndId = `__test_end_today_${ts}`;
+      // Use a unique destination for the same reason as startDate=today above.
+      const uniqueDest = `EndToday Destination ${ts}`;
+
+      await seedTargetCampaign(todayEndId, {
+        endDate: todayYYYYMMDD(),
+        location: uniqueDest,
+      });
+
+      const result = await callCloudFunction('selectAds', {
+        placement: 'video_feed', limit: 20,
+        userContext: { destination: uniqueDest },
+      });
+
+      const ad = result.result.ads.find((ad: any) => ad.campaignId === todayEndId);
+      expect(ad).toBeDefined();
+    }, 25000);
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // selectAds — Multi-criteria targeting
+  //
+  // Real-world campaigns rarely target just one dimension. These tests verify
+  // that scores stack correctly across multiple criteria and that rankings
+  // reflect combined signal strength.
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  describe('Multi-criteria targeting — compound score stacking', () => {
+    /** Seed a minimal test campaign with the given overrides. Same helper as above. */
+    const seedMulti = async (id: string, overrides: Record<string, unknown> = {}): Promise<void> => {
+      await getAdminDb().collection('ads_campaigns').doc(id).set({
+        uid: 'test-advertiser-uid',
+        name: id,
+        status: 'active',
+        placement: 'video_feed',
+        isUnderReview: false,
+        startDate: offsetDate(-7),
+        endDate: offsetDate(30),
+        creativeType: 'image',
+        assetUrl: 'https://example.com/multi.jpg',
+        primaryText: 'Multi-criteria Test Ad',
+        cta: 'Learn More',
+        landingUrl: 'https://example.com',
+        billingModel: 'cpm',
+        budgetAmount: '100.00',
+        budgetCents: 10000,
+        totalImpressions: 0,
+        totalClicks: 0,
+        ...overrides,
+      });
+      createdCampaignIds.push(id);
+    };
+
+    // ── Scenario 1: Destination + Gender + Age ─────────────────────────────
+    //
+    // User: destination='Santorini, Greece', gender='Female', age=28
+    // Campaign A (full match):    dest +2  + gender +1 + age +2  = +5
+    // Campaign B (partial match): dest +2  + gender +1           = +3
+    // Campaign C (dest only):     dest +2                        = +2
+    // Campaign D (no targeting):                                    0
+    //
+    // Expected ranking: A > B > C > D
+    it('destination + gender + age: more matching criteria = higher rank', async () => {
+      const ts = Date.now();
+      const dest = `Santorini-${ts}, Greece`; // unique to isolate from other campaigns
+      const [fullId, partialId, destOnlyId, noneId] = [
+        `__test_mc1_full_${ts}`,
+        `__test_mc1_partial_${ts + 1}`,
+        `__test_mc1_dest_${ts + 2}`,
+        `__test_mc1_none_${ts + 3}`,
+      ];
+
+      await seedMulti(fullId, {
+        location: dest,
+        targetGender: 'Female',
+        ageFrom: '25', ageTo: '35',
+      });
+      await seedMulti(partialId, {
+        location: dest,
+        targetGender: 'Female',
+      });
+      await seedMulti(destOnlyId, {
+        location: dest,
+      });
+      await seedMulti(noneId);
+
+      const result = await callCloudFunction('selectAds', {
+        placement: 'video_feed', limit: 20,
+        userContext: {
+          destination: dest,
+          gender: 'Female',
+          age: 28,
+        },
+      });
+
+      expect(result.result).toBeDefined();
+      const ads = result.result.ads as any[];
+
+      const fullIdx    = ads.findIndex(a => a.campaignId === fullId);
+      const partialIdx = ads.findIndex(a => a.campaignId === partialId);
+      const destIdx    = ads.findIndex(a => a.campaignId === destOnlyId);
+
+      // All three destination-matched campaigns must appear
+      expect(fullIdx).toBeGreaterThanOrEqual(0);
+      expect(partialIdx).toBeGreaterThanOrEqual(0);
+      expect(destIdx).toBeGreaterThanOrEqual(0);
+
+      // Full match (+5) > partial match (+3) > dest-only (+2)
+      expect(fullIdx).toBeLessThan(partialIdx);
+      expect(partialIdx).toBeLessThan(destIdx);
+    }, 35000);
+
+    // ── Scenario 2: Destination + Trip Types + Travel Dates ────────────────
+    //
+    // User: destination='Kyoto-<ts>, Japan', tripTypes=['cultural'],
+    //       travelStart/End overlapping with campaign range
+    // Campaign A: dest + tripTypes + dates  → +2+1+2 = +5
+    // Campaign B: dest + tripTypes          → +2+1   = +3
+    // Campaign C: dest only                 → +2
+    //
+    // Expected ranking: A > B > C
+    it('destination + trip types + travel dates: scores stack correctly', async () => {
+      const ts = Date.now();
+      const dest = `Kyoto-${ts}, Japan`;
+      const [fullId, noDateId, destOnlyId] = [
+        `__test_mc2_full_${ts}`,
+        `__test_mc2_nodate_${ts + 1}`,
+        `__test_mc2_dest_${ts + 2}`,
+      ];
+
+      await seedMulti(fullId, {
+        location: dest,
+        targetTripTypes: ['cultural', 'solo'],
+        targetTravelStartDate: offsetDate(-5),
+        targetTravelEndDate:   offsetDate(14),
+      });
+      await seedMulti(noDateId, {
+        location: dest,
+        targetTripTypes: ['cultural'],
+        // no travel date targeting
+      });
+      await seedMulti(destOnlyId, {
+        location: dest,
+        // no trip-type or date targeting
+      });
+
+      const result = await callCloudFunction('selectAds', {
+        placement: 'video_feed', limit: 20,
+        userContext: {
+          destination: dest,
+          tripTypes: ['cultural'],
+          travelStartDate: offsetDate(0),
+          travelEndDate:   offsetDate(7),
+        },
+      });
+
+      expect(result.result).toBeDefined();
+      const ads = result.result.ads as any[];
+
+      const fullIdx   = ads.findIndex(a => a.campaignId === fullId);
+      const noDateIdx = ads.findIndex(a => a.campaignId === noDateId);
+      const destIdx   = ads.findIndex(a => a.campaignId === destOnlyId);
+
+      expect(fullIdx).toBeGreaterThanOrEqual(0);
+      expect(noDateIdx).toBeGreaterThanOrEqual(0);
+      expect(destIdx).toBeGreaterThanOrEqual(0);
+
+      // A (+5) > B (+3) > C (+2)
+      expect(fullIdx).toBeLessThan(noDateIdx);
+      expect(noDateIdx).toBeLessThan(destIdx);
+    }, 35000);
+
+    // ── Scenario 3: Gender + Activity Preferences + Travel Styles ──────────
+    //
+    // Pure interest-based stacking — no geographic signal.
+    // User: gender='Male', activityPreferences=['Adventure'], travelStyles=['backpacker']
+    // Campaign A: gender + activity + style   → +1+1+1 = +3
+    // Campaign B: gender + activity           → +1+1   = +2
+    // Campaign C: gender only                 → +1
+    // Campaign D: no targeting                → 0
+    //
+    // To avoid the limit-20 cut-off problem we also give all 4 campaigns the
+    // same unique destination string so they all score an additional +2 and
+    // remain in the top results.
+    it('gender + activity preferences + travel styles: interest scores stack', async () => {
+      const ts = Date.now();
+      const uniqueDest = `GenderActStyle Dest ${ts}`;
+      const [fullId, noStyleId, genderOnlyId, noneId] = [
+        `__test_mc3_full_${ts}`,
+        `__test_mc3_nostyle_${ts + 1}`,
+        `__test_mc3_gender_${ts + 2}`,
+        `__test_mc3_none_${ts + 3}`,
+      ];
+
+      await seedMulti(fullId, {
+        location: uniqueDest,
+        targetGender: 'Male',
+        targetActivityPreferences: ['Adventure', 'Hiking'],
+        targetTravelStyles: ['backpacker'],
+      });
+      await seedMulti(noStyleId, {
+        location: uniqueDest,
+        targetGender: 'Male',
+        targetActivityPreferences: ['Adventure'],
+        // no travel style
+      });
+      await seedMulti(genderOnlyId, {
+        location: uniqueDest,
+        targetGender: 'Male',
+        // no activity or style
+      });
+      await seedMulti(noneId, {
+        location: uniqueDest,
+        // no targeting at all, but same dest gives +2 to all
+      });
+
+      const result = await callCloudFunction('selectAds', {
+        placement: 'video_feed', limit: 20,
+        userContext: {
+          destination: uniqueDest,
+          gender: 'Male',
+          activityPreferences: ['Adventure'],
+          travelStyles: ['backpacker'],
+        },
+      });
+
+      expect(result.result).toBeDefined();
+      const ads = result.result.ads as any[];
+
+      const fullIdx     = ads.findIndex(a => a.campaignId === fullId);     // +2+1+1+1 = +5
+      const noStyleIdx  = ads.findIndex(a => a.campaignId === noStyleId);  // +2+1+1   = +4
+      const genderIdx   = ads.findIndex(a => a.campaignId === genderOnlyId); // +2+1   = +3
+      const noneIdx     = ads.findIndex(a => a.campaignId === noneId);     // +2
+
+      expect(fullIdx).toBeGreaterThanOrEqual(0);
+      expect(noStyleIdx).toBeGreaterThanOrEqual(0);
+      expect(genderIdx).toBeGreaterThanOrEqual(0);
+      expect(noneIdx).toBeGreaterThanOrEqual(0);
+
+      // Each added criterion lifts the campaign one rank higher
+      expect(fullIdx).toBeLessThan(noStyleIdx);   // +5 > +4
+      expect(noStyleIdx).toBeLessThan(genderIdx); // +4 > +3
+      expect(genderIdx).toBeLessThan(noneIdx);    // +3 > +2
+    }, 35000);
+
+    // ── Scenario 4: Seen penalty interacts with multi-criteria score ────────
+    //
+    // A fully-matched multi-criteria campaign that has been seen can still rank
+    // below a zero-targeted fresh campaign once the -5 penalty is applied.
+    //
+    // Campaign A (seen):  dest + gender + age → +2+1+2 = +5, but -5 seen → 0
+    // Campaign B (fresh): no targeting → 0
+    // Both score 0 — order is undefined — but neither should be ranked ABOVE the other.
+    // The important assertion is that a FRESH + fully-matched campaign (score+5)
+    // beats the SEEN + fully-matched campaign (score 0).
+    it('seen penalty negates high multi-criteria score: fresh zero-targeted ranks above seen high-scored', async () => {
+      const ts = Date.now();
+      const uniqueDest = `SeenMulti Dest ${ts}`;
+      const seenHighId = `__test_mc4_seen_${ts}`;
+      const freshHighId = `__test_mc4_fresh_${ts + 1}`;
+
+      // Both campaigns fully match — only seenHighId will be penalised
+      await seedMulti(seenHighId, {
+        location: uniqueDest,
+        targetGender: 'Female',
+        ageFrom: '20', ageTo: '40',
+      }); // score = +2+1+2 = +5, but -5 if seen → effective 0
+      await seedMulti(freshHighId, {
+        location: uniqueDest,
+        targetGender: 'Female',
+        ageFrom: '20', ageTo: '40',
+      }); // same, but NOT seen → score +5
+
+      const result = await callCloudFunction('selectAds', {
+        placement: 'video_feed', limit: 20,
+        seenCampaignIds: [seenHighId],
+        userContext: {
+          destination: uniqueDest,
+          gender: 'Female',
+          age: 30,
+        },
+      });
+
+      expect(result.result).toBeDefined();
+      const ads = result.result.ads as any[];
+
+      const freshIdx = ads.findIndex(a => a.campaignId === freshHighId); // +5
+      const seenIdx  = ads.findIndex(a => a.campaignId === seenHighId);  // 0
+
+      // Fresh (+5) must appear above (or before) seen (0)
+      expect(freshIdx).toBeGreaterThanOrEqual(0);
+      if (seenIdx >= 0) {
+        expect(freshIdx).toBeLessThan(seenIdx);
+      }
+    }, 35000);
+  });
 });

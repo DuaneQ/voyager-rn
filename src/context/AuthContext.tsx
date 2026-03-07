@@ -17,6 +17,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth, db } from '../config/firebaseConfig';
+import { clearAdsCache } from '../hooks/ads/useAdDelivery';
 import { SafeGoogleSignin } from '../utils/SafeGoogleSignin';
 import * as AppleAuthentication from 'expo-apple-authentication';
 
@@ -338,7 +339,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Use Firebase Web SDK signOut (works everywhere)
       await signOut(auth);
-      
+      // Clear in-memory ad session cache so the next user doesn't see stale ads
+      clearAdsCache()
       // Clear stored credentials
       await AsyncStorage.multiRemove(['USER_CREDENTIALS', 'PROFILE_INFO']);
       

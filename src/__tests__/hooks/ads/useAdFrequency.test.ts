@@ -179,25 +179,33 @@ describe('useAdFrequency', () => {
   });
 
   describe('edge cases', () => {
-    it('should handle single content item', () => {
+    it('should handle single content item — trailing fallback appends ad', () => {
       const { result } = renderHook(() => useAdFrequency());
 
       const mixed = result.current.spliceAdsIntoList(
         ['only-one'],
         [makeAd('1')],
       );
-      // Single item, FIRST_AD_AFTER=3 so no ad slots
-      expect(mixed).toHaveLength(1);
+      // FIRST_AD_AFTER=3 so the loop never inserts an ad, but the trailing
+      // fallback appends one so stale cached ads still surface on short feeds.
+      expect(mixed).toHaveLength(2);
       expect(mixed[0].type).toBe('content');
+      expect(mixed[1].type).toBe('ad');
+      if (mixed[1].type === 'ad') expect(mixed[1].ad.campaignId).toBe('1');
     });
 
-    it('should handle exactly FIRST_AD_AFTER content items', () => {
+    it('should handle exactly FIRST_AD_AFTER content items — trailing fallback appends ad', () => {
       const { result } = renderHook(() => useAdFrequency());
       const content = Array.from({ length: FIRST_AD_AFTER }, (_, i) => `v-${i}`);
 
       const mixed = result.current.spliceAdsIntoList(content, [makeAd('1')]);
-      // Index FIRST_AD_AFTER == content.length, so no slot (< not <=)
-      expect(mixed).toHaveLength(FIRST_AD_AFTER);
+      // Loop condition: while (nextSlot < contentLength) → 3 < 3 is false, no slot.
+      // Trailing fallback fires and appends ad at the end.
+      expect(mixed).toHaveLength(FIRST_AD_AFTER + 1);
+      expect(mixed[FIRST_AD_AFTER].type).toBe('ad');
+      if (mixed[FIRST_AD_AFTER].type === 'ad') {
+        expect(mixed[FIRST_AD_AFTER].ad.campaignId).toBe('1');
+      }
     });
 
     it('should handle FIRST_AD_AFTER + 1 content items (exactly one slot)', () => {
@@ -211,6 +219,43 @@ describe('useAdFrequency', () => {
       expect(mixed).toHaveLength(FIRST_AD_AFTER + 2); // content + 1 ad
       // Ad appears AFTER content[FIRST_AD_AFTER], i.e. the last position
       expect(mixed[FIRST_AD_AFTER + 1].type).toBe('ad');
+    });
+  });
+
+  describe('trailing-ad fallback (short feed / offline)', () => {
+    it('does NOT trigger when a regular slot already fired', () => {
+      const { result } = renderHook(() => useAdFrequency());
+      // FIRST_AD_AFTER+1 items → one normal slot fires → no trailing ad
+      const content = Array.from({ length: FIRST_AD_AFTER + 1 }, (_, i) => `v-${i}`);
+
+      const mixed = result.current.spliceAdsIntoList(content, [makeAd('a1')]);
+      const adItems = mixed.filter((item) => item.type === 'ad');
+      expect(adItems).toHaveLength(1);
+      // That one ad is at the normal slot (position FIRST_AD_AFTER + 1), not doubled
+      expect(mixed[mixed.length - 1].type).toBe('ad');
+    });
+
+    it('uses the first cached ad for the trailing slot', () => {
+      const { result } = renderHook(() => useAdFrequency());
+      // Two ads available but only 2 content items → trailing fallback picks ads[0]
+      const content = ['v-0', 'v-1'];
+      const ads = [makeAd('priority-ad'), makeAd('second-ad')];
+
+      const mixed = result.current.spliceAdsIntoList(content, ads);
+      expect(mixed).toHaveLength(3);
+      expect(mixed[2].type).toBe('ad');
+      if (mixed[2].type === 'ad') {
+        expect(mixed[2].ad.campaignId).toBe('priority-ad');
+      }
+    });
+
+    it('does NOT append a trailing ad when ads array is empty', () => {
+      const { result } = renderHook(() => useAdFrequency());
+      const content = ['v-0', 'v-1', 'v-2'];
+
+      const mixed = result.current.spliceAdsIntoList(content, []);
+      expect(mixed).toHaveLength(3);
+      expect(mixed.every((item) => item.type === 'content')).toBe(true);
     });
   });
 });
