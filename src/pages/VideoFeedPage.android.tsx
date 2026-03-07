@@ -105,10 +105,13 @@ const VideoFeedPage: React.FC = () => {
   const { trackImpression, trackClick, flush: _flushAdEvents, getSeenCampaignIds } = useAdTracking();
   const { spliceAdsIntoList } = useAdFrequency();
   const { userProfile } = useUserProfile();
-  const { defaultProfile: travelProfile } = useTravelPreferences();
+  const { defaultProfile: travelProfile, loading: travelProfileLoading } = useTravelPreferences();
 
-  // Fetch ads on mount with demographic + travel preference context for targeting
+  // Fetch ads once the travel profile has fully loaded.
+  // Guard: bail while loading=true so we never send a partially-built context
+  // to selectAds (avoids scoring with only gender/age before activities load).
   useEffect(() => {
+    if (travelProfileLoading) return;
     const ctx: Record<string, string | number | string[] | undefined> = {};
     if (userProfile?.gender) ctx.gender = userProfile.gender;
     if (userProfile?.dob) {
@@ -121,8 +124,13 @@ const VideoFeedPage: React.FC = () => {
     if (travelProfile?.travelStyle) {
       ctx.travelStyles = [travelProfile.travelStyle];
     }
-    fetchVideoAds(Object.keys(ctx).length > 0 ? ctx as any : undefined, getSeenCampaignIds());
-  }, [userProfile?.gender, userProfile?.dob, travelProfile?.activities, travelProfile?.travelStyle, fetchVideoAds, getSeenCampaignIds]);
+    const adCtx = Object.keys(ctx).length > 0 ? ctx as any : undefined;
+    console.log(
+      `[AdContext] built (android, travelProfileLoading=false):`,
+      adCtx ?? 'NO CONTEXT — all campaigns score equally',
+    );
+    fetchVideoAds(adCtx, getSeenCampaignIds());
+  }, [userProfile?.gender, userProfile?.dob, travelProfile?.activities, travelProfile?.travelStyle, travelProfileLoading, fetchVideoAds, getSeenCampaignIds]);
 
   /** Discriminated union for feed items. */
   type FeedItem =

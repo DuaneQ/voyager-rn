@@ -46,6 +46,13 @@ export interface AdUnit {
   offerDetails?: string
   /** Image URL shorthand (alias for assetUrl when creativeType is 'image'). */
   imageUrl?: string
+  /**
+   * Campaign run dates (YYYY-MM-DD) returned by selectAds so the client can
+   * perform a secondary expiry check when ads are served from a cached state
+   * across a session boundary (e.g. midnight rollover).
+   */
+  startDate?: string
+  endDate?: string
 }
 
 // ─── UserAdContext (targeting) ─────────────────────────────────────────────────

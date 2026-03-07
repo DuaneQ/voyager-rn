@@ -111,7 +111,18 @@ function SponsoredVideoCardComponent({
     try {
       if (isActive) {
         console.log(`[AdVideo] ▶ playing campaignId=${ad.campaignId} muted=${isMuted} source=${videoSource}`)
-        player.play()
+        // player.play() is typed void but returns a Promise on web.
+        // Unhandled rejections (e.g. AbortError when pause() interrupts play()
+        // during fast scroll) bubble up to GlobalErrorHandler and create noise.
+        // We coerce to Promise and swallow AbortErrors explicitly.
+        const playResult = player.play() as unknown
+        if (playResult instanceof Promise) {
+          ;(playResult as Promise<void>).catch((err: unknown) => {
+            if ((err as { name?: string })?.name !== 'AbortError') {
+              console.warn(`[AdVideo] play() rejected campaignId=${ad.campaignId}:`, err)
+            }
+          })
+        }
       } else {
         player.pause()
       }
@@ -124,6 +135,9 @@ function SponsoredVideoCardComponent({
   useEffect(() => {
     if (!isActive || !isVideoCreative || !player || !videoSource) return
     const THRESHOLDS: VideoQuartile[] = [25, 50, 75, 100]
+    // For the 100% milestone, use 97% as the effective check — with 500ms polling
+    // a looping video resets currentTime to 0 before the poll can catch exact 100%.
+    const effectivePct = (threshold: VideoQuartile) => (threshold === 100 ? 97 : threshold)
     const interval = setInterval(() => {
       try {
         const duration = player.duration
@@ -131,7 +145,7 @@ function SponsoredVideoCardComponent({
         if (!duration || duration <= 0) return
         const pct = (current / duration) * 100
         for (const threshold of THRESHOLDS) {
-          if (pct >= threshold && !quartilesFiredRef.current.has(threshold)) {
+          if (pct >= effectivePct(threshold) && !quartilesFiredRef.current.has(threshold)) {
             quartilesFiredRef.current.add(threshold)
             console.log(`[AdQuartile] ${threshold}% reached campaignId=${ad.campaignId} time=${current.toFixed(1)}s duration=${duration.toFixed(1)}s`)
             onQuartile?.(ad.campaignId, threshold)

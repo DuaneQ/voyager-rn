@@ -20,7 +20,7 @@ import { useCallback } from 'react'
 import type { AdUnit } from '../../types/AdDelivery'
 
 /** Show first ad after this many content items. */
-const FIRST_AD_AFTER = 4
+const FIRST_AD_AFTER = 3
 
 /** Show subsequent ads every N content items. */
 const AD_INTERVAL = 5

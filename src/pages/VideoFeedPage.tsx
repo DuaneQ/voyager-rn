@@ -88,40 +88,97 @@ const VideoFeedPage: React.FC = () => {
   const { trackImpression, trackClick, trackQuartile, getSeenCampaignIds } = useAdTracking();
   const { spliceAdsIntoList } = useAdFrequency();
   const { userProfile } = useUserProfile();
-  const { defaultProfile: travelProfile } = useTravelPreferences();
+  const { defaultProfile: travelProfile, loading: travelProfileLoading } = useTravelPreferences();
 
   /**
    * Build the targeting context object from the current profile state.
    * Returns undefined when there is nothing useful to send.
+   * travelProfileLoading is included in deps so the callback is replaced once
+   * the profile finishes loading — ensuring a fresh ad fetch fires.
    */
   const buildAdContext = useCallback((): import('../types/AdDelivery').UserAdContext | undefined => {
     const ctx: Record<string, string | number | string[]> = {};
-    if (userProfile?.gender) ctx.gender = userProfile.gender;
+
+    // ── Gender ──────────────────────────────────────────────────────────
+    if (userProfile?.gender) {
+      ctx.gender = userProfile.gender;
+    } else {
+      console.log('[AdContext] gender: not set on user profile');
+    }
+
+    // ── Age (computed from dob) ──────────────────────────────────────────
     if (userProfile?.dob) {
       const age = calculateAge(userProfile.dob);
-      if (age > 0) ctx.age = age;
+      if (age > 0) {
+        ctx.age = age;
+      } else {
+        console.warn(`[AdContext] age: computed age=${age} from dob=${userProfile.dob} — not included (invalid)`);
+      }
+    } else {
+      console.log('[AdContext] age: dob not set on user profile — age targeting unavailable');
     }
+
+    // ── Activity preferences ─────────────────────────────────────────────
     if (travelProfile?.activities && travelProfile.activities.length > 0) {
       ctx.activityPreferences = travelProfile.activities;
+    } else {
+      console.log('[AdContext] activityPreferences: not set in travel profile');
     }
+
+    // ── Travel style ─────────────────────────────────────────────────────
     if (travelProfile?.travelStyle) {
       ctx.travelStyles = [travelProfile.travelStyle];
+    } else {
+      console.log('[AdContext] travelStyle: not set in travel profile');
     }
-    return Object.keys(ctx).length > 0 ? (ctx as any) : undefined;
-  }, [userProfile?.gender, userProfile?.dob, travelProfile?.activities, travelProfile?.travelStyle]);
+
+    const result = Object.keys(ctx).length > 0 ? (ctx as any) : undefined;
+
+    console.log(
+      `[AdContext] built (travelProfileLoading=${travelProfileLoading}):`,
+      result
+        ? {
+            gender: ctx.gender ?? '—',
+            age: ctx.age ?? '—',
+            activityPreferences: ctx.activityPreferences ?? '—',
+            travelStyles: ctx.travelStyles ?? '—',
+          }
+        : 'NO CONTEXT — ad fetch will score all campaigns equally (score=0)',
+    );
+
+    return result;
+  }, [userProfile?.gender, userProfile?.dob, travelProfile?.activities, travelProfile?.travelStyle, travelProfileLoading]);
 
   // Stable key of the last context we fetched with — prevents redundant
   // fetches when React re-renders before all async profile data has settled.
   const lastAdContextKeyRef = useRef<string>('');
 
-  // Fetch ads on mount and whenever meaningful targeting values change.
+  // When travelProfile finishes loading, reset the dedup key so the fetch
+  // effect below always runs once with the fully-resolved context — even when
+  // the profile data itself didn't change the key (e.g. it stayed null).
+  const prevTravelLoadingRef = useRef(true);
   useEffect(() => {
+    if (prevTravelLoadingRef.current && !travelProfileLoading) {
+      lastAdContextKeyRef.current = '';
+    }
+    prevTravelLoadingRef.current = travelProfileLoading;
+  }, [travelProfileLoading]);
+
+  // Fetch ads on mount and whenever meaningful targeting values change.
+  // Guard: skip entirely while travelProfile is still loading — the
+  // prevTravelLoadingRef reset above guarantees a follow-up fetch once it
+  // resolves, so we never send a fetch with a partially-built context.
+  useEffect(() => {
+    if (travelProfileLoading) {
+      console.log('[AdContext] skipping ad fetch — travelProfile still loading');
+      return;
+    }
     const ctx = buildAdContext();
     const key = JSON.stringify(ctx ?? null);
     if (key === lastAdContextKeyRef.current) return; // context unchanged — skip
     lastAdContextKeyRef.current = key;
     fetchVideoAds(ctx, getSeenCampaignIds());
-  }, [buildAdContext, fetchVideoAds, getSeenCampaignIds]);
+  }, [buildAdContext, fetchVideoAds, getSeenCampaignIds, travelProfileLoading]);
 
   // Build mixed feed: organic videos + sponsored ads
   type FeedItem =

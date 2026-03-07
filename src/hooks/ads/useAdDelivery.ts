@@ -16,6 +16,47 @@
 import { useState, useCallback, useRef, useMemo } from 'react'
 import { httpsCallable } from 'firebase/functions'
 import { functions } from '../../config/firebaseConfig'
+
+/** Return today as YYYY-MM-DD in local time (avoids UTC-shift issues). */
+function todayLocalYYYYMMDD(): string {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = String(now.getMonth() + 1).padStart(2, '0')
+  const d = String(now.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+/**
+ * Client-side expiry guard — defense-in-depth for ads cached across a session
+ * boundary (e.g. app open at 11:58pm, campaign expires at midnight).
+ *
+ * The server ALWAYS filters on date, so expired ads should never be returned
+ * in a fresh fetch.  This guard catches the rare case where already-fetched
+ * ads are still in state when the calendar day rolls over.
+ */
+function filterExpiredAds(ads: import('../../types/AdDelivery').AdUnit[]): import('../../types/AdDelivery').AdUnit[] {
+  const today = todayLocalYYYYMMDD()
+  return ads.filter((ad) => {
+    // If the CF didn't return dates (older deployment), let the ad through.
+    if (!ad.startDate && !ad.endDate) return true
+
+    if (ad.startDate && ad.startDate > today) {
+      console.warn(
+        `[AdDelivery] ⚠ CLIENT EXPIRY GUARD: ad not yet started — filtered out` +
+        ` campaignId=${ad.campaignId} startDate=${ad.startDate} today=${today}`,
+      )
+      return false
+    }
+    if (ad.endDate && ad.endDate < today) {
+      console.warn(
+        `[AdDelivery] ⚠ CLIENT EXPIRY GUARD: ad expired — filtered out` +
+        ` campaignId=${ad.campaignId} endDate=${ad.endDate} today=${today}`,
+      )
+      return false
+    }
+    return true
+  })
+}
 import type {
   AdUnit,
   Placement,
@@ -79,8 +120,25 @@ export function useAdDelivery(
 
         const response = result.data
         if (response && Array.isArray(response.ads)) {
-          console.log(`[AdDelivery] ✓ ${response.ads.length} ad(s) received for ${placement}:`, response.ads.map(a => a.campaignId))
-          setAds(response.ads)
+          const serverCount = response.ads.length
+          console.log(
+            `[AdDelivery] ✓ ${serverCount} ad(s) received from server for placement=${placement}:`,
+            response.ads.map((a) => ({
+              campaignId: a.campaignId,
+              businessName: a.businessName,
+              creativeType: a.creativeType,
+              startDate: a.startDate ?? 'n/a',
+              endDate: a.endDate ?? 'n/a',
+            })),
+          )
+          const valid = filterExpiredAds(response.ads)
+          if (valid.length < serverCount) {
+            console.warn(
+              `[AdDelivery] CLIENT EXPIRY GUARD removed ${serverCount - valid.length}` +
+              ` stale ad(s) — ${valid.length} remain for placement=${placement}`,
+            )
+          }
+          setAds(valid)
         } else {
           console.warn(`[AdDelivery] no ads in response for ${placement}`)
           setAds([])

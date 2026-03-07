@@ -1,6 +1,12 @@
 % TravalPass Ads — PRD (MVP)
 
-Status: Draft
+Status: **Implemented (dev)** — Last updated: 2026-03-02
+
+> **Current implementation state (2026-03-02):**
+> Consumer-side ad delivery is implemented in voyager-RN and deployed to `mundo1-dev`. See `voyager-ads/docs/ads/IMPLEMENTATION_STATUS.md` for full detail.
+> 
+> **✅ Implemented:** Advertiser PWA, Campaign CRUD, Mux video pipeline (bug-fixed + deployed), `selectAds` CF, `logAdEvents` CF, `useAdDelivery` / `useAdFrequency` / `useAdTracking` hooks, VideoFeedPage ad interleaving (1st ad at 5th slot / mixed-index 4, every 5 after), AI Itinerary slot, impression/click logging, budget spend tracking + auto-pause, 24h frequency caps.  
+> **🔄 Pending:** Production deploy, Itinerary Feed rendering, VCR quartile events, web travelProfile race fix bundle deploy, privacy/consent UI, iOS ATT, user flagging.
 
 Purpose
 - Create a simple, self‑serve advertising product for local businesses and travel brands that delivers ads into:
