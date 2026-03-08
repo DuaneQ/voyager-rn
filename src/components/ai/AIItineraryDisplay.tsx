@@ -1566,7 +1566,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
           />
           {isSectionExpanded('promotions') && (
             <View style={styles.accordionContent}>
-              {promotions.map((promo: any, index: number) => (
+              {promotions.map((promo, index) => (
                 <PromotionCard
                   key={promo._campaignId ?? index}
                   promo={promo}

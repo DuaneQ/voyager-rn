@@ -78,7 +78,7 @@ function PromotionCardComponent({
   }, [promo._isRealAd, promo._campaignId, trackImpression]);
 
   return (
-    <View key={promo._campaignId ?? index} style={styles.card}>
+    <View style={styles.card}>
       {/* Banner image */}
       {promo.imageUrl ? (
         <Image
