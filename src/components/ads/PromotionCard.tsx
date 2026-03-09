@@ -105,7 +105,7 @@ function PromotionCardComponent({
         {/* Sponsored label */}
         <View style={styles.sponsoredRow}>
           <Text style={styles.sponsoredLabel}>Sponsored</Text>
-          {promo.businessType && (
+          {!!promo.businessType && (
             <View style={styles.typeChip}>
               <Text style={styles.typeChipText}>
                 {promo.businessType.charAt(0).toUpperCase() + promo.businessType.slice(1)}
@@ -129,12 +129,12 @@ function PromotionCardComponent({
               <Text style={styles.chipText}>⭐ {promo.rating}</Text>
             </View>
           )}
-          {promo.priceRange && (
+          {!!promo.priceRange && (
             <View style={styles.chip}>
               <Text style={styles.chipText}>{promo.priceRange}</Text>
             </View>
           )}
-          {promo.operatingHours && (
+          {!!promo.operatingHours && (
             <View style={styles.chip}>
               <Text style={styles.chipText}>🕐 {promo.operatingHours}</Text>
             </View>
@@ -153,37 +153,37 @@ function PromotionCardComponent({
         )}
 
         {/* Offer details */}
-        {(promo.offerDetails || promo.promoCode) && (
+        {!!(promo.offerDetails || promo.promoCode) && (
           <View style={styles.offerBox}>
-            {promo.offerDetails && (
+            {!!promo.offerDetails && (
               <Text style={styles.offerDetails}>🏷️ {promo.offerDetails}</Text>
             )}
-            {promo.promoCode && (
+            {!!promo.promoCode && (
               <View style={styles.promoCodeRow}>
                 <Text style={styles.promoCodeLabel}>Code: </Text>
                 <Text style={styles.promoCode}>{promo.promoCode}</Text>
               </View>
             )}
-            {promo.offerExpiry && (
+            {!!promo.offerExpiry && (
               <Text style={styles.offerExpiry}>Expires: {promo.offerExpiry}</Text>
             )}
           </View>
         )}
 
         {/* Address / contact */}
-        {promo.address && (
+        {!!promo.address && (
           <Text style={styles.address}>📍 {promo.address}</Text>
         )}
-        {promo.phone && (
+        {!!promo.phone && (
           <Text style={styles.contact}>📞 {promo.phone}</Text>
         )}
-        {promo.email && (
+        {!!promo.email && (
           <Text style={styles.contact}>✉️ {promo.email}</Text>
         )}
 
         {/* Action buttons */}
         <View style={styles.actions}>
-          {(promo.landingUrl || promo.website) && (
+          {!!(promo.landingUrl || promo.website) && (
             <TouchableOpacity
               style={styles.ctaButton}
               onPress={() => {
@@ -200,7 +200,7 @@ function PromotionCardComponent({
               <Text style={styles.ctaText}>{promo.cta || 'Learn More'}</Text>
             </TouchableOpacity>
           )}
-          {promo.googleMapsUrl && (
+          {!!promo.googleMapsUrl && (
             <TouchableOpacity
               style={styles.mapsButton}
               onPress={() => Linking.openURL(promo.googleMapsUrl!).catch(() => {})}
