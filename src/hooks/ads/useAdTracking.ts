@@ -23,6 +23,7 @@
 import { useCallback, useRef, useEffect, useMemo } from 'react'
 import { httpsCallable } from 'firebase/functions'
 import { functions } from '../../config/firebaseConfig'
+import { useAdSeen } from '../../context/AdSeenContext'
 import type {
   AdEvent,
   VideoQuartile,
@@ -41,6 +42,8 @@ export interface UseAdTrackingReturn {
    * Record an impression for a campaign.
    * Deduplicated: calling multiple times for the same campaignId in the same
    * session only sends one event.
+   * Also registers the campaign in AdSeenContext so useAdDelivery can apply
+   * the server-side seen penalty across the full session.
    */
   trackImpression: (campaignId: string) => void
   /** Record a click-through for a campaign. */
@@ -49,11 +52,10 @@ export interface UseAdTrackingReturn {
   trackQuartile: (campaignId: string, quartile: VideoQuartile) => void
   /** Force-flush any buffered events (useful before navigation). */
   flush: () => Promise<void>
-  /** Return all campaign IDs for which an impression has been tracked this session. */
-  getSeenCampaignIds: () => string[]
 }
 
 export function useAdTracking(): UseAdTrackingReturn {
+  const { addSeenId } = useAdSeen()
   const bufferRef = useRef<AdEvent[]>([])
   const impressionSetRef = useRef<Set<string>>(new Set())
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -142,6 +144,7 @@ export function useAdTracking(): UseAdTrackingReturn {
         return
       }
       impressionSetRef.current.add(campaignId)
+      addSeenId(campaignId)
       console.log(`[AdTracking] impression queued campaignId=${campaignId}`)
       enqueue({
         type: 'impression',
@@ -179,10 +182,5 @@ export function useAdTracking(): UseAdTrackingReturn {
     [enqueue],
   )
 
-  const getSeenCampaignIds = useCallback(
-    () => [...impressionSetRef.current],
-    [],
-  )
-
-  return { trackImpression, trackClick, trackQuartile, flush, getSeenCampaignIds }
+  return { trackImpression, trackClick, trackQuartile, flush }
 }

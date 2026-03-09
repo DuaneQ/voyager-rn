@@ -10,6 +10,12 @@
 jest.mock('../../../firebase-config');
 jest.mock('../../config/firebaseConfig');
 
+// AdSeenContext is used by useAdDelivery — provide a no-op mock for non-ads tests
+jest.mock('../../context/AdSeenContext', () => ({
+  useAdSeen: () => ({ addSeenId: jest.fn(), getSeenIds: () => [] }),
+  AdSeenProvider: ({ children }: any) => children,
+}));
+
 // Mock Firebase services
 jest.mock('firebase/firestore', () => ({
   getFirestore: jest.fn(),

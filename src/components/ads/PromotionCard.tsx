@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
   },
   image: {
     width: '100%',
-    height: 160,
+    aspectRatio: 3 / 1,
   },
   imagePlaceholder: {
     width: '100%',

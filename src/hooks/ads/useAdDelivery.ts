@@ -16,6 +16,7 @@
 import { useState, useCallback, useRef, useMemo } from 'react'
 import { httpsCallable } from 'firebase/functions'
 import { functions } from '../../config/firebaseConfig'
+import { useAdSeen } from '../../context/AdSeenContext'
 import type { Placement as _Placement } from '../../types/AdDelivery'
 import type { AdUnit as _AdUnit } from '../../types/AdDelivery'
 
@@ -103,8 +104,10 @@ export interface UseAdDeliveryReturn {
   loading: boolean
   /** Last error message, or null. */
   error: string | null
-  /** Trigger a fetch with optional user targeting context and seen campaign IDs. */
-  fetchAds: (userContext?: UserAdContext, seenCampaignIds?: string[]) => Promise<void>
+  /** Trigger a fetch with optional user targeting context. Seen campaign IDs
+   * are read automatically from AdSeenContext and sent to the server for the
+   * -5 seen penalty. */
+  fetchAds: (userContext?: UserAdContext) => Promise<void>
 }
 
 export function useAdDelivery(
@@ -112,6 +115,8 @@ export function useAdDelivery(
   options: UseAdDeliveryOptions = {},
 ): UseAdDeliveryReturn {
   const { limit = 5 } = options
+
+  const { getSeenIds } = useAdSeen()
 
   // Seed from cache so remounts (React Router web navigation) immediately
   // show the last successfully fetched ads rather than an empty state.
@@ -130,7 +135,7 @@ export function useAdDelivery(
   )
 
   const fetchAds = useCallback(
-    async (userContext?: UserAdContext, seenCampaignIds?: string[]) => {
+    async (userContext?: UserAdContext) => {
       // Deduplicate in-flight requests
       if (inFlightRef.current) return
       inFlightRef.current = true
@@ -138,6 +143,12 @@ export function useAdDelivery(
       setError(null)
 
       try {
+        const seenCampaignIds = getSeenIds()
+        if (seenCampaignIds.length > 0) {
+          console.log(
+            `[AdDelivery] seenCampaignIds (${seenCampaignIds.length}): [${seenCampaignIds.join(', ')}]`,
+          )
+        }
         console.log(`[AdDelivery] fetching placement=${placement} limit=${limit}`, userContext ?? 'no context')
         const result = await selectAdsFn({
           placement,
@@ -183,7 +194,7 @@ export function useAdDelivery(
         setLoading(false)
       }
     },
-    [placement, limit, selectAdsFn],
+    [placement, limit, selectAdsFn, getSeenIds],
   )
 
   return { ads, loading, error, fetchAds }

@@ -9,6 +9,61 @@
 
 ---
 
+## ⏸ Session Handoff — 2026-03-07
+
+### What was completed today
+
+**Code changes (all compiled ✅, tests passing ✅):**
+
+| Repo | Branch | Change | Status |
+|---|---|---|---|
+| `voyager-RN` | `ads-phase2` | Trailing-ad fallback in `useAdFrequency.ts` (Bug 3 fix) | Pushed ✅ |
+| `voyager-RN` | `ads-phase2` | `AuthContext.tsx` — static import `clearAdsCache` (Jest fix) | Pushed ✅ |
+| `voyager-RN` | `ads-phase2` | `AppNavigator.web.tsx` — `<ErrorBoundary>` wrapping each lazy Suspense (Bug 1 fix) | Pushed ✅ |
+| `voyager-RN` | `ads-phase2` | Removed misleading `key` prop from inner `<View>` in `PromotionCard.tsx` | Local — needs push |
+| `voyager-RN` | `ads-phase2` | `AIItineraryDisplay.tsx` — removed `promo: any`, TypeScript now infers `PromotionData` | Local — needs push |
+| `voyager-ads` | `ads-connect` | Fixed wrong test description in `wizardUtils.test.ts` (`false` → `true`) | Pushed ✅ |
+| `functions` | `ad-functions` | Added `_testing` exports + unit tests for `reviewCampaign`, `getPendingCampaigns`, `openFlightsProxy`, `searchAccommodations` | Pushed ✅ |
+| `functions` | `ad-functions` | Added unit tests for `utils/helpers.ts` (100%) and `utils/placesApiLogger.ts` (94%) | Pushed ✅ |
+| `functions` | `ad-functions` | CI workflow: `.github/workflows/functions-unit-tests.yml` (test-only, no deploy) | Pushed ✅ |
+| `functions` | `ad-functions` | Deleted dead code `searchActivities.ts` (never exported from index.ts, never deployed) | Pushed ✅ |
+
+**Test counts:**
+- `voyager-RN`: 2392/2392 passing
+- `voyager-ads`: 632/632 passing
+- `functions`: 400/400 passing
+
+### What to do first tomorrow morning
+
+1. **Push the two local `voyager-RN` changes** (PromotionCard key prop + AIItineraryDisplay typing):
+   ```bash
+   cd /Users/icebergslim/projects/voyager-RN && git add -A && git commit -m "fix: remove inner View key prop in PromotionCard; infer PromotionData type in AIItineraryDisplay" && git push origin ads-phase2
+   ```
+
+2. **Resume manual E2E testing** — highest priority sections:
+   - **Section 3 (Targeting Accuracy)** — all sub-tests pending; requires creating new targeted campaigns in `voyager-ads` portal. Start with 3.1 (age) and 3.2 (gender) since those are simplest to set up.
+   - **Section 12 (AI Itinerary Slot)** — entire section untouched; requires at least one `ai_slot` campaign in dev Firestore.
+   - **Section 6.2–6.4 (Feed Position edge cases)** — needs a feed with a known video count.
+
+3. **Note on `3jMaSapi1T2EsTuFioge`** — this campaign's `endDate` was `2026-03-07` (today). As of 2026-03-08 it will be expired and excluded by the server. Update Firestore `endDate` to a future date if you need it for testing, or use a different campaign.
+
+### Campaign inventory (mundo1-dev as of 2026-03-07)
+
+| campaignId | Name | Status | Notes |
+|---|---|---|---|
+| `3jMaSapi1T2EsTuFioge` | E2E Video | active | endDate=2026-03-07 — **expired as of 2026-03-08** |
+| `L6HQIxUojqfDPcZjtqD4` | Summer Beach Escape | active | budgetCents≈4999 (CPM) |
+| `SjgNVINC660UEHjIAqev` | Winter Beach Escape | active | Mux HLS; all 4 quartiles confirmed |
+| `Sqcic5yfgxmWZKgP3PRJ` | (unknown) | active | CPC billing; no spend field (expected) |
+| `uqRWtMKu2lEWDPnMsCRO` | (unknown) | active | budgetCents restored to 5000 after auto-pause test |
+| `TYwLRxdE7jjAAheK07k9` | (unknown) | active | `isUnderReview: true` — never delivered |
+| `NZ6hJztKIuzzoyuGqWEh` | Amalfi | active | startDate=2026-03-08 — **becomes eligible 2026-03-08** |
+| `kE4B1zQIfjkx0kKV7p6d` | (age targeting test campaign) | active | ageFrom=30 ageTo=44 (last set — outside test user's age 25); reset before section 3 tests |
+
+---
+
+---
+
 ## How to use this plan
 
 - Run each test case, observe the console logs, and mark `[ ]` → `[x]` when the expected output is confirmed.

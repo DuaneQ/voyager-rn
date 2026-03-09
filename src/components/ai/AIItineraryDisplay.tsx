@@ -41,7 +41,9 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
   const { updateItinerary } = useUpdateItinerary();
 
   // ─── Ad delivery hooks ───────────────────────────────────────────
-  const { ads: realAds, fetchAds: fetchSlotAds } = useAdDelivery('ai_slot');
+  // Limit to 3 — returns the top-ranked ads by score; avoids overwhelming
+  // the accordion and prevents billing impressions for ads below the fold.
+  const { ads: realAds, fetchAds: fetchSlotAds } = useAdDelivery('ai_slot', { limit: 3 });
   const { trackImpression, trackClick, flush: _flushAdEvents } = useAdTracking();
   const { userProfile } = useUserProfile();
   const { defaultProfile: travelProfile } = useTravelPreferences();
@@ -61,8 +63,16 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
     // If absent (empty string), omit from context so the ad server does not
     // apply a destination filter and returns ads for all geographies.
     const dest = itinerary.destination || undefined;
-    const startDate = itinerary.startDate || undefined;
-    const endDate = itinerary.endDate || undefined;
+
+    // Itineraries are stored with a UTC suffix (e.g. "2026-03-08T00:00:00.000Z").
+    // Strip it with split('T')[0] — no Date construction avoids timezone shift.
+    const toYMD = (s: string | undefined): string | undefined => {
+      if (!s) return undefined;
+      const d = s.split('T')[0];
+      return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : undefined;
+    };
+    const startDate = toYMD(itinerary.startDate);
+    const endDate = toYMD(itinerary.endDate);
 
     // response.data is untyped (AI output varies); extract opportunistically.
     const responseData = itinerary.response?.data;

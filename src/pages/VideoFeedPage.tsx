@@ -85,7 +85,7 @@ const VideoFeedPage: React.FC = () => {
 
   // ── Ad delivery hooks ─────────────────────────────────────────────────────
   const { ads: videoAds, fetchAds: fetchVideoAds } = useAdDelivery('video_feed');
-  const { trackImpression, trackClick, trackQuartile, getSeenCampaignIds } = useAdTracking();
+  const { trackImpression, trackClick, trackQuartile } = useAdTracking();
   const { spliceAdsIntoList } = useAdFrequency();
   const { userProfile } = useUserProfile();
   const { defaultProfile: travelProfile, loading: travelProfileLoading } = useTravelPreferences();
@@ -177,8 +177,8 @@ const VideoFeedPage: React.FC = () => {
     const key = JSON.stringify(ctx ?? null);
     if (key === lastAdContextKeyRef.current) return; // context unchanged — skip
     lastAdContextKeyRef.current = key;
-    fetchVideoAds(ctx, getSeenCampaignIds());
-  }, [buildAdContext, fetchVideoAds, getSeenCampaignIds, travelProfileLoading]);
+    fetchVideoAds(ctx);
+  }, [buildAdContext, fetchVideoAds, travelProfileLoading]);
 
   // Build mixed feed: organic videos + sponsored ads
   type FeedItem =
@@ -328,7 +328,7 @@ const VideoFeedPage: React.FC = () => {
     await refreshVideos();
     // Re-fetch ads on pull-to-refresh — reset the context key so we always get fresh ads
     lastAdContextKeyRef.current = '';
-    fetchVideoAds(buildAdContext(), getSeenCampaignIds());
+    fetchVideoAds(buildAdContext());
     setIsRefreshing(false);
     // Scroll to top after refresh
     if (flatListRef.current && videos.length > 0) {

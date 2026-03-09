@@ -102,7 +102,7 @@ const VideoFeedPage: React.FC = () => {
 
   // ─── Ad delivery hooks ───────────────────────────────────────────
   const { ads: videoAds, fetchAds: fetchVideoAds } = useAdDelivery('video_feed');
-  const { trackImpression, trackClick, flush: _flushAdEvents, getSeenCampaignIds } = useAdTracking();
+  const { trackImpression, trackClick, flush: _flushAdEvents } = useAdTracking();
   const { spliceAdsIntoList } = useAdFrequency();
   const { userProfile } = useUserProfile();
   const { defaultProfile: travelProfile, loading: travelProfileLoading } = useTravelPreferences();
@@ -129,8 +129,8 @@ const VideoFeedPage: React.FC = () => {
       `[AdContext] built (android, travelProfileLoading=false):`,
       adCtx ?? 'NO CONTEXT — all campaigns score equally',
     );
-    fetchVideoAds(adCtx, getSeenCampaignIds());
-  }, [userProfile?.gender, userProfile?.dob, travelProfile?.activities, travelProfile?.travelStyle, travelProfileLoading, fetchVideoAds, getSeenCampaignIds]);
+    fetchVideoAds(adCtx);
+  }, [userProfile?.gender, userProfile?.dob, travelProfile?.activities, travelProfile?.travelStyle, travelProfileLoading, fetchVideoAds]);
 
   /** Discriminated union for feed items. */
   type FeedItem =
@@ -264,7 +264,7 @@ const VideoFeedPage: React.FC = () => {
     if (travelProfile?.travelStyle) {
       ctx.travelStyles = [travelProfile.travelStyle];
     }
-    fetchVideoAds(Object.keys(ctx).length > 0 ? ctx as any : undefined, getSeenCampaignIds());
+    fetchVideoAds(Object.keys(ctx).length > 0 ? ctx as any : undefined);
     setIsRefreshing(false);
     if (recyclerRef.current && mixedFeed.length > 0) {
       recyclerRef.current.scrollToIndex(0, false);

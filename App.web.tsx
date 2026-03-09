@@ -12,6 +12,7 @@ import AppNavigator from './src/navigation/AppNavigator';
 import { AuthProvider } from './src/context/AuthContext';
 import { AlertProvider } from './src/context/AlertContext';
 import { UserProfileProvider } from './src/context/UserProfileContext';
+import { AdSeenProvider } from './src/context/AdSeenContext';
 import ErrorBoundary from './src/components/common/ErrorBoundary';
 import { setupGlobalErrorHandlers } from './src/utils/globalErrorHandler';
 
@@ -66,8 +67,10 @@ export default function App() {
         <AuthProvider>
           <AlertProvider>
             <UserProfileProvider>
-              {/* NotificationInitializer excluded - not supported on web */}
-              <AppNavigator />
+              <AdSeenProvider>
+                {/* NotificationInitializer excluded - not supported on web */}
+                <AppNavigator />
+              </AdSeenProvider>
             </UserProfileProvider>
           </AlertProvider>
         </AuthProvider>

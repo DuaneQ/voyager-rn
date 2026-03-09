@@ -10,8 +10,10 @@
  * - Event timestamps
  */
 
+import React from 'react';
 import { renderHook, act } from '@testing-library/react-native';
 import { useAdTracking } from '../../../hooks/ads/useAdTracking';
+import { AdSeenProvider, useAdSeen } from '../../../context/AdSeenContext';
 
 // Use centralized manual mock for firebaseConfig
 jest.mock('../../../config/firebaseConfig');
@@ -24,6 +26,9 @@ jest.mock('firebase/functions', () => ({
 }));
 
 describe('useAdTracking', () => {
+  const wrapper = ({ children }: { children: React.ReactNode }) =>
+    React.createElement(AdSeenProvider, null, children);
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockLogAdEventsFn.mockResolvedValue({
@@ -33,7 +38,7 @@ describe('useAdTracking', () => {
 
   describe('trackImpression', () => {
     it('should buffer an impression event', () => {
-      const { result } = renderHook(() => useAdTracking());
+      const { result } = renderHook(() => useAdTracking(), { wrapper });
 
       act(() => {
         result.current.trackImpression('camp-1');
@@ -44,7 +49,7 @@ describe('useAdTracking', () => {
     });
 
     it('should deduplicate impressions for the same campaignId', async () => {
-      const { result } = renderHook(() => useAdTracking());
+      const { result } = renderHook(() => useAdTracking(), { wrapper });
 
       act(() => {
         result.current.trackImpression('camp-1');
@@ -67,7 +72,7 @@ describe('useAdTracking', () => {
     });
 
     it('should track different campaignIds separately', async () => {
-      const { result } = renderHook(() => useAdTracking());
+      const { result } = renderHook(() => useAdTracking(), { wrapper });
 
       act(() => {
         result.current.trackImpression('camp-1');
@@ -84,7 +89,7 @@ describe('useAdTracking', () => {
     });
 
     it('should ignore empty campaignId', async () => {
-      const { result } = renderHook(() => useAdTracking());
+      const { result } = renderHook(() => useAdTracking(), { wrapper });
 
       act(() => {
         result.current.trackImpression('');
@@ -101,7 +106,7 @@ describe('useAdTracking', () => {
 
   describe('trackClick', () => {
     it('should buffer a click event', async () => {
-      const { result } = renderHook(() => useAdTracking());
+      const { result } = renderHook(() => useAdTracking(), { wrapper });
 
       act(() => {
         result.current.trackClick('camp-1');
@@ -118,7 +123,7 @@ describe('useAdTracking', () => {
     });
 
     it('should NOT deduplicate clicks (user can click multiple times)', async () => {
-      const { result } = renderHook(() => useAdTracking());
+      const { result } = renderHook(() => useAdTracking(), { wrapper });
 
       act(() => {
         result.current.trackClick('camp-1');
@@ -135,7 +140,7 @@ describe('useAdTracking', () => {
     });
 
     it('should ignore empty campaignId', async () => {
-      const { result } = renderHook(() => useAdTracking());
+      const { result } = renderHook(() => useAdTracking(), { wrapper });
 
       act(() => {
         result.current.trackClick('');
@@ -151,7 +156,7 @@ describe('useAdTracking', () => {
 
   describe('trackQuartile', () => {
     it('should buffer a video_quartile event with quartile value', async () => {
-      const { result } = renderHook(() => useAdTracking());
+      const { result } = renderHook(() => useAdTracking(), { wrapper });
 
       act(() => {
         result.current.trackQuartile('camp-1', 25);
@@ -170,7 +175,7 @@ describe('useAdTracking', () => {
 
   describe('flush', () => {
     it('should be a no-op when buffer is empty', async () => {
-      const { result } = renderHook(() => useAdTracking());
+      const { result } = renderHook(() => useAdTracking(), { wrapper });
 
       await act(async () => {
         await result.current.flush();
@@ -180,7 +185,7 @@ describe('useAdTracking', () => {
     });
 
     it('should send all buffered events in one call', async () => {
-      const { result } = renderHook(() => useAdTracking());
+      const { result } = renderHook(() => useAdTracking(), { wrapper });
 
       act(() => {
         result.current.trackImpression('camp-1');
@@ -198,7 +203,7 @@ describe('useAdTracking', () => {
     });
 
     it('should clear the buffer after flush', async () => {
-      const { result } = renderHook(() => useAdTracking());
+      const { result } = renderHook(() => useAdTracking(), { wrapper });
 
       act(() => {
         result.current.trackImpression('camp-1');
@@ -221,7 +226,7 @@ describe('useAdTracking', () => {
     it('should silently handle server errors', async () => {
       mockLogAdEventsFn.mockRejectedValue(new Error('Server 500'));
 
-      const { result } = renderHook(() => useAdTracking());
+      const { result } = renderHook(() => useAdTracking(), { wrapper });
 
       act(() => {
         result.current.trackClick('camp-1');
@@ -247,7 +252,7 @@ describe('useAdTracking', () => {
       const originalDateNow = Date.now;
       Date.now = jest.fn(() => now);
 
-      const { result } = renderHook(() => useAdTracking());
+      const { result } = renderHook(() => useAdTracking(), { wrapper });
 
       act(() => {
         result.current.trackImpression('camp-1');
@@ -261,6 +266,52 @@ describe('useAdTracking', () => {
       expect(event.timestamp).toBe(now);
 
       Date.now = originalDateNow;
+    });
+  });
+
+  describe('AdSeenContext integration', () => {
+    it('trackImpression should register the campaign in AdSeenContext', () => {
+      // Render both hooks sharing the same AdSeenProvider tree
+      const { result } = renderHook(
+        () => ({ tracking: useAdTracking(), seen: useAdSeen() }),
+        { wrapper },
+      );
+
+      act(() => {
+        result.current.tracking.trackImpression('camp-ctx-1');
+        result.current.tracking.trackImpression('camp-ctx-2');
+      });
+
+      expect(result.current.seen.getSeenIds()).toContain('camp-ctx-1');
+      expect(result.current.seen.getSeenIds()).toContain('camp-ctx-2');
+    });
+
+    it('duplicate trackImpression calls register the campaign only once in context', () => {
+      const { result } = renderHook(
+        () => ({ tracking: useAdTracking(), seen: useAdSeen() }),
+        { wrapper },
+      );
+
+      act(() => {
+        result.current.tracking.trackImpression('camp-ctx-3');
+        result.current.tracking.trackImpression('camp-ctx-3');
+      });
+
+      const seen = result.current.seen.getSeenIds().filter((id) => id === 'camp-ctx-3');
+      expect(seen).toHaveLength(1);
+    });
+
+    it('trackImpression does not register empty campaignId in context', () => {
+      const { result } = renderHook(
+        () => ({ tracking: useAdTracking(), seen: useAdSeen() }),
+        { wrapper },
+      );
+
+      act(() => {
+        result.current.tracking.trackImpression('');
+      });
+
+      expect(result.current.seen.getSeenIds()).toHaveLength(0);
     });
   });
 });

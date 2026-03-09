@@ -9,8 +9,10 @@
  * - Edge cases (empty responses, malformed data)
  */
 
+import React from 'react';
 import { renderHook, act, waitFor } from '@testing-library/react-native';
 import { useAdDelivery, clearAdsCache } from '../../../hooks/ads/useAdDelivery';
+import { AdSeenProvider, useAdSeen } from '../../../context/AdSeenContext';
 
 // Use centralized manual mock for firebaseConfig
 jest.mock('../../../config/firebaseConfig');
@@ -43,6 +45,9 @@ const MOCK_ADS = [
 ];
 
 describe('useAdDelivery', () => {
+  const wrapper = ({ children }: { children: React.ReactNode }) =>
+    React.createElement(AdSeenProvider, null, children);
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockSelectAdsFn.mockReset();
@@ -51,7 +56,7 @@ describe('useAdDelivery', () => {
   });
 
   it('should initialise with empty state', () => {
-    const { result } = renderHook(() => useAdDelivery('video_feed'));
+    const { result } = renderHook(() => useAdDelivery('video_feed'), { wrapper });
 
     expect(result.current.ads).toEqual([]);
     expect(result.current.loading).toBe(false);
@@ -64,7 +69,7 @@ describe('useAdDelivery', () => {
       data: { ads: MOCK_ADS, count: 2 },
     });
 
-    const { result } = renderHook(() => useAdDelivery('video_feed'));
+    const { result } = renderHook(() => useAdDelivery('video_feed'), { wrapper });
 
     await act(async () => {
       await result.current.fetchAds();
@@ -78,8 +83,9 @@ describe('useAdDelivery', () => {
   it('should pass placement and limit in the request', async () => {
     mockSelectAdsFn.mockResolvedValue({ data: { ads: [], count: 0 } });
 
-    const { result } = renderHook(() =>
-      useAdDelivery('itinerary_feed', { limit: 10 }),
+    const { result } = renderHook(
+      () => useAdDelivery('itinerary_feed', { limit: 10 }),
+      { wrapper },
     );
 
     await act(async () => {
@@ -90,13 +96,14 @@ describe('useAdDelivery', () => {
       placement: 'itinerary_feed',
       limit: 10,
       userContext: undefined,
+      seenCampaignIds: [],
     });
   });
 
   it('should forward userContext with destination targeting', async () => {
     mockSelectAdsFn.mockResolvedValue({ data: { ads: MOCK_ADS, count: 2 } });
 
-    const { result } = renderHook(() => useAdDelivery('ai_slot'));
+    const { result } = renderHook(() => useAdDelivery('ai_slot'), { wrapper });
 
     await act(async () => {
       await result.current.fetchAds({
@@ -121,7 +128,7 @@ describe('useAdDelivery', () => {
   it('should handle errors gracefully', async () => {
     mockSelectAdsFn.mockRejectedValue(new Error('Network error'));
 
-    const { result } = renderHook(() => useAdDelivery('video_feed'));
+    const { result } = renderHook(() => useAdDelivery('video_feed'), { wrapper });
 
     await act(async () => {
       await result.current.fetchAds();
@@ -138,7 +145,7 @@ describe('useAdDelivery', () => {
       data: { ads: MOCK_ADS, count: 2 },
     });
 
-    const { result } = renderHook(() => useAdDelivery('video_feed'));
+    const { result } = renderHook(() => useAdDelivery('video_feed'), { wrapper });
 
     await act(async () => {
       await result.current.fetchAds();
@@ -161,7 +168,7 @@ describe('useAdDelivery', () => {
   it('should handle empty ads response', async () => {
     mockSelectAdsFn.mockResolvedValue({ data: { ads: [], count: 0 } });
 
-    const { result } = renderHook(() => useAdDelivery('video_feed'));
+    const { result } = renderHook(() => useAdDelivery('video_feed'), { wrapper });
 
     await act(async () => {
       await result.current.fetchAds();
@@ -174,7 +181,7 @@ describe('useAdDelivery', () => {
   it('should handle malformed response (no ads array)', async () => {
     mockSelectAdsFn.mockResolvedValue({ data: {} });
 
-    const { result } = renderHook(() => useAdDelivery('video_feed'));
+    const { result } = renderHook(() => useAdDelivery('video_feed'), { wrapper });
 
     await act(async () => {
       await result.current.fetchAds();
@@ -186,7 +193,7 @@ describe('useAdDelivery', () => {
   it('should use default limit of 5', async () => {
     mockSelectAdsFn.mockResolvedValue({ data: { ads: [], count: 0 } });
 
-    const { result } = renderHook(() => useAdDelivery('video_feed'));
+    const { result } = renderHook(() => useAdDelivery('video_feed'), { wrapper });
 
     await act(async () => {
       await result.current.fetchAds();
@@ -200,7 +207,7 @@ describe('useAdDelivery', () => {
   it('should seed initial state from session cache on remount (simulates web navigation)', async () => {
     // First "mount" — fetch succeeds and populates cache
     mockSelectAdsFn.mockResolvedValueOnce({ data: { ads: MOCK_ADS, count: 2 } });
-    const { result: firstMount, unmount } = renderHook(() => useAdDelivery('video_feed'));
+    const { result: firstMount, unmount } = renderHook(() => useAdDelivery('video_feed'), { wrapper });
 
     await act(async () => {
       await firstMount.current.fetchAds();
@@ -211,7 +218,7 @@ describe('useAdDelivery', () => {
     unmount();
 
     // Second "mount" — no fetch yet; initial state should come from cache
-    const { result: secondMount } = renderHook(() => useAdDelivery('video_feed'));
+    const { result: secondMount } = renderHook(() => useAdDelivery('video_feed'), { wrapper });
     expect(secondMount.current.ads).toHaveLength(2);
     expect(secondMount.current.ads[0].campaignId).toBe('camp-1');
   });
@@ -219,18 +226,18 @@ describe('useAdDelivery', () => {
   it('should not preserve cache across placements', async () => {
     // Populate cache for video_feed
     mockSelectAdsFn.mockResolvedValueOnce({ data: { ads: MOCK_ADS, count: 2 } });
-    const { result, unmount } = renderHook(() => useAdDelivery('video_feed'));
+    const { result, unmount } = renderHook(() => useAdDelivery('video_feed'), { wrapper });
     await act(async () => { await result.current.fetchAds(); });
     unmount();
 
     // A different placement should still start empty
-    const { result: aiResult } = renderHook(() => useAdDelivery('ai_slot'));
+    const { result: aiResult } = renderHook(() => useAdDelivery('ai_slot'), { wrapper });
     expect(aiResult.current.ads).toHaveLength(0);
   });
 
   it('clearAdsCache clears all placements', async () => {
     mockSelectAdsFn.mockResolvedValueOnce({ data: { ads: MOCK_ADS, count: 2 } });
-    const { result, unmount } = renderHook(() => useAdDelivery('video_feed'));
+    const { result, unmount } = renderHook(() => useAdDelivery('video_feed'), { wrapper });
     await act(async () => { await result.current.fetchAds(); });
     unmount();
 
@@ -238,7 +245,45 @@ describe('useAdDelivery', () => {
     clearAdsCache();
 
     // Remount should start empty
-    const { result: fresh } = renderHook(() => useAdDelivery('video_feed'));
+    const { result: fresh } = renderHook(() => useAdDelivery('video_feed'), { wrapper });
     expect(fresh.current.ads).toHaveLength(0);
+  });
+
+  describe('AdSeenContext integration', () => {
+    it('forwards seen campaign IDs from context to the selectAds function', async () => {
+      mockSelectAdsFn.mockResolvedValue({ data: { ads: [], count: 0 } });
+
+      const { result } = renderHook(
+        () => ({ delivery: useAdDelivery('video_feed'), seen: useAdSeen() }),
+        { wrapper },
+      );
+
+      // Pre-register two seen campaigns in the context
+      act(() => {
+        result.current.seen.addSeenId('seen-camp-1');
+        result.current.seen.addSeenId('seen-camp-2');
+      });
+
+      await act(async () => {
+        await result.current.delivery.fetchAds();
+      });
+
+      const callPayload = mockSelectAdsFn.mock.calls[0][0];
+      expect(callPayload.seenCampaignIds).toContain('seen-camp-1');
+      expect(callPayload.seenCampaignIds).toContain('seen-camp-2');
+    });
+
+    it('forwards an empty seenCampaignIds array when no impressions have been tracked', async () => {
+      mockSelectAdsFn.mockResolvedValue({ data: { ads: [], count: 0 } });
+
+      const { result } = renderHook(() => useAdDelivery('ai_slot'), { wrapper });
+
+      await act(async () => {
+        await result.current.fetchAds();
+      });
+
+      const callPayload = mockSelectAdsFn.mock.calls[0][0];
+      expect(callPayload.seenCampaignIds).toEqual([]);
+    });
   });
 });
