@@ -27,7 +27,7 @@ import { ReportVideoModal } from '../components/modals/ReportVideoModal';
 import { SponsoredVideoCard } from '../components/ads/SponsoredVideoCard';
 import { useVideoFeed, VideoFilter } from '../hooks/video/useVideoFeed';
 import { useVideoUpload } from '../hooks/video/useVideoUpload';
-import { useAdDelivery, useAdTracking, useAdFrequency } from '../hooks/ads';
+import { useAdTracking, useAdPool } from '../hooks/ads';
 import { useUserProfile } from '../context/UserProfileContext';
 import { calculateAge } from '../utils/calculateAge';
 import { useTravelPreferences } from '../hooks/useTravelPreferences';
@@ -84,9 +84,8 @@ const VideoFeedPage: React.FC = () => {
   });
 
   // ── Ad delivery hooks ─────────────────────────────────────────────────────
-  const { ads: videoAds, fetchAds: fetchVideoAds } = useAdDelivery('video_feed');
+  const { spliceAdsIntoList, fetchAds: fetchVideoAds } = useAdPool('video_feed', videos.length);
   const { trackImpression, trackClick, trackQuartile } = useAdTracking();
-  const { spliceAdsIntoList } = useAdFrequency();
   const { userProfile } = useUserProfile();
   const { defaultProfile: travelProfile, loading: travelProfileLoading } = useTravelPreferences();
 
@@ -185,8 +184,8 @@ const VideoFeedPage: React.FC = () => {
     | { type: 'content'; item: (typeof videos)[number] }
     | { type: 'ad'; ad: import('../types/AdDelivery').AdUnit };
   const mixedFeed: FeedItem[] = React.useMemo(() => {
-    return spliceAdsIntoList(videos, videoAds);
-  }, [videos, videoAds, spliceAdsIntoList]);
+    return spliceAdsIntoList(videos);
+  }, [videos, spliceAdsIntoList]);
   
   // Get auth instance for user ID checks
   const resolvedAuth = typeof (require('../config/firebaseConfig') as any).getAuthInstance === 'function'

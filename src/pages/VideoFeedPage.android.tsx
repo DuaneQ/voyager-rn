@@ -44,7 +44,7 @@ import { videoPlaybackManagerV2 as videoPlaybackManager } from '../services/vide
 import { doc, getDocFromServer } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
 import { SponsoredVideoCard } from '../components/ads/SponsoredVideoCard';
-import { useAdDelivery, useAdTracking, useAdFrequency } from '../hooks/ads';
+import { useAdTracking, useAdPool } from '../hooks/ads';
 import { useUserProfile } from '../context/UserProfileContext';
 import { calculateAge } from '../utils/calculateAge';
 import { useTravelPreferences } from '../hooks/useTravelPreferences';
@@ -101,9 +101,8 @@ const VideoFeedPage: React.FC = () => {
   const recyclerRef = useRef<RecyclerListView<any, any>>(null);
 
   // ─── Ad delivery hooks ───────────────────────────────────────────
-  const { ads: videoAds, fetchAds: fetchVideoAds } = useAdDelivery('video_feed');
+  const { spliceAdsIntoList, fetchAds: fetchVideoAds } = useAdPool('video_feed', videos.length);
   const { trackImpression, trackClick, flush: _flushAdEvents } = useAdTracking();
-  const { spliceAdsIntoList } = useAdFrequency();
   const { userProfile } = useUserProfile();
   const { defaultProfile: travelProfile, loading: travelProfileLoading } = useTravelPreferences();
 
@@ -139,8 +138,8 @@ const VideoFeedPage: React.FC = () => {
 
   /** Mixed feed: organic videos with sponsored ads spliced in. */
   const mixedFeed: FeedItem[] = useMemo(
-    () => spliceAdsIntoList(videos, videoAds),
-    [videos, videoAds, spliceAdsIntoList],
+    () => spliceAdsIntoList(videos),
+    [videos, spliceAdsIntoList],
   );
 
   // Ref to track current video index without stale closures during rapid scrolling

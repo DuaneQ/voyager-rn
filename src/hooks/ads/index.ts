@@ -13,3 +13,6 @@ export type { UseAdTrackingReturn } from './useAdTracking'
 
 export { useAdFrequency } from './useAdFrequency'
 export type { UseAdFrequencyReturn } from './useAdFrequency'
+
+export { useAdPool } from './useAdPool'
+export type { UseAdPoolOptions, UseAdPoolReturn } from './useAdPool'
