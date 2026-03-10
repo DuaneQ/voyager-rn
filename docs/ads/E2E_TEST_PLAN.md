@@ -468,8 +468,12 @@
 
 ### 12.2 No crash when ai_slot returns no ads
 
-- [ ] Pause all `ai_slot` campaigns in Firestore
-- [ ] Open AI itinerary — no promo card, no crash, itinerary loads normally
+> **Observed 2026-03-10.** Paused both `ai_slot` campaigns (`YWazKsM899kFOlXWHOBm` and `bElukm9JuyC2Np49iVSo`) in Firestore. Opened AI itinerary (Los Angeles, Mar 15–22). `[AdDelivery] fetching placement=ai_slot limit=3` fired with full context (destination, dates, gender=Male, age=25). Server returned `[]`. Itinerary loaded fully — Flight Options (12), Accommodation (10), Daily Activities (8) all rendered. No `PromotionCard`, no crash, no blank section. Also confirmed `seenCampaignIds: [kE4B1zQIfjkx0kKV7p6d, SjgNVINC660UEHjIAqev]` correctly forwarded (carried over from video feed session). ✅
+
+- [x] `[AdDelivery] fetching placement=ai_slot` fires with destination context — **observed: ✅**
+- [x] `[AdDelivery] ✓ 0 ad(s) received … placement=ai_slot: []` — **observed: ✅**
+- [x] No `PromotionCard` rendered — **observed: ✅ itinerary loads cleanly**
+- [x] No crash, no blank section — **observed: ✅**
 
 ---
 
@@ -499,5 +503,27 @@
 | 9. Quartile Tracking | Support | 2026-03-10 | ✅ 9.1 ✅ 9.2 ✅ (manual 2026-03-07) — `increments daily_metrics videoQuartiles.q25/q50/q75/q100` integration test ✅ |
 | 10. Budget / Auto-Pause | Support | 2026-03-10 | ✅ 10.1 ✅ 10.2 ✅ — manual (2026-03-07) + integration tests: CPM/CPC budget exhaustion → auto-pause, 22/22 ✅ |
 | 11. Admin Approval Gate | Support | 2026-03-07 | ✅ 11.1 ✅ 11.2 ✅ 11.3 ✅ (isUnderReview toggle: campaign excluded then restored; Firestore confirmed) |
-| 12. AI Itinerary Slot | Support | 2026-03-09 | 🟡 12.1 ✅ (fetch, render, impression+click tracked+flushed, Firestore confirmed) — 12.2 pending |
+| 12. AI Itinerary Slot | Support | 2026-03-10 | ✅ 12.1 ✅ 12.2 ✅ (0 ads → no promo card, no crash confirmed) |
 | 13. Edge Cases | — | — | ⚪ Pending |
+
+---
+
+## Pending Production Deployments
+
+Functions deployed to **dev (mundo1-dev)** during this effort that must be promoted to **prod (mundo1-1)** before sign-off.
+
+| Function | Change | Dev Deploy Date | Prod Deployed |
+|---|---|---|---|
+| `selectAds` | FNV-1a `tieBreakKey` tie-breaking; updated `_testing` export | 2026-03-10 | ⬜ |
+| `itineraryShare` | `pickAiSlotAd()` — fetch best active `ai_slot` campaign, render promo card above CTA | 2026-03-10 | ⬜ |
+
+### Deploy command (run in order)
+```bash
+# 1. Verify dev is current (already done)
+firebase use default
+firebase deploy --only functions:selectAds,functions:itineraryShare
+
+# 2. Promote to prod
+firebase use production
+firebase deploy --only functions:selectAds,functions:itineraryShare
+```
