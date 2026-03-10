@@ -283,6 +283,57 @@ describe('useSearchItineraries (RPC)', () => {
     });
   });
 
+  describe('Deduplication', () => {
+    it('should preserve ALL itineraries with the same destination — never dedup by destination', async () => {
+      // Regression test for Nov 2025 bug: destination-based dedup collapsed all
+      // Paris results to 1, breaking the core traveller-matching use case.
+      const parisItineraries = [
+        { ...mockMatchingItinerary, id: 'paris-1', userInfo: { uid: 'user-a' } },
+        { ...mockMatchingItinerary, id: 'paris-2', userInfo: { uid: 'user-b' } },
+        { ...mockMatchingItinerary, id: 'paris-3', userInfo: { uid: 'user-c' } },
+      ];
+
+      const mockSearchFn = jest.fn().mockResolvedValue({
+        data: { success: true, data: parisItineraries },
+      });
+      (httpsCallable as jest.Mock).mockReturnValue(mockSearchFn);
+
+      const { result } = renderHook(() => useSearchItineraries());
+
+      await act(async () => {
+        await result.current.searchItineraries(mockUserItinerary as any, 'test-user-123');
+      });
+
+      await waitFor(() => {
+        expect(result.current.matchingItineraries).toHaveLength(3);
+        expect(result.current.matchingItineraries.map(i => i.id)).toEqual(
+          expect.arrayContaining(['paris-1', 'paris-2', 'paris-3'])
+        );
+      });
+    });
+
+    it('should dedup by itinerary ID only when duplicates are returned by the server', async () => {
+      const duplicate = { ...mockMatchingItinerary, id: 'match-1', userInfo: { uid: 'user-x' } };
+
+      const mockSearchFn = jest.fn().mockResolvedValue({
+        data: { success: true, data: [mockMatchingItinerary, duplicate] },
+      });
+      (httpsCallable as jest.Mock).mockReturnValue(mockSearchFn);
+
+      const { result } = renderHook(() => useSearchItineraries());
+
+      await act(async () => {
+        await result.current.searchItineraries(mockUserItinerary as any, 'test-user-123');
+      });
+
+      await waitFor(() => {
+        // Same ID should appear only once, but unique destinations are NOT collapsed
+        const ids = result.current.matchingItineraries.map(i => i.id);
+        expect(ids).toEqual([...new Set(ids)]);
+      });
+    });
+  });
+
   describe('Pagination', () => {
     it('should advance to next itinerary', async () => {
       const mockSearchFn = jest.fn().mockResolvedValue({
