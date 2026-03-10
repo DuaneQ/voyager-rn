@@ -58,8 +58,21 @@ import { FeedbackButton } from '../components/utilities/FeedbackButton';
 import SubscriptionCard from '../components/common/SubscriptionCard';
 import { SponsoredItineraryCard } from '../components/ads';
 import { useAdDelivery, useAdTracking } from '../hooks/ads';
+import type { AdUnit, UserAdContext } from '../types/AdDelivery';
 import { calculateAge } from '../utils/calculateAge';
 import { useTravelPreferences } from '../hooks/useTravelPreferences';
+
+/**
+ * Fisher-Yates in-place shuffle — returns the same array for convenience.
+ * Used to randomise the local ad queue so ads don't appear in a fixed order.
+ */
+function shuffleAds(arr: AdUnit[]): AdUnit[] {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
 
 const SearchPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -97,10 +110,27 @@ const SearchPage: React.FC = () => {
   const { defaultProfile: travelProfile } = useTravelPreferences();
 
   /** Show interstitial sponsored card after every N like/dislike actions. */
-  const AD_INTERSTITIAL_INTERVAL = 3;
+  const AD_INTERSTITIAL_INTERVAL = 5;
   const actionCountRef = useRef(0);
   const [showingSponsoredAd, setShowingSponsoredAd] = useState(false);
-  const currentAdIndexRef = useRef(0);
+  /**
+   * Local shuffled queue of AdUnits.
+   * - Populated / refreshed whenever a new batch arrives from the server.
+   * - Consumed by shift() on each dismiss; auto-refills (with a fresh server
+   *   fetch) when it empties, so the same ads aren't repeated back-to-back.
+   */
+  const adQueueRef = useRef<AdUnit[]>([]);
+  /** CampaignId of the last ad shown — prevents immediate back-to-back repeat. */
+  const lastShownIdRef = useRef<string | null>(null);
+  /** Stored targeting context so background re-fetches use the same parameters. */
+  const lastAdContextRef = useRef<UserAdContext | undefined>(undefined);
+
+  // Rebuild the shuffled queue whenever a fresh ad batch arrives from the server.
+  useEffect(() => {
+    if (sponsoredAds.length > 0) {
+      adQueueRef.current = shuffleAds([...sponsoredAds]);
+    }
+  }, [sponsoredAds]);
 
   // Mock itineraries shown only when user has no real itineraries
   const mockItineraries = [
@@ -212,10 +242,14 @@ const SearchPage: React.FC = () => {
     if (travelProfile?.travelStyle) {
       userContext.travelStyles = [travelProfile.travelStyle];
     }
+    const ctx = userContext as unknown as UserAdContext;
+    lastAdContextRef.current = ctx;
     fetchSearchAds(userContext as any);
 
-    // Reset interstitial counter for new search
+    // Reset interstitial counter and ad queue for new search
     actionCountRef.current = 0;
+    adQueueRef.current = [];
+    lastShownIdRef.current = null;
     setShowingSponsoredAd(false);
 
     // Trigger search for matching itineraries
@@ -244,24 +278,52 @@ const SearchPage: React.FC = () => {
   /**
    * After a like/dislike action, check if it's time to show a sponsored
    * interstitial card before the next organic match.
+   *
+   * Queue strategy:
+   * - Ads are served from a shuffled local queue populated when the server
+   *   returns a fresh batch.
+   * - If the queue empties mid-session, we reshuffle the current pool locally
+   *   and kick off a background refetch (server's seenCampaignIds mechanism
+   *   will deprioritise already-shown ads in the next batch).
+   * - If the next queued ad is the same as the one just shown, we move it to
+   *   the tail to prevent an immediate back-to-back repeat.
    */
   const maybeShowInterstitialAd = useCallback(() => {
     actionCountRef.current += 1;
-    if (
-      sponsoredAds.length > 0 &&
-      actionCountRef.current % AD_INTERSTITIAL_INTERVAL === 0
-    ) {
-      // Rotate through available ads
-      currentAdIndexRef.current = currentAdIndexRef.current % sponsoredAds.length;
-      setShowingSponsoredAd(true);
+    if (actionCountRef.current % AD_INTERSTITIAL_INTERVAL !== 0) return;
+    if (sponsoredAds.length === 0) return;
+
+    // Refill queue if empty
+    if (adQueueRef.current.length === 0) {
+      adQueueRef.current = shuffleAds([...sponsoredAds]);
+      // Background refetch so the next refill gets fresh server-scored ads.
+      fetchSearchAds(lastAdContextRef.current);
     }
-  }, [sponsoredAds]);
+
+    // Prevent the same ad appearing back-to-back.
+    if (
+      adQueueRef.current.length > 1 &&
+      adQueueRef.current[0].campaignId === lastShownIdRef.current
+    ) {
+      const deferred = adQueueRef.current.shift()!;
+      adQueueRef.current.push(deferred);
+    }
+
+    setShowingSponsoredAd(true);
+  }, [sponsoredAds, fetchSearchAds]);
 
   /** User dismissed or interacted with the interstitial ad. */
   const handleAdDismiss = useCallback(() => {
-    currentAdIndexRef.current += 1;
+    const shown = adQueueRef.current.shift();
+    if (shown) lastShownIdRef.current = shown.campaignId;
     setShowingSponsoredAd(false);
-  }, []);
+    // Prefetch next batch in the background when queue runs low,
+    // so it's ready before the next interstitial slot.
+    if (adQueueRef.current.length === 0) {
+      adQueueRef.current = shuffleAds([...sponsoredAds]);
+      fetchSearchAds(lastAdContextRef.current);
+    }
+  }, [sponsoredAds, fetchSearchAds]);
 
   const handleLike = async (itinerary: Itinerary) => {
     if (!userId) {
@@ -532,9 +594,9 @@ const SearchPage: React.FC = () => {
                     contentContainerStyle={styles.cardScrollContent}
                     showsVerticalScrollIndicator={false}
                   >
-                    {showingSponsoredAd && sponsoredAds.length > 0 ? (
+                    {showingSponsoredAd && adQueueRef.current.length > 0 ? (
                       <SponsoredItineraryCard
-                        ad={sponsoredAds[currentAdIndexRef.current % sponsoredAds.length]}
+                        ad={adQueueRef.current[0]}
                         isVisible
                         onImpression={trackImpression}
                         onCtaPress={(campaignId) => {
