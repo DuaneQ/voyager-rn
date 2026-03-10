@@ -242,6 +242,17 @@ const SearchPage: React.FC = () => {
     if (travelProfile?.travelStyle) {
       userContext.travelStyles = [travelProfile.travelStyle];
     }
+    // selectAds requires bare YYYY-MM-DD strings. Itinerary dates can come back
+    // from Firestore as full ISO timestamps (e.g. '2026-04-15T12:00:00.000Z').
+    // Strip the time portion so the server's parseDateToNoonUTC doesn't reject them.
+    const toDateOnly = (v: unknown): string | undefined => {
+      if (typeof v !== 'string') return undefined;
+      const m = v.match(/^(\d{4}-\d{2}-\d{2})/);
+      return m ? m[1] : undefined;
+    };
+    if (userContext.travelStartDate) userContext.travelStartDate = toDateOnly(userContext.travelStartDate);
+    if (userContext.travelEndDate)   userContext.travelEndDate   = toDateOnly(userContext.travelEndDate);
+
     const ctx = userContext as unknown as UserAdContext;
     lastAdContextRef.current = ctx;
     fetchSearchAds(userContext as any);
