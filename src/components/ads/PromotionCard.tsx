@@ -84,7 +84,7 @@ function PromotionCardComponent({
         <Image
           source={{ uri: promo.imageUrl }}
           style={styles.image}
-          resizeMode="cover"
+          resizeMode="contain"
           accessibilityLabel={`${promo.businessName} promotional image`}
         />
       ) : (
@@ -237,7 +237,8 @@ const styles = StyleSheet.create({
   },
   image: {
     width: '100%',
-    aspectRatio: 3 / 1,
+    aspectRatio: 16 / 9,
+    backgroundColor: '#F0F4F8',
   },
   imagePlaceholder: {
     width: '100%',
