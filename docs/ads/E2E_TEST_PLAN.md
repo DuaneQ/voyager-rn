@@ -3,7 +3,7 @@
 > **Environment:** `mundo1-dev` (local apps pointing at dev Firebase)  
 > **Apps running:** `voyager-RN` (Expo / Metro) + `voyager-ads` (Vite dev server)  
 > **Console:** Metro log (RN) or browser DevTools (web) — all log lines are prefixed `[AdContext]`, `[AdDelivery]`, `[AdCard]`, `[AdImpression]`, `[AdClick]`, `[AdQuartile]`, `[AdTracking]`  
-> **Last updated:** 2026-03-07  
+> **Last updated:** 2026-03-10  
 > **Test user:** Support (`I8EPpdXmmNULf5yvvY44OOrRsuh2`) — dob 2001-01-22 → age 25, gender Male, activities [cultural, shopping, food], travelStyle luxury  
 > **Live campaigns at time of testing:** 6 in Firestore; 5 eligible (`TYwLRxdE7jjAAheK07k9` excluded — `isUnderReview: true`). `3jMaSapi1T2EsTuFioge` expires 2026-03-07 (last eligible day).
 
@@ -29,7 +29,7 @@
 | `functions` | `ad-functions` | Deleted dead code `searchActivities.ts` (never exported from index.ts, never deployed) | Pushed ✅ |
 
 **Test counts:**
-- `voyager-RN`: 2392/2392 passing
+- `voyager-RN`: 2405/2405 passing
 - `voyager-ads`: 632/632 passing
 - `functions`: 400/400 passing
 
@@ -161,8 +161,12 @@
 | ageFrom=35, ageTo=50 | age 40 | ✅ Yes (scores +2) |
 | ageFrom=35, ageTo=50 | age 22 | ❌ No (score 0 on age) |
 
-- [ ] Age-matched campaign appears **ranked higher** (before age-mismatched campaign of equal budget)
-- [ ] `[AdDelivery]` log shows age-matched campaign first in the returned array
+> **Observed 2026-03-09 — positive case.** Campaign `kE4B1zQIfjkx0kKV7p6d` (`ageFrom=18 ageTo=30`, user age=25 → inside range → +2 score). Appeared at **index 0** ahead of 4 other campaigns scoring 0. `[AdDelivery] ✓ 5 ad(s) received` ✅
+>
+> **Observed 2026-03-09 — negative case.** Changed to `ageFrom=30 ageTo=44` (user age=25 → outside range → score 0). Campaign tied with all others at 0; alphabetical tie-break placed it 6th. With `limit=5` the server excluded it entirely — not just index 4 but absent from response. `[AdDelivery] ✓ 5 ad(s) received`; order `L6HQ → NZ6h → SjgN → Sqci → uqRW` ✅  Note: `[AdPool] pool refreshed — 5 ad(s); prefetch guard reset` confirmed `useAdPool` is live.
+
+- [x] Age-matched campaign (`kE4B`, ageFrom=18 ageTo=30) appears at **index 0** — **observed: ✅ 2026-03-09**
+- [x] Age-mismatched campaign (`kE4B`, ageFrom=30 ageTo=44) drops to last / excluded by limit — **observed: ✅ absent from 5-ad response 2026-03-09**
 
 ### 3.2 Gender targeting
 
@@ -172,34 +176,44 @@
 | `male` | female | ❌ Lower ranked (score 0 on gender) |
 | `` (no gender filter) | any | ✅ Yes (open targeting) |
 
-- [ ] Gender-matched campaign ranks above gender-mismatched campaign with same budget
-- [ ] Campaign with no `targetGender` set is still eligible for all users
+> **Observed 2026-03-10 — positive case.** Set `targetGender: "male"` on `kE4B1zQIfjkx0kKV7p6d` (also `ageFrom=18 ageTo=30`). Test user: Male age 25 → score=3 (+2 age +1 gender). Campaign at **index 0** in 5-ad response. All others scored +2 (age only) or 0. Impression flushed `processed=1 skipped=0`. Portal Mar 10: Male age 18–30 = 1 impression ✅
+>
+> **Observed 2026-03-10 — negative case.** Set `targetGender: "female"` — user is Male → gender bonus lost → kE4B score drops from 3 → 2 (age only). All other campaigns score 0 (no targeting). Response order: `kE4B → SjgNVINC → Sqcic5yf → L6HQIxUo → NZ6hJzt`. kE4B **remains at index 0** — correct, because score 2 still beats score 0. Gender is a **soft ranking signal, not a hard exclusion filter**. To observe a rank drop, a competing campaign must also score ≥ 2. `[AdCard] mounted campaignId=kE4B` confirmed at first slot. Impression + Q25 flushed `processed=1 skipped=0`. ✅
+
+- [x] Gender-matched campaign (`targetGender=male`, user=Male) ranks above gender-mismatched campaigns — **observed: ✅ index 0, score=3 vs others score=2 (2026-03-10)**
+- [x] Negative case: set `targetGender: "female"` — kE4B score drops 3→2; still index 0 because all others score 0 (age targeting still dominates). Gender is soft signal — **observed: ✅ correct behaviour confirmed (2026-03-10)**
+- [x] Campaign with no `targetGender` set is still eligible for all users — **observed: ✅ SjgNVINC, Sqcic5yf, L6HQIxUo, NZ6hJzt (no gender targeting) all returned in every response (2026-03-10)**
 
 ### 3.3 Activity preference targeting
 
-- [ ] Create campaign with `targetActivityPreferences: ['Beach', 'Surfing']`
-- [ ] User with `activityPreferences: ['Beach', 'Cultural']` — campaign appears (overlap = Beach)
-- [ ] User with `activityPreferences: ['Hiking', 'Cultural']` — campaign scores 0 on activities (may still appear, ranked lower)
-- [ ] `[AdContext]` log shows `activityPreferences` matches what the user has set in their profile
+> **Verified 2026-03-10 via integration test** (`selectAds.aiSlot.real.test.ts`). Seeds a `targetActivityPreferences: ['cultural','food']` signal campaign + blank. Positive: `activityPreferences: ['cultural','food']` → signal at lower index (higher rank). Negative: `['hiking','adventure']` → both present, no rank assertion (both score 0, hash-ordered). 14/14 passing.
+
+- [x] Activity overlap ranks signal above blank — **verified: ✅ integration test (2026-03-10)**
+- [x] No overlap: campaign still returned (soft scoring, not excluded) — **verified: ✅**
+- [x] `[AdContext]` activityPreferences matches user profile — **verified: ✅ manual 2026-03-07**
 
 ### 3.4 Travel style targeting
 
-- [ ] Create campaign with `targetTravelStyles: ['luxury']`
-- [ ] User with `travelStyle: 'luxury'` — campaign scores +1 and ranks higher
-- [ ] User with `travelStyle: 'budget'` — campaign scores 0 on style (may appear, ranked lower)
+> **Verified 2026-03-10 via integration test** (`selectAds.aiSlot.real.test.ts`). Seeds `targetTravelStyles: ['luxury']` signal + blank. Positive: `travelStyles: ['luxury']` → signal ranked higher. Negative: `['budget']` → both present. 14/14 passing.
+
+- [x] Style overlap (+1) ranks signal above blank — **verified: ✅ integration test (2026-03-10)**
+- [x] Mismatched style: campaign still returned, not excluded — **verified: ✅**
 
 ### 3.5 Destination targeting (AI slot)
 
-- [ ] Open AI Itinerary for destination "Paris"
-- [ ] `[AdDelivery] fetching placement=ai_slot` fires with `destination: 'Paris'` in context
-- [ ] Campaign targeting `location: 'Paris'` scores +2 and appears in promotion slot
-- [ ] Campaign targeting `location: 'Tokyo'` scores 0 on destination and ranks lower
+> **Verified 2026-03-10 via integration test** (`selectAds.aiSlot.real.test.ts`). Seeds `targetDestination: 'Paris'` signal + blank. Positive: destination=Paris → signal ranked higher (+2). Negative: different destination → signal does not outrank blank (score 0 vs 0). Partial match (city substring) also scores. 14/14 passing.
+
+- [x] Matching destination (+2) ranks signal above blank — **verified: ✅ integration test (2026-03-10)**
+- [x] Non-matching destination: signal does not outrank blank — **verified: ✅**
+- [x] Partial city substring match still scores — **verified: ✅**
 
 ### 3.6 Travel date overlap targeting
 
-- [ ] Create campaign with `targetTravelStartDate: '2026-04-01'`, `targetTravelEndDate: '2026-04-30'`
-- [ ] User with itinerary dates April 10–20 — campaign scores +2 for date overlap
-- [ ] User with itinerary dates June 1–10 — campaign scores 0 on dates (no overlap)
+> **Verified 2026-03-10 via integration test** (`selectAds.aiSlot.real.test.ts`). Seeds overlap campaign (dates covering user trip) + noOverlap campaign (dates outside trip) + blank. Positive: overlapping dates → overlap campaign ranked above blank (+2). Negative: noOverlap scores 0 — present but not ranked above blank. Eligibility: campaign with target dates still returned when user has no dates. 14/14 passing.
+
+- [x] Overlapping dates (+2) ranks campaign above blank — **verified: ✅ integration test (2026-03-10)**
+- [x] Non-overlapping dates: campaign still returned (no hard exclusion) — **verified: ✅**
+- [x] Campaign with target dates returned when user has no dates — **verified: ✅**
 
 ---
 
@@ -218,17 +232,19 @@
 
 ### 4.2 Seen campaign penalty
 
-- [ ] Load feed — Campaign X appears at slot 5 (mixed-feed index 4)
-- [ ] `[AdTracking] impression queued campaignId=X` is logged
-- [ ] Scroll back up and trigger a new `fetchAds` (refresh feed)
-- [ ] `[AdDelivery]` call includes `seenCampaignIds: ['X']`
-- [ ] Campaign X appears **lower** in ranking or is replaced by a fresh unseen campaign
+> **Verified 2026-03-10 via integration test** (`selectAds.real.test.ts:930`). Test seeds a "seen" campaign and a fresh peer with identical targeting, calls the live `selectAds` CF with `seenCampaignIds: [seenId]`, and asserts the seen campaign ranks below the fresh one (-5 penalty). Passed in 623ms against `mundo1-dev`. Manual E2E skipped — requires 22+ videos to hit the 80% pool threshold in the browser; the integration test provides equivalent coverage.
 
-### 4.3 Tie-break is deterministic
+- [x] Seen campaign (-5 penalty) ranks below identically-targeted fresh campaign — **verified: ✅ integration test passed live (2026-03-10)**
+- [x] `seenCampaignIds` forwarded correctly in payload — **verified: ✅ `useAdDelivery.test.ts:272` unit test + integration test confirming server applies penalty**
 
-> **Observed 2026-03-07.** All 5 eligible campaigns scored equally (age range matched but no other targeting set). Across two separate `selectAds` calls in the same session, the returned order was identical both times: `3jMaSapi → L6HQIxUo → SjgNVINC → Sqcic5yf → uqRWtMKu` — confirming alphabetical-by-`campaignId` as a stable tie-break.
+### 4.3 Tie-break is per-user deterministic (FNV-1a)
 
-- [x] Same campaign order observed across both fetches in the session — **observed: ✅ deterministic**
+> **Observed 2026-03-07 (pre-tieBreakKey).** Alphabetical tie-break: `3jMaSapi → L6HQIxUo → SjgNVINC → Sqcic5yf → uqRWtMKu` — same order across all users.
+>
+> **Updated 2026-03-10 (tieBreakKey deployed).** Alphabetical tie-break replaced with FNV-1a hash seeded by `userId + '|' + today`. 2026-03-10 response for test user `I8EPpdX...`: tied campaigns order `kE4B → SjgNVINC → Sqcic5yf → L6HQIxUo → NZ6hJzt` — **different** from former alphabetical order, confirming hash is active. Order is stable across multiple fetches within the same session (same seed). Deployed to dev + prod 2026-03-10. 86/86 unit tests passing.
+
+- [x] Same campaign order across both fetches in the session — **observed: ✅ deterministic within a session**
+- [x] Order differs from alphabetical — **observed: ✅ FNV-1a hash active (2026-03-10)**
 
 ---
 
@@ -443,9 +459,12 @@
 
 ### 12.1 Promotion slot fires for ai_slot placement
 
-- [ ] Open AI-generated itinerary
-- [ ] `[AdDelivery] fetching placement=ai_slot` is logged with destination context
-- [ ] Promotion card renders in the itinerary detail with `businessName` visible
+> **Observed 2026-03-09.** Opened AI-generated itinerary (Paris). `[AdDelivery] fetching placement=ai_slot limit=3` fired immediately with destination context. Two ads returned and rendered as `PromotionCard` — `YWazKsM899kFOlXWHOBm` (LosAngeles) and `bElukm9JuyC2Np49iVSo` (Cultural+Food&Dining). Impression logged and flushed within 10 s. CTA tap fired click event and flushed `processed=1 skipped=0`. Firestore `daily_metrics/2026-03-09` for both campaigns updated with `impressions: 1, clicks: 1`. ✅
+
+- [x] `[AdDelivery] fetching placement=ai_slot` is logged with destination context — **observed: ✅**
+- [x] Promotion card renders with `businessName` visible — **observed: ✅ (both cards rendered correctly)**
+- [x] `[AdTracking] flushing` impression + click for ai_slot campaign — **observed: ✅**
+- [x] Firestore `daily_metrics/2026-03-09.impressions/clicks` incremented — **observed: ✅**
 
 ### 12.2 No crash when ai_slot returns no ads
 
@@ -471,14 +490,14 @@
 |---|---|---|---|
 | 1. Targeting Context | Support | 2026-03-07 | 🟡 1.1 ✅ 1.4 ✅ — 1.2 and 1.3 pending (need different test user accounts) |
 | 2. Ad Delivery | Support | 2026-03-07 | ✅ 2.1 ✅ 2.2 ✅ 2.3 ✅ |
-| 3. Targeting Accuracy | — | — | ⚪ Pending — all current campaigns have empty targeting arrays; needs new targeted campaigns |
-| 4. Ranking / Score | Support | 2026-03-07 | 🟡 4.1 ✅ (age targeting: positive + negative both confirmed) 4.3 ✅ — 4.2 pending |
+| 3. Targeting Accuracy | Support | 2026-03-10 | ✅ 3.1 ✅ 3.2 ✅ 3.3 ✅ 3.4 ✅ 3.5 ✅ 3.6 ✅ — 3.1/3.2 manual; 3.3–3.6 via `selectAds.aiSlot.real` integration tests 14/14 ✅ |
+| 4. Ranking / Score | Support | 2026-03-10 | 🟡 4.1 ✅ (age targeting: positive + negative) 4.3 ✅ (FNV-1a tieBreakKey confirmed active) — 4.2 pending |
 | 5. Ad Expiry | Support | 2026-03-07 | 🟡 5.1 ✅ 5.2 ✅ — 5.3/5.4/5.5 client guard pending |
 | 6. Feed Position | Support | 2026-03-07 | 🟡 6.1 ✅ (ad at slot 5 = index 4 = FIRST_AD_AFTER=3 correct) — 6.2, 6.3, 6.4 pending |
-| 7. Impression Tracking | Support | 2026-03-07 | ✅ 7.1 ✅ 7.2 ✅ 7.3 ✅ — Firestore confirmed `impressions=3`, portal chart matches |
-| 8. Click Tracking | Support | 2026-03-07 | 🟡 8.1 ✅ 8.2 ✅ 8.3 ✅ (Firestore clicks=1 confirmed) — landing URL open not verified on simulator |
-| 9. Quartile Tracking | Support | 2026-03-07 | ✅ 9.1 ✅ 9.2 ✅ (Q25 Q50 Q75 Q100 all firing + Firestore confirmed; Q100 bug found+fixed) |
-| 10. Budget / Auto-Pause | Support | 2026-03-07 | ✅ 10.1 ✅ 10.2 ✅ (paused campaign excluded; feed 4→3 ads confirmed) |
+| 7. Impression Tracking | Support | 2026-03-10 | ✅ 7.1 ✅ 7.2 ✅ 7.3 ✅ — manual confirmed 2026-03-07; `logAdEvents` integration test: `populates daily_metrics with correct impression count and spend` ✅ 22/22 passing |
+| 8. Click Tracking | Support | 2026-03-10 | 🟡 8.1 ✅ 8.2 ✅ 8.3 ✅ — CPM/CPC budget decrement confirmed via integration test; landing URL open not verified on simulator |
+| 9. Quartile Tracking | Support | 2026-03-10 | ✅ 9.1 ✅ 9.2 ✅ (manual 2026-03-07) — `increments daily_metrics videoQuartiles.q25/q50/q75/q100` integration test ✅ |
+| 10. Budget / Auto-Pause | Support | 2026-03-10 | ✅ 10.1 ✅ 10.2 ✅ — manual (2026-03-07) + integration tests: CPM/CPC budget exhaustion → auto-pause, 22/22 ✅ |
 | 11. Admin Approval Gate | Support | 2026-03-07 | ✅ 11.1 ✅ 11.2 ✅ 11.3 ✅ (isUnderReview toggle: campaign excluded then restored; Firestore confirmed) |
-| 12. AI Itinerary Slot | — | — | ⚪ Pending — no `ai_slot` campaigns in dev yet |
+| 12. AI Itinerary Slot | Support | 2026-03-09 | 🟡 12.1 ✅ (fetch, render, impression+click tracked+flushed, Firestore confirmed) — 12.2 pending |
 | 13. Edge Cases | — | — | ⚪ Pending |
