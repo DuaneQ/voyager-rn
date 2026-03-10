@@ -133,6 +133,10 @@ jest.mock('../../utils/videoSharing', () => ({
 
 // Mock ad delivery, frequency, user context, and travel preferences hooks
 jest.mock('../../hooks/ads', () => ({
+  useAdPool: () => ({
+    spliceAdsIntoList: (videos: any[]) => videos.map((v: any) => ({ type: 'video', item: v })),
+    fetchAds: jest.fn(),
+  }),
   useAdDelivery: () => ({ ads: [], fetchAds: jest.fn() }),
   useAdTracking: () => ({ trackImpression: jest.fn(), trackClick: jest.fn(), trackQuartile: jest.fn(), flush: jest.fn(), getSeenCampaignIds: () => [] }),
   useAdFrequency: () => ({ spliceAdsIntoList: (videos: any[]) => videos.map((v: any) => ({ type: 'video', item: v })) }),
