@@ -11,7 +11,7 @@
 
 import React from 'react';
 import { renderHook, act, waitFor } from '@testing-library/react-native';
-import { useAdDelivery, clearAdsCache } from '../../../hooks/ads/useAdDelivery';
+import { useAdDelivery, clearAdsCache, filterExpiredAds } from '../../../hooks/ads/useAdDelivery';
 import { AdSeenProvider, useAdSeen } from '../../../context/AdSeenContext';
 
 // Use centralized manual mock for firebaseConfig
@@ -285,5 +285,285 @@ describe('useAdDelivery', () => {
       const callPayload = mockSelectAdsFn.mock.calls[0][0];
       expect(callPayload.seenCampaignIds).toEqual([]);
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Section 5.3 / 5.4 / 5.5 — Client-side expiry guard (filterExpiredAds)
+// ---------------------------------------------------------------------------
+// All tests in this suite pin the clock to 2026-03-10 so date comparisons
+// are deterministic regardless of when the CI job runs.
+//
+//   TODAY      = '2026-03-10'
+//   YESTERDAY  = '2026-03-09'   ← expired endDate  (5.3)
+//   TOMORROW   = '2026-03-11'   ← future startDate  (5.4)
+// ---------------------------------------------------------------------------
+
+const TODAY_DATE = new Date('2026-03-10T12:00:00');
+const TODAY = '2026-03-10';
+const YESTERDAY = '2026-03-09';
+const TOMORROW = '2026-03-11';
+
+/** Minimal AdUnit factory so tests only specify the fields they care about. */
+function makeAd(overrides: Partial<{
+  campaignId: string;
+  startDate: string;
+  endDate: string;
+}>): import('../../../types/AdDelivery').AdUnit {
+  return {
+    campaignId: overrides.campaignId ?? 'test-camp',
+    businessName: 'Test Co',
+    primaryText: 'Test ad',
+    cta: 'Click',
+    landingUrl: 'https://example.com',
+    placement: 'video_feed',
+    ...(overrides.startDate !== undefined && { startDate: overrides.startDate }),
+    ...(overrides.endDate !== undefined && { endDate: overrides.endDate }),
+  } as import('../../../types/AdDelivery').AdUnit;
+}
+
+describe('filterExpiredAds — direct unit tests (Section 5.3 / 5.4 / 5.5)', () => {
+  let warnSpy: jest.SpyInstance;
+  let dateSpy: jest.SpyInstance;
+  // Keep a reference to the real Date constructor to avoid infinite recursion
+  // when mockImplementation itself calls `new Date(...)`.
+  const RealDate = global.Date;
+
+  beforeAll(() => {
+    // Mock the no-arg Date constructor (`new Date()`) to return a pinned date.
+    // This is the only call site affected by todayLocalYYYYMMDD().
+    // We intentionally do NOT use jest.useFakeTimers because that also fakes
+    // setTimeout, which causes @testing-library/react-native cleanup to timeout.
+    dateSpy = jest
+      .spyOn(global, 'Date')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .mockImplementation((...args: any[]) => {
+        if (args.length === 0) return new RealDate(TODAY_DATE);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return new (RealDate as any)(...args);
+      });
+  });
+
+  afterAll(() => {
+    dateSpy.mockRestore();
+  });
+
+  beforeEach(() => {
+    warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
+  });
+
+  // ── Section 5.5 ──────────────────────────────────────────────────────────
+  describe('5.5 — ads with no date fields', () => {
+    it('passes through an ad with neither startDate nor endDate', () => {
+      const ad = makeAd({});
+      expect(filterExpiredAds([ad])).toHaveLength(1);
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+
+    it('does not log a warning when there are no date fields', () => {
+      filterExpiredAds([makeAd({})]);
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── Section 5.3 ──────────────────────────────────────────────────────────
+  describe('5.3 — expired ads (endDate in the past)', () => {
+    it('filters out an ad whose endDate is yesterday', () => {
+      const ad = makeAd({ endDate: YESTERDAY });
+      expect(filterExpiredAds([ad])).toHaveLength(0);
+    });
+
+    it('logs a CLIENT EXPIRY GUARD warning for an expired ad', () => {
+      const ad = makeAd({ campaignId: 'expired-camp', endDate: YESTERDAY });
+      filterExpiredAds([ad]);
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('CLIENT EXPIRY GUARD: ad expired'),
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('campaignId=expired-camp'),
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining(`endDate=${YESTERDAY}`),
+      );
+    });
+
+    it('keeps an ad whose endDate is today (endDate < today is false)', () => {
+      const ad = makeAd({ endDate: TODAY });
+      expect(filterExpiredAds([ad])).toHaveLength(1);
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── Section 5.4 ──────────────────────────────────────────────────────────
+  describe('5.4 — not-yet-started ads (startDate in the future)', () => {
+    it('filters out an ad whose startDate is tomorrow', () => {
+      const ad = makeAd({ startDate: TOMORROW });
+      expect(filterExpiredAds([ad])).toHaveLength(0);
+    });
+
+    it('logs a CLIENT EXPIRY GUARD warning for a not-yet-started ad', () => {
+      const ad = makeAd({ campaignId: 'future-camp', startDate: TOMORROW });
+      filterExpiredAds([ad]);
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('CLIENT EXPIRY GUARD: ad not yet started'),
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('campaignId=future-camp'),
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining(`startDate=${TOMORROW}`),
+      );
+    });
+
+    it('keeps an ad whose startDate is today (startDate > today is false)', () => {
+      const ad = makeAd({ startDate: TODAY });
+      expect(filterExpiredAds([ad])).toHaveLength(1);
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── Mixed-batch edge cases ────────────────────────────────────────────────
+  describe('mixed batches', () => {
+    it('returns only valid ads from a batch containing expired and valid ads', () => {
+      const expired = makeAd({ campaignId: 'dead', endDate: YESTERDAY });
+      const valid = makeAd({ campaignId: 'live', endDate: TODAY });
+      const noDates = makeAd({ campaignId: 'nodates' });
+
+      const result = filterExpiredAds([expired, valid, noDates]);
+      expect(result.map((a) => a.campaignId)).toEqual(['live', 'nodates']);
+    });
+
+    it('returns only valid ads from a batch containing future and valid ads', () => {
+      const future = makeAd({ campaignId: 'future', startDate: TOMORROW });
+      const valid = makeAd({ campaignId: 'live', startDate: TODAY });
+
+      const result = filterExpiredAds([future, valid]);
+      expect(result.map((a) => a.campaignId)).toEqual(['live']);
+    });
+
+    it('filters an ad that has only endDate set and it has passed', () => {
+      // startDate absent — only endDate matters
+      const ad = makeAd({ endDate: YESTERDAY });
+      expect(filterExpiredAds([ad])).toHaveLength(0);
+    });
+
+    it('filters an ad that has only startDate set and is in the future', () => {
+      // endDate absent — only startDate matters
+      const ad = makeAd({ startDate: TOMORROW });
+      expect(filterExpiredAds([ad])).toHaveLength(0);
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Hook-level integration: filterExpiredAds exercised via fetchAds
+// ---------------------------------------------------------------------------
+describe('filterExpiredAds — via useAdDelivery hook (Section 5.3 / 5.4 / 5.5)', () => {
+  const wrapper = ({ children }: { children: React.ReactNode }) =>
+    React.createElement(AdSeenProvider, null, children);
+
+  let warnSpy: jest.SpyInstance;
+  let dateSpy: jest.SpyInstance;
+  const RealDate = global.Date;
+
+  beforeAll(() => {
+    dateSpy = jest
+      .spyOn(global, 'Date')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .mockImplementation((...args: any[]) => {
+        if (args.length === 0) return new RealDate(TODAY_DATE);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return new (RealDate as any)(...args);
+      });
+  });
+
+  afterAll(() => {
+    dateSpy.mockRestore();
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockSelectAdsFn.mockReset();
+    clearAdsCache();
+    warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
+  });
+
+  it('5.3 — removes an expired ad from result.current.ads after fetchAds', async () => {
+    const expiredAd = makeAd({ campaignId: 'exp', endDate: YESTERDAY });
+    mockSelectAdsFn.mockResolvedValue({ data: { ads: [expiredAd], count: 1 } });
+
+    const { result } = renderHook(() => useAdDelivery('video_feed'), { wrapper });
+
+    await act(async () => {
+      await result.current.fetchAds();
+    });
+
+    expect(result.current.ads).toHaveLength(0);
+  });
+
+  it('5.4 — removes a not-yet-started ad from result.current.ads after fetchAds', async () => {
+    const futureAd = makeAd({ campaignId: 'fut', startDate: TOMORROW });
+    mockSelectAdsFn.mockResolvedValue({ data: { ads: [futureAd], count: 1 } });
+
+    const { result } = renderHook(() => useAdDelivery('video_feed'), { wrapper });
+
+    await act(async () => {
+      await result.current.fetchAds();
+    });
+
+    expect(result.current.ads).toHaveLength(0);
+  });
+
+  it('5.5 — keeps an ad with no date fields in result.current.ads after fetchAds', async () => {
+    const noDatesAd = makeAd({ campaignId: 'nodates' });
+    mockSelectAdsFn.mockResolvedValue({ data: { ads: [noDatesAd], count: 1 } });
+
+    const { result } = renderHook(() => useAdDelivery('video_feed'), { wrapper });
+
+    await act(async () => {
+      await result.current.fetchAds();
+    });
+
+    expect(result.current.ads).toHaveLength(1);
+    expect(result.current.ads[0].campaignId).toBe('nodates');
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it('5.3 — logs CLIENT EXPIRY GUARD warning when fetchAds receives an expired ad', async () => {
+    const expiredAd = makeAd({ campaignId: 'exp-warn', endDate: YESTERDAY });
+    mockSelectAdsFn.mockResolvedValue({ data: { ads: [expiredAd], count: 1 } });
+
+    const { result } = renderHook(() => useAdDelivery('video_feed'), { wrapper });
+
+    await act(async () => {
+      await result.current.fetchAds();
+    });
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('CLIENT EXPIRY GUARD: ad expired'),
+    );
+  });
+
+  it('5.4 — logs CLIENT EXPIRY GUARD warning when fetchAds receives a future ad', async () => {
+    const futureAd = makeAd({ campaignId: 'fut-warn', startDate: TOMORROW });
+    mockSelectAdsFn.mockResolvedValue({ data: { ads: [futureAd], count: 1 } });
+
+    const { result } = renderHook(() => useAdDelivery('video_feed'), { wrapper });
+
+    await act(async () => {
+      await result.current.fetchAds();
+    });
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('CLIENT EXPIRY GUARD: ad not yet started'),
+    );
   });
 });

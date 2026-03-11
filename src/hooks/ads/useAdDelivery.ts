@@ -60,8 +60,10 @@ function todayLocalYYYYMMDD(): string {
  * The server ALWAYS filters on date, so expired ads should never be returned
  * in a fresh fetch.  This guard catches the rare case where already-fetched
  * ads are still in state when the calendar day rolls over.
+ *
+ * Exported for unit testing only — prefer testing behaviour through the hook.
  */
-function filterExpiredAds(ads: import('../../types/AdDelivery').AdUnit[]): import('../../types/AdDelivery').AdUnit[] {
+export function filterExpiredAds(ads: import('../../types/AdDelivery').AdUnit[]): import('../../types/AdDelivery').AdUnit[] {
   const today = todayLocalYYYYMMDD()
   return ads.filter((ad) => {
     // If the CF didn't return dates (older deployment), let the ad through.

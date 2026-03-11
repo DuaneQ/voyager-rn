@@ -5,7 +5,7 @@
  *   import { useAdDelivery, useAdTracking, useAdFrequency } from '../hooks/ads'
  */
 
-export { useAdDelivery, clearAdsCache } from './useAdDelivery'
+export { useAdDelivery, clearAdsCache, filterExpiredAds } from './useAdDelivery'
 export type { UseAdDeliveryOptions, UseAdDeliveryReturn } from './useAdDelivery'
 
 export { useAdTracking } from './useAdTracking'
@@ -16,3 +16,6 @@ export type { UseAdFrequencyReturn } from './useAdFrequency'
 
 export { useAdPool } from './useAdPool'
 export type { UseAdPoolOptions, UseAdPoolReturn } from './useAdPool'
+
+export { useAdInterstitial } from './useAdInterstitial'
+export type { UseAdInterstitialOptions, UseAdInterstitialReturn } from './useAdInterstitial'

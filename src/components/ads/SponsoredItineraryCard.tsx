@@ -150,6 +150,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginVertical: 8,
     overflow: 'hidden',
+    alignSelf: 'stretch',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -167,11 +168,11 @@ const styles = StyleSheet.create({
   },
   image: {
     width: '100%',
-    height: 200,
+    aspectRatio: 1,
   },
   imagePlaceholder: {
     width: '100%',
-    height: 200,
+    aspectRatio: 1,
     backgroundColor: '#e0e0e0',
     justifyContent: 'center',
     alignItems: 'center',
