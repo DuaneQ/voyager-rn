@@ -111,11 +111,24 @@ describeIfLive('selectAds — Live Integration Tests', () => {
     if (!authData.idToken) throw new Error('Auth failed: ' + JSON.stringify(authData));
     authToken = authData.idToken;
 
-    // Seed the test campaign via Admin SDK (bypasses security rules)
+    // Pre-clean: remove any __test_ campaigns orphaned by previous failed runs.
+    // This prevents accumulated test data from saturating the selectAds result
+    // limit and causing false negatives in per-campaign assertion tests.
     const db = getAdminDb();
+    const orphans = await db.collection('ads_campaigns')
+      .where(admin.firestore.FieldPath.documentId(), '>=', '__test_')
+      .where(admin.firestore.FieldPath.documentId(), '<', '__test_~')
+      .get();
+    await Promise.all(orphans.docs.map(async (d) => {
+      const metrics = await d.ref.collection('daily_metrics').get();
+      await Promise.all(metrics.docs.map((m) => m.ref.delete()));
+      await d.ref.delete();
+    }));
+
+    // Seed the test campaign via Admin SDK (bypasses security rules)
     await db.collection('ads_campaigns').doc(TEST_CAMPAIGN_ID).set(testCampaign);
     createdCampaignIds.push(TEST_CAMPAIGN_ID);
-  }, 30000);
+  }, 60000);
 
   // ── Cleanup ─────────────────────────────────────────────────────────────
   afterAll(async () => {
@@ -752,13 +765,24 @@ describeIfLive('selectAds — Live Integration Tests', () => {
       const ts = Date.now();
       const matchId = `__test_act_match_${ts}`;
       const noneId  = `__test_act_none_${ts + 1}`;
+      // Unique destination used as an anchor: gives both campaigns +8 on itinerary_feed
+      // scoring, guaranteeing they surface in the top-20 despite accumulated test data.
+      // The activity-preference differential (+1 vs 0) determines their relative order.
+      const uniqueDest = `ActPref Dest ${ts}`;
 
-      await seedTargetCampaign(matchId, { targetActivityPreferences: ['Cultural', 'Beach'] });
-      await seedTargetCampaign(noneId);
+      await seedTargetCampaign(matchId, {
+        placement: 'itinerary_feed',
+        targetActivityPreferences: ['Cultural', 'Beach'],
+        targetDestination: uniqueDest,
+      });
+      await seedTargetCampaign(noneId, {
+        placement: 'itinerary_feed',
+        targetDestination: uniqueDest,
+      });
 
       const result = await callCloudFunction('selectAds', {
-        placement: 'video_feed', limit: 20,
-        userContext: { activityPreferences: ['Cultural', 'Hiking'] }, // 'Cultural' overlaps
+        placement: 'itinerary_feed', limit: 20,
+        userContext: { destination: uniqueDest, activityPreferences: ['Cultural', 'Hiking'] },
       });
 
       const matchIdx = result.result.ads.findIndex((ad: any) => ad.campaignId === matchId);
@@ -772,13 +796,22 @@ describeIfLive('selectAds — Live Integration Tests', () => {
       const ts = Date.now();
       const overlapId   = `__test_act_overlap_${ts}`;
       const noOverlapId = `__test_act_nooverlap_${ts + 1}`;
+      const uniqueDest  = `ActNoOverlap Dest ${ts}`;
 
-      await seedTargetCampaign(overlapId,   { targetActivityPreferences: ['Cultural'] });
-      await seedTargetCampaign(noOverlapId, { targetActivityPreferences: ['Surfing', 'Fishing'] });
+      await seedTargetCampaign(overlapId,   {
+        placement: 'itinerary_feed',
+        targetActivityPreferences: ['Cultural'],
+        targetDestination: uniqueDest,
+      });
+      await seedTargetCampaign(noOverlapId, {
+        placement: 'itinerary_feed',
+        targetActivityPreferences: ['Surfing', 'Fishing'],
+        targetDestination: uniqueDest,
+      });
 
       const result = await callCloudFunction('selectAds', {
-        placement: 'video_feed', limit: 20,
-        userContext: { activityPreferences: ['Cultural', 'Hiking'] },
+        placement: 'itinerary_feed', limit: 20,
+        userContext: { destination: uniqueDest, activityPreferences: ['Cultural', 'Hiking'] },
       });
 
       const overlapIdx   = result.result.ads.findIndex((ad: any) => ad.campaignId === overlapId);
@@ -794,13 +827,21 @@ describeIfLive('selectAds — Live Integration Tests', () => {
       const ts = Date.now();
       const matchId = `__test_style_match_${ts}`;
       const noneId  = `__test_style_none_${ts + 1}`;
+      const uniqueDest = `TravelStyle Dest ${ts}`;
 
-      await seedTargetCampaign(matchId, { targetTravelStyles: ['luxury', 'adventure'] });
-      await seedTargetCampaign(noneId);
+      await seedTargetCampaign(matchId, {
+        placement: 'itinerary_feed',
+        targetTravelStyles: ['luxury', 'adventure'],
+        targetDestination: uniqueDest,
+      });
+      await seedTargetCampaign(noneId, {
+        placement: 'itinerary_feed',
+        targetDestination: uniqueDest,
+      });
 
       const result = await callCloudFunction('selectAds', {
-        placement: 'video_feed', limit: 20,
-        userContext: { travelStyles: ['luxury'] },
+        placement: 'itinerary_feed', limit: 20,
+        userContext: { destination: uniqueDest, travelStyles: ['luxury'] },
       });
 
       const matchIdx = result.result.ads.findIndex((ad: any) => ad.campaignId === matchId);
@@ -816,24 +857,28 @@ describeIfLive('selectAds — Live Integration Tests', () => {
       const ts = Date.now();
       const matchId = `__test_trip_match_${ts}`;
       const noneId  = `__test_trip_none_${ts + 1}`;
+      const uniqueDest = `TripType Dest ${ts}`;
 
-      await seedTargetCampaign(matchId, { targetTripTypes: ['romantic', 'adventure'] });
-      await seedTargetCampaign(noneId);
+      await seedTargetCampaign(matchId, {
+        placement: 'itinerary_feed',
+        targetTripTypes: ['romantic', 'adventure'],
+        targetDestination: uniqueDest,
+      });
+      await seedTargetCampaign(noneId, {
+        placement: 'itinerary_feed',
+        targetDestination: uniqueDest,
+      });
 
       const result = await callCloudFunction('selectAds', {
-        placement: 'video_feed', limit: 20,
-        userContext: { tripTypes: ['romantic'] },
+        placement: 'itinerary_feed', limit: 20,
+        userContext: { destination: uniqueDest, tripTypes: ['romantic'] },
       });
 
       const matchIdx = result.result.ads.findIndex((ad: any) => ad.campaignId === matchId);
       const noneIdx  = result.result.ads.findIndex((ad: any) => ad.campaignId === noneId);
-      // matchIdx must always be present (score +1 keeps it in top 20)
       expect(matchIdx).toBeGreaterThanOrEqual(0);
-      // noneIdx may be -1 if >20 eligible campaigns exist — being ranked off the
-      // list is itself evidence that noneId scored lower than matchId.
-      if (noneIdx >= 0) {
-        expect(matchIdx).toBeLessThan(noneIdx);
-      }
+      expect(noneIdx).toBeGreaterThanOrEqual(0);
+      expect(matchIdx).toBeLessThan(noneIdx);
     }, 30000);
 
     // ── Travel dates ------------------------------------------------------
@@ -842,16 +887,26 @@ describeIfLive('selectAds — Live Integration Tests', () => {
       const ts = Date.now();
       const matchId = `__test_dates_match_${ts}`;
       const noneId  = `__test_dates_none_${ts + 1}`;
+      // Unique destination anchors both campaigns so they score +8 on
+      // itinerary_feed, guaranteeing they surface in top-20. The date-overlap
+      // differential (+2 vs 0) then determines their relative rank.
+      const uniqueDest = `Dates Dest ${ts}`;
 
       await seedTargetCampaign(matchId, {
+        placement: 'itinerary_feed',
         targetTravelStartDate: offsetDate(-5),
         targetTravelEndDate:   offsetDate(14),
+        targetDestination: uniqueDest,
       });
-      await seedTargetCampaign(noneId);
+      await seedTargetCampaign(noneId, {
+        placement: 'itinerary_feed',
+        targetDestination: uniqueDest,
+      });
 
       const result = await callCloudFunction('selectAds', {
-        placement: 'video_feed', limit: 20,
+        placement: 'itinerary_feed', limit: 20,
         userContext: {
+          destination: uniqueDest,
           travelStartDate: offsetDate(0),
           travelEndDate:   offsetDate(7),
         },
@@ -868,19 +923,25 @@ describeIfLive('selectAds — Live Integration Tests', () => {
       const ts = Date.now();
       const overlapId   = `__test_dates_overlap_${ts}`;
       const noOverlapId = `__test_dates_noop_${ts + 1}`;
+      const uniqueDest = `DatesNonOverlap Dest ${ts}`;
 
       await seedTargetCampaign(overlapId, {
+        placement: 'itinerary_feed',
         targetTravelStartDate: offsetDate(-5),
         targetTravelEndDate:   offsetDate(10),
+        targetDestination: uniqueDest,
       });
       await seedTargetCampaign(noOverlapId, {
+        placement: 'itinerary_feed',
         targetTravelStartDate: offsetDate(30),
         targetTravelEndDate:   offsetDate(60), // user travelling now — no overlap
+        targetDestination: uniqueDest,
       });
 
       const result = await callCloudFunction('selectAds', {
-        placement: 'video_feed', limit: 20,
+        placement: 'itinerary_feed', limit: 20,
         userContext: {
+          destination: uniqueDest,
           travelStartDate: offsetDate(0),
           travelEndDate:   offsetDate(7),
         },
@@ -895,23 +956,25 @@ describeIfLive('selectAds — Live Integration Tests', () => {
 
     // ── Destination / placeId --------------------------------------------
 
-    it('placeId exact match (+3) ranks above destination string match (+2) for the same location', async () => {
+    it('placeId exact match (+10) ranks above destination string match (+8) for the same location', async () => {
       const ts = Date.now();
       const placeMatchId = `__test_place_exact_${ts}`;
       const destMatchId  = `__test_place_dest_${ts + 1}`;
 
-      // Campaign A: has both placeId + targetDestination — scores +3 on placeId
+      // Campaign A: has both placeId + targetDestination — scores +10 on placeId (itinerary_feed)
       await seedTargetCampaign(placeMatchId, {
+        placement: 'itinerary_feed',
         targetPlaceId:     'ChIJD7fiBh9u5kcRYJSMaMOCCwQ',
         targetDestination: 'Paris, France',
       });
-      // Campaign B: destination string only — scores +2
+      // Campaign B: destination string only — scores +8 on string match (itinerary_feed)
       await seedTargetCampaign(destMatchId, {
+        placement: 'itinerary_feed',
         targetDestination: 'Paris, France',
       });
 
       const result = await callCloudFunction('selectAds', {
-        placement: 'video_feed', limit: 20,
+        placement: 'itinerary_feed', limit: 20,
         userContext: {
           destination: 'Paris, France',
           placeId:     'ChIJD7fiBh9u5kcRYJSMaMOCCwQ',
@@ -935,18 +998,22 @@ describeIfLive('selectAds — Live Integration Tests', () => {
       // other test campaigns, ensuring both appear within the limit-20 result set.
       const uniqueDest = `SeenTest Destination ${ts}`;
 
-      await seedTargetCampaign(seenId,  { name: 'Seen Campaign',  location: uniqueDest });
-      await seedTargetCampaign(freshId, { name: 'Fresh Campaign', location: uniqueDest });
+      // Use itinerary_feed so that destination scoring is active (+8 string match);
+      // both campaigns score +8 on the unique destination, ensuring they surface in
+      // top-20 regardless of accumulated test campaigns. The seenCampaignIds penalty
+      // (-5) then separates them: fresh=+8, seen=+8−5=+3.
+      await seedTargetCampaign(seenId,  { placement: 'itinerary_feed', name: 'Seen Campaign',  location: uniqueDest });
+      await seedTargetCampaign(freshId, { placement: 'itinerary_feed', name: 'Fresh Campaign', location: uniqueDest });
 
       const result = await callCloudFunction('selectAds', {
-        placement: 'video_feed', limit: 20,
+        placement: 'itinerary_feed', limit: 20,
         seenCampaignIds: [seenId],
         userContext: { destination: uniqueDest },
       });
 
       const seenIdx  = result.result.ads.findIndex((ad: any) => ad.campaignId === seenId);
       const freshIdx = result.result.ads.findIndex((ad: any) => ad.campaignId === freshId);
-      // fresh scores +2 (dest match), seen scores +2−5 = −3.
+      // fresh scores +8 (dest match), seen scores +8−5 = +3.
       // Both should be in results; fresh must appear before seen.
       expect(freshIdx).toBeGreaterThanOrEqual(0);
       // seenIdx may be absent if too many negatively-ranked campaigns are cut off —
@@ -965,13 +1032,16 @@ describeIfLive('selectAds — Live Integration Tests', () => {
       // in the top 20 even when many other test campaigns are active in the DB.
       const uniqueDest = `StartToday Destination ${ts}`;
 
+      // Use itinerary_feed so destination scoring is active; the unique destination
+      // guarantees this campaign surfaces in top-20 with score +8.
       await seedTargetCampaign(todayId, {
+        placement: 'itinerary_feed',
         startDate: todayYYYYMMDD(),
         location: uniqueDest,
       });
 
       const result = await callCloudFunction('selectAds', {
-        placement: 'video_feed', limit: 20,
+        placement: 'itinerary_feed', limit: 20,
         userContext: { destination: uniqueDest },
       });
 
@@ -982,16 +1052,18 @@ describeIfLive('selectAds — Live Integration Tests', () => {
     it('endDate = today is eligible (campaign ends on the current day)', async () => {
       const ts = Date.now();
       const todayEndId = `__test_end_today_${ts}`;
-      // Use a unique destination for the same reason as startDate=today above.
+      // Use itinerary_feed + unique destination so the campaign scores +8 and is
+      // guaranteed to surface in top-20 despite accumulated test campaigns.
       const uniqueDest = `EndToday Destination ${ts}`;
 
       await seedTargetCampaign(todayEndId, {
+        placement: 'itinerary_feed',
         endDate: todayYYYYMMDD(),
         location: uniqueDest,
       });
 
       const result = await callCloudFunction('selectAds', {
-        placement: 'video_feed', limit: 20,
+        placement: 'itinerary_feed', limit: 20,
         userContext: { destination: uniqueDest },
       });
 
@@ -1010,12 +1082,15 @@ describeIfLive('selectAds — Live Integration Tests', () => {
 
   describe('Multi-criteria targeting — compound score stacking', () => {
     /** Seed a minimal test campaign with the given overrides. Same helper as above. */
+    // Use itinerary_feed so all intent-based scoring dimensions (destination, dates,
+    // tripTypes, activityPreferences, travelStyles) are active. video_feed only
+    // scores age and gender, which would cause destination-based tests to fail.
     const seedMulti = async (id: string, overrides: Record<string, unknown> = {}): Promise<void> => {
       await getAdminDb().collection('ads_campaigns').doc(id).set({
         uid: 'test-advertiser-uid',
         name: id,
         status: 'active',
-        placement: 'video_feed',
+        placement: 'itinerary_feed',
         isUnderReview: false,
         startDate: offsetDate(-7),
         endDate: offsetDate(30),
@@ -1037,10 +1112,10 @@ describeIfLive('selectAds — Live Integration Tests', () => {
     // ── Scenario 1: Destination + Gender + Age ─────────────────────────────
     //
     // User: destination='Santorini, Greece', gender='Female', age=28
-    // Campaign A (full match):    dest +2  + gender +1 + age +2  = +5
-    // Campaign B (partial match): dest +2  + gender +1           = +3
-    // Campaign C (dest only):     dest +2                        = +2
-    // Campaign D (no targeting):                                    0
+    // Campaign A (full match):    dest +8  + gender +1 + age +2  = +11
+    // Campaign B (partial match): dest +8  + gender +1           = +9
+    // Campaign C (dest only):     dest +8                        = +8
+    // Campaign D (no targeting):                                   0
     //
     // Expected ranking: A > B > C > D
     it('destination + gender + age: more matching criteria = higher rank', async () => {
@@ -1068,7 +1143,7 @@ describeIfLive('selectAds — Live Integration Tests', () => {
       await seedMulti(noneId);
 
       const result = await callCloudFunction('selectAds', {
-        placement: 'video_feed', limit: 20,
+        placement: 'itinerary_feed', limit: 20,
         userContext: {
           destination: dest,
           gender: 'Female',
@@ -1088,7 +1163,7 @@ describeIfLive('selectAds — Live Integration Tests', () => {
       expect(partialIdx).toBeGreaterThanOrEqual(0);
       expect(destIdx).toBeGreaterThanOrEqual(0);
 
-      // Full match (+5) > partial match (+3) > dest-only (+2)
+      // Full match (+11) > partial match (+9) > dest-only (+8)
       expect(fullIdx).toBeLessThan(partialIdx);
       expect(partialIdx).toBeLessThan(destIdx);
     }, 35000);
@@ -1097,9 +1172,9 @@ describeIfLive('selectAds — Live Integration Tests', () => {
     //
     // User: destination='Kyoto-<ts>, Japan', tripTypes=['cultural'],
     //       travelStart/End overlapping with campaign range
-    // Campaign A: dest + tripTypes + dates  → +2+1+2 = +5
-    // Campaign B: dest + tripTypes          → +2+1   = +3
-    // Campaign C: dest only                 → +2
+    // Campaign A: dest + tripTypes + dates  → +8+1+2 = +11
+    // Campaign B: dest + tripTypes          → +8+1   = +9
+    // Campaign C: dest only                 → +8
     //
     // Expected ranking: A > B > C
     it('destination + trip types + travel dates: scores stack correctly', async () => {
@@ -1128,7 +1203,7 @@ describeIfLive('selectAds — Live Integration Tests', () => {
       });
 
       const result = await callCloudFunction('selectAds', {
-        placement: 'video_feed', limit: 20,
+        placement: 'itinerary_feed', limit: 20,
         userContext: {
           destination: dest,
           tripTypes: ['cultural'],
@@ -1148,7 +1223,7 @@ describeIfLive('selectAds — Live Integration Tests', () => {
       expect(noDateIdx).toBeGreaterThanOrEqual(0);
       expect(destIdx).toBeGreaterThanOrEqual(0);
 
-      // A (+5) > B (+3) > C (+2)
+      // A (+11) > B (+9) > C (+8)
       expect(fullIdx).toBeLessThan(noDateIdx);
       expect(noDateIdx).toBeLessThan(destIdx);
     }, 35000);
@@ -1157,14 +1232,14 @@ describeIfLive('selectAds — Live Integration Tests', () => {
     //
     // Pure interest-based stacking — no geographic signal.
     // User: gender='Male', activityPreferences=['Adventure'], travelStyles=['backpacker']
-    // Campaign A: gender + activity + style   → +1+1+1 = +3
-    // Campaign B: gender + activity           → +1+1   = +2
+    // Campaign A: gender + activity + style   → +1+1+1     = +3 (without dest)
+    // Campaign B: gender + activity           → +1+1       = +2
     // Campaign C: gender only                 → +1
     // Campaign D: no targeting                → 0
     //
-    // To avoid the limit-20 cut-off problem we also give all 4 campaigns the
-    // same unique destination string so they all score an additional +2 and
-    // remain in the top results.
+    // All 4 campaigns also carry the same unique destination so they score an
+    // additional +8 on itinerary_feed, guaranteeing they surface in the top-20.
+    // Score totals: A=+11, B=+10, C=+9, D=+8 — relative ordering is preserved.
     it('gender + activity preferences + travel styles: interest scores stack', async () => {
       const ts = Date.now();
       const uniqueDest = `GenderActStyle Dest ${ts}`;
@@ -1198,7 +1273,7 @@ describeIfLive('selectAds — Live Integration Tests', () => {
       });
 
       const result = await callCloudFunction('selectAds', {
-        placement: 'video_feed', limit: 20,
+        placement: 'itinerary_feed', limit: 20,
         userContext: {
           destination: uniqueDest,
           gender: 'Male',
@@ -1210,10 +1285,10 @@ describeIfLive('selectAds — Live Integration Tests', () => {
       expect(result.result).toBeDefined();
       const ads = result.result.ads as any[];
 
-      const fullIdx     = ads.findIndex(a => a.campaignId === fullId);     // +2+1+1+1 = +5
-      const noStyleIdx  = ads.findIndex(a => a.campaignId === noStyleId);  // +2+1+1   = +4
-      const genderIdx   = ads.findIndex(a => a.campaignId === genderOnlyId); // +2+1   = +3
-      const noneIdx     = ads.findIndex(a => a.campaignId === noneId);     // +2
+      const fullIdx     = ads.findIndex(a => a.campaignId === fullId);       // +8+1+1+1 = +11
+      const noStyleIdx  = ads.findIndex(a => a.campaignId === noStyleId);    // +8+1+1   = +10
+      const genderIdx   = ads.findIndex(a => a.campaignId === genderOnlyId); // +8+1     = +9
+      const noneIdx     = ads.findIndex(a => a.campaignId === noneId);       // +8
 
       expect(fullIdx).toBeGreaterThanOrEqual(0);
       expect(noStyleIdx).toBeGreaterThanOrEqual(0);
@@ -1221,9 +1296,9 @@ describeIfLive('selectAds — Live Integration Tests', () => {
       expect(noneIdx).toBeGreaterThanOrEqual(0);
 
       // Each added criterion lifts the campaign one rank higher
-      expect(fullIdx).toBeLessThan(noStyleIdx);   // +5 > +4
-      expect(noStyleIdx).toBeLessThan(genderIdx); // +4 > +3
-      expect(genderIdx).toBeLessThan(noneIdx);    // +3 > +2
+      expect(fullIdx).toBeLessThan(noStyleIdx);   // +11 > +10
+      expect(noStyleIdx).toBeLessThan(genderIdx); // +10 > +9
+      expect(genderIdx).toBeLessThan(noneIdx);    // +9 > +8
     }, 35000);
 
     // ── Scenario 4: Seen penalty interacts with multi-criteria score ────────
@@ -1231,11 +1306,11 @@ describeIfLive('selectAds — Live Integration Tests', () => {
     // A fully-matched multi-criteria campaign that has been seen can still rank
     // below a zero-targeted fresh campaign once the -5 penalty is applied.
     //
-    // Campaign A (seen):  dest + gender + age → +2+1+2 = +5, but -5 seen → 0
-    // Campaign B (fresh): no targeting → 0
-    // Both score 0 — order is undefined — but neither should be ranked ABOVE the other.
-    // The important assertion is that a FRESH + fully-matched campaign (score+5)
-    // beats the SEEN + fully-matched campaign (score 0).
+    // Campaign A (seen):  dest + gender + age → +8+1+2 = +11, but -5 seen → +6
+    // Campaign B (fresh): dest + gender + age → +8+1+2 = +11 (no penalty)
+    //
+    // The important assertion is that a FRESH + fully-matched campaign (score+11)
+    // beats the SEEN + fully-matched campaign (score +6).
     it('seen penalty negates high multi-criteria score: fresh zero-targeted ranks above seen high-scored', async () => {
       const ts = Date.now();
       const uniqueDest = `SeenMulti Dest ${ts}`;
@@ -1247,15 +1322,15 @@ describeIfLive('selectAds — Live Integration Tests', () => {
         location: uniqueDest,
         targetGender: 'Female',
         ageFrom: '20', ageTo: '40',
-      }); // score = +2+1+2 = +5, but -5 if seen → effective 0
+      }); // score = +8+1+2 = +11, but -5 if seen → effective +6
       await seedMulti(freshHighId, {
         location: uniqueDest,
         targetGender: 'Female',
         ageFrom: '20', ageTo: '40',
-      }); // same, but NOT seen → score +5
+      }); // same, but NOT seen → score +11
 
       const result = await callCloudFunction('selectAds', {
-        placement: 'video_feed', limit: 20,
+        placement: 'itinerary_feed', limit: 20,
         seenCampaignIds: [seenHighId],
         userContext: {
           destination: uniqueDest,

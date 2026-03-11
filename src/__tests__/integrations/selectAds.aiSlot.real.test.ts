@@ -141,7 +141,20 @@ describeIfLive('selectAds — ai_slot intent-based targeting (Live Integration)'
     const authData = await authRes.json();
     if (!authData.idToken) throw new Error('Auth failed: ' + JSON.stringify(authData));
     authToken = authData.idToken;
-  }, 30000);
+
+    // Pre-clean: remove any __test_ campaigns orphaned by previous failed runs.
+    // Prevents accumulated test data from saturating the result limit.
+    const db = getAdminDb();
+    const orphans = await db.collection('ads_campaigns')
+      .where(admin.firestore.FieldPath.documentId(), '>=', '__test_')
+      .where(admin.firestore.FieldPath.documentId(), '<', '__test_~')
+      .get();
+    await Promise.all(orphans.docs.map(async (d) => {
+      const metrics = await d.ref.collection('daily_metrics').get();
+      await Promise.all(metrics.docs.map((m) => m.ref.delete()));
+      await d.ref.delete();
+    }));
+  }, 60000);
 
   // ── afterAll — delete all seeded campaigns ────────────────────────────────
   afterAll(async () => {
@@ -322,9 +335,12 @@ describeIfLive('selectAds — ai_slot intent-based targeting (Live Integration)'
       const signalIdx = ads.findIndex((a) => a.campaignId === signalId);
       const blankIdx  = ads.findIndex((a) => a.campaignId === blankId);
 
+      // With a non-matching destination both campaigns score 0; they remain eligible
+      // (no hard destination filter) and must appear in results.
+      // Relative order is non-deterministic when both scores are equal, so we only
+      // assert presence — not rank — to avoid a flaky test.
       expect(signalIdx).toBeGreaterThanOrEqual(0);
       expect(blankIdx).toBeGreaterThanOrEqual(0);
-      expect(signalIdx).toBeGreaterThanOrEqual(blankIdx);
     }, 20000);
 
     it('positive — partial destination match (city substring) still scores', async () => {
