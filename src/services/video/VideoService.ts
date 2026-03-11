@@ -251,6 +251,14 @@ export class VideoService {
   /**
    * Delete video from Storage and Firestore
    * Gracefully handles missing Storage objects (e.g. already deleted from PWA)
+   *
+   * TODO (Story B): Also delete the Mux asset when deleting a video.
+   * The `video.muxAssetId` field holds the Mux asset ID. Currently this method
+   * removes Storage + Firestore but leaves the transcoded asset live on Mux CDN
+   * (stream.mux.com/{playbackId}.m3u8), which is a privacy gap and a cost leak.
+   * See the TODO block at the top of functions/src/muxVideoProcessing.ts for the
+   * full implementation plan (Option 2 — Firestore onDocumentDeleted trigger is
+   * the recommended approach so all deletion surfaces are covered automatically).
    */
   async deleteVideo(videoId: string, video: Video): Promise<void> {
     try {

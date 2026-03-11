@@ -4,6 +4,31 @@
 
 ## ⚠️ CRITICAL TESTING RULES - READ FIRST ⚠️
 
+### 🚨 UNDERSTAND THE DOMAIN BEFORE WRITING FILTERING OR DEDUPLICATION LOGIC 🚨
+
+**ABSOLUTE RULE**: Before writing ANY filter, dedup, exclude, or reduce on a list of results, you MUST understand what the list represents in the context of the app.
+
+**TravalPass core use case**: Users search for OTHER TRAVELLERS going to the **SAME destination** during **overlapping dates**. Multiple results with the same destination is not a bug — it is the entire point of the app. NEVER deduplicate, group, or collapse results by destination.
+
+**Deduplication rules for itinerary search results**:
+- ✅ Deduplicate by **itinerary ID** only
+- ✅ Exclude the **current user's own itineraries** by userId
+- ✅ Exclude **previously viewed itineraries** by ID (from AsyncStorage)
+- ❌ NEVER deduplicate by destination — this breaks the core matching feature
+- ❌ NEVER deduplicate by userId — a user can have multiple itineraries to different places
+- ❌ NEVER filter or group by any field that would hide valid matches
+
+**Root cause of the November 2025 regression**: A destination-based dedup (`seen.has(dest)`) was silently introduced in a bulk automation commit. It made it impossible for a user to ever see more than one traveller per destination, which destroyed the core search feature. This went undetected for months.
+
+**Before writing any list-processing code on search results, explicitly ask**:
+1. What does each item in this list represent?
+2. What is the user trying to see? Would my filter/dedup hide valid results?
+3. Is there an existing test that would catch this regression?
+
+**If you are unsure — do not add the filter. Ask first.**
+
+---
+
 ### 🚨 ALWAYS VERIFY CODE BEFORE CLAIMING COMPLETION 🚨
 
 **ABSOLUTE RULE**: You MUST verify your code compiles and passes tests BEFORE telling the user you're done.

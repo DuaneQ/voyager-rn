@@ -16,17 +16,14 @@
  *   const mixedList = spliceAdsIntoList(videos, ads)
  */
 
-import { useCallback, useRef } from 'react'
+import { useCallback } from 'react'
 import type { AdUnit } from '../../types/AdDelivery'
 
 /** Show first ad after this many content items. */
-const FIRST_AD_AFTER = 4
+const FIRST_AD_AFTER = 3
 
 /** Show subsequent ads every N content items. */
 const AD_INTERVAL = 5
-
-/** Maximum ads to show in a single feed session. */
-const MAX_ADS_PER_SESSION = 10
 
 export interface UseAdFrequencyReturn {
   /**
@@ -53,26 +50,20 @@ export interface UseAdFrequencyReturn {
     ads: AdUnit[],
   ) => Array<{ type: 'content'; item: T } | { type: 'ad'; ad: AdUnit }>
 
-  /** Reset the session ad counter (e.g. on pull-to-refresh). */
-  resetSessionCount: () => void
 }
 
 export function useAdFrequency(): UseAdFrequencyReturn {
-  const sessionCountRef = useRef(0)
-
   const getAdInsertionIndices = useCallback(
     (contentLength: number, availableAds: number): number[] => {
       if (contentLength === 0 || availableAds === 0) return []
 
-      const remaining = MAX_ADS_PER_SESSION - sessionCountRef.current
-      if (remaining <= 0) return []
-
-      const maxSlots = Math.min(availableAds, remaining)
       const indices: number[] = []
 
-      // First slot after FIRST_AD_AFTER items, then every AD_INTERVAL items
+      // First slot after FIRST_AD_AFTER items, then every AD_INTERVAL items.
+      // No cap on total slots — ads cycle through the available pool so every
+      // 5th video has an ad regardless of how long the feed is.
       let nextSlot = FIRST_AD_AFTER
-      while (indices.length < maxSlots && nextSlot < contentLength) {
+      while (nextSlot < contentLength) {
         indices.push(nextSlot)
         nextSlot += AD_INTERVAL
       }
@@ -101,13 +92,20 @@ export function useAdFrequency(): UseAdFrequencyReturn {
       let adIdx = 0
 
       for (let i = 0; i < contentItems.length; i++) {
-        // Insert ad BEFORE this content item at the designated indices
-        if (indicesSet.has(i) && adIdx < ads.length) {
-          result.push({ type: 'ad', ad: ads[adIdx] })
-          sessionCountRef.current++
+        result.push({ type: 'content', item: contentItems[i] })
+        // Insert ad AFTER this content item at the designated indices.
+        // Ads cycle through the available pool so the feed never runs dry.
+        if (indicesSet.has(i)) {
+          result.push({ type: 'ad', ad: ads[adIdx % ads.length] })
           adIdx++
         }
-        result.push({ type: 'content', item: contentItems[i] })
+      }
+
+      // Trailing-ad fallback: if the feed was too short to reach the first
+      // insertion slot (e.g. only 3 videos offline) but we have cached ads,
+      // append one ad at the end so it still appears at "position 4".
+      if (adIdx === 0) {
+        result.push({ type: 'ad', ad: ads[0] })
       }
 
       return result
@@ -115,9 +113,5 @@ export function useAdFrequency(): UseAdFrequencyReturn {
     [getAdInsertionIndices],
   )
 
-  const resetSessionCount = useCallback(() => {
-    sessionCountRef.current = 0
-  }, [])
-
-  return { getAdInsertionIndices, spliceAdsIntoList, resetSessionCount }
+  return { getAdInsertionIndices, spliceAdsIntoList }
 }

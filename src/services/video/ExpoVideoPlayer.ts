@@ -135,6 +135,9 @@ export class ExpoVideoPlayer implements IVideoPlayer {
   }
 
   private notifyListeners(overrides?: Partial<VideoPlayerStatus>): void {
+    // Do not notify after release — prevents stale error events (e.g. iOS CoreMediaErrorDomain -12746)
+    // from showing "Video Unavailable" UI after the player has been torn down.
+    if (this._isReleased) return;
     const status: VideoPlayerStatus = {
       isPlaying: this._isPlaying,
       isMuted: this._isMuted,
@@ -209,6 +212,10 @@ export class ExpoVideoPlayer implements IVideoPlayer {
         // Notify listeners about the autoplay block
         this.notifyListeners({ autoplayBlocked: true });
         // Don't throw - this is expected behavior on web
+        return;
+      }
+      // AbortError: play() was interrupted by pause() during rapid scroll — not a real error
+      if (error?.name === 'AbortError') {
         return;
       }
       console.error(`[ExpoVideoPlayer] Play error on ${this._id}:`, error);

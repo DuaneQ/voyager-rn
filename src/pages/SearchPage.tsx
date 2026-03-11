@@ -57,9 +57,11 @@ import AddItineraryModal from '../components/search/AddItineraryModal';
 import { FeedbackButton } from '../components/utilities/FeedbackButton';
 import SubscriptionCard from '../components/common/SubscriptionCard';
 import { SponsoredItineraryCard } from '../components/ads';
-import { useAdDelivery, useAdTracking } from '../hooks/ads';
+import { useAdDelivery, useAdTracking, useAdInterstitial } from '../hooks/ads';
+import type { UserAdContext } from '../types/AdDelivery';
 import { calculateAge } from '../utils/calculateAge';
 import { useTravelPreferences } from '../hooks/useTravelPreferences';
+
 
 const SearchPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -96,11 +98,19 @@ const SearchPage: React.FC = () => {
   const { trackImpression, trackClick } = useAdTracking();
   const { defaultProfile: travelProfile } = useTravelPreferences();
 
-  /** Show interstitial sponsored card after every N like/dislike actions. */
-  const AD_INTERSTITIAL_INTERVAL = 3;
-  const actionCountRef = useRef(0);
-  const [showingSponsoredAd, setShowingSponsoredAd] = useState(false);
-  const currentAdIndexRef = useRef(0);
+  const {
+    showingSponsoredAd,
+    currentAd,
+    maybeShowInterstitialAd,
+    handleAdDismiss,
+    resetForNewSearch,
+  } = useAdInterstitial({
+    sponsoredAds,
+    matchingItinerariesCount: matchingItineraries.length,
+    searchLoading,
+    selectedItineraryId,
+    fetchAds: fetchSearchAds,
+  });
 
   // Mock itineraries shown only when user has no real itineraries
   const mockItineraries = [
@@ -212,11 +222,22 @@ const SearchPage: React.FC = () => {
     if (travelProfile?.travelStyle) {
       userContext.travelStyles = [travelProfile.travelStyle];
     }
+    // selectAds requires bare YYYY-MM-DD strings. Itinerary dates can come back
+    // from Firestore as full ISO timestamps (e.g. '2026-04-15T12:00:00.000Z').
+    // Strip the time portion so the server's parseDateToNoonUTC doesn't reject them.
+    const toDateOnly = (v: unknown): string | undefined => {
+      if (typeof v !== 'string') return undefined;
+      const m = v.match(/^(\d{4}-\d{2}-\d{2})/);
+      return m ? m[1] : undefined;
+    };
+    if (userContext.travelStartDate) userContext.travelStartDate = toDateOnly(userContext.travelStartDate);
+    if (userContext.travelEndDate)   userContext.travelEndDate   = toDateOnly(userContext.travelEndDate);
+
+    const ctx = userContext as unknown as UserAdContext;
     fetchSearchAds(userContext as any);
 
-    // Reset interstitial counter for new search
-    actionCountRef.current = 0;
-    setShowingSponsoredAd(false);
+    // Reset interstitial state for new search (also stores the ad targeting context).
+    resetForNewSearch(ctx);
 
     // Trigger search for matching itineraries
     await searchItineraries(selectedItinerary as any, userId);
@@ -241,27 +262,7 @@ const SearchPage: React.FC = () => {
     showAlert('Itinerary saved successfully!', 'success');
   };
 
-  /**
-   * After a like/dislike action, check if it's time to show a sponsored
-   * interstitial card before the next organic match.
-   */
-  const maybeShowInterstitialAd = useCallback(() => {
-    actionCountRef.current += 1;
-    if (
-      sponsoredAds.length > 0 &&
-      actionCountRef.current % AD_INTERSTITIAL_INTERVAL === 0
-    ) {
-      // Rotate through available ads
-      currentAdIndexRef.current = currentAdIndexRef.current % sponsoredAds.length;
-      setShowingSponsoredAd(true);
-    }
-  }, [sponsoredAds]);
 
-  /** User dismissed or interacted with the interstitial ad. */
-  const handleAdDismiss = useCallback(() => {
-    currentAdIndexRef.current += 1;
-    setShowingSponsoredAd(false);
-  }, []);
 
   const handleLike = async (itinerary: Itinerary) => {
     if (!userId) {
@@ -532,9 +533,9 @@ const SearchPage: React.FC = () => {
                     contentContainerStyle={styles.cardScrollContent}
                     showsVerticalScrollIndicator={false}
                   >
-                    {showingSponsoredAd && sponsoredAds.length > 0 ? (
+                    {showingSponsoredAd && currentAd ? (
                       <SponsoredItineraryCard
-                        ad={sponsoredAds[currentAdIndexRef.current % sponsoredAds.length]}
+                        ad={currentAd}
                         isVisible
                         onImpression={trackImpression}
                         onCtaPress={(campaignId) => {
@@ -555,18 +556,37 @@ const SearchPage: React.FC = () => {
                     )}
                   </ScrollView>
                 ) : (
-                  /* No matches found */
-                  <View style={styles.centerContent}>
-                    <Text style={styles.emptyText}>
-                      {searchError ? (
-                        <Text style={{ color: '#fff' }}>Error: {searchError}</Text>
-                      ) : (
-                        <Text style={{ color: '#fff' }}>
-                          No matches found for this itinerary. Try adjusting your preferences or dates.
-                        </Text>
-                      )}
-                    </Text>
-                  </View>
+                  /* No organic results — show sponsored card if available */
+                  showingSponsoredAd && currentAd ? (
+                    <ScrollView
+                      style={styles.cardScrollContainer}
+                      contentContainerStyle={styles.cardScrollContent}
+                      showsVerticalScrollIndicator={false}
+                    >
+                      <SponsoredItineraryCard
+                        ad={currentAd}
+                        isVisible
+                        onImpression={trackImpression}
+                        onCtaPress={(campaignId) => {
+                          trackClick(campaignId);
+                          handleAdDismiss();
+                        }}
+                        onDismiss={() => { handleAdDismiss(); }}
+                      />
+                    </ScrollView>
+                  ) : (
+                    <View style={styles.centerContent}>
+                      <Text style={styles.emptyText}>
+                        {searchError ? (
+                          <Text style={{ color: '#fff' }}>Error: {searchError}</Text>
+                        ) : (
+                          <Text style={{ color: '#fff' }}>
+                            No matches found for this itinerary. Try adjusting your preferences or dates.
+                          </Text>
+                        )}
+                      </Text>
+                    </View>
+                  )
                 )}
               </>
             ) : (

@@ -27,7 +27,7 @@ import { ReportVideoModal } from '../components/modals/ReportVideoModal';
 import { SponsoredVideoCard } from '../components/ads/SponsoredVideoCard';
 import { useVideoFeed, VideoFilter } from '../hooks/video/useVideoFeed';
 import { useVideoUpload } from '../hooks/video/useVideoUpload';
-import { useAdDelivery, useAdTracking, useAdFrequency } from '../hooks/ads';
+import { useAdTracking, useAdPool } from '../hooks/ads';
 import { useUserProfile } from '../context/UserProfileContext';
 import { calculateAge } from '../utils/calculateAge';
 import { useTravelPreferences } from '../hooks/useTravelPreferences';
@@ -84,37 +84,108 @@ const VideoFeedPage: React.FC = () => {
   });
 
   // ── Ad delivery hooks ─────────────────────────────────────────────────────
-  const { ads: videoAds, fetchAds: fetchVideoAds } = useAdDelivery('video_feed');
+  const { spliceAdsIntoList, fetchAds: fetchVideoAds } = useAdPool('video_feed', videos.length);
   const { trackImpression, trackClick, trackQuartile } = useAdTracking();
-  const { spliceAdsIntoList, resetSessionCount } = useAdFrequency();
   const { userProfile } = useUserProfile();
-  const { defaultProfile: travelProfile } = useTravelPreferences();
+  const { defaultProfile: travelProfile, loading: travelProfileLoading } = useTravelPreferences();
 
-  // Fetch ads on mount and on refresh — pass demographic + travel preference context for targeting
-  useEffect(() => {
-    const ctx: Record<string, string | number | string[] | undefined> = {};
-    if (userProfile?.gender) ctx.gender = userProfile.gender;
+  /**
+   * Build the targeting context object from the current profile state.
+   * Returns undefined when there is nothing useful to send.
+   * travelProfileLoading is included in deps so the callback is replaced once
+   * the profile finishes loading — ensuring a fresh ad fetch fires.
+   */
+  const buildAdContext = useCallback((): import('../types/AdDelivery').UserAdContext | undefined => {
+    const ctx: Record<string, string | number | string[]> = {};
+
+    // ── Gender ──────────────────────────────────────────────────────────
+    if (userProfile?.gender) {
+      ctx.gender = userProfile.gender;
+    } else {
+      console.log('[AdContext] gender: not set on user profile');
+    }
+
+    // ── Age (computed from dob) ──────────────────────────────────────────
     if (userProfile?.dob) {
       const age = calculateAge(userProfile.dob);
-      if (age > 0) ctx.age = age;
+      if (age > 0) {
+        ctx.age = age;
+      } else {
+        console.warn(`[AdContext] age: computed age=${age} from dob=${userProfile.dob} — not included (invalid)`);
+      }
+    } else {
+      console.log('[AdContext] age: dob not set on user profile — age targeting unavailable');
     }
-    // Enrich with travel preferences from user's default profile
+
+    // ── Activity preferences ─────────────────────────────────────────────
     if (travelProfile?.activities && travelProfile.activities.length > 0) {
       ctx.activityPreferences = travelProfile.activities;
+    } else {
+      console.log('[AdContext] activityPreferences: not set in travel profile');
     }
+
+    // ── Travel style ─────────────────────────────────────────────────────
     if (travelProfile?.travelStyle) {
       ctx.travelStyles = [travelProfile.travelStyle];
+    } else {
+      console.log('[AdContext] travelStyle: not set in travel profile');
     }
-    fetchVideoAds(Object.keys(ctx).length > 0 ? ctx as any : undefined);
-  }, [fetchVideoAds, userProfile?.gender, userProfile?.dob, travelProfile?.activities, travelProfile?.travelStyle]);
+
+    const result = Object.keys(ctx).length > 0 ? (ctx as any) : undefined;
+
+    console.log(
+      `[AdContext] built (travelProfileLoading=${travelProfileLoading}):`,
+      result
+        ? {
+            gender: ctx.gender ?? '—',
+            age: ctx.age ?? '—',
+            activityPreferences: ctx.activityPreferences ?? '—',
+            travelStyles: ctx.travelStyles ?? '—',
+          }
+        : 'NO CONTEXT — ad fetch will score all campaigns equally (score=0)',
+    );
+
+    return result;
+  }, [userProfile?.gender, userProfile?.dob, travelProfile?.activities, travelProfile?.travelStyle, travelProfileLoading]);
+
+  // Stable key of the last context we fetched with — prevents redundant
+  // fetches when React re-renders before all async profile data has settled.
+  const lastAdContextKeyRef = useRef<string>('');
+
+  // When travelProfile finishes loading, reset the dedup key so the fetch
+  // effect below always runs once with the fully-resolved context — even when
+  // the profile data itself didn't change the key (e.g. it stayed null).
+  const prevTravelLoadingRef = useRef(true);
+  useEffect(() => {
+    if (prevTravelLoadingRef.current && !travelProfileLoading) {
+      lastAdContextKeyRef.current = '';
+    }
+    prevTravelLoadingRef.current = travelProfileLoading;
+  }, [travelProfileLoading]);
+
+  // Fetch ads on mount and whenever meaningful targeting values change.
+  // Guard: skip entirely while travelProfile is still loading — the
+  // prevTravelLoadingRef reset above guarantees a follow-up fetch once it
+  // resolves, so we never send a fetch with a partially-built context.
+  useEffect(() => {
+    if (travelProfileLoading) {
+      console.log('[AdContext] skipping ad fetch — travelProfile still loading');
+      return;
+    }
+    const ctx = buildAdContext();
+    const key = JSON.stringify(ctx ?? null);
+    if (key === lastAdContextKeyRef.current) return; // context unchanged — skip
+    lastAdContextKeyRef.current = key;
+    fetchVideoAds(ctx);
+  }, [buildAdContext, fetchVideoAds, travelProfileLoading]);
 
   // Build mixed feed: organic videos + sponsored ads
   type FeedItem =
     | { type: 'content'; item: (typeof videos)[number] }
     | { type: 'ad'; ad: import('../types/AdDelivery').AdUnit };
   const mixedFeed: FeedItem[] = React.useMemo(() => {
-    return spliceAdsIntoList(videos, videoAds);
-  }, [videos, videoAds, spliceAdsIntoList]);
+    return spliceAdsIntoList(videos);
+  }, [videos, spliceAdsIntoList]);
   
   // Get auth instance for user ID checks
   const resolvedAuth = typeof (require('../config/firebaseConfig') as any).getAuthInstance === 'function'
@@ -253,28 +324,16 @@ const VideoFeedPage: React.FC = () => {
    */
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
-    resetSessionCount(); // Reset ad frequency session count
     await refreshVideos();
-    // Re-fetch ads on refresh with demographic + travel preference context
-    const ctx: Record<string, string | number | string[] | undefined> = {};
-    if (userProfile?.gender) ctx.gender = userProfile.gender;
-    if (userProfile?.dob) {
-      const age = calculateAge(userProfile.dob);
-      if (age > 0) ctx.age = age;
-    }
-    if (travelProfile?.activities && travelProfile.activities.length > 0) {
-      ctx.activityPreferences = travelProfile.activities;
-    }
-    if (travelProfile?.travelStyle) {
-      ctx.travelStyles = [travelProfile.travelStyle];
-    }
-    fetchVideoAds(Object.keys(ctx).length > 0 ? ctx as any : undefined);
+    // Re-fetch ads on pull-to-refresh — reset the context key so we always get fresh ads
+    lastAdContextKeyRef.current = '';
+    fetchVideoAds(buildAdContext());
     setIsRefreshing(false);
     // Scroll to top after refresh
     if (flatListRef.current && videos.length > 0) {
       flatListRef.current.scrollToIndex({ index: 0, animated: false });
     }
-  }, [refreshVideos, videos.length, resetSessionCount, fetchVideoAds, userProfile?.gender, userProfile?.dob, travelProfile?.activities, travelProfile?.travelStyle]);
+  }, [refreshVideos, videos.length, fetchVideoAds, buildAdContext]);
 
   /**
    * Handle comment button press
@@ -442,15 +501,27 @@ const VideoFeedPage: React.FC = () => {
     ({ item: feedItem, index }: { item: FeedItem; index: number }) => {
       // ── Sponsored ad ──────────────────────────────────────────────────
       if (feedItem.type === 'ad') {
-        return (
+        const adCard = (
           <SponsoredVideoCard
             ad={feedItem.ad}
             isActive={index === currentVideoIndex && isScreenFocused}
             cardHeight={availableHeight}
+            isMuted={isMuted}
+            onMuteToggle={setIsMuted}
             onImpression={trackImpression}
             onCtaPress={trackClick}
+            onQuartile={trackQuartile}
+            onComment={(video) => {
+              setSelectedVideoForComments(video);
+              setCommentsModalVisible(true);
+            }}
           />
         );
+        // Web: same scroll-snap wrapper as organic videos so the feed can snap to ads
+        if (Platform.OS === 'web') {
+          return <View style={styles.webVideoCardWrapper}>{adCard}</View>;
+        }
+        return adCard;
       }
 
       // ── Organic video ─────────────────────────────────────────────────
@@ -484,7 +555,7 @@ const VideoFeedPage: React.FC = () => {
 
       return videoCard;
     },
-    [currentVideoIndex, isScreenFocused, isMuted, handleLike, handleCommentPress, handleShare, handleReportPress, handleViewTracked, resolvedAuth, availableHeight, trackImpression, trackClick]
+    [currentVideoIndex, isScreenFocused, isMuted, handleLike, handleCommentPress, handleShare, handleReportPress, handleViewTracked, resolvedAuth, availableHeight, trackImpression, trackClick, trackQuartile]
   );
 
   /**
@@ -618,9 +689,9 @@ const VideoFeedPage: React.FC = () => {
         ref={flatListRef}
         data={mixedFeed}
         renderItem={renderFeedItem}
-        keyExtractor={(feedItem) =>
+        keyExtractor={(feedItem, index) =>
           feedItem.type === 'ad'
-            ? `ad-${feedItem.ad.campaignId}`
+            ? `ad-${feedItem.ad.campaignId}-${index}`
             : feedItem.item.id
         }
         showsVerticalScrollIndicator={false}
@@ -695,7 +766,7 @@ const VideoFeedPage: React.FC = () => {
         </View>
       )}
 
-      {/* Comments Modal */}
+      {/* Comments Modal — shared by organic videos and sponsored ads */}
       {commentsModalVisible && selectedVideoForComments && (
         <VideoCommentsModal
           visible={commentsModalVisible}

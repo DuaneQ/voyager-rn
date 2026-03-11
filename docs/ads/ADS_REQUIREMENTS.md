@@ -1,6 +1,18 @@
 % TravalPass — Ads Requirements (Single Doc)
 
-Status: Draft — single source of truth for Ads PWA (ads.travalpass.com)
+Status: **Implemented (dev)** — single source of truth for consumer-side ad delivery in voyager-RN
+
+> **Last updated: 2026-03-02**  
+> For full implementation detail, test coverage, and pending items, see `voyager-ads/docs/ads/IMPLEMENTATION_STATUS.md` and `AD_DELIVERY_PLAN.md`.
+>
+> **Implementation summary (as of 2026-03-02):**
+> - `selectAds` + `logAdEvents` Cloud Functions: ✅ deployed to `mundo1-dev`
+> - `useAdDelivery`, `useAdFrequency`, `useAdTracking` hooks: ✅ implemented
+> - VideoFeedPage ad interleaving: ✅ first ad at 5th slot (mixed-feed index 4), every 5 after
+> - AI Itinerary slot: ✅ wired to `useAdDelivery`
+> - Mux pipeline bug fixes deployed (`uid` ownership check + default bucket): ✅
+> - Web travelProfile race condition fix: ✅ code done, pending app bundle deploy
+> - Production deployment: ❌ pending
 
 1. Purpose
 - Build a self‑serve advertiser PWA (ads.travalpass.com) for local businesses and travel brands. The PWA will allow advertisers to create campaigns, upload creatives (images/videos), set targeting (location, itinerary destination, travel dates, demographics, behaviors), and pay via Stripe. Ads are delivered into the existing TravalPass apps (React Native mobile + web) in three placements: Video Feed, Itinerary Feed, and Promotion slots in AI Itinerary / Add Itinerary.
@@ -87,11 +99,16 @@ Status: Draft — single source of truth for Ads PWA (ads.travalpass.com)
 - Estimate storage and read/write costs in pilot phase; include Stripe fees in pricing model.
 
 16. Deliverables & Next Steps
-1. Finalize this requirements doc with sign-off (product/legal/engineering).
-2. Design API contracts (detailed request/response) and data schema migrations.
-3. Prototype PWA skeleton (auth + campaign CRUD + creative upload) and secure hosting plan.
-4. Implement server-side `selectAd` + `events` endpoints (staging) and client integration hooks.
-5. Pilot with 3–5 local advertisers; collect metrics and iterate pricing.
+1. ✅ Finalize requirements doc.
+2. ✅ `selectAds` + `logAdEvents` Cloud Functions implemented and deployed to `mundo1-dev`.
+3. ✅ `useAdDelivery`, `useAdFrequency`, `useAdTracking` hooks implemented.
+4. ✅ VideoFeedPage ad interleaving — first ad at slot 5 / mixed-feed index 4, then every 5 content items.
+5. ✅ AI Itinerary promotion slot wired to `useAdDelivery`.
+6. 🔄 Deploy to production (`mundo1-1`) and rebuild app bundle.
+7. 🔄 Wire Itinerary Feed ad rendering.
+8. 🔄 VCR quartile tracking in `useAdTracking`.
+9. 🔄 Apply web travelProfile race condition fix (rebuild + deploy web bundle).
+10. ❌ Pilot with 3–5 local advertisers.
 
 17. Decisions Needed
 - Confirm placements UI: full-width promoted itinerary vs inline native card for itinerary feed.

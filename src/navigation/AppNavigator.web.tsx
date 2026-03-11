@@ -36,6 +36,7 @@ import { useAuth } from '../context/AuthContext';
 
 // Guards
 import { TermsGuard } from '../components/auth/TermsGuard';
+import ErrorBoundary from '../components/common/ErrorBoundary';
 
 // Validation utility
 import { validateProfileForItinerary } from '../utils/profileValidation';
@@ -67,22 +68,31 @@ const LazyLoadFallback: React.FC = () => (
 // ============================================================================
 // WRAPPER COMPONENTS FOR LAZY-LOADED PAGES
 // ============================================================================
+// Each lazy page wrapper is protected by a page-level ErrorBoundary so that
+// a chunk-load failure while offline shows an inline error instead of
+// crashing the entire app up to the global boundary.
 const VideoFeedPageWrapper: React.FC = () => (
-  <Suspense fallback={<LazyLoadFallback />}>
-    <VideoFeedPage />
-  </Suspense>
+  <ErrorBoundary level="page">
+    <Suspense fallback={<LazyLoadFallback />}>
+      <VideoFeedPage />
+    </Suspense>
+  </ErrorBoundary>
 );
 
 const ProfilePageWrapper: React.FC = () => (
-  <Suspense fallback={<LazyLoadFallback />}>
-    <ProfilePage />
-  </Suspense>
+  <ErrorBoundary level="page">
+    <Suspense fallback={<LazyLoadFallback />}>
+      <ProfilePage />
+    </Suspense>
+  </ErrorBoundary>
 );
 
 const SearchPageWrapper: React.FC = () => (
-  <Suspense fallback={<LazyLoadFallback />}>
-    <SearchPage />
-  </Suspense>
+  <ErrorBoundary level="page">
+    <Suspense fallback={<LazyLoadFallback />}>
+      <SearchPage />
+    </Suspense>
+  </ErrorBoundary>
 );
 
 // ChatThread wrapper extracts connectionId from URL params (React Router)
@@ -91,9 +101,11 @@ const ChatThreadWrapper: React.FC = () => {
   const { connectionId } = useParams<{ connectionId: string }>();
   
   return (
-    <Suspense fallback={<LazyLoadFallback />}>
-      <ChatThreadScreen connectionId={connectionId || ''} />
-    </Suspense>
+    <ErrorBoundary level="page">
+      <Suspense fallback={<LazyLoadFallback />}>
+        <ChatThreadScreen connectionId={connectionId || ''} />
+      </Suspense>
+    </ErrorBoundary>
   );
 };
 

@@ -116,13 +116,16 @@ const useSearchItineraries = () => {
     }
 
     setHasMore(results.length >= PAGE_SIZE);
-    const filtered = results.filter(it => validate(it) && it.userInfo?.uid && it.userInfo.uid !== currentUserId);
-    const seen = new Set<string>();
-    return filtered.reduce<Itinerary[]>((acc, it) => {
-      const dest = it.destination || '';
-      if (!seen.has(dest)) { seen.add(dest); acc.push(it); }
-      return acc;
-    }, []);
+    // Deduplicate by itinerary ID only — multiple travellers going to the same
+    // destination is the core use case and must never be filtered out.
+    const seenIds = new Set<string>();
+    return results.filter(it => {
+      if (!validate(it)) return false;
+      if (!it.userInfo?.uid || it.userInfo.uid === currentUserId) return false;
+      if (seenIds.has(it.id)) return false;
+      seenIds.add(it.id);
+      return true;
+    });
   };
 
   const searchItineraries = async (currentUserItinerary: Itinerary, currentUserId: string) => {

@@ -189,6 +189,8 @@ export class VideoPlaybackManagerV2 {
       try {
         await registration.player.play();
       } catch (playError: any) {
+        // AbortError: play() interrupted by pause() during rapid scroll — not a real error
+        if (playError?.name === 'AbortError') return;
         // On web, if autoplay fails (shouldn't happen if component set muted correctly),
         // log but don't crash - the user can tap to play
         console.error(`[VideoPlaybackManagerV2] Playback failed for ${videoId}:`, playError);

@@ -4,19 +4,16 @@
  * Tests ad insertion frequency logic, including:
  * - Ad insertion index calculation
  * - Content list splicing
- * - Session count tracking and limits
- * - Reset on pull-to-refresh
  * - Edge cases (empty lists, more ads than slots, etc.)
  */
 
-import { renderHook, act } from '@testing-library/react-native';
+import { renderHook } from '@testing-library/react-native';
 import { useAdFrequency } from '../../../hooks/ads/useAdFrequency';
 import type { AdUnit } from '../../../types/AdDelivery';
 
 // Constants from the hook (mirrored for test assertions)
-const FIRST_AD_AFTER = 4;
+const FIRST_AD_AFTER = 3;
 const AD_INTERVAL = 5;
-const MAX_ADS_PER_SESSION = 10;
 
 const makeAd = (id: string): AdUnit => ({
   campaignId: id,
@@ -56,23 +53,28 @@ describe('useAdFrequency', () => {
     it('should space subsequent ads by AD_INTERVAL', () => {
       const { result } = renderHook(() => useAdFrequency());
 
+      // 30 items → slots at 3, 8, 13, 18, 23, 28 (all valid positions)
       const indices = result.current.getAdInsertionIndices(30, 5);
-      expect(indices).toEqual([4, 9, 14, 19, 24]);
+      expect(indices).toEqual([3, 8, 13, 18, 23, 28]);
     });
 
-    it('should not exceed available ads count', () => {
+    it('should generate all slots regardless of ad pool size', () => {
       const { result } = renderHook(() => useAdFrequency());
 
+      // 100 items, only 2 unique ads — but slots should fill the whole feed
       const indices = result.current.getAdInsertionIndices(100, 2);
-      expect(indices).toHaveLength(2);
+      // Slots at 3, 8, 13, ... 98 → 20 slots
+      expect(indices).toHaveLength(20);
+      expect(indices[0]).toBe(FIRST_AD_AFTER);
+      expect(indices[1]).toBe(FIRST_AD_AFTER + AD_INTERVAL);
     });
 
     it('should not place ads beyond content length', () => {
       const { result } = renderHook(() => useAdFrequency());
 
-      // Only 5 items — first ad would be at index 4, next at 9 (out of range)
+      // Only 5 items — first ad at index 3, next at 8 (out of range)
       const indices = result.current.getAdInsertionIndices(5, 10);
-      expect(indices).toEqual([4]);
+      expect(indices).toEqual([3]);
     });
 
     it('should return empty when content is shorter than FIRST_AD_AFTER', () => {
@@ -108,20 +110,48 @@ describe('useAdFrequency', () => {
 
       const mixed = result.current.spliceAdsIntoList(content, ads);
 
-      // Total items: 15 content + 2 ads = 17
-      expect(mixed).toHaveLength(17);
+      // Total items: 15 content + 3 ad slots (at indices 3, 8, 13) = 18
+      expect(mixed).toHaveLength(18);
 
-      // Ad at index 4 (before content[4])
+      // Ad at index 4 (after content[3]) — inserts AFTER the slot item
       expect(mixed[4].type).toBe('ad');
       if (mixed[4].type === 'ad') {
         expect(mixed[4].ad.campaignId).toBe('ad-1');
       }
 
-      // Ad at index 10 (before content[9], shifted by 1 from previous ad insertion)
+      // Ad at index 10 (after content[8], shifted by 1 from previous ad insertion)
       expect(mixed[10].type).toBe('ad');
       if (mixed[10].type === 'ad') {
         expect(mixed[10].ad.campaignId).toBe('ad-2');
       }
+    });
+
+    it('should cycle ads when more slots than unique ads', () => {
+      const { result } = renderHook(() => useAdFrequency());
+      // 10 content items → slots at index 3 and 8
+      const content = Array.from({ length: 10 }, (_, i) => `v-${i}`);
+      const ads = [makeAd('ad-1')]; // only one unique ad
+
+      const mixed = result.current.spliceAdsIntoList(content, ads);
+      // 10 content + 2 ad slots = 12
+      expect(mixed).toHaveLength(12);
+      const adItems = mixed.filter((item) => item.type === 'ad');
+      expect(adItems).toHaveLength(2);
+      adItems.forEach((item) => {
+        if (item.type === 'ad') expect(item.ad.campaignId).toBe('ad-1');
+      });
+    });
+
+    it('should fill ad slots indefinitely for a large feed', () => {
+      const { result } = renderHook(() => useAdFrequency());
+      // 50 content items → slots at 3, 8, 13, 18, 23, 28, 33, 38, 43, 48 = 10 slots
+      const content = Array.from({ length: 50 }, (_, i) => `v-${i}`);
+      const ads = [makeAd('a1'), makeAd('a2')];
+
+      const mixed = result.current.spliceAdsIntoList(content, ads);
+      expect(mixed).toHaveLength(60); // 50 content + 10 ad slots
+      const adItems = mixed.filter((item) => item.type === 'ad');
+      expect(adItems).toHaveLength(10);
     });
 
     it('should tag content items correctly', () => {
@@ -148,61 +178,34 @@ describe('useAdFrequency', () => {
     });
   });
 
-  describe('session count & MAX_ADS_PER_SESSION', () => {
-    it('should respect MAX_ADS_PER_SESSION across multiple splices', () => {
-      const { result } = renderHook(() => useAdFrequency());
-      const content = Array.from({ length: 100 }, (_, i) => `v-${i}`);
-      const ads = Array.from({ length: 15 }, (_, i) => makeAd(`ad-${i}`));
-
-      const mixed = result.current.spliceAdsIntoList(content, ads);
-      const adCount = mixed.filter((item) => item.type === 'ad').length;
-
-      expect(adCount).toBeLessThanOrEqual(MAX_ADS_PER_SESSION);
-    });
-  });
-
-  describe('resetSessionCount', () => {
-    it('should allow more ads after reset', () => {
-      const { result } = renderHook(() => useAdFrequency());
-      const content = Array.from({ length: 100 }, (_, i) => `v-${i}`);
-      const ads = Array.from({ length: 15 }, (_, i) => makeAd(`ad-${i}`));
-
-      // First splice uses up session slots
-      result.current.spliceAdsIntoList(content, ads);
-
-      // Reset
-      act(() => {
-        result.current.resetSessionCount();
-      });
-
-      // Should be able to splice ads again
-      const mixed2 = result.current.spliceAdsIntoList(content, ads);
-      const adCount = mixed2.filter((item) => item.type === 'ad').length;
-
-      expect(adCount).toBeGreaterThan(0);
-    });
-  });
-
   describe('edge cases', () => {
-    it('should handle single content item', () => {
+    it('should handle single content item — trailing fallback appends ad', () => {
       const { result } = renderHook(() => useAdFrequency());
 
       const mixed = result.current.spliceAdsIntoList(
         ['only-one'],
         [makeAd('1')],
       );
-      // Single item, FIRST_AD_AFTER=4 so no ad slots
-      expect(mixed).toHaveLength(1);
+      // FIRST_AD_AFTER=3 so the loop never inserts an ad, but the trailing
+      // fallback appends one so stale cached ads still surface on short feeds.
+      expect(mixed).toHaveLength(2);
       expect(mixed[0].type).toBe('content');
+      expect(mixed[1].type).toBe('ad');
+      if (mixed[1].type === 'ad') expect(mixed[1].ad.campaignId).toBe('1');
     });
 
-    it('should handle exactly FIRST_AD_AFTER content items', () => {
+    it('should handle exactly FIRST_AD_AFTER content items — trailing fallback appends ad', () => {
       const { result } = renderHook(() => useAdFrequency());
       const content = Array.from({ length: FIRST_AD_AFTER }, (_, i) => `v-${i}`);
 
       const mixed = result.current.spliceAdsIntoList(content, [makeAd('1')]);
-      // Index FIRST_AD_AFTER == content.length, so no slot (< not <=)
-      expect(mixed).toHaveLength(FIRST_AD_AFTER);
+      // Loop condition: while (nextSlot < contentLength) → 3 < 3 is false, no slot.
+      // Trailing fallback fires and appends ad at the end.
+      expect(mixed).toHaveLength(FIRST_AD_AFTER + 1);
+      expect(mixed[FIRST_AD_AFTER].type).toBe('ad');
+      if (mixed[FIRST_AD_AFTER].type === 'ad') {
+        expect(mixed[FIRST_AD_AFTER].ad.campaignId).toBe('1');
+      }
     });
 
     it('should handle FIRST_AD_AFTER + 1 content items (exactly one slot)', () => {
@@ -214,7 +217,45 @@ describe('useAdFrequency', () => {
 
       const mixed = result.current.spliceAdsIntoList(content, [makeAd('1')]);
       expect(mixed).toHaveLength(FIRST_AD_AFTER + 2); // content + 1 ad
-      expect(mixed[FIRST_AD_AFTER].type).toBe('ad');
+      // Ad appears AFTER content[FIRST_AD_AFTER], i.e. the last position
+      expect(mixed[FIRST_AD_AFTER + 1].type).toBe('ad');
+    });
+  });
+
+  describe('trailing-ad fallback (short feed / offline)', () => {
+    it('does NOT trigger when a regular slot already fired', () => {
+      const { result } = renderHook(() => useAdFrequency());
+      // FIRST_AD_AFTER+1 items → one normal slot fires → no trailing ad
+      const content = Array.from({ length: FIRST_AD_AFTER + 1 }, (_, i) => `v-${i}`);
+
+      const mixed = result.current.spliceAdsIntoList(content, [makeAd('a1')]);
+      const adItems = mixed.filter((item) => item.type === 'ad');
+      expect(adItems).toHaveLength(1);
+      // That one ad is at the normal slot (position FIRST_AD_AFTER + 1), not doubled
+      expect(mixed[mixed.length - 1].type).toBe('ad');
+    });
+
+    it('uses the first cached ad for the trailing slot', () => {
+      const { result } = renderHook(() => useAdFrequency());
+      // Two ads available but only 2 content items → trailing fallback picks ads[0]
+      const content = ['v-0', 'v-1'];
+      const ads = [makeAd('priority-ad'), makeAd('second-ad')];
+
+      const mixed = result.current.spliceAdsIntoList(content, ads);
+      expect(mixed).toHaveLength(3);
+      expect(mixed[2].type).toBe('ad');
+      if (mixed[2].type === 'ad') {
+        expect(mixed[2].ad.campaignId).toBe('priority-ad');
+      }
+    });
+
+    it('does NOT append a trailing ad when ads array is empty', () => {
+      const { result } = renderHook(() => useAdFrequency());
+      const content = ['v-0', 'v-1', 'v-2'];
+
+      const mixed = result.current.spliceAdsIntoList(content, []);
+      expect(mixed).toHaveLength(3);
+      expect(mixed.every((item) => item.type === 'content')).toBe(true);
     });
   });
 });

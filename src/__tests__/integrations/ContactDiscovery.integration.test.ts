@@ -10,6 +10,33 @@
  */
 
 import * as crypto from 'crypto';
+import * as admin from 'firebase-admin';
+import * as path from 'path';
+import * as fs from 'fs';
+
+// Remove emulator env vars so Admin SDK connects to real Firestore for cleanup
+delete process.env.FIRESTORE_EMULATOR_HOST;
+delete process.env.FIREBASE_AUTH_EMULATOR_HOST;
+delete process.env.FIREBASE_FUNCTIONS_EMULATOR;
+
+const SERVICE_ACCOUNT_PATH = path.resolve(
+  __dirname, '..', '..', '..', 'mundo1-dev-firebase-adminsdk-fbsvc-bb26c2ec85.json'
+);
+
+// ── Admin SDK setup ─────────────────────────────────────────────────────────
+let adminApp: admin.app.App;
+function getAdminDb(): admin.firestore.Firestore {
+  if (!adminApp) {
+    adminApp = admin.initializeApp(
+      { credential: admin.credential.cert(SERVICE_ACCOUNT_PATH) },
+      `contactDiscovery-test-${Date.now()}`
+    );
+  }
+  return adminApp.firestore();
+}
+
+const canRunLive = fs.existsSync(SERVICE_ACCOUNT_PATH);
+const describeIfLive = canRunLive ? describe : describe.skip;
 
 const FUNCTION_URL = 'https://us-central1-mundo1-dev.cloudfunctions.net';
 const TEST_USER_EMAIL = 'usertravaltest@gmail.com';
@@ -27,9 +54,10 @@ const hashEmail = (email: string): string => {
   return crypto.createHash('sha256').update(normalized).digest('hex');
 };
 
-describe('Contact Discovery Integration Tests', () => {
+describeIfLive('Contact Discovery Integration Tests', () => {
   let authToken: string;
   let testUserId: string;
+  const inviteHashesCreated: string[] = [];
 
   beforeAll(async () => {
     // Authenticate to get ID token
@@ -52,6 +80,23 @@ describe('Contact Discovery Integration Tests', () => {
     }
     authToken = authData.idToken;
     testUserId = authData.localId;
+
+    // Trigger lazy Admin SDK init so getAdminDb() is ready for afterAll cleanup
+    getAdminDb();
+  }, 30000);
+
+  afterAll(async () => {
+    // Delete invite records created by sendContactInvite tests to prevent DB pollution
+    if (inviteHashesCreated.length > 0 && testUserId) {
+      const db = getAdminDb();
+      const snapshot = await db.collection('contactInvites')
+        .where('inviterUserId', '==', testUserId)
+        .where('contactIdentifier', 'in', inviteHashesCreated)
+        .get();
+      const batch = db.batch();
+      snapshot.docs.forEach(doc => batch.delete(doc.ref));
+      await batch.commit();
+    }
   }, 30000);
 
   describe('matchContactsWithUsers Cloud Function', () => {
@@ -79,7 +124,8 @@ describe('Contact Discovery Integration Tests', () => {
       expect(body.result).toBeDefined();
       expect(body.result.success).toBe(true);
       expect(body.result.totalHashes).toBe(testHashes.length);
-      expect(body.result.totalMatches).toBeGreaterThanOrEqual(0);
+      // Fake hashes won't match any real user in dev; verify structural consistency instead
+      expect(body.result.totalMatches).toBe(body.result.matches.length);
       expect(Array.isArray(body.result.matches)).toBe(true);
 
       // Each match should have required fields
@@ -199,6 +245,7 @@ describe('Contact Discovery Integration Tests', () => {
   describe('sendContactInvite Cloud Function', () => {
     it('should generate referral code and invite link', async () => {
       const contactHash = hashEmail('friend@example.com');
+      inviteHashesCreated.push(contactHash);
 
       const response = await fetch(`${FUNCTION_URL}/sendContactInvite`, {
         method: 'POST',
@@ -234,6 +281,7 @@ describe('Contact Discovery Integration Tests', () => {
 
       for (const method of methods) {
         const contactHash = hashEmail(`friend-${method}@example.com`);
+        inviteHashesCreated.push(contactHash);
 
         const response = await fetch(`${FUNCTION_URL}/sendContactInvite`, {
           method: 'POST',
@@ -258,6 +306,7 @@ describe('Contact Discovery Integration Tests', () => {
 
     it('should return existing referral code for duplicate invite within 7 days', async () => {
       const contactHash = hashEmail('duplicate-test@example.com');
+      inviteHashesCreated.push(contactHash);
 
       // Send first invite
       const firstResponse = await fetch(`${FUNCTION_URL}/sendContactInvite`, {

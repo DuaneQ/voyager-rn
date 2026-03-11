@@ -12,7 +12,7 @@
  * - Respects `prefers-reduced-motion` via `useReducedMotion` where available
  */
 
-import React, { useCallback, useEffect, useRef } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
   View,
   Text,
@@ -22,8 +22,14 @@ import {
   Linking,
   Platform,
   Dimensions,
+  Share,
 } from 'react-native'
-import type { AdUnit } from '../../types/AdDelivery'
+import { Ionicons } from '@expo/vector-icons'
+import { LinearGradient } from 'expo-linear-gradient'
+import { useVideoPlayer, VideoView } from 'expo-video'
+import type { AdUnit, VideoQuartile } from '../../types/AdDelivery'
+import type { Video } from '../../types/Video'
+import { adUnitToCommentableVideo } from '../../utils/adUnitAdapter'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
@@ -37,10 +43,18 @@ export interface SponsoredVideoCardProps {
   onImpression?: (campaignId: string) => void
   /** Called when user taps the CTA — hook fires trackClick. */
   onCtaPress?: (campaignId: string) => void
-  /** Called when user taps mute/unmute — passed through from feed. */
+  /** Current mute state driven by the feed. */
   isMuted?: boolean
   /** Called when user toggles mute. */
   onMuteToggle?: (muted: boolean) => void
+  /** Optional callback when user taps the like button. */
+  onLike?: () => void
+  /** Optional callback when user taps the comment button. Receives a Video stub for the shared comments modal. */
+  onComment?: (video: Video) => void
+  /** Optional callback when user taps the share button. Defaults to native Share sheet. */
+  onShare?: () => void
+  /** Called when the video reaches a quartile milestone (25/50/75/100%). */
+  onQuartile?: (campaignId: string, quartile: VideoQuartile) => void
 }
 
 function SponsoredVideoCardComponent({
@@ -49,22 +63,174 @@ function SponsoredVideoCardComponent({
   cardHeight,
   onImpression,
   onCtaPress,
+  isMuted = false,
+  onMuteToggle,
+  onLike,
+  onComment,
+  onShare,
+  onQuartile,
 }: SponsoredVideoCardProps) {
   const impressionFiredRef = useRef(false)
+  const quartilesFiredRef = useRef<Set<VideoQuartile>>(new Set())
+  const [isLiked, setIsLiked] = useState(false)
   const height = cardHeight ?? Dimensions.get('window').height
+  const isVideoCreative = ad.creativeType === 'video'
+  const videoSource = ad.muxPlaybackUrl ?? (isVideoCreative ? ad.assetUrl : undefined)
 
-  // Fire impression when card becomes active
+  // expo-video player — only created for video creatives
+  // Init unmuted so the feed's isMuted state drives audio (same as VideoCardV2)
+  const player = useVideoPlayer(
+    videoSource ? { uri: videoSource } : null,
+    (p) => {
+      p.loop = true
+      p.muted = isMuted
+    },
+  )
+
+  // Log when the card first mounts so we can confirm the right ad is in the feed
   useEffect(() => {
-    if (isActive && !impressionFiredRef.current) {
-      impressionFiredRef.current = true
-      onImpression?.(ad.campaignId)
+    if (__DEV__) {
+      console.log(
+        `[AdCard] mounted campaignId=${ad.campaignId} creativeType=${ad.creativeType}` +
+        ` businessName=${ad.businessName} placement=${ad.placement}`,
+      )
     }
-  }, [isActive, ad.campaignId, onImpression])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Sync isMuted changes to the player (e.g. user taps the mute button in feed)
+  useEffect(() => {
+    if (!player || !videoSource) return
+    try {
+      player.muted = isMuted
+    } catch {
+      // Player may have been released if the card scrolled off — safe to ignore
+    }
+  }, [isMuted, player, videoSource])
+
+  // Play/pause based on active state
+  useEffect(() => {
+    if (!player || !videoSource) return
+    try {
+      if (isActive) {
+        if (__DEV__) {
+          console.log(`[AdVideo] ▶ playing campaignId=${ad.campaignId} muted=${isMuted} source=${videoSource}`)
+        }
+        // player.play() is typed void but returns a Promise on web.
+        // Unhandled rejections (e.g. AbortError when pause() interrupts play()
+        // during fast scroll) bubble up to GlobalErrorHandler and create noise.
+        // We coerce to Promise and swallow AbortErrors explicitly.
+        const playResult = player.play() as unknown
+        if (playResult instanceof Promise) {
+          ;(playResult as Promise<void>).catch((err: unknown) => {
+            if ((err as { name?: string })?.name !== 'AbortError') {
+              console.warn(`[AdVideo] play() rejected campaignId=${ad.campaignId}:`, err)
+            }
+          })
+        }
+      } else {
+        player.pause()
+      }
+    } catch {
+      // Player may have been released if the card scrolled off — safe to ignore
+    }
+  }, [isActive, player, videoSource, ad.campaignId, isMuted])
+
+  // Quartile tracking — poll player position while active
+  useEffect(() => {
+    if (!isActive || !isVideoCreative || !player || !videoSource) return
+    const THRESHOLDS: VideoQuartile[] = [25, 50, 75, 100]
+    // For the 100% milestone, use 97% as the effective check — with 500ms polling
+    // a looping video resets currentTime to 0 before the poll can catch exact 100%.
+    const effectivePct = (threshold: VideoQuartile) => (threshold === 100 ? 97 : threshold)
+    const intervalId = setInterval(() => {
+      try {
+        const duration = player.duration
+        const current = player.currentTime
+        if (!duration || duration <= 0) return
+        const pct = (current / duration) * 100
+        for (const threshold of THRESHOLDS) {
+          if (pct >= effectivePct(threshold) && !quartilesFiredRef.current.has(threshold)) {
+            quartilesFiredRef.current.add(threshold)
+            if (__DEV__) {
+              console.log(`[AdQuartile] ${threshold}% reached campaignId=${ad.campaignId} time=${current.toFixed(1)}s duration=${duration.toFixed(1)}s`)
+            }
+            onQuartile?.(ad.campaignId, threshold)
+          }
+        }
+        // Stop polling once all 4 quartiles have fired
+        if (quartilesFiredRef.current.size >= THRESHOLDS.length) {
+          clearInterval(intervalId)
+        }
+      } catch {
+        // Player may have been released — safe to ignore
+      }
+    }, 500)
+    return () => clearInterval(intervalId)
+  }, [isActive, isVideoCreative, player, videoSource, ad.campaignId, onQuartile])
+
+  // Fire impression when card has been continuously active for ≥1 second (IAB viewability standard)
+  useEffect(() => {
+    if (!isActive || impressionFiredRef.current) return
+
+    const timer = setTimeout(() => {
+      if (!impressionFiredRef.current) {
+        impressionFiredRef.current = true
+        if (__DEV__) {
+          console.log(`[AdImpression] queued campaignId=${ad.campaignId} placement=${ad.placement}`)
+        }
+        onImpression?.(ad.campaignId)
+      }
+    }, 1000) // IAB: 1 second of continuous visibility
+
+    return () => clearTimeout(timer)
+  }, [isActive, ad.campaignId, ad.placement, onImpression])
+
+  const handleMuteToggle = useCallback(() => {
+    onMuteToggle?.(!isMuted)
+  }, [isMuted, onMuteToggle])
+
+  const handleLike = useCallback(() => {
+    setIsLiked((prev) => !prev)
+    onLike?.()
+  }, [onLike])
+
+  const handleComment = useCallback(() => {
+    onComment?.(adUnitToCommentableVideo(ad))
+  }, [onComment, ad])
+
+  const handleShare = useCallback(async () => {
+    if (onShare) {
+      onShare()
+      return
+    }
+    const url =
+      ad.landingUrl && !/^https?:\/\//i.test(ad.landingUrl)
+        ? `https://${ad.landingUrl}`
+        : ad.landingUrl
+    if (!url) return
+    try {
+      await Share.share({
+        message: ad.primaryText ? `${ad.primaryText}\n${url}` : url,
+        url,
+      })
+    } catch (err) {
+      console.error('[SponsoredVideoCard] Share failed:', err)
+    }
+  }, [ad.landingUrl, ad.primaryText, onShare])
 
   const handleCtaPress = useCallback(() => {
+    const rawUrl = ad.landingUrl ?? ''
+    // Ensure URL has a scheme — bare domains like "travalpass.com" are treated
+    // as file paths by iOS Linking without an explicit https:// prefix.
+    const url =
+      rawUrl && !/^https?:\/\//i.test(rawUrl) ? `https://${rawUrl}` : rawUrl
+    if (__DEV__) {
+      console.log(`[AdClick] CTA tapped campaignId=${ad.campaignId} url=${url}`)
+    }
     onCtaPress?.(ad.campaignId)
-    if (ad.landingUrl) {
-      Linking.openURL(ad.landingUrl).catch((err) =>
+    if (url) {
+      Linking.openURL(url).catch((err) =>
         console.error('[SponsoredVideoCard] Failed to open URL:', err),
       )
     }
@@ -76,25 +242,30 @@ function SponsoredVideoCardComponent({
       accessibilityRole="none"
       accessibilityLabel={`Sponsored ad from ${ad.businessName}`}
     >
-      {/* Creative — Image or video poster */}
-      {ad.creativeType === 'image' || !ad.muxPlaybackUrl ? (
+      {/* Creative — video playback or static image */}
+      {isVideoCreative && videoSource ? (
+        <VideoView
+          player={player}
+          style={styles.creative}
+          contentFit="cover"
+          nativeControls={false}
+          accessibilityLabel={`Video ad for ${ad.businessName}`}
+        />
+      ) : (
         <Image
           source={{ uri: ad.assetUrl || ad.muxThumbnailUrl || '' }}
           style={styles.creative}
           resizeMode="cover"
           accessibilityLabel={`Ad image for ${ad.businessName}`}
         />
-      ) : (
-        // Video ads show the Mux thumbnail as a poster frame.
-        // Full video playback integration (via expo-av) follows the same
-        // pattern as VideoCardV2 — to be wired by the feed page.
-        <Image
-          source={{ uri: ad.muxThumbnailUrl || ad.assetUrl || '' }}
-          style={styles.creative}
-          resizeMode="cover"
-          accessibilityLabel={`Video ad poster for ${ad.businessName}`}
-        />
       )}
+
+      {/* Bottom scrim — dark gradient so white text is legible over any video frame */}
+      <LinearGradient
+        colors={['transparent', 'rgba(0,0,0,0.72)']}
+        style={styles.bottomScrim}
+        pointerEvents="none"
+      />
 
       {/* Sponsored badge */}
       <View style={styles.sponsoredBadge} accessibilityRole="text">
@@ -129,6 +300,59 @@ function SponsoredVideoCardComponent({
       >
         <Text style={styles.ctaText}>{ad.cta || 'Learn More'}</Text>
       </TouchableOpacity>
+
+      {/* Right-rail action buttons — matching VideoCardV2 layout */}
+      <View style={styles.actionsContainer}>
+        {/* Like / Save */}
+        <TouchableOpacity
+          onPress={handleLike}
+          style={styles.actionButton}
+          accessibilityRole="button"
+          accessibilityLabel={isLiked ? 'Unlike ad' : 'Like ad'}
+        >
+          <Ionicons
+            name={isLiked ? 'heart' : 'heart-outline'}
+            size={32}
+            color={isLiked ? '#ff0050' : '#fff'}
+          />
+        </TouchableOpacity>
+
+        {/* Comment */}
+        <TouchableOpacity
+          onPress={handleComment}
+          style={styles.actionButton}
+          accessibilityRole="button"
+          accessibilityLabel="Comment on ad"
+        >
+          <Ionicons name="chatbubble-outline" size={32} color="#fff" />
+        </TouchableOpacity>
+
+        {/* Share */}
+        <TouchableOpacity
+          onPress={handleShare}
+          style={styles.actionButton}
+          accessibilityRole="button"
+          accessibilityLabel="Share ad"
+        >
+          <Ionicons name="share-social-outline" size={32} color="#fff" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Mute button */}
+      <View style={[styles.muteButtonWrapper, { pointerEvents: 'box-none' }]}>
+        <TouchableOpacity
+          onPress={handleMuteToggle}
+          style={styles.muteButton}
+          accessibilityRole="button"
+          accessibilityLabel={isMuted ? 'Unmute video' : 'Mute video'}
+        >
+          <Ionicons
+            name={isMuted ? 'volume-mute' : 'volume-high'}
+            size={24}
+            color="#fff"
+          />
+        </TouchableOpacity>
+      </View>
     </View>
   )
 }
@@ -163,42 +387,101 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: 0.5,
   },
+  bottomScrim: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 260,
+    zIndex: 6,
+  },
   businessRow: {
     position: 'absolute',
-    bottom: 120,
+    bottom: Platform.select({ web: 170, default: 120 }),
     left: 16,
     right: 80,
+    zIndex: 10,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    alignSelf: 'flex-start',
   },
   businessName: {
     color: '#fff',
     fontSize: 15,
     fontWeight: '700',
-    textShadowColor: 'rgba(0,0,0,0.6)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
   },
   primaryTextContainer: {
     position: 'absolute',
-    bottom: 90,
+    bottom: Platform.select({ web: 140, default: 90 }),
     left: 16,
     right: 80,
+    zIndex: 10,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    alignSelf: 'flex-start',
   },
   primaryText: {
     color: '#fff',
     fontSize: 13,
-    textShadowColor: 'rgba(0,0,0,0.6)',
+  },
+  actionsContainer: {
+    position: 'absolute',
+    right: 16,
+    bottom: Platform.select({ web: 190, default: 140 }),
+    alignItems: 'center',
+    zIndex: 30,
+    elevation: 15,
+    pointerEvents: 'box-none' as any,
+  },
+  actionButton: {
+    alignItems: 'center',
+    marginBottom: 20,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    borderRadius: 28,
+    padding: 10,
+  },
+  actionText: {
+    fontSize: 12,
+    color: '#fff',
+    marginTop: 4,
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
+  muteButtonWrapper: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    zIndex: 50,
+    pointerEvents: 'box-none' as any,
+  },
+  muteButton: {
+    position: 'absolute',
+    top: Platform.select({
+      ios: 60,
+      android: 200,
+      web: 120,
+    }),
+    right: 16,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 20,
+    padding: 8,
+    elevation: 10,
+  },
   ctaButton: {
     position: 'absolute',
-    bottom: 44,
+    bottom: Platform.select({ web: 96, default: 44 }),
     left: 16,
-    right: 16,
+    right: 80,
     backgroundColor: '#fff',
     borderRadius: 8,
     paddingVertical: 12,
     alignItems: 'center',
+    zIndex: 10,
   },
   ctaText: {
     color: '#000',

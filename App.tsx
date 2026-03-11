@@ -12,6 +12,7 @@ import AppNavigator from './src/navigation/AppNavigator';
 import { AuthProvider } from './src/context/AuthContext';
 import { AlertProvider } from './src/context/AlertContext';
 import { UserProfileProvider } from './src/context/UserProfileContext';
+import { AdSeenProvider } from './src/context/AdSeenContext';
 import * as Notifications from 'expo-notifications';
 import ErrorBoundary from './src/components/common/ErrorBoundary';
 import { NotificationInitializer } from './src/components/common/NotificationInitializer';
@@ -144,6 +145,7 @@ export default function App() {
         <AuthProvider>
           <AlertProvider>
             <UserProfileProvider>
+              <AdSeenProvider>
               <NotificationInitializer />
               <AppNavigator />
               {/* Version upgrade modals — rendered above all navigation */}
@@ -158,6 +160,7 @@ export default function App() {
                 latestVersion={latestVersion}
                 onDismiss={() => setSoftUpdateDismissed(true)}
               />
+              </AdSeenProvider>
             </UserProfileProvider>
           </AlertProvider>
         </AuthProvider>

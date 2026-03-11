@@ -314,20 +314,27 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
   useEffect(() => {
     if (!player) return;
 
+    let cancelled = false;
+
     const managePlayback = async () => {
+      if (cancelled) return;
       if (isActive && !userPaused) {
         await videoPlaybackManagerV2.setActiveVideo(video.id);
       } else {
         // Scrolled away, user paused, or screen unfocused → pause
         try {
+          if (cancelled) return;
           await player.pause();
         } catch (err) {
+          if (cancelled) return; // Stale — effect re-ran before this resolved
+          if (err instanceof Error && err.name === 'AbortError') return; // Non-fatal scroll race
           console.error(`[VideoCardV2][${Platform.OS}] Error pausing ${video.id}:`, err);
         }
       }
     };
 
     managePlayback();
+    return () => { cancelled = true; };
   }, [isActive, userPaused, player, video.id]);
 
   /**
@@ -790,7 +797,10 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    borderRadius: 28,
+    padding: 10,
   },
   actionText: {
     fontSize: 12,

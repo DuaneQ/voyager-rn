@@ -27,166 +27,13 @@ import { useAdDelivery, useAdTracking } from '../../hooks/ads';
 import { useUserProfile } from '../../context/UserProfileContext';
 import { calculateAge } from '../../utils/calculateAge';
 import { useTravelPreferences } from '../../hooks/useTravelPreferences';
-import type { AdUnit } from '../../types/AdDelivery';
+import type { AdUnit, UserAdContext } from '../../types/AdDelivery';
+import { PromotionCard } from '../ads/PromotionCard';
+import type { PromotionData } from '../ads/PromotionCard';
 
 interface AIItineraryDisplayProps {
   itinerary: AIGeneratedItinerary;
 }
-
-/** Promotion card that tracks impression via useEffect (not during render). */
-const PromotionCard: React.FC<{
-  promo: any;
-  index: number;
-  trackImpression: (campaignId: string) => void;
-  trackClick: (campaignId: string) => void;
-  styles: any;
-}> = React.memo(({ promo, index, trackImpression, trackClick, styles }) => {
-  // Fire impression once when the card mounts (section expanded)
-  useEffect(() => {
-    if (promo._isRealAd && promo._campaignId) {
-      trackImpression(promo._campaignId);
-    }
-  }, [promo._isRealAd, promo._campaignId, trackImpression]);
-
-  return (
-    <View key={promo._campaignId ?? index} style={styles.promotionCard}>
-      {/* Banner image */}
-      {promo.imageUrl ? (
-        <Image
-          source={{ uri: promo.imageUrl }}
-          style={styles.promotionImage}
-          resizeMode="cover"
-          accessibilityLabel={`${promo.businessName} promotional image`}
-        />
-      ) : (
-        <View style={styles.promotionImagePlaceholder}>
-          <Text style={styles.promotionImagePlaceholderText}>
-            {promo.businessType === 'restaurant' ? '🍽️'
-              : promo.businessType === 'hotel' ? '🏨'
-              : promo.businessType === 'tour' ? '🗺️'
-              : promo.businessType === 'experience' ? '🎭'
-              : promo.businessType === 'transport' ? '🚗'
-              : promo.businessType === 'shop' ? '🛍️'
-              : '📢'}
-          </Text>
-        </View>
-      )}
-
-      <View style={styles.promotionBody}>
-        {/* Sponsored label */}
-        <View style={styles.promotionSponsoredRow}>
-          <Text style={styles.promotionSponsoredLabel}>Sponsored</Text>
-          {promo.businessType && (
-            <View style={styles.promotionTypeChip}>
-              <Text style={styles.promotionTypeChipText}>
-                {promo.businessType.charAt(0).toUpperCase() + promo.businessType.slice(1)}
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* Business name & headline */}
-        <Text style={styles.promotionBusinessName}>{promo.businessName}</Text>
-        <Text style={styles.promotionHeadline}>{promo.headline}</Text>
-
-        {promo.description ? (
-          <Text style={styles.promotionDescription}>{promo.description}</Text>
-        ) : null}
-
-        {/* Meta chips row: rating, price range, operating hours */}
-        <View style={styles.promotionMetaRow}>
-          {promo.rating != null && (
-            <View style={styles.promotionChip}>
-              <Text style={styles.promotionChipText}>⭐ {promo.rating}</Text>
-            </View>
-          )}
-          {promo.priceRange && (
-            <View style={styles.promotionChip}>
-              <Text style={styles.promotionChipText}>{promo.priceRange}</Text>
-            </View>
-          )}
-          {promo.operatingHours && (
-            <View style={styles.promotionChip}>
-              <Text style={styles.promotionChipText}>🕐 {promo.operatingHours}</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Tags */}
-        {promo.tags && promo.tags.length > 0 && (
-          <View style={styles.promotionTagsRow}>
-            {promo.tags.map((tag: string, tagIndex: number) => (
-              <View key={tagIndex} style={styles.promotionTag}>
-                <Text style={styles.promotionTagText}>{tag}</Text>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {/* Offer details */}
-        {(promo.offerDetails || promo.promoCode) && (
-          <View style={styles.promotionOfferBox}>
-            {promo.offerDetails && (
-              <Text style={styles.promotionOfferDetails}>🏷️ {promo.offerDetails}</Text>
-            )}
-            {promo.promoCode && (
-              <View style={styles.promotionPromoCodeRow}>
-                <Text style={styles.promotionPromoCodeLabel}>Code: </Text>
-                <Text style={styles.promotionPromoCode}>{promo.promoCode}</Text>
-              </View>
-            )}
-            {promo.offerExpiry && (
-              <Text style={styles.promotionOfferExpiry}>Expires: {promo.offerExpiry}</Text>
-            )}
-          </View>
-        )}
-
-        {/* Address / contact */}
-        {promo.address && (
-          <Text style={styles.promotionAddress}>📍 {promo.address}</Text>
-        )}
-        {promo.phone && (
-          <Text style={styles.promotionContact}>📞 {promo.phone}</Text>
-        )}
-        {promo.email && (
-          <Text style={styles.promotionContact}>✉️ {promo.email}</Text>
-        )}
-
-        {/* Action buttons */}
-        <View style={styles.promotionActions}>
-          {(promo.landingUrl || promo.website) && (
-            <TouchableOpacity
-              style={styles.promotionCtaButton}
-              onPress={() => {
-                if (promo._isRealAd && promo._campaignId) {
-                  trackClick(promo._campaignId);
-                }
-                const url = promo.landingUrl || promo.website;
-                if (url) Linking.openURL(url);
-              }}
-              activeOpacity={0.7}
-              accessibilityLabel={promo.cta || 'Learn More'}
-              accessibilityRole="button"
-            >
-              <Text style={styles.promotionCtaText}>{promo.cta || 'Learn More'}</Text>
-            </TouchableOpacity>
-          )}
-          {promo.googleMapsUrl && (
-            <TouchableOpacity
-              style={styles.promotionMapsButton}
-              onPress={() => Linking.openURL(promo.googleMapsUrl)}
-              activeOpacity={0.7}
-              accessibilityLabel="View on Google Maps"
-              accessibilityRole="link"
-            >
-              <Text style={styles.promotionMapsText}>📍 Maps</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
-    </View>
-  );
-});
 
 export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerary }) => {
   // Hooks for data management (must be called unconditionally – Rules of Hooks)
@@ -194,7 +41,9 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
   const { updateItinerary } = useUpdateItinerary();
 
   // ─── Ad delivery hooks ───────────────────────────────────────────
-  const { ads: realAds, fetchAds: fetchSlotAds } = useAdDelivery('ai_slot');
+  // Limit to 3 — returns the top-ranked ads by score; avoids overwhelming
+  // the accordion and prevents billing impressions for ads below the fold.
+  const { ads: realAds, fetchAds: fetchSlotAds } = useAdDelivery('ai_slot', { limit: 3 });
   const { trackImpression, trackClick, flush: _flushAdEvents } = useAdTracking();
   const { userProfile } = useUserProfile();
   const { defaultProfile: travelProfile } = useTravelPreferences();
@@ -208,56 +57,67 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
 
   // Fetch ads with itinerary destination + demographic + travel pref context for targeting
   useEffect(() => {
-    if (!itinerary) return; // guard for null itinerary
-    const dest =
-      (itinerary as any)?.destination ||
-      (itinerary as any)?.response?.data?.destination ||
-      undefined;
-    const startDate =
-      (itinerary as any)?.startDate ||
-      (itinerary as any)?.response?.data?.startDate ||
-      undefined;
-    const endDate =
-      (itinerary as any)?.endDate ||
-      (itinerary as any)?.response?.data?.endDate ||
-      undefined;
+    if (!itinerary) return;
 
-    // Build targeting context
-    const ctx: Record<string, string | number | string[] | undefined> = {
+    // Top-level fields are typed on AIGeneratedItinerary — no casting needed.
+    // If absent (empty string), omit from context so the ad server does not
+    // apply a destination filter and returns ads for all geographies.
+    const dest = itinerary.destination || undefined;
+
+    // Itineraries are stored with a UTC suffix (e.g. "2026-03-08T00:00:00.000Z").
+    // Strip it with split('T')[0] — no Date construction avoids timezone shift.
+    const toYMD = (s: string | undefined): string | undefined => {
+      if (!s) return undefined;
+      const d = s.split('T')[0];
+      return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : undefined;
+    };
+    const startDate = toYMD(itinerary.startDate);
+    const endDate = toYMD(itinerary.endDate);
+
+    // response.data is untyped (AI output varies); extract opportunistically.
+    const responseData = itinerary.response?.data;
+    const tripType: string | undefined =
+      typeof responseData?.tripType === 'string' ? responseData.tripType : undefined;
+    const travelStyle: string | undefined =
+      typeof responseData?.metadata?.travelStyle === 'string'
+        ? responseData.metadata.travelStyle
+        : typeof responseData?.travelPreferences?.travelStyle === 'string'
+        ? responseData.travelPreferences.travelStyle
+        : undefined;
+
+    // Build a typed targeting context — omitted keys mean "no filter on that dimension".
+    const ctx: UserAdContext = {
       ...(dest ? { destination: dest } : {}),
       ...(startDate ? { travelStartDate: startDate } : {}),
       ...(endDate ? { travelEndDate: endDate } : {}),
     };
+
     // Demographic context from user profile
     if (userProfile?.gender) ctx.gender = userProfile.gender;
     if (userProfile?.dob) {
       const age = calculateAge(userProfile.dob);
       if (age > 0) ctx.age = age;
     }
-    // AI itinerary may carry trip type and travel preferences
-    const tripType = (itinerary as any)?.tripType || (itinerary as any)?.response?.data?.tripType;
-    if (tripType && typeof tripType === 'string') ctx.tripTypes = [tripType] as any;
-    const travelStyle =
-      (itinerary as any)?.travelStyle ||
-      (itinerary as any)?.response?.data?.metadata?.travelStyle ||
-      (itinerary as any)?.travelPreferences?.travelStyle;
-    if (travelStyle && typeof travelStyle === 'string') ctx.travelStyles = [travelStyle] as any;
+
+    if (tripType) ctx.tripTypes = [tripType];
+    if (travelStyle) ctx.travelStyles = [travelStyle];
+
     // Enrich with travel preferences from user's default profile
     if (travelProfile?.activities && travelProfile.activities.length > 0) {
-      // Merge with any existing activity preferences, avoiding duplicates
-      const existing = new Set((ctx.activityPreferences as string[] || []).map((s: string) => s.toLowerCase()));
-      const merged = [...(ctx.activityPreferences as string[] || [])];
+      const existing = new Set((ctx.activityPreferences ?? []).map((s) => s.toLowerCase()));
+      const merged = [...(ctx.activityPreferences ?? [])];
       for (const act of travelProfile.activities) {
         if (!existing.has(act.toLowerCase())) merged.push(act);
       }
       if (merged.length > 0) ctx.activityPreferences = merged;
     }
+
     // Fall back to user's default travel style if itinerary doesn't have one
     if (!ctx.travelStyles && travelProfile?.travelStyle) {
       ctx.travelStyles = [travelProfile.travelStyle];
     }
 
-    fetchSlotAds(ctx as any);
+    fetchSlotAds(ctx);
   }, [itineraryId, itinerary, userGender, userDob, activitiesKey, userTravelStyle, fetchSlotAds, userProfile, travelProfile]);
 
   // Local itinerary state to immediately reflect saved changes
@@ -596,17 +456,17 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
   const hasFlights = flights && flights.length > 0;
   
   // Promotions (ad_slot campaigns targeting this itinerary's destination)
-  const aiPromotions: any[] = useMemo(
+  const aiPromotions: PromotionData[] = useMemo(
     () => (itineraryData as any)?.promotions || (currentItinerary as any)?.promotions || [],
     [itineraryData, currentItinerary],
   );
 
-  // Map real ads (AdUnit) to the same shape the existing promotion renderer expects
-  const realAdPromotions: any[] = useMemo(
+  // Map real AdUnits to PromotionData — includes all fields the PromotionCard uses
+  const realAdPromotions: PromotionData[] = useMemo(
     () =>
-      realAds.map((ad: AdUnit) => ({
-        // Core fields the renderer uses
+      realAds.map((ad: AdUnit): PromotionData => ({
         businessName: ad.businessName,
+        businessType: ad.businessType || undefined,
         headline: ad.primaryText,
         description: ad.primaryText,
         cta: ad.cta || 'Learn More',
@@ -614,7 +474,10 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
         website: ad.landingUrl,
         imageUrl: ad.imageUrl || ad.assetUrl || null,
         promoCode: ad.promoCode || null,
-        // Mark as tracked campaign ad (used for tracking callbacks)
+        address: ad.address,
+        phone: ad.phone,
+        email: ad.email,
+        offerDetails: ad.offerDetails || null,
         _campaignId: ad.campaignId,
         _isRealAd: true,
       })),
@@ -622,7 +485,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
   );
 
   // Merge real campaign ads at the top of the promotions list
-  const promotions: any[] = useMemo(
+  const promotions: PromotionData[] = useMemo(
     () => [...realAdPromotions, ...aiPromotions],
     [realAdPromotions, aiPromotions],
   );
@@ -1713,14 +1576,13 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
           />
           {isSectionExpanded('promotions') && (
             <View style={styles.accordionContent}>
-              {promotions.map((promo: any, index: number) => (
+              {promotions.map((promo, index) => (
                 <PromotionCard
                   key={promo._campaignId ?? index}
                   promo={promo}
                   index={index}
                   trackImpression={trackImpression}
                   trackClick={trackClick}
-                  styles={styles}
                 />
               ))}
             </View>
@@ -2514,186 +2376,4 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 
-  // Promotion card styles
-  promotionCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 12,
-    marginBottom: 12,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  promotionImage: {
-    width: '100%',
-    height: 160,
-  },
-  promotionImagePlaceholder: {
-    width: '100%',
-    height: 100,
-    backgroundColor: '#F0F4FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  promotionImagePlaceholderText: {
-    fontSize: 40,
-  },
-  promotionBody: {
-    padding: 14,
-  },
-  promotionSponsoredRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 6,
-  },
-  promotionSponsoredLabel: {
-    fontSize: 11,
-    color: '#999',
-    fontStyle: 'italic',
-  },
-  promotionTypeChip: {
-    backgroundColor: '#EDE7F6',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  promotionTypeChipText: {
-    fontSize: 11,
-    color: '#5E35B1',
-    fontWeight: '600',
-  },
-  promotionBusinessName: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#1A1A1A',
-    marginBottom: 4,
-  },
-  promotionHeadline: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#333',
-    marginBottom: 6,
-    lineHeight: 20,
-  },
-  promotionDescription: {
-    fontSize: 13,
-    color: '#666',
-    lineHeight: 18,
-    marginBottom: 8,
-  },
-  promotionMetaRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginBottom: 8,
-  },
-  promotionChip: {
-    backgroundColor: '#F5F5F5',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-  },
-  promotionChipText: {
-    fontSize: 12,
-    color: '#555',
-  },
-  promotionTagsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginBottom: 8,
-  },
-  promotionTag: {
-    backgroundColor: '#E8F5E9',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#C8E6C9',
-  },
-  promotionTagText: {
-    fontSize: 12,
-    color: '#2E7D32',
-  },
-  promotionOfferBox: {
-    backgroundColor: '#FFFDE7',
-    borderWidth: 1,
-    borderColor: '#FFF176',
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 8,
-  },
-  promotionOfferDetails: {
-    fontSize: 13,
-    color: '#F57F17',
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  promotionPromoCodeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  promotionPromoCodeLabel: {
-    fontSize: 13,
-    color: '#555',
-  },
-  promotionPromoCode: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1565C0',
-    letterSpacing: 1,
-  },
-  promotionOfferExpiry: {
-    fontSize: 11,
-    color: '#999',
-    marginTop: 4,
-  },
-  promotionAddress: {
-    fontSize: 13,
-    color: '#666',
-    marginBottom: 4,
-  },
-  promotionContact: {
-    fontSize: 13,
-    color: '#666',
-    marginBottom: 8,
-  },
-  promotionActions: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 4,
-  },
-  promotionCtaButton: {
-    flex: 1,
-    backgroundColor: '#1976d2',
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  promotionCtaText: {
-    color: '#FFF',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  promotionMapsButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#1976d2',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  promotionMapsText: {
-    fontSize: 13,
-    color: '#1976d2',
-    fontWeight: '600',
-  },
 });

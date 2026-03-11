@@ -44,7 +44,7 @@ import { videoPlaybackManagerV2 as videoPlaybackManager } from '../services/vide
 import { doc, getDocFromServer } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
 import { SponsoredVideoCard } from '../components/ads/SponsoredVideoCard';
-import { useAdDelivery, useAdTracking, useAdFrequency } from '../hooks/ads';
+import { useAdTracking, useAdPool } from '../hooks/ads';
 import { useUserProfile } from '../context/UserProfileContext';
 import { calculateAge } from '../utils/calculateAge';
 import { useTravelPreferences } from '../hooks/useTravelPreferences';
@@ -101,14 +101,16 @@ const VideoFeedPage: React.FC = () => {
   const recyclerRef = useRef<RecyclerListView<any, any>>(null);
 
   // ─── Ad delivery hooks ───────────────────────────────────────────
-  const { ads: videoAds, fetchAds: fetchVideoAds } = useAdDelivery('video_feed');
+  const { spliceAdsIntoList, fetchAds: fetchVideoAds } = useAdPool('video_feed', videos.length);
   const { trackImpression, trackClick, flush: _flushAdEvents } = useAdTracking();
-  const { spliceAdsIntoList, resetSessionCount } = useAdFrequency();
   const { userProfile } = useUserProfile();
-  const { defaultProfile: travelProfile } = useTravelPreferences();
+  const { defaultProfile: travelProfile, loading: travelProfileLoading } = useTravelPreferences();
 
-  // Fetch ads on mount with demographic + travel preference context for targeting
+  // Fetch ads once the travel profile has fully loaded.
+  // Guard: bail while loading=true so we never send a partially-built context
+  // to selectAds (avoids scoring with only gender/age before activities load).
   useEffect(() => {
+    if (travelProfileLoading) return;
     const ctx: Record<string, string | number | string[] | undefined> = {};
     if (userProfile?.gender) ctx.gender = userProfile.gender;
     if (userProfile?.dob) {
@@ -121,8 +123,13 @@ const VideoFeedPage: React.FC = () => {
     if (travelProfile?.travelStyle) {
       ctx.travelStyles = [travelProfile.travelStyle];
     }
-    fetchVideoAds(Object.keys(ctx).length > 0 ? ctx as any : undefined);
-  }, [userProfile?.gender, userProfile?.dob, travelProfile?.activities, travelProfile?.travelStyle, fetchVideoAds]);
+    const adCtx = Object.keys(ctx).length > 0 ? ctx as any : undefined;
+    console.log(
+      `[AdContext] built (android, travelProfileLoading=false):`,
+      adCtx ?? 'NO CONTEXT — all campaigns score equally',
+    );
+    fetchVideoAds(adCtx);
+  }, [userProfile?.gender, userProfile?.dob, travelProfile?.activities, travelProfile?.travelStyle, travelProfileLoading, fetchVideoAds]);
 
   /** Discriminated union for feed items. */
   type FeedItem =
@@ -131,8 +138,8 @@ const VideoFeedPage: React.FC = () => {
 
   /** Mixed feed: organic videos with sponsored ads spliced in. */
   const mixedFeed: FeedItem[] = useMemo(
-    () => spliceAdsIntoList(videos, videoAds),
-    [videos, videoAds, spliceAdsIntoList],
+    () => spliceAdsIntoList(videos),
+    [videos, spliceAdsIntoList],
   );
 
   // Ref to track current video index without stale closures during rapid scrolling
@@ -243,8 +250,7 @@ const VideoFeedPage: React.FC = () => {
     // Cleanup all video players before refreshing to prevent "shared object released" errors
     await videoPlaybackManager.deactivateAll();
     await refreshVideos();
-    // Reset ad session counter and re-fetch fresh ads with demographic context
-    resetSessionCount();
+    // Re-fetch fresh ads with demographic context
     const ctx: Record<string, string | number | string[] | undefined> = {};
     if (userProfile?.gender) ctx.gender = userProfile.gender;
     if (userProfile?.dob) {
@@ -262,7 +268,7 @@ const VideoFeedPage: React.FC = () => {
     if (recyclerRef.current && mixedFeed.length > 0) {
       recyclerRef.current.scrollToIndex(0, false);
     }
-  }, [refreshVideos, mixedFeed.length, resetSessionCount, fetchVideoAds, userProfile?.gender, userProfile?.dob, travelProfile?.activities, travelProfile?.travelStyle]);
+  }, [refreshVideos, mixedFeed.length, fetchVideoAds, userProfile?.gender, userProfile?.dob, travelProfile?.activities, travelProfile?.travelStyle]);
 
   /**
    * Handle comment button press
