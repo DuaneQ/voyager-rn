@@ -125,8 +125,19 @@ describe('useAdTracking', () => {
     it('should NOT deduplicate clicks (user can click multiple times)', async () => {
       const { result } = renderHook(() => useAdTracking(), { wrapper });
 
+      // Space clicks apart so they exceed the 2-second throttle window
+      const originalDateNow = Date.now;
+      let fakeNow = 1700000000000;
+      Date.now = jest.fn(() => fakeNow);
+
       act(() => {
         result.current.trackClick('camp-1');
+      });
+
+      // Advance past the 2-second throttle window
+      fakeNow += 3000;
+
+      act(() => {
         result.current.trackClick('camp-1');
       });
 
@@ -137,6 +148,8 @@ describe('useAdTracking', () => {
       const call = mockLogAdEventsFn.mock.calls[0][0];
       const clickEvents = call.events.filter((e: any) => e.type === 'click');
       expect(clickEvents).toHaveLength(2);
+
+      Date.now = originalDateNow;
     });
 
     it('should ignore empty campaignId', async () => {
@@ -151,6 +164,101 @@ describe('useAdTracking', () => {
       });
 
       expect(mockLogAdEventsFn).not.toHaveBeenCalled();
+    });
+
+    it('should throttle rapid clicks on the same campaign within 2 seconds', async () => {
+      const { result } = renderHook(() => useAdTracking(), { wrapper });
+
+      const originalDateNow = Date.now;
+      let fakeNow = 1700000000000;
+      Date.now = jest.fn(() => fakeNow);
+
+      act(() => {
+        result.current.trackClick('camp-1');
+      });
+
+      // Click again 500ms later — should be throttled
+      fakeNow += 500;
+      act(() => {
+        result.current.trackClick('camp-1');
+      });
+
+      // Click again 1000ms later (1500ms total) — still throttled
+      fakeNow += 1000;
+      act(() => {
+        result.current.trackClick('camp-1');
+      });
+
+      await act(async () => {
+        await result.current.flush();
+      });
+
+      const call = mockLogAdEventsFn.mock.calls[0][0];
+      const clickEvents = call.events.filter((e: any) => e.type === 'click');
+      // Only the first click should go through
+      expect(clickEvents).toHaveLength(1);
+
+      Date.now = originalDateNow;
+    });
+
+    it('should allow clicks on different campaigns within the throttle window', async () => {
+      const { result } = renderHook(() => useAdTracking(), { wrapper });
+
+      const originalDateNow = Date.now;
+      let fakeNow = 1700000000000;
+      Date.now = jest.fn(() => fakeNow);
+
+      act(() => {
+        result.current.trackClick('camp-1');
+      });
+
+      fakeNow += 100;
+      act(() => {
+        result.current.trackClick('camp-2');
+      });
+
+      fakeNow += 100;
+      act(() => {
+        result.current.trackClick('camp-3');
+      });
+
+      await act(async () => {
+        await result.current.flush();
+      });
+
+      const call = mockLogAdEventsFn.mock.calls[0][0];
+      const clickEvents = call.events.filter((e: any) => e.type === 'click');
+      expect(clickEvents).toHaveLength(3);
+
+      Date.now = originalDateNow;
+    });
+
+    it('should allow a click after the throttle window expires', async () => {
+      const { result } = renderHook(() => useAdTracking(), { wrapper });
+
+      const originalDateNow = Date.now;
+      let fakeNow = 1700000000000;
+      Date.now = jest.fn(() => fakeNow);
+
+      act(() => {
+        result.current.trackClick('camp-1');
+      });
+
+      // Advance past the 2-second throttle
+      fakeNow += 2001;
+      act(() => {
+        result.current.trackClick('camp-1');
+      });
+
+      await act(async () => {
+        await result.current.flush();
+      });
+
+      const call = mockLogAdEventsFn.mock.calls[0][0];
+      const clickEvents = call.events.filter((e: any) => e.type === 'click');
+      expect(clickEvents).toHaveLength(2);
+
+      Date.now = originalDateNow;
     });
   });
 

@@ -555,7 +555,7 @@ const VideoFeedPage: React.FC = () => {
 
       return videoCard;
     },
-    [currentVideoIndex, isScreenFocused, isMuted, handleLike, handleCommentPress, handleShare, handleReportPress, handleViewTracked, resolvedAuth, availableHeight, trackImpression, trackClick]
+    [currentVideoIndex, isScreenFocused, isMuted, handleLike, handleCommentPress, handleShare, handleReportPress, handleViewTracked, resolvedAuth, availableHeight, trackImpression, trackClick, trackQuartile]
   );
 
   /**
@@ -689,9 +689,9 @@ const VideoFeedPage: React.FC = () => {
         ref={flatListRef}
         data={mixedFeed}
         renderItem={renderFeedItem}
-        keyExtractor={(feedItem) =>
+        keyExtractor={(feedItem, index) =>
           feedItem.type === 'ad'
-            ? `ad-${feedItem.ad.campaignId}`
+            ? `ad-${feedItem.ad.campaignId}-${index}`
             : feedItem.item.id
         }
         showsVerticalScrollIndicator={false}

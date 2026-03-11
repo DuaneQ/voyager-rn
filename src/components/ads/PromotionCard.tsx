@@ -12,7 +12,7 @@
  * - "Sponsored" label always visible
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -70,11 +70,20 @@ function PromotionCardComponent({
   trackImpression,
   trackClick,
 }: PromotionCardProps) {
-  // Fire impression once when the card mounts (accordion section expanded)
+  const impressionFiredRef = useRef(false);
+
+  // Fire impression 1 second after the card mounts (IAB viewability standard)
   useEffect(() => {
-    if (promo._isRealAd && promo._campaignId) {
-      trackImpression(promo._campaignId);
-    }
+    if (!promo._isRealAd || !promo._campaignId || impressionFiredRef.current) return;
+
+    const timer = setTimeout(() => {
+      if (!impressionFiredRef.current) {
+        impressionFiredRef.current = true;
+        trackImpression(promo._campaignId!);
+      }
+    }, 1000); // IAB: 1 second of continuous visibility
+
+    return () => clearTimeout(timer);
   }, [promo._isRealAd, promo._campaignId, trackImpression]);
 
   return (

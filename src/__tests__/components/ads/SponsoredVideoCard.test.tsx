@@ -104,7 +104,15 @@ describe('SponsoredVideoCard', () => {
   });
 
   describe('Impression tracking', () => {
-    it('fires onImpression when isActive becomes true', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('fires onImpression after 1 second when isActive becomes true', () => {
       const onImpression = jest.fn();
 
       const { rerender } = render(
@@ -125,8 +133,42 @@ describe('SponsoredVideoCard', () => {
         />,
       );
 
+      // Not fired immediately — IAB requires 1 second of visibility
+      expect(onImpression).not.toHaveBeenCalled();
+
+      // Advance timer past 1 second
+      act(() => { jest.advanceTimersByTime(1000); });
+
       expect(onImpression).toHaveBeenCalledTimes(1);
       expect(onImpression).toHaveBeenCalledWith('camp-test-1');
+    });
+
+    it('does NOT fire onImpression if card becomes inactive before 1 second', () => {
+      const onImpression = jest.fn();
+
+      const { rerender } = render(
+        <SponsoredVideoCard
+          ad={makeAd()}
+          isActive={true}
+          onImpression={onImpression}
+        />,
+      );
+
+      // Scroll away before 1 second
+      act(() => { jest.advanceTimersByTime(500); });
+      rerender(
+        <SponsoredVideoCard
+          ad={makeAd()}
+          isActive={false}
+          onImpression={onImpression}
+        />,
+      );
+
+      // Advance past the original 1-second mark
+      act(() => { jest.advanceTimersByTime(1000); });
+
+      // Should NOT have fired — card went inactive before the timer
+      expect(onImpression).not.toHaveBeenCalled();
     });
 
     it('does NOT fire onImpression again after first activation', () => {
@@ -139,6 +181,10 @@ describe('SponsoredVideoCard', () => {
           onImpression={onImpression}
         />,
       );
+
+      // Fire the timer
+      act(() => { jest.advanceTimersByTime(1000); });
+      expect(onImpression).toHaveBeenCalledTimes(1);
 
       // Deactivate and reactivate
       rerender(
@@ -156,7 +202,9 @@ describe('SponsoredVideoCard', () => {
         />,
       );
 
-      // Should still be 1 (dedup within component)
+      act(() => { jest.advanceTimersByTime(1000); });
+
+      // Should still be 1 (dedup within component via impressionFiredRef)
       expect(onImpression).toHaveBeenCalledTimes(1);
     });
   });

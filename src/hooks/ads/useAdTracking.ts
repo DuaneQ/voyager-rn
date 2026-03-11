@@ -58,7 +58,12 @@ export function useAdTracking(): UseAdTrackingReturn {
   const { addSeenId } = useAdSeen()
   const bufferRef = useRef<AdEvent[]>([])
   const impressionSetRef = useRef<Set<string>>(new Set())
+  /** Tracks the last click timestamp per campaign to throttle rapid taps. */
+  const clickThrottleRef = useRef<Map<string, number>>(new Map())
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  /** Minimum interval between click events for the same campaign (ms). */
+  const CLICK_THROTTLE_MS = 2000
 
   const logAdEventsFn = useMemo(
     () =>
@@ -84,23 +89,24 @@ export function useAdTracking(): UseAdTrackingReturn {
     const clicks = events.filter(e => e.type === 'click').length
     const quartiles = events.filter(e => e.type === 'video_quartile').length
     const uniqueCampaigns = [...new Set(events.map(e => e.campaignId))]
-    console.log(
-      `[AdTracking] flushing ${events.length} event(s) — impressions=${impressions} clicks=${clicks} quartiles=${quartiles}` +
-      ` campaignIds=[${uniqueCampaigns.join(', ')}]`,
-    )
+    if (__DEV__) {
+      console.log(
+        `[AdTracking] flushing ${events.length} event(s) — impressions=${impressions} clicks=${clicks} quartiles=${quartiles}` +
+        ` campaignIds=[${uniqueCampaigns.join(', ')}]`,
+      )
+    }
 
     try {
       const result = await logAdEventsFn({ events })
       const { processed, skipped } = result.data
-      console.log(`[AdTracking] ✓ flush complete processed=${processed} skipped=${skipped}`)
+      if (__DEV__) {
+        console.log(`[AdTracking] ✓ flush complete processed=${processed} skipped=${skipped}`)
+      }
       if (skipped > 0) {
         console.warn(`[useAdTracking] ${skipped} events skipped by server`)
       }
     } catch (err) {
       console.error('[useAdTracking] flush failed:', err)
-      // Silently drop — we do NOT re-enqueue to avoid infinite retry loops.
-      // Lost events are acceptable at this traffic level; the server's
-      // budget enforcement will reconcile on the next batch.
     }
   }, [logAdEventsFn])
 
@@ -140,29 +146,45 @@ export function useAdTracking(): UseAdTrackingReturn {
       if (!campaignId) return
       // Deduplicate within this session
       if (impressionSetRef.current.has(campaignId)) {
-        console.log(`[AdTracking] impression deduped (already tracked) campaignId=${campaignId}`)
+        if (__DEV__) {
+          console.log(`[AdTracking] impression deduped (already tracked) campaignId=${campaignId}`)
+        }
         return
       }
       impressionSetRef.current.add(campaignId)
       addSeenId(campaignId)
-      console.log(`[AdTracking] impression queued campaignId=${campaignId}`)
+      if (__DEV__) {
+        console.log(`[AdTracking] impression queued campaignId=${campaignId}`)
+      }
       enqueue({
         type: 'impression',
         campaignId,
         timestamp: Date.now(),
       })
     },
-    [enqueue],
+    [enqueue, addSeenId],
   )
 
   const trackClick = useCallback(
     (campaignId: string) => {
       if (!campaignId) return
-      console.log(`[AdTracking] click queued campaignId=${campaignId}`)
+      // Throttle: ignore clicks on the same campaign within CLICK_THROTTLE_MS
+      const now = Date.now()
+      const lastClick = clickThrottleRef.current.get(campaignId)
+      if (lastClick && (now - lastClick) < CLICK_THROTTLE_MS) {
+        if (__DEV__) {
+          console.log(`[AdTracking] click throttled campaignId=${campaignId}`)
+        }
+        return
+      }
+      clickThrottleRef.current.set(campaignId, now)
+      if (__DEV__) {
+        console.log(`[AdTracking] click queued campaignId=${campaignId}`)
+      }
       enqueue({
         type: 'click',
         campaignId,
-        timestamp: Date.now(),
+        timestamp: now,
       })
     },
     [enqueue],
@@ -171,7 +193,9 @@ export function useAdTracking(): UseAdTrackingReturn {
   const trackQuartile = useCallback(
     (campaignId: string, quartile: VideoQuartile) => {
       if (!campaignId) return
-      console.log(`[AdTracking] quartile=${quartile}% queued campaignId=${campaignId}`)
+      if (__DEV__) {
+        console.log(`[AdTracking] quartile=${quartile}% queued campaignId=${campaignId}`)
+      }
       enqueue({
         type: 'video_quartile',
         campaignId,

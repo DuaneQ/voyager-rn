@@ -92,12 +92,14 @@ describe('useAdDelivery', () => {
       await result.current.fetchAds();
     });
 
-    expect(mockSelectAdsFn).toHaveBeenCalledWith({
-      placement: 'itinerary_feed',
-      limit: 10,
-      userContext: undefined,
-      seenCampaignIds: [],
-    });
+    expect(mockSelectAdsFn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        placement: 'itinerary_feed',
+        limit: 10,
+        userContext: undefined,
+        seenCampaignIds: [],
+      }),
+    );
   });
 
   it('should forward userContext with destination targeting', async () => {

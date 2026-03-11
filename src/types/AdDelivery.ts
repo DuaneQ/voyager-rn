@@ -81,6 +81,11 @@ export interface SelectAdsRequest {
    * The server applies a ranking penalty so fresh ads surface ahead of repeat exposures.
    */
   seenCampaignIds?: string[]
+  /**
+   * Client-generated session ID (UUID v4) for anonymous users.
+   * Used server-side to vary ad ordering across different anonymous sessions.
+   */
+  sessionId?: string
 }
 
 export interface SelectAdsResponse {

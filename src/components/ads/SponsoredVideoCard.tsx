@@ -89,10 +89,12 @@ function SponsoredVideoCardComponent({
 
   // Log when the card first mounts so we can confirm the right ad is in the feed
   useEffect(() => {
-    console.log(
-      `[AdCard] mounted campaignId=${ad.campaignId} creativeType=${ad.creativeType}` +
-      ` businessName=${ad.businessName} placement=${ad.placement}`,
-    )
+    if (__DEV__) {
+      console.log(
+        `[AdCard] mounted campaignId=${ad.campaignId} creativeType=${ad.creativeType}` +
+        ` businessName=${ad.businessName} placement=${ad.placement}`,
+      )
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -111,7 +113,9 @@ function SponsoredVideoCardComponent({
     if (!player || !videoSource) return
     try {
       if (isActive) {
-        console.log(`[AdVideo] ▶ playing campaignId=${ad.campaignId} muted=${isMuted} source=${videoSource}`)
+        if (__DEV__) {
+          console.log(`[AdVideo] ▶ playing campaignId=${ad.campaignId} muted=${isMuted} source=${videoSource}`)
+        }
         // player.play() is typed void but returns a Promise on web.
         // Unhandled rejections (e.g. AbortError when pause() interrupts play()
         // during fast scroll) bubble up to GlobalErrorHandler and create noise.
@@ -139,7 +143,7 @@ function SponsoredVideoCardComponent({
     // For the 100% milestone, use 97% as the effective check — with 500ms polling
     // a looping video resets currentTime to 0 before the poll can catch exact 100%.
     const effectivePct = (threshold: VideoQuartile) => (threshold === 100 ? 97 : threshold)
-    const interval = setInterval(() => {
+    const intervalId = setInterval(() => {
       try {
         const duration = player.duration
         const current = player.currentTime
@@ -148,24 +152,38 @@ function SponsoredVideoCardComponent({
         for (const threshold of THRESHOLDS) {
           if (pct >= effectivePct(threshold) && !quartilesFiredRef.current.has(threshold)) {
             quartilesFiredRef.current.add(threshold)
-            console.log(`[AdQuartile] ${threshold}% reached campaignId=${ad.campaignId} time=${current.toFixed(1)}s duration=${duration.toFixed(1)}s`)
+            if (__DEV__) {
+              console.log(`[AdQuartile] ${threshold}% reached campaignId=${ad.campaignId} time=${current.toFixed(1)}s duration=${duration.toFixed(1)}s`)
+            }
             onQuartile?.(ad.campaignId, threshold)
           }
+        }
+        // Stop polling once all 4 quartiles have fired
+        if (quartilesFiredRef.current.size >= THRESHOLDS.length) {
+          clearInterval(intervalId)
         }
       } catch {
         // Player may have been released — safe to ignore
       }
     }, 500)
-    return () => clearInterval(interval)
+    return () => clearInterval(intervalId)
   }, [isActive, isVideoCreative, player, videoSource, ad.campaignId, onQuartile])
 
-  // Fire impression when card becomes active
+  // Fire impression when card has been continuously active for ≥1 second (IAB viewability standard)
   useEffect(() => {
-    if (isActive && !impressionFiredRef.current) {
-      impressionFiredRef.current = true
-      console.log(`[AdImpression] queued campaignId=${ad.campaignId} placement=${ad.placement}`)
-      onImpression?.(ad.campaignId)
-    }
+    if (!isActive || impressionFiredRef.current) return
+
+    const timer = setTimeout(() => {
+      if (!impressionFiredRef.current) {
+        impressionFiredRef.current = true
+        if (__DEV__) {
+          console.log(`[AdImpression] queued campaignId=${ad.campaignId} placement=${ad.placement}`)
+        }
+        onImpression?.(ad.campaignId)
+      }
+    }, 1000) // IAB: 1 second of continuous visibility
+
+    return () => clearTimeout(timer)
   }, [isActive, ad.campaignId, ad.placement, onImpression])
 
   const handleMuteToggle = useCallback(() => {
@@ -207,7 +225,9 @@ function SponsoredVideoCardComponent({
     // as file paths by iOS Linking without an explicit https:// prefix.
     const url =
       rawUrl && !/^https?:\/\//i.test(rawUrl) ? `https://${rawUrl}` : rawUrl
-    console.log(`[AdClick] CTA tapped campaignId=${ad.campaignId} url=${url}`)
+    if (__DEV__) {
+      console.log(`[AdClick] CTA tapped campaignId=${ad.campaignId} url=${url}`)
+    }
     onCtaPress?.(ad.campaignId)
     if (url) {
       Linking.openURL(url).catch((err) =>

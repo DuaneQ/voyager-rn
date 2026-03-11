@@ -2,24 +2,18 @@
 
 A React Native Expo replica of the **voyager-pwa** project with improved architecture following S.O.L.I.D principles. This mobile app maintains exact same functionality as the PWA while implementing better code organization, reusability, and maintainability.
 
-## 🚀 Current Status: Places Cost Optimization Branch (`places-cost`)
+## 🚀 Current Status: Ads Phase 2 Branch (`ads-phase2`)
 
-**Branch:** `places-cost` | **Status:** Ready for Production Deployment
+**Branch:** `ads-phase2` | **Version:** 1.8.0 | **Build:** 37
 
-### What's New (Feb 2026)
-- ✅ **Airport Mappings Utility**: 892 city-to-airport mappings (70-80% Places API cost reduction)
-- ✅ **Android Manifest Resolution**: Fixed expo-notifications + RNFB messaging conflicts
-- ✅ **Notification Icon Fix**: Corrected Android push notification asset path
-- ✅ **iOS Notification Service**: Cherry-picked fixes for RNFB messaging
-- ✅ **All Tests Passing**: TypeScript clean, integration tests 111/114, unit tests 2212/2257
-
-**Deployment Sequence:**
-1. Deploy Android to Google Play Store ← Next
-2. Deploy Web to Expo Hosting
-3. Verify production
-4. Deploy iOS with airport mappings
-
-See [IMPLEMENTATION_COMPLETE.md](IMPLEMENTATION_COMPLETE.md) for full details.
+### What's New (Mar 2026)
+- ✅ **Full Ad System**: 10 Cloud Functions deployed to production — selectAds, logAdEvents, reviewCampaign, getPendingCampaigns, processAdVideoWithMux, and more
+- ✅ **Video Feed Ads**: SponsoredVideoCard with IAB-compliant 1-second viewability, quartile tracking, click throttling
+- ✅ **AI Slot Ads**: PromotionCard with impression tracking in AI-generated itineraries
+- ✅ **Interstitial Ads**: Pacing and queue mechanics for zero-results and swipe-triggered display
+- ✅ **Ad Tracking Pipeline**: Batched event system (impressions, clicks, quartiles) with session dedup
+- ✅ **Budget & Billing**: CPM ($5/1000 impressions) and CPC ($0.50/click) with atomic Firestore transactions
+- ✅ **All Tests Passing**: TypeScript clean, 2464 unit tests, 419 function tests
 
 ---
 

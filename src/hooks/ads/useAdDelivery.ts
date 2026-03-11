@@ -44,6 +44,12 @@ export function clearAdsCache(placement?: _Placement): void {
   }
 }
 
+/**
+ * Per-session anonymous ID so the server can vary ad ordering for unauthenticated users.
+ * Generated once per JS module lifetime (= one app session).
+ */
+const _anonymousSessionId = `anon-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+
 /** Return today as YYYY-MM-DD in local time (avoids UTC-shift issues). */
 function todayLocalYYYYMMDD(): string {
   const now = new Date()
@@ -146,43 +152,52 @@ export function useAdDelivery(
 
       try {
         const seenCampaignIds = getSeenIds()
-        if (seenCampaignIds.length > 0) {
+        if (seenCampaignIds.length > 0 && __DEV__) {
           console.log(
             `[AdDelivery] seenCampaignIds (${seenCampaignIds.length}): [${seenCampaignIds.join(', ')}]`,
           )
         }
-        console.log(`[AdDelivery] fetching placement=${placement} limit=${limit}`, userContext ?? 'no context')
+        if (__DEV__) {
+          console.log(`[AdDelivery] fetching placement=${placement} limit=${limit}`, userContext ?? 'no context')
+        }
         const result = await selectAdsFn({
           placement,
           limit,
           userContext,
           seenCampaignIds,
+          sessionId: _anonymousSessionId,
         })
 
         const response = result.data
         if (response && Array.isArray(response.ads)) {
           const serverCount = response.ads.length
-          console.log(
-            `[AdDelivery] ✓ ${serverCount} ad(s) received from server for placement=${placement}:`,
-            response.ads.map((a) => ({
-              campaignId: a.campaignId,
-              businessName: a.businessName,
-              creativeType: a.creativeType,
-              startDate: a.startDate ?? 'n/a',
-              endDate: a.endDate ?? 'n/a',
-            })),
-          )
+          if (__DEV__) {
+            console.log(
+              `[AdDelivery] ✓ ${serverCount} ad(s) received from server for placement=${placement}:`,
+              response.ads.map((a) => ({
+                campaignId: a.campaignId,
+                businessName: a.businessName,
+                creativeType: a.creativeType,
+                startDate: a.startDate ?? 'n/a',
+                endDate: a.endDate ?? 'n/a',
+              })),
+            )
+          }
           const valid = filterExpiredAds(response.ads)
           if (valid.length < serverCount) {
-            console.warn(
-              `[AdDelivery] CLIENT EXPIRY GUARD removed ${serverCount - valid.length}` +
-              ` stale ad(s) — ${valid.length} remain for placement=${placement}`,
-            )
+            if (__DEV__) {
+              console.warn(
+                `[AdDelivery] CLIENT EXPIRY GUARD removed ${serverCount - valid.length}` +
+                ` stale ad(s) — ${valid.length} remain for placement=${placement}`,
+              )
+            }
           }
           _sessionAdsCache.set(placement, valid)
           setAds(valid)
         } else {
-          console.warn(`[AdDelivery] no ads in response for ${placement}`)
+          if (__DEV__) {
+            console.warn(`[AdDelivery] no ads in response for ${placement}`)
+          }
           setAds([])
         }
       } catch (err: unknown) {
