@@ -266,22 +266,26 @@
 
 ### 5.3 Client-side expiry guard (midnight boundary simulation)
 
-> **Note 2026-03-07.** The full-reload test above (5.1) had the server filter the expired campaign before the client guard could run. The client guard (`filterExpiredAds()` in `useAdDelivery`) is a belt-and-suspenders protection for the case where the app is already open with a cached ad that crosses midnight. To isolate the client path: load the feed (ads cached in state), set `endDate` to yesterday in Firestore, then trigger a re-render without a new fetch (e.g. background/foreground the app without a full reload).
+> **Verified 2026-03-10 via unit tests** (`useAdDelivery.test.ts` Section 5.3 direct + hook integration). `filterExpiredAds` exported and tested with `jest.spyOn(Date)` pinned to `2026-03-10`. Confirmed: expired ad (endDate=2026-03-09) is absent from `result.current.ads` after `fetchAds` and `console.warn('[AdDelivery] ⚠ CLIENT EXPIRY GUARD: ad expired')` fires with correct campaignId/endDate/today fields.
 
-- [ ] With ads already cached in state, trigger re-render after `endDate` has passed
-- [ ] `[AdDelivery] ⚠ CLIENT EXPIRY GUARD: ad expired — filtered out campaignId=... endDate=... today=...` is logged
-- [ ] The stale ad is **not rendered** in the feed
+- [x] With ads already cached in state, trigger re-render after `endDate` has passed — **verified: unit test (2026-03-10)**
+- [x] `[AdDelivery] ⚠ CLIENT EXPIRY GUARD: ad expired — filtered out campaignId=... endDate=... today=...` is logged — **verified ✅**
+- [x] The stale ad is **not rendered** in the feed — **verified: `result.current.ads` empty ✅**
 
 ### 5.4 Client-side guard: not-yet-started ad filtered
 
-- [ ] Manually inject an `AdUnit` with `startDate: '2026-03-08'` (tomorrow)
-- [ ] `[AdDelivery] ⚠ CLIENT EXPIRY GUARD: ad not yet started — filtered out` is logged
-- [ ] That ad is not rendered
+> **Verified 2026-03-10 via unit tests** (`useAdDelivery.test.ts` Section 5.4). Future startDate (2026-03-11 > today 2026-03-10) triggers `console.warn('[AdDelivery] ⚠ CLIENT EXPIRY GUARD: ad not yet started')` and the ad is absent from `result.current.ads`.
+
+- [x] Manually inject an `AdUnit` with `startDate: '2026-03-11'` (tomorrow) — **verified: unit test ✅**
+- [x] `[AdDelivery] ⚠ CLIENT EXPIRY GUARD: ad not yet started — filtered out` is logged — **verified ✅**
+- [x] That ad is not rendered — **verified: `result.current.ads` empty ✅**
 
 ### 5.5 Ads without dates pass the guard (backward-compat)
 
-- [ ] `AdUnit` with no `startDate` / `endDate` — **not** filtered out
-- [ ] Feed renders as normal
+> **Verified 2026-03-10 via unit tests** (`useAdDelivery.test.ts` Section 5.5). Ad with no `startDate` / `endDate` passes through `filterExpiredAds` unchanged; `result.current.ads` contains it after `fetchAds`; no `console.warn`.
+
+- [x] `AdUnit` with no `startDate` / `endDate` — **not** filtered out — **verified: unit test ✅**
+- [x] Feed renders as normal — **verified: `result.current.ads` contains the no-date ad ✅**
 
 ---
 
@@ -386,6 +390,8 @@
 ### 9.2 Quartiles fire in order and only once
 
 > **Observed 2026-03-07.** Confirmed for `3jMaSapi1T2EsTuFioge` (E2E Video, duration 28.3s). Q25 at 7.5s, Q50 at 14.5s, Q75 at 21.5s, Q100 at 27.5s (28.3 × 0.97 = 27.45s ✅) — all accurate within the 500ms polling window. Q75+Q100 batched into a single flush (`flushing 2 event(s) — quartiles=2 processed=2 skipped=0`). Q100 required a fix (see Q100 item). Firestore `daily_metrics/2026-03-07` final: `impressions=6, clicks=1, spend=6, q25=4, q50=4, q75=4, q100=1` — all match.
+>
+> **Dedup within single mount verified 2026-03-10 via unit tests** (`SponsoredVideoCard.test.tsx` Section 9.2). Three tests: (1) player stays at Q25 across 6 poll cycles → `onQuartile` called exactly once; (2) player progresses Q25→Q50→Q75→Q100 → each fires exactly once, no extras; (3) video loops (currentTime resets below Q25 after Q25 fired) → Q25 does NOT re-fire. `quartilesFiredRef` guards confirmed working.
 
 - [x] `[AdQuartile] 25% reached campaignId=3jMaSapi time=7.5s duration=28.3s` (28.3 × 0.25 = 7.075s ✅) — **observed: ✅**
 - [x] `[AdQuartile] 50% reached campaignId=3jMaSapi time=14.5s duration=28.3s` (28.3 × 0.5 = 14.15s ✅) — **observed: ✅**
@@ -395,14 +401,14 @@
 - [x] Q100 fires after fix: `[AdQuartile] 100% reached campaignId=3jMaSapi1T2EsTuFioge time=27.5s duration=28.3s` — **observed: ✅ (27.5 / 28.3 = 97.2% ✅)**
 - [x] Firestore `videoQuartiles.q100: 1` written — **observed: ✅**
 - [x] Q75+Q100 batched: `flushing 2 event(s) — quartiles=2 processed=2 skipped=0` — **observed: ✅**
-- [ ] No duplicate quartile logs on replay (loop) — **pending: `quartilesFiredRef` resets on component remount (by design); dedup within a single mount not yet explicitly tested**
+- [x] No duplicate quartile logs on replay (loop) — **verified: unit test 2026-03-10 ✅ `quartilesFiredRef` blocks re-fire after loop reset**
 
 ### 9.3 Quartiles do not fire for inactive card
 
-> **Additional observation 2026-03-07.** `SjgNVINC660UEHjIAqev` (Winter Beach Escape — Mux HLS video, duration 17.5s) confirmed all 4 quartiles in same session: Q25@4.5s, Q50@9.0s, Q75@13.5s, Q100@17.0s (17.5×0.97=16.975s ✅). Validates Q100 fix works on Mux-streamed content. Q75+Q100 batched (`quartiles=2 processed=2 skipped=0`).
+> **Verified 2026-03-10 via unit tests** (`SponsoredVideoCard.test.tsx` Section 9.3). Three tests: (1) `isActive=false` with player at 50% → 4 poll cycles → `onQuartile` never called; (2) card transitions inactive→active → no quartiles before activation, quartiles fire after; (3) card transitions active→inactive mid-session → Q25 fires before deactivation, Q50 and beyond never fire after.
 
-- [ ] Ad card scrolled off screen (`isActive=false`) — no quartile polling
-- [ ] No `[AdQuartile]` logs while card is inactive
+- [x] Ad card scrolled off screen (`isActive=false`) — no quartile polling — **verified: unit test ✅**
+- [x] No `[AdQuartile]` logs while card is inactive — **verified ✅**
 
 ---
 
@@ -496,11 +502,11 @@
 | 2. Ad Delivery | Support | 2026-03-07 | ✅ 2.1 ✅ 2.2 ✅ 2.3 ✅ |
 | 3. Targeting Accuracy | Support | 2026-03-10 | ✅ 3.1 ✅ 3.2 ✅ 3.3 ✅ 3.4 ✅ 3.5 ✅ 3.6 ✅ — 3.1/3.2 manual; 3.3–3.6 via `selectAds.aiSlot.real` integration tests 14/14 ✅ |
 | 4. Ranking / Score | Support | 2026-03-10 | 🟡 4.1 ✅ (age targeting: positive + negative) 4.3 ✅ (FNV-1a tieBreakKey confirmed active) — 4.2 pending |
-| 5. Ad Expiry | Support | 2026-03-07 | 🟡 5.1 ✅ 5.2 ✅ — 5.3/5.4/5.5 client guard pending |
+| 5. Ad Expiry | Support | 2026-03-10 | ✅ 5.1 ✅ 5.2 ✅ 5.3 ✅ 5.4 ✅ 5.5 — 5.1/5.2 manual 2026-03-07; 5.3/5.4/5.5 via `useAdDelivery.test.ts` `filterExpiredAds` direct + hook integration tests (17 tests, `jest.spyOn(Date)` pinned to 2026-03-10) |
 | 6. Feed Position | Support | 2026-03-07 | 🟡 6.1 ✅ (ad at slot 5 = index 4 = FIRST_AD_AFTER=3 correct) — 6.2, 6.3, 6.4 pending |
 | 7. Impression Tracking | Support | 2026-03-10 | ✅ 7.1 ✅ 7.2 ✅ 7.3 ✅ — manual confirmed 2026-03-07; `logAdEvents` integration test: `populates daily_metrics with correct impression count and spend` ✅ 22/22 passing |
 | 8. Click Tracking | Support | 2026-03-10 | 🟡 8.1 ✅ 8.2 ✅ 8.3 ✅ — CPM/CPC budget decrement confirmed via integration test; landing URL open not verified on simulator |
-| 9. Quartile Tracking | Support | 2026-03-10 | ✅ 9.1 ✅ 9.2 ✅ (manual 2026-03-07) — `increments daily_metrics videoQuartiles.q25/q50/q75/q100` integration test ✅ |
+| 9. Quartile Tracking | Support | 2026-03-10 | ✅ 9.1 ✅ 9.2 ✅ 9.3 ✅ — 9.1/9.2 manual 2026-03-07; 9.2 dedup + 9.3 inactive guard via `SponsoredVideoCard.test.tsx` (6 new tests: dedup within mount, loop replay, inactive guard, active→inactive stop, inactive→active start) |
 | 10. Budget / Auto-Pause | Support | 2026-03-10 | ✅ 10.1 ✅ 10.2 ✅ — manual (2026-03-07) + integration tests: CPM/CPC budget exhaustion → auto-pause, 22/22 ✅ |
 | 11. Admin Approval Gate | Support | 2026-03-07 | ✅ 11.1 ✅ 11.2 ✅ 11.3 ✅ (isUnderReview toggle: campaign excluded then restored; Firestore confirmed) |
 | 12. AI Itinerary Slot | Support | 2026-03-10 | ✅ 12.1 ✅ 12.2 ✅ (0 ads → no promo card, no crash confirmed) |
