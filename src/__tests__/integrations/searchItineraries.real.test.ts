@@ -75,11 +75,11 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
           };
         } else {
           console.error(`[createItinerary] Failed for ${itinerary.destination}:`, result?.result?.error || JSON.stringify(result));
-          return { success: false, error: result?.result?.error };
+          return { success: false, destination: itinerary.destination, error: result?.result?.error };
         }
       } catch (err: any) {
         console.error(`[createItinerary] Exception for ${itinerary.destination}:`, err.message);
-        return { success: false, error: err.message };
+        return { success: false, destination: itinerary.destination, error: err.message };
       }
     });
 
@@ -90,7 +90,8 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
     const failed = results.filter(r => !r.success);
     
     if (failed.length > 0) {
-      console.error(`[TEST SETUP] Failed to seed ${failed.length} itineraries`);
+      console.error(`[TEST SETUP] Failed to seed ${failed.length} itineraries:`);
+      failed.forEach(f => console.error(`  - destination=${(f as any).destination ?? 'unknown'} error=${(f as any).error}`));
     }
     
     results.forEach((result) => {
@@ -101,6 +102,28 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
     
     if (createdItineraryIds.length === 0) {
       throw new Error('CRITICAL: No test itineraries were created - all tests will fail!');
+    }
+
+    // Verify every destination that has its own test suite was seeded.
+    // Without this guard a partial seeding failure silently causes individual
+    // tests to fail with confusing "Received: 0" errors instead of a clear
+    // setup error.
+    const requiredDestinations = [
+      'Paris, France',
+      'Tokyo, Japan',
+      'Amsterdam, Netherlands',
+      'Barcelona, Spain',
+      'London, UK',
+    ];
+    const seededDestinations = new Set(
+      results.filter(r => r.success).map((r: any) => r.destination)
+    );
+    const missingDestinations = requiredDestinations.filter(d => !seededDestinations.has(d));
+    if (missingDestinations.length > 0) {
+      throw new Error(
+        `CRITICAL: Required test destinations failed to seed: ${missingDestinations.join(', ')}. ` +
+        `Check the console.error lines above for the root cause.`
+      );
     }
   }, 60000); // 60 second timeout for seeding
 
