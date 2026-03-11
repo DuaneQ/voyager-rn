@@ -501,7 +501,7 @@
 | 1. Targeting Context | Support | 2026-03-07 | 🟡 1.1 ✅ 1.4 ✅ — 1.2 and 1.3 pending (need different test user accounts) |
 | 2. Ad Delivery | Support | 2026-03-07 | ✅ 2.1 ✅ 2.2 ✅ 2.3 ✅ |
 | 3. Targeting Accuracy | Support | 2026-03-10 | ✅ 3.1 ✅ 3.2 ✅ 3.3 ✅ 3.4 ✅ 3.5 ✅ 3.6 ✅ — 3.1/3.2 manual; 3.3–3.6 via `selectAds.aiSlot.real` integration tests 14/14 ✅ |
-| 4. Ranking / Score | Support | 2026-03-10 | 🟡 4.1 ✅ (age targeting: positive + negative) 4.3 ✅ (FNV-1a tieBreakKey confirmed active) — 4.2 pending |
+| 4. Ranking / Score | Support | 2026-03-10 | ✅ 4.1 ✅ (age targeting: positive + negative) 4.2 ✅ (seen-campaign -5 penalty verified via integration test `selectAds.real.test.ts:930` live on 2026-03-10) 4.3 ✅ (FNV-1a tieBreakKey confirmed active) |
 | 5. Ad Expiry | Support | 2026-03-10 | ✅ 5.1 ✅ 5.2 ✅ 5.3 ✅ 5.4 ✅ 5.5 — 5.1/5.2 manual 2026-03-07; 5.3/5.4/5.5 via `useAdDelivery.test.ts` `filterExpiredAds` direct + hook integration tests (17 tests, `jest.spyOn(Date)` pinned to 2026-03-10) |
 | 6. Feed Position | Support | 2026-03-07 | 🟡 6.1 ✅ (ad at slot 5 = index 4 = FIRST_AD_AFTER=3 correct) — 6.2, 6.3, 6.4 pending |
 | 7. Impression Tracking | Support | 2026-03-10 | ✅ 7.1 ✅ 7.2 ✅ 7.3 ✅ — manual confirmed 2026-03-07; `logAdEvents` integration test: `populates daily_metrics with correct impression count and spend` ✅ 22/22 passing |
@@ -520,8 +520,8 @@ Functions deployed to **dev (mundo1-dev)** during this effort that must be promo
 
 | Function | Change | Dev Deploy Date | Prod Deployed |
 |---|---|---|---|
-| `selectAds` | FNV-1a `tieBreakKey` tie-breaking; updated `_testing` export | 2026-03-10 | ⬜ |
-| `itineraryShare` | `pickAiSlotAd()` — fetch best active `ai_slot` campaign, render promo card above CTA | 2026-03-10 | ⬜ |
+| `selectAds` | FNV-1a `tieBreakKey` tie-breaking; updated `_testing` export | 2026-03-10 | ✅ 2026-03-10 |
+| `itineraryShare` | `pickAiSlotAd()` — fetch best active `ai_slot` campaign, render promo card above CTA | 2026-03-10 | ✅ 2026-03-10 |
 
 ### Deploy command (run in order)
 ```bash
