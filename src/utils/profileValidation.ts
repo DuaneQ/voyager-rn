@@ -82,7 +82,10 @@ export const isUserOver18 = (dob: string | undefined): boolean => {
   if (!dob) return false;
   
   try {
-    const birthDate = new Date(dob);
+    // Parse as local midnight — new Date("YYYY-MM-DD") is UTC midnight which
+    // shifts the date by the local UTC offset (e.g. -1 day in US timezones).
+    const [year, month, day] = dob.split('-').map(Number);
+    const birthDate = new Date(year, month - 1, day); // local midnight
     const today = new Date();
     const age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
