@@ -306,10 +306,8 @@ describe('VideoCardV2', () => {
     it('should not autoplay when not active', async () => {
       // With lazy creation (iOS + Android), no player is created until the
       // card becomes active. Inactive cards produce no player and no play call.
+      // render() wraps in act() which flushes synchronous effects — no sleep needed.
       render(<VideoCardV2 {...defaultProps} isActive={false} />);
-
-      // Give effects a chance to run — player must NOT have been created
-      await act(async () => { await new Promise(r => setTimeout(r, 50)); });
 
       expect(mockFactory.createPlayer).not.toHaveBeenCalled();
       expect(mockPlayer.play).not.toHaveBeenCalled();
@@ -320,7 +318,6 @@ describe('VideoCardV2', () => {
       // isActive=false. It gets created only once the card becomes active.
       const { rerender } = render(<VideoCardV2 {...defaultProps} isActive={false} />);
 
-      await act(async () => { await new Promise(r => setTimeout(r, 50)); });
       expect(mockFactory.createPlayer).not.toHaveBeenCalled();
 
       // Activate — player should now be created and start playing
