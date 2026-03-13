@@ -123,8 +123,11 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
   // Whether to use lazy player creation (only create when active).
   // Android budget devices hit hardware decoder limits (e.g. 8 max on MediaTek),
   // so we MUST avoid creating players for off-screen cells.
-  // iOS/Web have no such limit — eager creation eliminates the black flash on scroll.
-  const useLazyCreation = Platform.OS === 'android';
+  // iOS shares the same constraint: the AVFoundation HTTP/2 stream pool is limited
+  // (~3 concurrent HLS streams). With windowSize=2, 3 cells render simultaneously;
+  // eager creation on all three exhausts the pool and causes -12889 errors.
+  // Web has no limit — eager creation is fine there.
+  const useLazyCreation = Platform.OS !== 'web';
 
   // Whether this video needs or is undergoing Mux transcoding.
   // On Android, raw videos (especially 4K, HEVC, or high-bitrate H.264) often
@@ -178,6 +181,21 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
         setIsPlaying(status.isPlaying);
         if (status.autoplayBlocked) setAutoplayBlocked(true);
         if (status.error) {
+          // Suppress transient iOS AVFoundation errors that resolve on their own.
+          // -12889: HTTP/2 stream pool exhausted (too many concurrent players)
+          // -12318: Persistent HTTP/2 connection error (network hiccup)
+          // -15628: Player item failed to play to end (interrupt during seek)
+          // These are infrastructure-level, not content errors — showing an error
+          // UI for them just confuses users when the video recovers automatically.
+          const errorCode = (status.error as any)?.code ?? (status.error as any)?.domain ?? '';
+          const isTransientIosError = Platform.OS === 'ios' &&
+            (String(errorCode).includes('-12889') ||
+             String(errorCode).includes('-12318') ||
+             String(errorCode).includes('-15628'));
+          if (isTransientIosError) {
+            console.warn(`[VideoCardV2][iOS] Transient AVFoundation error suppressed for ${video.id}:`, status.error);
+            return;
+          }
           console.error(`[VideoCardV2][${Platform.OS}] Player error for ${video.id}:`, status.error);
           setError(true);
           setVideoError(createVideoError(status.error, video.id, {
