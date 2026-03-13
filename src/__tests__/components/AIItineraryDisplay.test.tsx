@@ -27,6 +27,21 @@ jest.mock('expo-linear-gradient', () => ({
   LinearGradient: 'LinearGradient',
 }));
 
+// Mock ad delivery and user context hooks added by ad targeting
+jest.mock('../../hooks/ads', () => ({
+  useAdDelivery: () => ({ ads: [], fetchAds: jest.fn() }),
+  useAdTracking: () => ({ trackImpression: jest.fn(), trackClick: jest.fn(), flush: jest.fn() }),
+}));
+jest.mock('../../context/UserProfileContext', () => ({
+  useUserProfile: () => ({ userProfile: null }),
+}));
+jest.mock('../../utils/calculateAge', () => ({
+  calculateAge: () => 0,
+}));
+jest.mock('../../hooks/useTravelPreferences', () => ({
+  useTravelPreferences: () => ({ defaultProfile: null, profiles: [], preferences: null, loading: false, error: null }),
+}));
+
 import { AIItineraryDisplay } from '../../components/ai/AIItineraryDisplay';
 import { AIGeneratedItinerary } from '../../hooks/useAIGeneratedItineraries';
 import { setDoc } from 'firebase/firestore';

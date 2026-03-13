@@ -32,7 +32,11 @@ service cloud.firestore {
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ratings']) &&
           // 2. Rater cannot rate themselves
           request.auth.uid != userId &&
-          // 3. Rating value is valid (1-5)
+          // 3. Nested map guards: ratings and ratedBy must exist before accessing nested value
+          request.resource.data.ratings is map &&
+          request.resource.data.ratings.ratedBy is map &&
+          request.resource.data.ratings.ratedBy[request.auth.uid] is map &&
+          // 4. Rating value is valid (1-5)
           request.resource.data.ratings.ratedBy[request.auth.uid].rating is number &&
           request.resource.data.ratings.ratedBy[request.auth.uid].rating >= 1 &&
           request.resource.data.ratings.ratedBy[request.auth.uid].rating <= 5
@@ -178,7 +182,7 @@ service cloud.firestore {
           // Inviter cannot change ownership of the invite
           request.resource.data.inviterUserId == resource.data.inviterUserId &&
           // Inviter is not allowed to modify acceptance-related fields
-          !resource.data.diff(request.resource.data).affectedKeys().hasAny(['acceptedByUserId', 'status'])
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['acceptedByUserId', 'status'])
         ) ||
         // Accepter can mark as accepted: may only change acceptedByUserId and status
         (
@@ -188,11 +192,52 @@ service cloud.firestore {
           // Inviter must remain the same
           request.resource.data.inviterUserId == resource.data.inviterUserId &&
           // Only acceptance-related fields may change
-          resource.data.diff(request.resource.data).affectedKeys().hasOnly(['acceptedByUserId', 'status'])
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['acceptedByUserId', 'status'])
         )
       );
       // Admins can read all invites for analytics
       allow read: if request.auth != null && request.auth.token.admin == true;
+    }
+
+    // ─── Ads Campaigns (voyager-ads advertiser platform) ──────────────────────
+    // Documents in this collection are owned 1:1 by the advertiser who created them.
+    // No cross-user reads, no anonymous access, no client-side admin escalation.
+    match /ads_campaigns/{campaignId} {
+      // Read: authenticated owner only
+      allow read: if request.auth != null
+        && resource.data.uid == request.auth.uid;
+
+      // Create: authenticated, uid must match caller, required fields present
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasAll(['uid', 'name', 'status', 'placement', 'createdAt'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 200
+        // Campaigns must start under review; only admins can approve via Admin SDK.
+        && request.resource.data.isUnderReview == true;
+
+      // Update: owner only, cannot change uid or createdAt (immutable audit fields).
+      // isUnderReview may be set to true by the owner (re-flags the campaign for admin
+      // re-review after an edit). Only admins can clear it to false via Admin SDK.
+      allow update: if request.auth != null
+        && resource.data.uid == request.auth.uid
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['uid', 'createdAt'])
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['isUnderReview'])
+            || request.resource.data.isUnderReview == true);
+
+      // Delete: owner only
+      allow delete: if request.auth != null
+        && resource.data.uid == request.auth.uid;
+
+      // Daily metric snapshots — readable by the owning advertiser and admins.
+      // Written exclusively by server-side tracking pipeline (Admin SDK).
+      match /daily_metrics/{date} {
+        allow read: if request.auth != null
+          && (request.auth.token.admin == true
+              || get(/databases/$(database)/documents/ads_campaigns/$(campaignId)).data.uid == request.auth.uid);
+        allow write: if false; // writes via Admin SDK only
+      }
     }
   }
 }

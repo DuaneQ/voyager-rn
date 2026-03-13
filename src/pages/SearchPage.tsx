@@ -14,7 +14,7 @@
  * 5. Mutual likes create connection → chat enabled
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -37,7 +37,7 @@ if (Platform.OS === 'web') {
     useEffect(() => {
       const cleanup = callback();
       return cleanup;
-    }, []);
+    }, [callback]);
   };
 } else {
   useFocusEffect = require('@react-navigation/native').useFocusEffect;
@@ -56,6 +56,10 @@ import { saveViewedItinerary, hasViewedItinerary } from '../utils/viewedStorage'
 import AddItineraryModal from '../components/search/AddItineraryModal';
 import { FeedbackButton } from '../components/utilities/FeedbackButton';
 import SubscriptionCard from '../components/common/SubscriptionCard';
+import { SponsoredItineraryCard } from '../components/ads';
+import { useAdDelivery, useAdTracking } from '../hooks/ads';
+import { calculateAge } from '../utils/calculateAge';
+import { useTravelPreferences } from '../hooks/useTravelPreferences';
 
 const SearchPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -86,6 +90,17 @@ const SearchPage: React.FC = () => {
     hasMore, 
     error: searchError 
   } = useSearchItineraries();
+
+  // ─── Ad delivery hooks ───────────────────────────────────────────
+  const { ads: sponsoredAds, fetchAds: fetchSearchAds } = useAdDelivery('itinerary_feed');
+  const { trackImpression, trackClick } = useAdTracking();
+  const { defaultProfile: travelProfile } = useTravelPreferences();
+
+  /** Show interstitial sponsored card after every N like/dislike actions. */
+  const AD_INTERSTITIAL_INTERVAL = 3;
+  const actionCountRef = useRef(0);
+  const [showingSponsoredAd, setShowingSponsoredAd] = useState(false);
+  const currentAdIndexRef = useRef(0);
 
   // Mock itineraries shown only when user has no real itineraries
   const mockItineraries = [
@@ -176,6 +191,33 @@ const SearchPage: React.FC = () => {
       return;
     }
 
+    // Fetch ads with targeting context from the selected itinerary
+    const userContext: Record<string, string | number | string[] | undefined> = {
+      destination: selectedItinerary.destination ?? undefined,
+    };
+    // Include date context if available (cast to access fields)
+    const itin = selectedItinerary as unknown as Record<string, unknown>;
+    if (typeof itin.startDate === 'string') userContext.travelStartDate = itin.startDate;
+    if (typeof itin.endDate === 'string') userContext.travelEndDate = itin.endDate;
+    // Include demographic context from user profile for gender/age targeting
+    if (userProfile?.gender) userContext.gender = userProfile.gender;
+    if (userProfile?.dob) {
+      const age = calculateAge(userProfile.dob);
+      if (age > 0) userContext.age = age;
+    }
+    // Enrich with travel preferences from user's default profile
+    if (travelProfile?.activities && travelProfile.activities.length > 0) {
+      userContext.activityPreferences = travelProfile.activities;
+    }
+    if (travelProfile?.travelStyle) {
+      userContext.travelStyles = [travelProfile.travelStyle];
+    }
+    fetchSearchAds(userContext as any);
+
+    // Reset interstitial counter for new search
+    actionCountRef.current = 0;
+    setShowingSponsoredAd(false);
+
     // Trigger search for matching itineraries
     await searchItineraries(selectedItinerary as any, userId);
   };
@@ -198,6 +240,28 @@ const SearchPage: React.FC = () => {
     setModalVisible(false);
     showAlert('Itinerary saved successfully!', 'success');
   };
+
+  /**
+   * After a like/dislike action, check if it's time to show a sponsored
+   * interstitial card before the next organic match.
+   */
+  const maybeShowInterstitialAd = useCallback(() => {
+    actionCountRef.current += 1;
+    if (
+      sponsoredAds.length > 0 &&
+      actionCountRef.current % AD_INTERSTITIAL_INTERVAL === 0
+    ) {
+      // Rotate through available ads
+      currentAdIndexRef.current = currentAdIndexRef.current % sponsoredAds.length;
+      setShowingSponsoredAd(true);
+    }
+  }, [sponsoredAds]);
+
+  /** User dismissed or interacted with the interstitial ad. */
+  const handleAdDismiss = useCallback(() => {
+    currentAdIndexRef.current += 1;
+    setShowingSponsoredAd(false);
+  }, []);
 
   const handleLike = async (itinerary: Itinerary) => {
     if (!userId) {
@@ -290,6 +354,9 @@ const SearchPage: React.FC = () => {
       
       // Advance to next itinerary
       await getNextItinerary();
+
+      // Check if we should show an interstitial ad
+      maybeShowInterstitialAd();
       
     } catch (error: any) {
       console.error('[SearchPage] Error handling like:', error);
@@ -325,6 +392,9 @@ const SearchPage: React.FC = () => {
       
       // Advance to next itinerary
       getNextItinerary();
+
+      // Check if we should show an interstitial ad
+      maybeShowInterstitialAd();
       
     } catch (error) {
       console.error('[SearchPage] Error handling dislike:', error);
@@ -456,18 +526,33 @@ const SearchPage: React.FC = () => {
                     <Text style={[styles.loadingText, { color: '#fff' }]}>Searching for matches...</Text>
                   </View>
                 ) : matchingItineraries.length > 0 ? (
-                  /* Show ItineraryCard for current match */
+                  /* Show ItineraryCard for current match — or interstitial ad */
                   <ScrollView 
                     style={styles.cardScrollContainer}
                     contentContainerStyle={styles.cardScrollContent}
                     showsVerticalScrollIndicator={false}
                   >
-                    <ItineraryCard
-                      itinerary={matchingItineraries[0] as any}
-                      onLike={handleLike}
-                      onDislike={handleDislike}
-                      showEditDelete={false}
-                    />
+                    {showingSponsoredAd && sponsoredAds.length > 0 ? (
+                      <SponsoredItineraryCard
+                        ad={sponsoredAds[currentAdIndexRef.current % sponsoredAds.length]}
+                        isVisible
+                        onImpression={trackImpression}
+                        onCtaPress={(campaignId) => {
+                          trackClick(campaignId);
+                          handleAdDismiss();
+                        }}
+                        onDismiss={(campaignId) => {
+                          handleAdDismiss();
+                        }}
+                      />
+                    ) : (
+                      <ItineraryCard
+                        itinerary={matchingItineraries[0] as any}
+                        onLike={handleLike}
+                        onDislike={handleDislike}
+                        showEditDelete={false}
+                      />
+                    )}
                   </ScrollView>
                 ) : (
                   /* No matches found */

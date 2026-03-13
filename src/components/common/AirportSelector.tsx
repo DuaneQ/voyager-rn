@@ -58,7 +58,7 @@ const AirportSelector: React.FC<AirportSelectorProps> = ({
 
   // Determine whether an airport should be considered international.
   // Returns true/false when decisive, otherwise undefined.
-  const determineInternational = (airport: Airport, loc?: string): boolean | undefined => {
+  const determineInternational = useCallback((airport: Airport, loc?: string): boolean | undefined => {
     // If service already provided an explicit flag, trust it
     if (typeof airport.isInternational === 'boolean') return airport.isInternational;
 
@@ -77,31 +77,29 @@ const AirportSelector: React.FC<AirportSelectorProps> = ({
 
     // Not decisive
     return undefined;
-  };
+  }, [curatedMajorInternational]);
 
   // Load selected airport details with race condition guard
   useEffect(() => {
     if (selectedAirportCode) {
-      loadAirportByCode(selectedAirportCode);
+      // Inline to avoid stale closure; only depends on selectedAirportCode
+      const loadAirport = async (code: string) => {
+        if (isLoadingInitial) return;
+        setIsLoadingInitial(true);
+        try {
+          const airport = await airportService.getAirportByIataCode(code);
+          setSelectedAirport(airport);
+        } catch (_error) {
+          // Silently fail - UI will show error state
+        } finally {
+          setIsLoadingInitial(false);
+        }
+      };
+      loadAirport(selectedAirportCode);
     } else {
       setSelectedAirport(null);
     }
-  }, [selectedAirportCode]);
-
-  const loadAirportByCode = async (code: string) => {
-    // Prevent race conditions from multiple simultaneous loads
-    if (isLoadingInitial) return;
-    
-    setIsLoadingInitial(true);
-    try {
-      const airport = await airportService.getAirportByIataCode(code);
-      setSelectedAirport(airport);
-    } catch (error) {
-      // Silently fail - UI will show error state
-    } finally {
-      setIsLoadingInitial(false);
-    }
-  };
+  }, [selectedAirportCode, isLoadingInitial, airportService]);
 
   const searchAirports = useCallback(async (query: string) => {
     if (query.length < 2) {
@@ -287,7 +285,7 @@ const AirportSelector: React.FC<AirportSelectorProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [location]);
+  }, [location, airportService, determineInternational]);
 
   // Auto-search when modal opens with location context
   useEffect(() => {

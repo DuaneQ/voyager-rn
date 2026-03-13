@@ -126,9 +126,7 @@ const docRef = doc((firebaseCfg as any).db, 'users', userIdNow);
       return false;
     }
 
-    console.log('[useUsageTracking] 🚀 trackView START:', {
-      localViewCount: userProfile?.dailyUsage?.viewCount || 0
-    });
+    console.log('[useUsageTracking] 🚀 trackView START for user:', userIdNow);
 
     // Fetch fresh data from Firestore before checking limit
     try {

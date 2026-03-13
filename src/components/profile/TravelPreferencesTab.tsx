@@ -93,10 +93,13 @@ export const TravelPreferencesTab: React.FC<TravelPreferencesTabProps> = ({
   });
 
   // Initialize with default profile if exists
+  // Intentionally omit formData.name from deps — this is a one-time initialization
+  // that should not re-run when the user edits the name field.
   React.useEffect(() => {
     if (profiles.length > 0 && defaultProfile && !formData.name) {
       setFormData(defaultProfile);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profiles, defaultProfile]);
 
   // Toggle section expansion

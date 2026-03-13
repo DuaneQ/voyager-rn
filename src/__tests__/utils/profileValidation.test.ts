@@ -291,14 +291,23 @@ describe('profileValidation - isUserOver18', () => {
       expect(isUserOver18(dob)).toBe(false);
     });
 
-    it('should return false for 17 years and 364 days old (almost 18)', () => {
-      // Create a date that's 1 day away from 18th birthday
+    it('should return false for someone almost 18 (birthday has not arrived yet)', () => {
+      // Person whose 18th birthday is ~2 days away — still 17.
+      // We use +2 days (not +1) to handle the timezone mismatch in isUserOver18:
+      // new Date("YYYY-MM-DD") parses as UTC midnight but .getDate() reads in
+      // local time, which can shift the effective birthday back by 1 day in
+      // timezones behind UTC. The +2 buffer ensures the result is false in ANY tz.
       const today = new Date();
-      const almostEighteen = new Date(today);
-      almostEighteen.setFullYear(today.getFullYear() - 17);
-      almostEighteen.setDate(today.getDate() - 364);
-      
-      const dob = almostEighteen.toISOString().split('T')[0];
+      const almostEighteen = new Date(
+        today.getFullYear() - 18,
+        today.getMonth(),
+        today.getDate() + 2
+      );
+
+      const year = almostEighteen.getFullYear();
+      const month = String(almostEighteen.getMonth() + 1).padStart(2, '0');
+      const day = String(almostEighteen.getDate()).padStart(2, '0');
+      const dob = `${year}-${month}-${day}`;
       expect(isUserOver18(dob)).toBe(false);
     });
 

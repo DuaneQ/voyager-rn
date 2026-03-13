@@ -77,9 +77,11 @@ const ChatThreadScreen: React.FC<ChatThreadScreenProps> = (props) => {
   const { showAlert } = useAlert();
   
   // Check if we can go back in navigation history (native) or browser history (web)
+  // Always call hook unconditionally (Rules of Hooks); ignore result on web
+  const nativeCanGoBack = useNavigationState(state => state?.routes?.length > 1);
   const canGoBack = Platform.OS === 'web' 
     ? (typeof window !== 'undefined' && window.history.length > 1)
-    : useNavigationState(state => state?.routes?.length > 1);
+    : nativeCanGoBack;
   
   // Safe back handler - falls back to Chat tab if no history (e.g., direct URL navigation on web)
   const handleBack = () => {

@@ -131,6 +131,22 @@ jest.mock('../../utils/videoSharing', () => ({
   shareVideo: jest.fn(),
 }));
 
+// Mock ad delivery, frequency, user context, and travel preferences hooks
+jest.mock('../../hooks/ads', () => ({
+  useAdDelivery: () => ({ ads: [], fetchAds: jest.fn() }),
+  useAdTracking: () => ({ trackImpression: jest.fn(), trackClick: jest.fn(), trackQuartile: jest.fn(), flush: jest.fn() }),
+  useAdFrequency: () => ({ spliceAdsIntoList: (videos: any[]) => videos.map((v: any) => ({ type: 'video', item: v })), resetSessionCount: jest.fn() }),
+}));
+jest.mock('../../context/UserProfileContext', () => ({
+  useUserProfile: () => ({ userProfile: null }),
+}));
+jest.mock('../../utils/calculateAge', () => ({
+  calculateAge: () => 0,
+}));
+jest.mock('../../hooks/useTravelPreferences', () => ({
+  useTravelPreferences: () => ({ defaultProfile: null, profiles: [], preferences: null, loading: false, error: null }),
+}));
+
 describe('VideoFeedPage - Upload Modal Behavior', () => {
   beforeEach(() => {
     jest.clearAllMocks();

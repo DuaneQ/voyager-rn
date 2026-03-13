@@ -245,6 +245,9 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
     setShowTransitionOverlay(true);
   }, [video.id]);
 
+  // Lazy-creation key: only re-run this effect for isActive changes on Android
+  const lazyActiveKey = useLazyCreation ? isActive : '__skip__';
+
   // ────────────────────────────────────────────────────────────────────
   // ANDROID: LAZY PLAYER CREATION
   // Only allocate an ExoPlayer (and its MediaCodec hardware decoder) for
@@ -286,16 +289,22 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
       isUnmountedRef.current = true;
       teardownPlayer(playerInstance);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    useLazyCreation ? isActive : '__skip__', 
+    lazyActiveKey, 
     video.id, 
     video.videoUrl, 
     video.muxPlaybackUrl,
     isMuxProcessing,
     isRecentUpload,
-    needsMuxProcessing
+    needsMuxProcessing,
+    useLazyCreation,
+    isActive,
+    createAndRegisterPlayer,
+    teardownPlayer,
   ]);
+
+  // Eager-creation key: only re-run this effect for video changes on iOS/Web
+  const eagerVideoKey = useLazyCreation ? '__skip__' : video.id;
 
   // ────────────────────────────────────────────────────────────────────
   // iOS / WEB: EAGER PLAYER CREATION
@@ -313,8 +322,7 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
       isUnmountedRef.current = true;
       teardownPlayer(playerInstance);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [useLazyCreation ? '__skip__' : video.id, video.videoUrl]);
+  }, [eagerVideoKey, video.videoUrl, useLazyCreation, createAndRegisterPlayer, teardownPlayer]);
 
   /**
    * Handle isActive + userPaused changes — manages play/pause at runtime.
@@ -674,6 +682,14 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
       {/* Action buttons */}
       {renderActionButtons()}
       
+      {/* TODO: Ad CTA overlay — when this card renders an ad creative (has a landingUrl),
+           render a small tappable pill/card anchored to the bottom of the frame showing
+           primaryText snippet + CTA label (e.g. "Book Now →") that opens landingUrl in
+           the browser via Linking.openURL(). Pattern: TikTok "Shop Now" bar / Reels CTA
+           pill. Requires VideoCardV2Props to accept an optional `ad` prop with
+           { primaryText, cta, landingUrl } so the component stays decoupled from the
+           campaign data model. */}
+
       {/* Mute button */}
       <View style={[styles.muteButtonWrapper, { pointerEvents: 'box-none' }]}>
         <TouchableOpacity onPress={handleMuteToggle} style={styles.muteButton}>

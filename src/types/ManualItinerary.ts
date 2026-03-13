@@ -12,7 +12,7 @@ export interface ManualItineraryFormData {
   activities: string[];
   
   // Preference filters for matching
-  gender: 'Male' | 'Female' | 'Non-binary' | 'Prefer not to say' | 'Transgender Woman' | 'Transgender Man' | 'Gender Neutral' | 'Couple' | 'No Preference';
+  gender: 'Male' | 'Female' | 'Non-binary' | 'Prefer not to say' | 'Transgender Woman' | 'Transgender Man' | 'Gender Neutral' | 'No Preference';
   status: 'Single' | 'Couple' | 'Group' | 'No Preference';
   sexualOrientation: 'Heterosexual' | 'Homosexual' | 'Bisexual' | 'Asexual' | 'Pansexual' | 'Queer' | 'Questioning' | 'Other' | 'Prefer not to say' | 'Transgender Woman' | 'Transgender Man' | 'No Preference';
   lowerRange: number; // Min age preference
@@ -73,7 +73,6 @@ export const GENDER_OPTIONS = [
   'Transgender Woman',
   'Transgender Man',
   'Gender Neutral',
-  'Couple',
   'No Preference'
 ] as const;
 
