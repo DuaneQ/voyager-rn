@@ -82,7 +82,27 @@ export const isUserOver18 = (dob: string | undefined): boolean => {
   if (!dob) return false;
   
   try {
-    const birthDate = new Date(dob);
+    // Validate format before parsing — reject anything that isn't YYYY-MM-DD.
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dob)) return false;
+
+    // Parse as local midnight — new Date("YYYY-MM-DD") is UTC midnight which
+    // shifts the date by the local UTC offset (e.g. -1 day in US timezones).
+    const [year, month, day] = dob.split('-').map(Number);
+
+    // Validate ranges before constructing — new Date() silently normalises
+    // out-of-range values (e.g. month=0 → Nov of prior year) which would let
+    // malformed DOB strings pass the age gate.
+    if (month < 1 || month > 12 || day < 1 || day > 31) return false;
+
+    const birthDate = new Date(year, month - 1, day); // local midnight
+
+    // Confirm the constructed date wasn't normalised (e.g. Feb 31 → Mar 3).
+    if (
+      birthDate.getFullYear() !== year ||
+      birthDate.getMonth() !== month - 1 ||
+      birthDate.getDate() !== day
+    ) return false;
+
     const today = new Date();
     const age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();

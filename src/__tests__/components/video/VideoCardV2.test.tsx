@@ -104,7 +104,7 @@ describe('VideoCardV2', () => {
 
   const defaultProps = {
     video: defaultVideo,
-    isActive: false,
+    isActive: true, // lazy creation is now active on iOS too — player only creates when isActive=true
     isMuted: true,
     onMuteToggle: jest.fn(),
     onViewTracked: jest.fn(() => {
@@ -304,26 +304,27 @@ describe('VideoCardV2', () => {
 
   describe('Active State Handling', () => {
     it('should not autoplay when not active', async () => {
+      // With lazy creation (iOS + Android), no player is created until the
+      // card becomes active. Inactive cards produce no player and no play call.
+      // render() wraps in act() which flushes synchronous effects — no sleep needed.
       render(<VideoCardV2 {...defaultProps} isActive={false} />);
-      
-      await waitFor(() => {
-        expect(mockFactory.createPlayer).toHaveBeenCalled();
-      });
-      
+
+      expect(mockFactory.createPlayer).not.toHaveBeenCalled();
       expect(mockPlayer.play).not.toHaveBeenCalled();
     });
 
     it('should play when becomes active', async () => {
+      // With lazy creation the player is NOT created on initial render when
+      // isActive=false. It gets created only once the card becomes active.
       const { rerender } = render(<VideoCardV2 {...defaultProps} isActive={false} />);
-      
+
+      expect(mockFactory.createPlayer).not.toHaveBeenCalled();
+
+      // Activate — player should now be created and start playing
+      rerender(<VideoCardV2 {...defaultProps} isActive={true} />);
+
       await waitFor(() => {
         expect(mockFactory.createPlayer).toHaveBeenCalled();
-      });
-      
-      // Update to active — player already exists, should start playing
-      rerender(<VideoCardV2 {...defaultProps} isActive={true} />);
-      
-      await waitFor(() => {
         expect(mockPlayer.play).toHaveBeenCalled();
       });
     });
