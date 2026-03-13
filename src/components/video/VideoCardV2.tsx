@@ -187,7 +187,15 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
           // -15628: Player item failed to play to end (interrupt during seek)
           // These are infrastructure-level, not content errors — showing an error
           // UI for them just confuses users when the video recovers automatically.
-          const errorCode = (status.error as any)?.code ?? (status.error as any)?.domain ?? '';
+          const errorCode = (() => {
+            const e: unknown = status.error;
+            if (e !== null && typeof e === 'object') {
+              const { code, domain } = e as { code?: unknown; domain?: unknown };
+              if (typeof code !== 'undefined') return String(code);
+              if (typeof domain !== 'undefined') return String(domain);
+            }
+            return '';
+          })();
           const isTransientIosError = Platform.OS === 'ios' &&
             (String(errorCode).includes('-12889') ||
              String(errorCode).includes('-12318') ||
@@ -255,12 +263,12 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
   // This keeps concurrent decoders at 1 (max 8 on MediaTek).
   // ────────────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!useLazyCreation) return; // iOS/Web handled by next effect
+    if (!useLazyCreation) return; // Web handled by next effect
 
     isUnmountedRef.current = false;
 
     if (!isActive) {
-      // Not active on Android → no player, show thumbnail
+      // Not active (iOS/Android) → no player, show thumbnail
       setPlayer(null);
       setExpoPlayer(null);
       expoPlayerRef.current = null;
@@ -278,7 +286,7 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
       return;
     }
 
-    // Active on Android → create player and start playback
+    // Active (iOS/Android) → create player and start playback
     setUserPaused(false);
     const playerInstance = createAndRegisterPlayer();
     if (playerInstance) {
@@ -307,13 +315,13 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
   const eagerVideoKey = useLazyCreation ? '__skip__' : video.id;
 
   // ────────────────────────────────────────────────────────────────────
-  // iOS / WEB: EAGER PLAYER CREATION
+  // WEB: EAGER PLAYER CREATION
   // Create player on mount, keep it alive regardless of isActive.
   // Play/pause is managed by the separate userPaused effect below.
-  // No decoder limit issues on these platforms.
+  // No decoder limit issues on web.
   // ────────────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (useLazyCreation) return; // Android handled by previous effect
+    if (useLazyCreation) return; // iOS/Android handled by previous effect
 
     isUnmountedRef.current = false;
     const playerInstance = createAndRegisterPlayer();
@@ -326,8 +334,8 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
 
   /**
    * Handle isActive + userPaused changes — manages play/pause at runtime.
-   * On Android (lazy), the player only exists while active so this is a
-   * secondary guard. On iOS/Web (eager), this is the primary play/pause driver.
+   * On iOS/Android (lazy), the player only exists while active so this is a
+   * secondary guard. On Web (eager), this is the primary play/pause driver.
    */
   useEffect(() => {
     if (!player) return;
@@ -585,13 +593,13 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
   }
 
   /**
-   * On iOS/Web (eager): expoPlayer is set on mount, so this only shows
-   * briefly during the very first frame. On Android (lazy): expoPlayer
+   * On Web (eager): expoPlayer is set on mount, so this only shows
+   * briefly during the very first frame. On iOS/Android (lazy): expoPlayer
    * is null for non-active cells, but we still need action buttons etc.
-   * So we skip the early return on Android and let the main render
+   * So we skip the early return on iOS/Android and let the main render
    * handle the thumbnail-vs-VideoView swap inside the full layout.
    */
-  if (!expoPlayer && Platform.OS !== 'android') {
+  if (!expoPlayer && !useLazyCreation) {
     return (
       <View style={containerStyle}>
         {(video.muxThumbnailUrl || video.thumbnailUrl) ? (
