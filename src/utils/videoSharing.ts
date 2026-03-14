@@ -43,7 +43,6 @@ export const shareVideo = async (video: Video): Promise<boolean> => {
         try {
           await navigator.share({
             title: video.title || 'Check out this video on TravalPass',
-            text: 'Watch this amazing travel video!',
             url: generateVideoShareUrl(video),
           });
           return true;
