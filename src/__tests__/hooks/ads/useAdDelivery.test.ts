@@ -116,6 +116,88 @@ describe('useAdDelivery', () => {
     );
   });
 
+  describe('date sanitization', () => {
+    it('should strip travelStartDate that is not a YYYY-MM-DD string', async () => {
+      mockSelectAdsFn.mockResolvedValue({ data: { ads: [], count: 0 } });
+      const { result } = renderHook(() => useAdDelivery('ai_slot'));
+
+      await act(async () => {
+        await result.current.fetchAds({
+          destination: 'Paris',
+          travelStartDate: '2025/07/01' as any, // wrong format — slashes
+        });
+      });
+
+      const sent = mockSelectAdsFn.mock.calls[0][0];
+      expect(sent.userContext).not.toHaveProperty('travelStartDate');
+      expect(sent.userContext).toHaveProperty('destination', 'Paris');
+    });
+
+    it('should strip travelStartDate that is a timestamp number', async () => {
+      mockSelectAdsFn.mockResolvedValue({ data: { ads: [], count: 0 } });
+      const { result } = renderHook(() => useAdDelivery('ai_slot'));
+
+      await act(async () => {
+        await result.current.fetchAds({
+          travelStartDate: 1719792000000 as any, // epoch ms
+        });
+      });
+
+      const sent = mockSelectAdsFn.mock.calls[0][0];
+      expect(sent.userContext).not.toHaveProperty('travelStartDate');
+    });
+
+    it('should strip travelEndDate that is malformed', async () => {
+      mockSelectAdsFn.mockResolvedValue({ data: { ads: [], count: 0 } });
+      const { result } = renderHook(() => useAdDelivery('ai_slot'));
+
+      await act(async () => {
+        await result.current.fetchAds({
+          travelEndDate: 'July 10 2025' as any,
+        });
+      });
+
+      const sent = mockSelectAdsFn.mock.calls[0][0];
+      expect(sent.userContext).not.toHaveProperty('travelEndDate');
+    });
+
+    it('should forward valid YYYY-MM-DD dates unchanged', async () => {
+      mockSelectAdsFn.mockResolvedValue({ data: { ads: [], count: 0 } });
+      const { result } = renderHook(() => useAdDelivery('ai_slot'));
+
+      await act(async () => {
+        await result.current.fetchAds({
+          destination: 'Tokyo',
+          travelStartDate: '2025-08-01',
+          travelEndDate: '2025-08-10',
+        });
+      });
+
+      const sent = mockSelectAdsFn.mock.calls[0][0];
+      expect(sent.userContext).toEqual({
+        destination: 'Tokyo',
+        travelStartDate: '2025-08-01',
+        travelEndDate: '2025-08-10',
+      });
+    });
+
+    it('should preserve non-date context fields when dates are stripped', async () => {
+      mockSelectAdsFn.mockResolvedValue({ data: { ads: [], count: 0 } });
+      const { result } = renderHook(() => useAdDelivery('ai_slot'));
+
+      await act(async () => {
+        await result.current.fetchAds({
+          destination: 'Bali',
+          gender: 'female',
+          travelStartDate: 'not-a-date' as any,
+        });
+      });
+
+      const sent = mockSelectAdsFn.mock.calls[0][0];
+      expect(sent.userContext).toEqual({ destination: 'Bali', gender: 'female' });
+    });
+  });
+
   it('should handle errors gracefully', async () => {
     mockSelectAdsFn.mockRejectedValue(new Error('Network error'));
 
