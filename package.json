@@ -7,6 +7,7 @@
     "# === APP LAUNCH ===": "",
     "start": "expo start",
     "start:android": "expo run:android",
+    "start:android:emu": "$HOME/Library/Android/sdk/emulator/emulator @Pixel_9a -no-snapshot-load & (until $HOME/Library/Android/sdk/platform-tools/adb shell getprop sys.boot_completed 2>/dev/null | grep -q 1; do sleep 2; done) && expo run:android",
     "start:ios": "expo run:ios",
     "start:web": "expo start --web",
     "postinstall": "patch-package",
