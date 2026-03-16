@@ -68,11 +68,28 @@ export function useAdDelivery(
       setLoading(true)
       setError(null)
 
+      // Strip date fields that don't match YYYY-MM-DD to avoid cloud function validation errors
+      const isValidDate = (v: unknown): boolean =>
+        typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)
+
+      let sanitizedContext: UserAdContext | undefined = userContext
+      if (userContext) {
+        const { travelStartDate, travelEndDate, ...rest } = userContext as UserAdContext & {
+          travelStartDate?: unknown
+          travelEndDate?: unknown
+        }
+        sanitizedContext = {
+          ...rest,
+          ...(isValidDate(travelStartDate) ? { travelStartDate: travelStartDate as string } : {}),
+          ...(isValidDate(travelEndDate) ? { travelEndDate: travelEndDate as string } : {}),
+        } as UserAdContext
+      }
+
       try {
         const result = await selectAdsFn({
           placement,
           limit,
-          userContext,
+          userContext: sanitizedContext,
         })
 
         const response = result.data
