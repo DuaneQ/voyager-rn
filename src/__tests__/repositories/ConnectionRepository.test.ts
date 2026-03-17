@@ -101,6 +101,14 @@ describe('ConnectionRepository', () => {
   };
 
   describe('createConnection', () => {
+    beforeEach(() => {
+      // The createConnection implementation calls getDocs for a duplicate-connection guard
+      // before calling addDoc. Mock it to return an empty snapshot (no existing connection).
+      mockGetDocs.mockResolvedValue({ docs: [] });
+      mockQuery.mockReturnValue({});
+      mockWhere.mockReturnValue({});
+    });
+
     it('should create connection successfully with auto-generated ID', async () => {
       const mockDocRef = { id: 'auto-generated-id-123' };
       mockAddDoc.mockResolvedValue(mockDocRef);
