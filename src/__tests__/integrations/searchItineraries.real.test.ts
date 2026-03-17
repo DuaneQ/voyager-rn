@@ -244,6 +244,79 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
 
       
     });
+
+    it('should include candidates with "No Preference" itinerary gender whose userInfo.gender is Female when searching for Female', async () => {
+      // Production bug: searcher has gender "Female" (wants to travel with females)
+      // Candidate has gender "No Preference" on itinerary but userInfo.gender "Female"
+      // Expected: candidate appears. Bug: was excluded because itinerary.gender !== "Female"
+      const now = Date.now();
+      const twoWeeksLater = now + 14 * 24 * 60 * 60 * 1000;
+
+      const results = await callSearchItineraries({
+        destination: 'Amsterdam, Netherlands',
+        gender: 'Female',
+        minStartDay: now,
+        maxEndDay: twoWeeksLater,
+        pageSize: 50,
+        excludedIds: [],
+        blockedUserIds: [],
+        currentUserId: TEST_USER_ID,
+        lowerRange: 20,
+        upperRange: 40,
+      });
+
+      const noPrefFemaleCandidate = results.find(
+        (it: any) => it.gender === 'No Preference' && it.userInfo?.gender === 'Female',
+      );
+      expect(noPrefFemaleCandidate).toBeDefined();
+    });
+
+    it('should include candidates with "No Preference" itinerary gender whose userInfo.gender is Male when searching for Male', async () => {
+      const now = Date.now();
+      const twoWeeksLater = now + 14 * 24 * 60 * 60 * 1000;
+
+      const results = await callSearchItineraries({
+        destination: 'Amsterdam, Netherlands',
+        gender: 'Male',
+        minStartDay: now,
+        maxEndDay: twoWeeksLater,
+        pageSize: 50,
+        excludedIds: [],
+        blockedUserIds: [],
+        currentUserId: TEST_USER_ID,
+        lowerRange: 20,
+        upperRange: 40,
+      });
+
+      const noPrefMaleCandidate = results.find(
+        (it: any) => it.gender === 'No Preference' && it.userInfo?.gender === 'Male',
+      );
+      expect(noPrefMaleCandidate).toBeDefined();
+    });
+
+    it('should NOT include candidates with "No Preference" itinerary gender whose userInfo.gender does not match the preference', async () => {
+      // Searcher wants Female — "No Preference" candidate who IS Male should be excluded
+      const now = Date.now();
+      const twoWeeksLater = now + 14 * 24 * 60 * 60 * 1000;
+
+      const results = await callSearchItineraries({
+        destination: 'Amsterdam, Netherlands',
+        gender: 'Female',
+        minStartDay: now,
+        maxEndDay: twoWeeksLater,
+        pageSize: 50,
+        excludedIds: [],
+        blockedUserIds: [],
+        currentUserId: TEST_USER_ID,
+        lowerRange: 20,
+        upperRange: 40,
+      });
+
+      const noPrefMaleCandidate = results.find(
+        (it: any) => it.gender === 'No Preference' && it.userInfo?.gender === 'Male',
+      );
+      expect(noPrefMaleCandidate).toBeUndefined();
+    });
   });
 
   describe('Age Range Filtering', () => {
@@ -376,6 +449,76 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
 
       
     });
+
+    it('should include candidates with "No Preference" itinerary status whose userInfo.status is single when searching for single', async () => {
+      const now = Date.now();
+      const twoWeeksLater = now + 14 * 24 * 60 * 60 * 1000;
+
+      const results = await callSearchItineraries({
+        destination: 'Rome, Italy',
+        status: 'single',
+        minStartDay: now,
+        maxEndDay: twoWeeksLater,
+        pageSize: 50,
+        excludedIds: [],
+        blockedUserIds: [],
+        currentUserId: TEST_USER_ID,
+        lowerRange: 20,
+        upperRange: 40,
+      });
+
+      const noPrefSingleCandidate = results.find(
+        (it: any) => it.status === 'No Preference' && it.userInfo?.status === 'single',
+      );
+      expect(noPrefSingleCandidate).toBeDefined();
+    });
+
+    it('should include candidates with "No Preference" itinerary status whose userInfo.status is couple when searching for couple', async () => {
+      const now = Date.now();
+      const twoWeeksLater = now + 14 * 24 * 60 * 60 * 1000;
+
+      const results = await callSearchItineraries({
+        destination: 'Rome, Italy',
+        status: 'couple',
+        minStartDay: now,
+        maxEndDay: twoWeeksLater,
+        pageSize: 50,
+        excludedIds: [],
+        blockedUserIds: [],
+        currentUserId: TEST_USER_ID,
+        lowerRange: 20,
+        upperRange: 40,
+      });
+
+      const noPrefCoupleCandidate = results.find(
+        (it: any) => it.status === 'No Preference' && it.userInfo?.status === 'couple',
+      );
+      expect(noPrefCoupleCandidate).toBeDefined();
+    });
+
+    it('should NOT include candidates with "No Preference" itinerary status whose userInfo.status does not match the preference', async () => {
+      // Searcher wants single — "No Preference" candidate who IS a couple should be excluded
+      const now = Date.now();
+      const twoWeeksLater = now + 14 * 24 * 60 * 60 * 1000;
+
+      const results = await callSearchItineraries({
+        destination: 'Rome, Italy',
+        status: 'single',
+        minStartDay: now,
+        maxEndDay: twoWeeksLater,
+        pageSize: 50,
+        excludedIds: [],
+        blockedUserIds: [],
+        currentUserId: TEST_USER_ID,
+        lowerRange: 20,
+        upperRange: 40,
+      });
+
+      const noPrefCoupleCandidate = results.find(
+        (it: any) => it.status === 'No Preference' && it.userInfo?.status === 'couple',
+      );
+      expect(noPrefCoupleCandidate).toBeUndefined();
+    });
   });
 
   describe('Sexual Orientation Filtering', () => {
@@ -452,6 +595,76 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
       });
 
       
+    });
+
+    it('should include candidates with "No Preference" itinerary sexualOrientation whose userInfo.sexualOrientation is heterosexual when searching for heterosexual', async () => {
+      const now = Date.now();
+      const twoWeeksLater = now + 14 * 24 * 60 * 60 * 1000;
+
+      const results = await callSearchItineraries({
+        destination: 'Berlin, Germany',
+        sexualOrientation: 'heterosexual',
+        minStartDay: now,
+        maxEndDay: twoWeeksLater,
+        pageSize: 50,
+        excludedIds: [],
+        blockedUserIds: [],
+        currentUserId: TEST_USER_ID,
+        lowerRange: 20,
+        upperRange: 40,
+      });
+
+      const noPrefHeteroCandidate = results.find(
+        (it: any) => it.sexualOrientation === 'No Preference' && it.userInfo?.sexualOrientation === 'heterosexual',
+      );
+      expect(noPrefHeteroCandidate).toBeDefined();
+    });
+
+    it('should include candidates with "No Preference" itinerary sexualOrientation whose userInfo.sexualOrientation is homosexual when searching for homosexual', async () => {
+      const now = Date.now();
+      const twoWeeksLater = now + 14 * 24 * 60 * 60 * 1000;
+
+      const results = await callSearchItineraries({
+        destination: 'Berlin, Germany',
+        sexualOrientation: 'homosexual',
+        minStartDay: now,
+        maxEndDay: twoWeeksLater,
+        pageSize: 50,
+        excludedIds: [],
+        blockedUserIds: [],
+        currentUserId: TEST_USER_ID,
+        lowerRange: 20,
+        upperRange: 40,
+      });
+
+      const noPrefHomoCandidate = results.find(
+        (it: any) => it.sexualOrientation === 'No Preference' && it.userInfo?.sexualOrientation === 'homosexual',
+      );
+      expect(noPrefHomoCandidate).toBeDefined();
+    });
+
+    it('should NOT include candidates with "No Preference" itinerary sexualOrientation whose userInfo.sexualOrientation does not match the preference', async () => {
+      // Searcher wants heterosexual — "No Preference" candidate who IS homosexual should be excluded
+      const now = Date.now();
+      const twoWeeksLater = now + 14 * 24 * 60 * 60 * 1000;
+
+      const results = await callSearchItineraries({
+        destination: 'Berlin, Germany',
+        sexualOrientation: 'heterosexual',
+        minStartDay: now,
+        maxEndDay: twoWeeksLater,
+        pageSize: 50,
+        excludedIds: [],
+        blockedUserIds: [],
+        currentUserId: TEST_USER_ID,
+        lowerRange: 20,
+        upperRange: 40,
+      });
+
+      const noPrefHomoCandidate = results.find(
+        (it: any) => it.sexualOrientation === 'No Preference' && it.userInfo?.sexualOrientation === 'homosexual',
+      );
+      expect(noPrefHomoCandidate).toBeUndefined();
     });
   });
 
