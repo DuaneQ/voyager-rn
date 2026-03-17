@@ -289,48 +289,70 @@ const SearchPage: React.FC = () => {
 
       // Save as viewed
       saveViewedItinerary(itinerary.id);
+
+      console.log('[MATCH DEBUG] ── handleLike START ──────────────────────────');
+      console.log('[MATCH DEBUG] currentUserId:', userId);
+      console.log('[MATCH DEBUG] selectedItineraryId (my itinerary):', selectedItineraryId);
+      console.log('[MATCH DEBUG] liked itinerary id:', itinerary.id);
+      console.log('[MATCH DEBUG] liked itinerary owner userInfo:', JSON.stringify(itinerary.userInfo));
+      console.log('[MATCH DEBUG] liked itinerary existing likes:', JSON.stringify(itinerary.likes));
       
       // 1. Update the liked itinerary with current user's ID
       const existingLikes = Array.isArray(itinerary.likes) ? itinerary.likes : [];
       const newLikes = Array.from(new Set([...existingLikes, userId]));
+      console.log('[MATCH DEBUG] newLikes being saved to other user\'s itinerary:', JSON.stringify(newLikes));
 
       // Persist likes via RPC (this calls the cloud function)
       try {
         const updatedItinerary = await updateItinerary(itinerary.id, { likes: newLikes });
-        
+        console.log('[MATCH DEBUG] updateItinerary result:', JSON.stringify(updatedItinerary));
       } catch (updateError) {
         console.error('[SearchPage] ❌ Failed to update itinerary likes:', updateError);
         throw new Error('Failed to save like. Please try again.');
       }
       
       // 2. Fetch fresh itineraries to check for mutual match (important!)
-      
+      console.log('[MATCH DEBUG] Calling refreshItineraries() to get fresh my-itinerary data...');
       const freshItineraries = await refreshItineraries();
+      console.log('[MATCH DEBUG] refreshItineraries() returned', freshItineraries?.length, 'itineraries');
+      console.log('[MATCH DEBUG] fresh itinerary ids:', freshItineraries?.map((i: any) => i.id));
       
       // 3. Get the current user's selected itinerary from fresh data
-      const myItinerary = freshItineraries.find(itin => itin.id === selectedItineraryId);
+      const myItinerary = freshItineraries.find((itin: any) => itin.id === selectedItineraryId);
+      console.log('[MATCH DEBUG] myItinerary found:', !!myItinerary, '| id:', myItinerary?.id);
       
       if (!myItinerary) {
-        
+        console.warn('[MATCH DEBUG] ⚠️ myItinerary NOT FOUND in freshItineraries — selectedItineraryId:', selectedItineraryId, '— aborting match check');
         await getNextItinerary();
         return;
       }
+
+      console.log('[MATCH DEBUG] myItinerary.likes (people who liked MY itinerary):', JSON.stringify(myItinerary.likes));
       
       // 4. Check for mutual match
       const otherUserUid = itinerary.userInfo?.uid;
+      console.log('[MATCH DEBUG] otherUserUid (uid of person I just liked):', otherUserUid);
+
       if (!otherUserUid) {
-        
+        console.warn('[MATCH DEBUG] ⚠️ otherUserUid is null/undefined — itinerary.userInfo:', JSON.stringify(itinerary.userInfo), '— aborting match check');
         await getNextItinerary();
         return;
       }
       
       const myLikes = Array.isArray(myItinerary.likes) ? myItinerary.likes : [];
+      console.log('[MATCH DEBUG] myLikes array:', JSON.stringify(myLikes));
+      console.log('[MATCH DEBUG] Does myLikes include otherUserUid?', myLikes.includes(otherUserUid));
 
       if (myLikes.includes(otherUserUid)) {
+        console.log('[MATCH DEBUG] 🎉 MUTUAL MATCH DETECTED — creating connection...');
         // MUTUAL MATCH! Create connection
         try {
-          const myEmail = myItinerary?.userInfo?.email ?? '';
-          const otherEmail = itinerary?.userInfo?.email ?? '';
+          console.log('[MATCH DEBUG] createConnection payload:', JSON.stringify({
+            user1Id: userId,
+            user2Id: otherUserUid,
+            itinerary1Id: selectedItineraryId,
+            itinerary2Id: itinerary.id,
+          }));
 
           await connectionRepository.createConnection({
             user1Id: userId,
@@ -341,6 +363,7 @@ const SearchPage: React.FC = () => {
             itinerary2: itinerary as any
           });
 
+          console.log('[MATCH DEBUG] ✅ createConnection succeeded');
           showAlert('success', "🎉 It's a match! You can now chat with this traveler.");
         } catch (connError: any) {
           console.error('[SearchPage] ❌ Error creating connection:', connError);
@@ -349,7 +372,7 @@ const SearchPage: React.FC = () => {
           showAlert('warning', 'Match detected but connection setup had issues. Please check Chats.');
         }
       } else {
-        // no mutual match yet
+        console.log('[MATCH DEBUG] No mutual match yet. otherUserUid', otherUserUid, 'not in myLikes:', JSON.stringify(myLikes));
       }
       
       // Advance to next itinerary
