@@ -15,57 +15,33 @@
       ]
     },
     {
-      "collectionGroup": "itineraries", 
+      "collectionGroup": "itineraries",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "destination",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "userInfo.gender",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "endDay",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "itineraries",
-      "queryScope": "COLLECTION", 
-      "fields": [
-        {
-          "fieldPath": "destination",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "userInfo.status",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "endDay", 
-          "order": "ASCENDING"
-        }
+        { "fieldPath": "destination", "order": "ASCENDING" },
+        { "fieldPath": "userInfo.gender", "order": "ASCENDING" },
+        { "fieldPath": "endDay", "order": "ASCENDING" },
+        { "fieldPath": "startDay", "order": "ASCENDING" }
       ]
     },
     {
       "collectionGroup": "itineraries",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "destination",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "userInfo.sexualOrientation",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "endDay",
-          "order": "ASCENDING"
-        }
+        { "fieldPath": "destination", "order": "ASCENDING" },
+        { "fieldPath": "userInfo.status", "order": "ASCENDING" },
+        { "fieldPath": "endDay", "order": "ASCENDING" },
+        { "fieldPath": "startDay", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "itineraries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "destination", "order": "ASCENDING" },
+        { "fieldPath": "userInfo.sexualOrientation", "order": "ASCENDING" },
+        { "fieldPath": "endDay", "order": "ASCENDING" },
+        { "fieldPath": "startDay", "order": "ASCENDING" }
       ]
     },
     {
