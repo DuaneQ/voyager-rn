@@ -2,6 +2,11 @@
  * Unit Tests for ConnectionRepository
  * Tests Firestore integration for connection/match operations
  * Follows S.O.L.I.D principles with proper mocking
+ *
+ * NOTE: getDocs must have a default implementation (not bare jest.fn()) because
+ * createConnection calls getDocs for a duplicate-connection guard before addDoc.
+ * jest.clearAllMocks() clears call records but NOT implementations, so the
+ * mockResolvedValue set here persists across all tests unless explicitly overridden.
  */
 
 // Mock Firestore AND firebase-config BEFORE imports
@@ -12,7 +17,9 @@ jest.mock('firebase/firestore', () => ({
   setDoc: jest.fn(),
   addDoc: jest.fn(),
   getDoc: jest.fn(),
-  getDocs: jest.fn(),
+  // Default to an empty snapshot so the duplicate-connection guard in createConnection
+  // does not throw "Cannot read properties of undefined (reading 'docs')".
+  getDocs: jest.fn().mockResolvedValue({ docs: [] }),
   query: jest.fn(),
   where: jest.fn(),
   serverTimestamp: jest.fn(() => ({ __serverTimestamp: true })),
@@ -45,12 +52,17 @@ const mockDoc = firestore.doc as jest.Mock;
 
 beforeEach(() => {
   jest.clearAllMocks();
+  // Restore the getDocs default after clearAllMocks wipes call records.
+  // clearAllMocks does NOT reset implementations, so this line is defensive
+  // but harmless — it ensures tests outside describe('createConnection') also work.
+  mockGetDocs.mockResolvedValue({ docs: [] });
 });
 
 describe('ConnectionRepository', () => {
   beforeEach(() => {
     // Clear all mocks between tests
     jest.clearAllMocks();
+    mockGetDocs.mockResolvedValue({ docs: [] });
   });
 
   const mockItinerary1: Itinerary = {
@@ -101,14 +113,6 @@ describe('ConnectionRepository', () => {
   };
 
   describe('createConnection', () => {
-    beforeEach(() => {
-      // The createConnection implementation calls getDocs for a duplicate-connection guard
-      // before calling addDoc. Mock it to return an empty snapshot (no existing connection).
-      mockGetDocs.mockResolvedValue({ docs: [] });
-      mockQuery.mockReturnValue({});
-      mockWhere.mockReturnValue({});
-    });
-
     it('should create connection successfully with auto-generated ID', async () => {
       const mockDocRef = { id: 'auto-generated-id-123' };
       mockAddDoc.mockResolvedValue(mockDocRef);
