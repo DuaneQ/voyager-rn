@@ -256,7 +256,7 @@ export const generateTestItineraries = () => {
       age: 30,
       likes: '[]',
       activities: '["Biking", "Coffee Shops"]',
-      userInfo: JSON.stringify({
+      userInfo: {
         dob: '1995-01-01',
         uid: generateTestUserId(6),
         email: 'usertravaltest@gmail.com',
@@ -265,7 +265,7 @@ export const generateTestItineraries = () => {
         blocked: [],
         username: 'TestUser_Amsterdam_Male',
         sexualOrientation: 'heterosexual',
-      }),
+      },
     },
     {
       id: `test-amsterdam-female-${timestamp}`,
@@ -285,7 +285,7 @@ export const generateTestItineraries = () => {
       age: 28,
       likes: '[]',
       activities: '["Museums", "Canals"]',
-      userInfo: JSON.stringify({
+      userInfo: {
         dob: '1997-01-01',
         uid: generateTestUserId(7),
         email: 'usertravaltest@gmail.com',
@@ -294,7 +294,7 @@ export const generateTestItineraries = () => {
         blocked: [],
         username: 'TestUser_Amsterdam_Female',
         sexualOrientation: 'heterosexual',
-      }),
+      },
     },
 
     // Amsterdam: "No Preference" itinerary owned by a Female user
@@ -384,7 +384,7 @@ export const generateTestItineraries = () => {
       age: 30,
       likes: '[]',
       activities: '["History", "Food"]',
-      userInfo: JSON.stringify({
+      userInfo: {
         dob: '1995-01-01',
         uid: generateTestUserId(8),
         email: 'usertravaltest@gmail.com',
@@ -393,7 +393,7 @@ export const generateTestItineraries = () => {
         blocked: [],
         username: 'TestUser_Rome_Single',
         sexualOrientation: 'heterosexual',
-      }),
+      },
     },
     {
       id: `test-rome-couple-${timestamp}`,
@@ -413,7 +413,7 @@ export const generateTestItineraries = () => {
       age: 30,
       likes: '[]',
       activities: '["Romantic", "Wine"]',
-      userInfo: JSON.stringify({
+      userInfo: {
         dob: '1995-01-01',
         uid: generateTestUserId(9),
         email: 'usertravaltest@gmail.com',
@@ -422,7 +422,7 @@ export const generateTestItineraries = () => {
         blocked: [],
         username: 'TestUser_Rome_Couple',
         sexualOrientation: 'heterosexual',
-      }),
+      },
     },
 
     // Rome: "No Preference" status itinerary owned by a single user
@@ -512,7 +512,7 @@ export const generateTestItineraries = () => {
       age: 30,
       likes: '[]',
       activities: '["Clubs", "History"]',
-      userInfo: JSON.stringify({
+      userInfo: {
         dob: '1995-01-01',
         uid: generateTestUserId(10),
         email: 'usertravaltest@gmail.com',
@@ -521,7 +521,7 @@ export const generateTestItineraries = () => {
         blocked: [],
         username: 'TestUser_Berlin_Hetero',
         sexualOrientation: 'heterosexual',
-      }),
+      },
     },
     {
       id: `test-berlin-bi-${timestamp}`,
@@ -541,7 +541,7 @@ export const generateTestItineraries = () => {
       age: 28,
       likes: '[]',
       activities: '["Art", "Music"]',
-      userInfo: JSON.stringify({
+      userInfo: {
         dob: '1997-01-01',
         uid: generateTestUserId(11),
         email: 'usertravaltest@gmail.com',
@@ -550,7 +550,7 @@ export const generateTestItineraries = () => {
         blocked: [],
         username: 'TestUser_Berlin_Bi',
         sexualOrientation: 'bisexual',
-      }),
+      },
     },
     {
       id: `test-berlin-homo-${timestamp}`,
@@ -570,7 +570,7 @@ export const generateTestItineraries = () => {
       age: 30,
       likes: '[]',
       activities: '["Pride Events", "Nightlife"]',
-      userInfo: JSON.stringify({
+      userInfo: {
         dob: '1995-01-01',
         uid: generateTestUserId(12),
         email: 'usertravaltest@gmail.com',
@@ -579,7 +579,7 @@ export const generateTestItineraries = () => {
         blocked: [],
         username: 'TestUser_Berlin_Homo',
         sexualOrientation: 'homosexual',
-      }),
+      },
     },
 
     // Berlin: "No Preference" sexualOrientation itinerary owned by a heterosexual user
