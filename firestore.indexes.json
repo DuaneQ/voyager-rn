@@ -1,17 +1,320 @@
 {
   "indexes": [
     {
+      "collectionGroup": "ads_campaigns",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "uid", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "connections",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "users", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "contactInvites",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "contactIdentifier", "order": "ASCENDING" },
+        { "fieldPath": "inviterUserId", "order": "ASCENDING" },
+        { "fieldPath": "invitedAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "contactInvites",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "inviterUserId", "order": "ASCENDING" },
+        { "fieldPath": "invitedAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "contactSyncs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "syncedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "itineraries",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "destination",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "endDay",
-          "order": "ASCENDING"
-        }
+        { "fieldPath": "ai_status", "order": "ASCENDING" },
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "itineraries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "ai_status", "order": "ASCENDING" },
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "endDay", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "itineraries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "destination", "order": "ASCENDING" },
+        { "fieldPath": "endDay", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "itineraries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "destination", "order": "ASCENDING" },
+        { "fieldPath": "endDay", "order": "ASCENDING" },
+        { "fieldPath": "startDay", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "itineraries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "destination", "order": "ASCENDING" },
+        { "fieldPath": "endDay", "order": "ASCENDING" },
+        { "fieldPath": "userInfo.uid", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "itineraries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "destination", "order": "ASCENDING" },
+        { "fieldPath": "gender", "order": "ASCENDING" },
+        { "fieldPath": "endDay", "order": "ASCENDING" },
+        { "fieldPath": "startDay", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "itineraries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "destination", "order": "ASCENDING" },
+        { "fieldPath": "gender", "order": "ASCENDING" },
+        { "fieldPath": "sexualOrientation", "order": "ASCENDING" },
+        { "fieldPath": "endDay", "order": "ASCENDING" },
+        { "fieldPath": "startDay", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "itineraries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "destination", "order": "ASCENDING" },
+        { "fieldPath": "gender", "order": "ASCENDING" },
+        { "fieldPath": "sexualOrientation", "order": "ASCENDING" },
+        { "fieldPath": "startDay", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "itineraries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "destination", "order": "ASCENDING" },
+        { "fieldPath": "gender", "order": "ASCENDING" },
+        { "fieldPath": "startDay", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "itineraries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "destination", "order": "ASCENDING" },
+        { "fieldPath": "gender", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "endDay", "order": "ASCENDING" },
+        { "fieldPath": "startDay", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "itineraries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "destination", "order": "ASCENDING" },
+        { "fieldPath": "gender", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "sexualOrientation", "order": "ASCENDING" },
+        { "fieldPath": "endDay", "order": "ASCENDING" },
+        { "fieldPath": "startDay", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "itineraries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "destination", "order": "ASCENDING" },
+        { "fieldPath": "gender", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "sexualOrientation", "order": "ASCENDING" },
+        { "fieldPath": "startDay", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "itineraries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "destination", "order": "ASCENDING" },
+        { "fieldPath": "gender", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "startDay", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "itineraries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "destination", "order": "ASCENDING" },
+        { "fieldPath": "sexualOrientation", "order": "ASCENDING" },
+        { "fieldPath": "endDay", "order": "ASCENDING" },
+        { "fieldPath": "startDay", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "itineraries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "destination", "order": "ASCENDING" },
+        { "fieldPath": "sexualOrientation", "order": "ASCENDING" },
+        { "fieldPath": "startDay", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "itineraries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "destination", "order": "ASCENDING" },
+        { "fieldPath": "startDay", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "itineraries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "destination", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "endDay", "order": "ASCENDING" },
+        { "fieldPath": "startDay", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "itineraries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "destination", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "sexualOrientation", "order": "ASCENDING" },
+        { "fieldPath": "endDay", "order": "ASCENDING" },
+        { "fieldPath": "startDay", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "itineraries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "destination", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "sexualOrientation", "order": "ASCENDING" },
+        { "fieldPath": "startDay", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "itineraries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "destination", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "startDay", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "itineraries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "destination", "order": "ASCENDING" },
+        { "fieldPath": "userInfo.gender", "order": "ASCENDING" },
+        { "fieldPath": "userInfo.sexualOrientation", "order": "ASCENDING" },
+        { "fieldPath": "userInfo.status", "order": "ASCENDING" },
+        { "fieldPath": "endDay", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "itineraries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "destination", "order": "ASCENDING" },
+        { "fieldPath": "userInfo.gender", "order": "ASCENDING" },
+        { "fieldPath": "userInfo.status", "order": "ASCENDING" },
+        { "fieldPath": "endDay", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "itineraries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "destination", "order": "ASCENDING" },
+        { "fieldPath": "userInfo.sexualOrientation", "order": "ASCENDING" },
+        { "fieldPath": "userInfo.status", "order": "ASCENDING" },
+        { "fieldPath": "endDay", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "itineraries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "destination", "order": "ASCENDING" },
+        { "fieldPath": "userInfo.status", "order": "ASCENDING" },
+        { "fieldPath": "endDay", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "itineraries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "endDay", "order": "ASCENDING" },
+        { "fieldPath": "startDay", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "itineraries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "itinerary.destination", "order": "ASCENDING" },
+        { "fieldPath": "userInfo.gender", "order": "ASCENDING" },
+        { "fieldPath": "itinerary.endDay", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "itineraries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "itineraries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "endDay", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "itineraries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userInfo.userId", "order": "ASCENDING" },
+        { "fieldPath": "itinerary.endDay", "order": "ASCENDING" }
       ]
     },
     {
@@ -45,37 +348,49 @@
       ]
     },
     {
-      "collectionGroup": "contactInvites",
+      "collectionGroup": "videoComments",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "inviterUserId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "invitedAt",
-          "order": "ASCENDING"
-        }
+        { "fieldPath": "videoId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     },
     {
-      "collectionGroup": "contactInvites",
+      "collectionGroup": "videos",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "inviterUserId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "contactIdentifier",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "invitedAt",
-          "order": "ASCENDING"
-        }
+        { "fieldPath": "isPublic", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "videos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "likes", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "videos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     }
   ],
-  "fieldOverrides": []
+  "fieldOverrides": [
+    {
+      "collectionGroup": "connections",
+      "fieldPath": "userId",
+      "ttl": false,
+      "indexes": [
+        { "order": "ASCENDING", "queryScope": "COLLECTION" },
+        { "order": "DESCENDING", "queryScope": "COLLECTION" },
+        { "arrayConfig": "CONTAINS", "queryScope": "COLLECTION" },
+        { "order": "ASCENDING", "queryScope": "COLLECTION_GROUP" }
+      ]
+    }
+  ]
 }
