@@ -256,7 +256,7 @@ export const generateTestItineraries = () => {
       age: 30,
       likes: '[]',
       activities: '["Biking", "Coffee Shops"]',
-      userInfo: JSON.stringify({
+      userInfo: {
         dob: '1995-01-01',
         uid: generateTestUserId(6),
         email: 'usertravaltest@gmail.com',
@@ -265,7 +265,7 @@ export const generateTestItineraries = () => {
         blocked: [],
         username: 'TestUser_Amsterdam_Male',
         sexualOrientation: 'heterosexual',
-      }),
+      },
     },
     {
       id: `test-amsterdam-female-${timestamp}`,
@@ -285,7 +285,7 @@ export const generateTestItineraries = () => {
       age: 28,
       likes: '[]',
       activities: '["Museums", "Canals"]',
-      userInfo: JSON.stringify({
+      userInfo: {
         dob: '1997-01-01',
         uid: generateTestUserId(7),
         email: 'usertravaltest@gmail.com',
@@ -294,7 +294,74 @@ export const generateTestItineraries = () => {
         blocked: [],
         username: 'TestUser_Amsterdam_Female',
         sexualOrientation: 'heterosexual',
-      }),
+      },
+    },
+
+    // Amsterdam: "No Preference" itinerary owned by a Female user
+    // Scenario: searcher wants gender "Female" — candidate has "No Preference" on itinerary
+    // but IS female (userInfo.gender). Should appear in results.
+    {
+      id: `test-amsterdam-no-pref-female-user-${timestamp}`,
+      userId: generateTestUserId(8),
+      destination: 'Amsterdam, Netherlands',
+      title: 'Amsterdam No Pref (Female User)',
+      description: 'Candidate has No Preference on itinerary but is Female in userInfo',
+      startDate: dates.week1Start.toISOString(),
+      endDate: dates.week1End.toISOString(),
+      startDay: dates.week1StartMs,
+      endDay: dates.week1EndMs,
+      lowerRange: 20,
+      upperRange: 40,
+      gender: 'No Preference',
+      sexualOrientation: 'No Preference',
+      status: 'No Preference',
+      age: 27,
+      likes: '[]',
+      activities: '["Museums", "Canals"]',
+      userInfo: {
+        dob: '1998-01-01',
+        uid: generateTestUserId(8),
+        email: 'usertravaltest@gmail.com',
+        gender: 'Female',
+        status: 'single',
+        blocked: [],
+        username: 'TestUser_Amsterdam_NoPref_FemaleUser',
+        sexualOrientation: 'heterosexual',
+      },
+    },
+
+    // Amsterdam: "No Preference" itinerary owned by a Male user
+    // Scenario: searcher wants gender "Male" — candidate has "No Preference" on itinerary
+    // but IS male (userInfo.gender). Should appear in results.
+    // Also ensures this candidate does NOT appear when searcher wants "Female".
+    {
+      id: `test-amsterdam-no-pref-male-user-${timestamp}`,
+      userId: generateTestUserId(18),
+      destination: 'Amsterdam, Netherlands',
+      title: 'Amsterdam No Pref (Male User)',
+      description: 'Candidate has No Preference on itinerary but is Male in userInfo',
+      startDate: dates.week1Start.toISOString(),
+      endDate: dates.week1End.toISOString(),
+      startDay: dates.week1StartMs,
+      endDay: dates.week1EndMs,
+      lowerRange: 20,
+      upperRange: 40,
+      gender: 'No Preference',
+      sexualOrientation: 'No Preference',
+      status: 'No Preference',
+      age: 29,
+      likes: '[]',
+      activities: '["Biking", "Canals"]',
+      userInfo: {
+        dob: '1996-01-01',
+        uid: generateTestUserId(18),
+        email: 'usertravaltest@gmail.com',
+        gender: 'Male',
+        status: 'single',
+        blocked: [],
+        username: 'TestUser_Amsterdam_NoPref_MaleUser',
+        sexualOrientation: 'heterosexual',
+      },
     },
 
     // === STATUS FILTERING ===
@@ -317,7 +384,7 @@ export const generateTestItineraries = () => {
       age: 30,
       likes: '[]',
       activities: '["History", "Food"]',
-      userInfo: JSON.stringify({
+      userInfo: {
         dob: '1995-01-01',
         uid: generateTestUserId(8),
         email: 'usertravaltest@gmail.com',
@@ -326,7 +393,7 @@ export const generateTestItineraries = () => {
         blocked: [],
         username: 'TestUser_Rome_Single',
         sexualOrientation: 'heterosexual',
-      }),
+      },
     },
     {
       id: `test-rome-couple-${timestamp}`,
@@ -346,7 +413,7 @@ export const generateTestItineraries = () => {
       age: 30,
       likes: '[]',
       activities: '["Romantic", "Wine"]',
-      userInfo: JSON.stringify({
+      userInfo: {
         dob: '1995-01-01',
         uid: generateTestUserId(9),
         email: 'usertravaltest@gmail.com',
@@ -355,7 +422,74 @@ export const generateTestItineraries = () => {
         blocked: [],
         username: 'TestUser_Rome_Couple',
         sexualOrientation: 'heterosexual',
-      }),
+      },
+    },
+
+    // Rome: "No Preference" status itinerary owned by a single user
+    // Scenario: searcher wants status "single" — candidate has "No Preference" on itinerary
+    // but IS single (userInfo.status). Should appear in results.
+    {
+      id: `test-rome-no-pref-single-user-${timestamp}`,
+      userId: generateTestUserId(19),
+      destination: 'Rome, Italy',
+      title: 'Rome No Pref (Single User)',
+      description: 'Candidate has No Preference status on itinerary but is single in userInfo',
+      startDate: dates.week1Start.toISOString(),
+      endDate: dates.week1End.toISOString(),
+      startDay: dates.week1StartMs,
+      endDay: dates.week1EndMs,
+      lowerRange: 20,
+      upperRange: 40,
+      gender: 'No Preference',
+      sexualOrientation: 'No Preference',
+      status: 'No Preference',
+      age: 28,
+      likes: '[]',
+      activities: '["History", "Food"]',
+      userInfo: {
+        dob: '1997-01-01',
+        uid: generateTestUserId(19),
+        email: 'usertravaltest@gmail.com',
+        gender: 'Female',
+        status: 'single',
+        blocked: [],
+        username: 'TestUser_Rome_NoPref_Single',
+        sexualOrientation: 'heterosexual',
+      },
+    },
+
+    // Rome: "No Preference" status itinerary owned by a couple user
+    // Scenario: searcher wants status "couple" — candidate has "No Preference" on itinerary
+    // but IS a couple (userInfo.status). Should appear in results.
+    // Also ensures this candidate does NOT appear when searcher wants "single".
+    {
+      id: `test-rome-no-pref-couple-user-${timestamp}`,
+      userId: generateTestUserId(20),
+      destination: 'Rome, Italy',
+      title: 'Rome No Pref (Couple User)',
+      description: 'Candidate has No Preference status on itinerary but is couple in userInfo',
+      startDate: dates.week1Start.toISOString(),
+      endDate: dates.week1End.toISOString(),
+      startDay: dates.week1StartMs,
+      endDay: dates.week1EndMs,
+      lowerRange: 20,
+      upperRange: 40,
+      gender: 'No Preference',
+      sexualOrientation: 'No Preference',
+      status: 'No Preference',
+      age: 31,
+      likes: '[]',
+      activities: '["Romantic", "Wine"]',
+      userInfo: {
+        dob: '1994-01-01',
+        uid: generateTestUserId(20),
+        email: 'usertravaltest@gmail.com',
+        gender: 'Male',
+        status: 'couple',
+        blocked: [],
+        username: 'TestUser_Rome_NoPref_Couple',
+        sexualOrientation: 'heterosexual',
+      },
     },
 
     // === SEXUAL ORIENTATION FILTERING ===
@@ -378,7 +512,7 @@ export const generateTestItineraries = () => {
       age: 30,
       likes: '[]',
       activities: '["Clubs", "History"]',
-      userInfo: JSON.stringify({
+      userInfo: {
         dob: '1995-01-01',
         uid: generateTestUserId(10),
         email: 'usertravaltest@gmail.com',
@@ -387,7 +521,7 @@ export const generateTestItineraries = () => {
         blocked: [],
         username: 'TestUser_Berlin_Hetero',
         sexualOrientation: 'heterosexual',
-      }),
+      },
     },
     {
       id: `test-berlin-bi-${timestamp}`,
@@ -407,7 +541,7 @@ export const generateTestItineraries = () => {
       age: 28,
       likes: '[]',
       activities: '["Art", "Music"]',
-      userInfo: JSON.stringify({
+      userInfo: {
         dob: '1997-01-01',
         uid: generateTestUserId(11),
         email: 'usertravaltest@gmail.com',
@@ -416,7 +550,7 @@ export const generateTestItineraries = () => {
         blocked: [],
         username: 'TestUser_Berlin_Bi',
         sexualOrientation: 'bisexual',
-      }),
+      },
     },
     {
       id: `test-berlin-homo-${timestamp}`,
@@ -436,7 +570,7 @@ export const generateTestItineraries = () => {
       age: 30,
       likes: '[]',
       activities: '["Pride Events", "Nightlife"]',
-      userInfo: JSON.stringify({
+      userInfo: {
         dob: '1995-01-01',
         uid: generateTestUserId(12),
         email: 'usertravaltest@gmail.com',
@@ -445,7 +579,74 @@ export const generateTestItineraries = () => {
         blocked: [],
         username: 'TestUser_Berlin_Homo',
         sexualOrientation: 'homosexual',
-      }),
+      },
+    },
+
+    // Berlin: "No Preference" sexualOrientation itinerary owned by a heterosexual user
+    // Scenario: searcher wants sexualOrientation "heterosexual" — candidate has "No Preference"
+    // but IS heterosexual (userInfo.sexualOrientation). Should appear in results.
+    {
+      id: `test-berlin-no-pref-hetero-user-${timestamp}`,
+      userId: generateTestUserId(21),
+      destination: 'Berlin, Germany',
+      title: 'Berlin No Pref (Hetero User)',
+      description: 'Candidate has No Preference orientation on itinerary but is heterosexual in userInfo',
+      startDate: dates.week1Start.toISOString(),
+      endDate: dates.week1End.toISOString(),
+      startDay: dates.week1StartMs,
+      endDay: dates.week1EndMs,
+      lowerRange: 20,
+      upperRange: 40,
+      gender: 'No Preference',
+      sexualOrientation: 'No Preference',
+      status: 'No Preference',
+      age: 30,
+      likes: '[]',
+      activities: '["Clubs", "History"]',
+      userInfo: {
+        dob: '1995-01-01',
+        uid: generateTestUserId(21),
+        email: 'usertravaltest@gmail.com',
+        gender: 'Male',
+        status: 'single',
+        blocked: [],
+        username: 'TestUser_Berlin_NoPref_Hetero',
+        sexualOrientation: 'heterosexual',
+      },
+    },
+
+    // Berlin: "No Preference" sexualOrientation itinerary owned by a homosexual user
+    // Scenario: searcher wants sexualOrientation "homosexual" — candidate has "No Preference"
+    // but IS homosexual (userInfo.sexualOrientation). Should appear in results.
+    // Also ensures this candidate does NOT appear when searcher wants "heterosexual".
+    {
+      id: `test-berlin-no-pref-homo-user-${timestamp}`,
+      userId: generateTestUserId(22),
+      destination: 'Berlin, Germany',
+      title: 'Berlin No Pref (Homo User)',
+      description: 'Candidate has No Preference orientation on itinerary but is homosexual in userInfo',
+      startDate: dates.week1Start.toISOString(),
+      endDate: dates.week1End.toISOString(),
+      startDay: dates.week1StartMs,
+      endDay: dates.week1EndMs,
+      lowerRange: 20,
+      upperRange: 40,
+      gender: 'No Preference',
+      sexualOrientation: 'No Preference',
+      status: 'No Preference',
+      age: 28,
+      likes: '[]',
+      activities: '["Pride Events", "Nightlife"]',
+      userInfo: {
+        dob: '1997-01-01',
+        uid: generateTestUserId(22),
+        email: 'usertravaltest@gmail.com',
+        gender: 'Male',
+        status: 'single',
+        blocked: [],
+        username: 'TestUser_Berlin_NoPref_Homo',
+        sexualOrientation: 'homosexual',
+      },
     },
 
     // === DATE OVERLAP FILTERING ===

@@ -195,32 +195,11 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
   });
 
   describe('Gender Filtering', () => {
-    it('should return only Male itineraries when filtering by Male', async () => {
-      const now = Date.now();
-      const twoWeeksLater = now + 14 * 24 * 60 * 60 * 1000;
-
-      const results = await callSearchItineraries({
-        destination: 'Amsterdam, Netherlands',
-        gender: 'Male',
-        minStartDay: now,
-        maxEndDay: twoWeeksLater,
-        pageSize: 50,
-        excludedIds: [],
-        blockedUserIds: [],
-        currentUserId: TEST_USER_ID,
-        lowerRange: 20,
-        upperRange: 40,
-      });
-
-      expect(results.length).toBeGreaterThan(0);
-      results.forEach((itinerary: any) => {
-        expect(itinerary.gender).toBe('Male');
-      });
-
-      
-    });
-
-    it('should return only Female itineraries when filtering by Female', async () => {
+    it('when preference is Female: matches candidates whose userInfo.gender is Female, excludes others', async () => {
+      // The searcher sets gender: 'Female' in their itinerary (via AddItineraryModal).
+      // This preference is matched against the CANDIDATE's userInfo.gender — not the candidate's
+      // itinerary.gender preference field. Both explicit-gender ('Female') and 'No Preference'
+      // candidates should appear if they ARE female in userInfo. Males must be excluded.
       const now = Date.now();
       const twoWeeksLater = now + 14 * 24 * 60 * 60 * 1000;
 
@@ -238,11 +217,71 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
       });
 
       expect(results.length).toBeGreaterThan(0);
+
+      // All returned candidates must be female in their userInfo
       results.forEach((itinerary: any) => {
-        expect(itinerary.gender).toBe('Female');
+        expect(itinerary.userInfo?.gender).toBe('Female');
       });
 
-      
+      // Candidate who set an explicit preference (itinerary.gender === 'Female') AND is Female in userInfo
+      const explicitFemaleCandidate = results.find(
+        (it: any) => it.gender === 'Female' && it.userInfo?.gender === 'Female',
+      );
+      expect(explicitFemaleCandidate).toBeDefined();
+
+      // Candidate with 'No Preference' on their itinerary who IS Female in userInfo (the production bug case)
+      const noPrefFemaleCandidate = results.find(
+        (it: any) => it.gender === 'No Preference' && it.userInfo?.gender === 'Female',
+      );
+      expect(noPrefFemaleCandidate).toBeDefined();
+
+      // Candidate who is Male in userInfo must NOT appear, even with 'No Preference' on itinerary
+      const maleCandidateInResults = results.find(
+        (it: any) => it.userInfo?.gender === 'Male',
+      );
+      expect(maleCandidateInResults).toBeUndefined();
+    });
+
+    it('when preference is Male: matches candidates whose userInfo.gender is Male, excludes others', async () => {
+      const now = Date.now();
+      const twoWeeksLater = now + 14 * 24 * 60 * 60 * 1000;
+
+      const results = await callSearchItineraries({
+        destination: 'Amsterdam, Netherlands',
+        gender: 'Male',
+        minStartDay: now,
+        maxEndDay: twoWeeksLater,
+        pageSize: 50,
+        excludedIds: [],
+        blockedUserIds: [],
+        currentUserId: TEST_USER_ID,
+        lowerRange: 20,
+        upperRange: 40,
+      });
+
+      expect(results.length).toBeGreaterThan(0);
+
+      results.forEach((itinerary: any) => {
+        expect(itinerary.userInfo?.gender).toBe('Male');
+      });
+
+      // Candidate with explicit itinerary.gender === 'Male' AND userInfo.gender === 'Male'
+      const explicitMaleCandidate = results.find(
+        (it: any) => it.gender === 'Male' && it.userInfo?.gender === 'Male',
+      );
+      expect(explicitMaleCandidate).toBeDefined();
+
+      // Candidate with 'No Preference' on itinerary who IS Male in userInfo
+      const noPrefMaleCandidate = results.find(
+        (it: any) => it.gender === 'No Preference' && it.userInfo?.gender === 'Male',
+      );
+      expect(noPrefMaleCandidate).toBeDefined();
+
+      // Female userInfo candidate must not appear
+      const femaleCandidateInResults = results.find(
+        (it: any) => it.userInfo?.gender === 'Female',
+      );
+      expect(femaleCandidateInResults).toBeUndefined();
     });
   });
 
@@ -327,7 +366,10 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
   });
 
   describe('Status Filtering', () => {
-    it('should return only single status itineraries when filtering by single', async () => {
+    it('when preference is single: matches candidates whose userInfo.status is single, excludes others', async () => {
+      // The searcher sets status: 'single' in their itinerary (via AddItineraryModal).
+      // Matched against candidate's userInfo.status — both explicit-status and 'No Preference'
+      // candidates should appear if they ARE single in userInfo. Couples must be excluded.
       const now = Date.now();
       const twoWeeksLater = now + 14 * 24 * 60 * 60 * 1000;
 
@@ -345,14 +387,31 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
       });
 
       expect(results.length).toBeGreaterThan(0);
+
       results.forEach((itinerary: any) => {
-        expect(itinerary.status).toBe('single');
+        expect(itinerary.userInfo?.status).toBe('single');
       });
 
-      
+      // Candidate who set an explicit preference (itinerary.status === 'single') AND is single in userInfo
+      const explicitSingleCandidate = results.find(
+        (it: any) => it.status === 'single' && it.userInfo?.status === 'single',
+      );
+      expect(explicitSingleCandidate).toBeDefined();
+
+      // Candidate with 'No Preference' on itinerary who IS single in userInfo
+      const noPrefSingleCandidate = results.find(
+        (it: any) => it.status === 'No Preference' && it.userInfo?.status === 'single',
+      );
+      expect(noPrefSingleCandidate).toBeDefined();
+
+      // Couple in userInfo must NOT appear, even with 'No Preference' on itinerary
+      const coupleCandidateInResults = results.find(
+        (it: any) => it.userInfo?.status === 'couple',
+      );
+      expect(coupleCandidateInResults).toBeUndefined();
     });
 
-    it('should return only couple status itineraries when filtering by couple', async () => {
+    it('when preference is couple: matches candidates whose userInfo.status is couple, excludes others', async () => {
       const now = Date.now();
       const twoWeeksLater = now + 14 * 24 * 60 * 60 * 1000;
 
@@ -370,16 +429,35 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
       });
 
       expect(results.length).toBeGreaterThan(0);
+
       results.forEach((itinerary: any) => {
-        expect(itinerary.status).toBe('couple');
+        expect(itinerary.userInfo?.status).toBe('couple');
       });
 
-      
+      // Candidate with explicit itinerary.status === 'couple' AND userInfo.status === 'couple'
+      const explicitCoupleCandidate = results.find(
+        (it: any) => it.status === 'couple' && it.userInfo?.status === 'couple',
+      );
+      expect(explicitCoupleCandidate).toBeDefined();
+
+      // Candidate with 'No Preference' on itinerary who IS a couple in userInfo
+      const noPrefCoupleCandidate = results.find(
+        (it: any) => it.status === 'No Preference' && it.userInfo?.status === 'couple',
+      );
+      expect(noPrefCoupleCandidate).toBeDefined();
+
+      // Single in userInfo must NOT appear
+      const singleCandidateInResults = results.find(
+        (it: any) => it.userInfo?.status === 'single',
+      );
+      expect(singleCandidateInResults).toBeUndefined();
     });
   });
 
   describe('Sexual Orientation Filtering', () => {
-    it('should return only heterosexual itineraries when filtering by heterosexual', async () => {
+    it('when preference is heterosexual: matches candidates whose userInfo.sexualOrientation is heterosexual, excludes others', async () => {
+      // The searcher sets sexualOrientation: 'heterosexual' in their itinerary (via AddItineraryModal).
+      // Matched against candidate's userInfo.sexualOrientation.
       const now = Date.now();
       const twoWeeksLater = now + 14 * 24 * 60 * 60 * 1000;
 
@@ -397,14 +475,31 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
       });
 
       expect(results.length).toBeGreaterThan(0);
+
       results.forEach((itinerary: any) => {
-        expect(itinerary.sexualOrientation).toBe('heterosexual');
+        expect(itinerary.userInfo?.sexualOrientation).toBe('heterosexual');
       });
 
-      
+      // Candidate with explicit itinerary.sexualOrientation === 'heterosexual' AND is hetero in userInfo
+      const explicitHeteroCandidate = results.find(
+        (it: any) => it.sexualOrientation === 'heterosexual' && it.userInfo?.sexualOrientation === 'heterosexual',
+      );
+      expect(explicitHeteroCandidate).toBeDefined();
+
+      // Candidate with 'No Preference' on itinerary who IS heterosexual in userInfo
+      const noPrefHeteroCandidate = results.find(
+        (it: any) => it.sexualOrientation === 'No Preference' && it.userInfo?.sexualOrientation === 'heterosexual',
+      );
+      expect(noPrefHeteroCandidate).toBeDefined();
+
+      // Homosexual in userInfo must NOT appear
+      const homoCandidateInResults = results.find(
+        (it: any) => it.userInfo?.sexualOrientation === 'homosexual',
+      );
+      expect(homoCandidateInResults).toBeUndefined();
     });
 
-    it('should return only bisexual itineraries when filtering by bisexual', async () => {
+    it('when preference is bisexual: matches candidates whose userInfo.sexualOrientation is bisexual', async () => {
       const now = Date.now();
       const twoWeeksLater = now + 14 * 24 * 60 * 60 * 1000;
 
@@ -422,14 +517,18 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
       });
 
       expect(results.length).toBeGreaterThan(0);
+
       results.forEach((itinerary: any) => {
-        expect(itinerary.sexualOrientation).toBe('bisexual');
+        expect(itinerary.userInfo?.sexualOrientation).toBe('bisexual');
       });
 
-      
+      const explicitBiCandidate = results.find(
+        (it: any) => it.sexualOrientation === 'bisexual' && it.userInfo?.sexualOrientation === 'bisexual',
+      );
+      expect(explicitBiCandidate).toBeDefined();
     });
 
-    it('should return only homosexual itineraries when filtering by homosexual', async () => {
+    it('when preference is homosexual: matches candidates whose userInfo.sexualOrientation is homosexual, excludes others', async () => {
       const now = Date.now();
       const twoWeeksLater = now + 14 * 24 * 60 * 60 * 1000;
 
@@ -447,11 +546,28 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
       });
 
       expect(results.length).toBeGreaterThan(0);
+
       results.forEach((itinerary: any) => {
-        expect(itinerary.sexualOrientation).toBe('homosexual');
+        expect(itinerary.userInfo?.sexualOrientation).toBe('homosexual');
       });
 
-      
+      // Candidate with explicit itinerary.sexualOrientation === 'homosexual' AND is homo in userInfo
+      const explicitHomoCandidate = results.find(
+        (it: any) => it.sexualOrientation === 'homosexual' && it.userInfo?.sexualOrientation === 'homosexual',
+      );
+      expect(explicitHomoCandidate).toBeDefined();
+
+      // Candidate with 'No Preference' on itinerary who IS homosexual in userInfo
+      const noPrefHomoCandidate = results.find(
+        (it: any) => it.sexualOrientation === 'No Preference' && it.userInfo?.sexualOrientation === 'homosexual',
+      );
+      expect(noPrefHomoCandidate).toBeDefined();
+
+      // Heterosexual in userInfo must NOT appear
+      const heteroCandidateInResults = results.find(
+        (it: any) => it.userInfo?.sexualOrientation === 'heterosexual',
+      );
+      expect(heteroCandidateInResults).toBeUndefined();
     });
   });
 
