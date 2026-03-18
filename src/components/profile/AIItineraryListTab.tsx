@@ -100,7 +100,7 @@ export const AIItineraryListTab: React.FC = () => {
         </View>
         {showTooltip && (
           <Text style={styles.tooltipText}>
-            To find travellers going to the same destination with overlapping dates, go to the TravalMatch tab and select this itinerary from the dropdown there.{'\n\n'}Want to filter by age, gender, sexual orientation or relationship status? On the TravalMatch tab, tap the Edit button next to this itinerary in the list — that opens the itinerary editor where you can set your match preferences.
+            To find travellers going to the same destination with overlapping dates, go to the TravalMatch tab and select this itinerary from the dropdown there.{'\n\n'}Want to filter by age, gender, sexual orientation or relationship status? On the TravalMatch tab, tap the Add Itinerary button — that opens the itinerary editor where you can scroll to the bottom to find your itineraries, select this AI generated itinerary and set your match preferences.  Once you save those preferences, we'll only find travelers that match those criteria and are going to the same destination at the same time. You can create multiple itineraries with different match preferences to find different types of travel buddies!
           </Text>
         )}
         
