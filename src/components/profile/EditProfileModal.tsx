@@ -21,9 +21,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import {
   GENDER_OPTIONS,
-  STATUS_OPTIONS,
-  SEXUAL_ORIENTATION_OPTIONS,
 } from '../../types/ManualItinerary';
+import {
+  STATUS_PREFERENCE_OPTIONS,
+  ORIENTATION_PREFERENCE_OPTIONS,
+  getPreferenceLabel,
+} from '../../constants/preferenceOptions';
 import { AndroidPickerModal } from '../common/AndroidPickerModal';
 import { CrossPlatformDatePicker } from '../common/CrossPlatformDatePicker';
 import { parseLocalDate } from '../../utils/formatDate';
@@ -319,7 +322,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
               onPress={() => setStatusModalVisible(true)}
             >
               <Text style={[styles.inputText, !formData.status && styles.placeholderText]}>
-                {formData.status ? STATUS_OPTIONS.find(opt => opt.toLowerCase() === formData.status) || formData.status : 'Select status...'}
+                {formData.status ? getPreferenceLabel(formData.status, STATUS_PREFERENCE_OPTIONS) : 'Select status...'}
               </Text>
               <Ionicons name="chevron-down" size={20} color="#999" />
             </TouchableOpacity>
@@ -332,7 +335,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                 title="Select Status"
                 options={[
                   { label: 'Select status...', value: '' },
-                  ...STATUS_OPTIONS.map(opt => ({ label: opt, value: opt.toLowerCase() }))
+                  ...STATUS_PREFERENCE_OPTIONS
                 ]}
               />
             ) : (
@@ -344,7 +347,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                 title="Select Status"
                 options={[
                   { label: 'Select status...', value: '' },
-                  ...STATUS_OPTIONS.map(opt => ({ label: opt, value: opt.toLowerCase() }))
+                  ...STATUS_PREFERENCE_OPTIONS
                 ]}
               />
             )}
@@ -405,7 +408,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
               onPress={() => setOrientationModalVisible(true)}
             >
               <Text style={[styles.inputText, !formData.sexualOrientation && styles.placeholderText]}>
-                {formData.sexualOrientation ? SEXUAL_ORIENTATION_OPTIONS.find(opt => opt.toLowerCase() === formData.sexualOrientation) || formData.sexualOrientation : 'Select orientation...'}
+                {formData.sexualOrientation ? getPreferenceLabel(formData.sexualOrientation, ORIENTATION_PREFERENCE_OPTIONS) : 'Select orientation...'}
               </Text>
               <Ionicons name="chevron-down" size={20} color="#999" />
             </TouchableOpacity>
@@ -418,7 +421,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                 title="Sexual Orientation"
                 options={[
                   { label: 'Select orientation...', value: '' },
-                  ...SEXUAL_ORIENTATION_OPTIONS.map(opt => ({ label: opt, value: opt.toLowerCase() }))
+                  ...ORIENTATION_PREFERENCE_OPTIONS
                 ]}
               />
             ) : (
@@ -430,7 +433,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                 title="Sexual Orientation"
                 options={[
                   { label: 'Select orientation...', value: '' },
-                  ...SEXUAL_ORIENTATION_OPTIONS.map(opt => ({ label: opt, value: opt.toLowerCase() }))
+                  ...ORIENTATION_PREFERENCE_OPTIONS
                 ]}
               />
             )}

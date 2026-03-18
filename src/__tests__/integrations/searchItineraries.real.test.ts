@@ -571,6 +571,84 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
     });
   });
 
+  describe('Case Normalization Regression', () => {
+    it('matches canonical stored gender when query uses title case', async () => {
+      const now = Date.now();
+      const twoWeeksLater = now + 14 * 24 * 60 * 60 * 1000;
+
+      const results = await callSearchItineraries({
+        destination: 'Amsterdam, Netherlands',
+        gender: 'Female',
+        minStartDay: now,
+        maxEndDay: twoWeeksLater,
+        pageSize: 50,
+        excludedIds: [],
+        blockedUserIds: [],
+        currentUserId: TEST_USER_ID,
+        lowerRange: 20,
+        upperRange: 40,
+      });
+
+      expect(results.length).toBeGreaterThan(0);
+      results.forEach((itinerary: any) => {
+        expect(itinerary.userInfo?.gender).toBe('Female');
+      });
+
+      // Ensure this still includes candidates with itinerary-level 'No Preference'
+      // when their profile gender matches the requested value.
+      const noPrefFemaleCandidate = results.find(
+        (it: any) => it.gender === 'No Preference' && it.userInfo?.gender === 'Female',
+      );
+      expect(noPrefFemaleCandidate).toBeDefined();
+    });
+
+    it('matches lower-case stored status when query uses title case', async () => {
+      const now = Date.now();
+      const twoWeeksLater = now + 14 * 24 * 60 * 60 * 1000;
+
+      const results = await callSearchItineraries({
+        destination: 'Casingville, Testland',
+        status: 'Couple',
+        minStartDay: now,
+        maxEndDay: twoWeeksLater,
+        pageSize: 50,
+        excludedIds: [],
+        blockedUserIds: [],
+        currentUserId: TEST_USER_ID,
+        lowerRange: 20,
+        upperRange: 40,
+      });
+
+      expect(results.length).toBeGreaterThan(0);
+      results.forEach((itinerary: any) => {
+        expect(String(itinerary.userInfo?.status || '').toLowerCase()).toBe('couple');
+      });
+    });
+
+    it('matches lower-case stored orientation when query uses title case', async () => {
+      const now = Date.now();
+      const twoWeeksLater = now + 14 * 24 * 60 * 60 * 1000;
+
+      const results = await callSearchItineraries({
+        destination: 'Casingville, Testland',
+        sexualOrientation: 'Heterosexual',
+        minStartDay: now,
+        maxEndDay: twoWeeksLater,
+        pageSize: 50,
+        excludedIds: [],
+        blockedUserIds: [],
+        currentUserId: TEST_USER_ID,
+        lowerRange: 20,
+        upperRange: 40,
+      });
+
+      expect(results.length).toBeGreaterThan(0);
+      results.forEach((itinerary: any) => {
+        expect(String(itinerary.userInfo?.sexualOrientation || '').toLowerCase()).toBe('heterosexual');
+      });
+    });
+  });
+
   describe('Date Overlap Filtering', () => {
     it('should return only itineraries overlapping with week 1 dates', async () => {
       const now = Date.now();
