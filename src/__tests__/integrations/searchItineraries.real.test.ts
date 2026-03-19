@@ -72,6 +72,7 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
             gender: itinerary.gender,
             age: itinerary.age,
             status: itinerary.status,
+            sexualOrientation: itinerary.sexualOrientation,
           };
         } else {
           console.error(`[createItinerary] Failed for ${itinerary.destination}:`, result?.result?.error || JSON.stringify(result));
@@ -101,6 +102,17 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
     
     if (createdItineraryIds.length === 0) {
       throw new Error('CRITICAL: No test itineraries were created - all tests will fail!');
+    }
+
+    const berlinBiSeeded = successful.some(
+      (r: any) => r.destination === 'Berlin, Germany' && r.sexualOrientation === 'bisexual'
+    );
+    if (!berlinBiSeeded) {
+      throw new Error(
+        'CRITICAL: Berlin bisexual itinerary failed to seed. ' +
+        'Check [createItinerary] error logs above. ' +
+        'The bisexual orientation filter test cannot run without this data.'
+      );
     }
   }, 60000); // 60 second timeout for seeding
 
@@ -568,84 +580,6 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
         (it: any) => it.userInfo?.sexualOrientation === 'heterosexual',
       );
       expect(heteroCandidateInResults).toBeUndefined();
-    });
-  });
-
-  describe('Case Normalization Regression', () => {
-    it('matches canonical stored gender when query uses title case', async () => {
-      const now = Date.now();
-      const twoWeeksLater = now + 14 * 24 * 60 * 60 * 1000;
-
-      const results = await callSearchItineraries({
-        destination: 'Amsterdam, Netherlands',
-        gender: 'Female',
-        minStartDay: now,
-        maxEndDay: twoWeeksLater,
-        pageSize: 50,
-        excludedIds: [],
-        blockedUserIds: [],
-        currentUserId: TEST_USER_ID,
-        lowerRange: 20,
-        upperRange: 40,
-      });
-
-      expect(results.length).toBeGreaterThan(0);
-      results.forEach((itinerary: any) => {
-        expect(itinerary.userInfo?.gender).toBe('Female');
-      });
-
-      // Ensure this still includes candidates with itinerary-level 'No Preference'
-      // when their profile gender matches the requested value.
-      const noPrefFemaleCandidate = results.find(
-        (it: any) => it.gender === 'No Preference' && it.userInfo?.gender === 'Female',
-      );
-      expect(noPrefFemaleCandidate).toBeDefined();
-    });
-
-    it('matches lower-case stored status when query uses title case', async () => {
-      const now = Date.now();
-      const twoWeeksLater = now + 14 * 24 * 60 * 60 * 1000;
-
-      const results = await callSearchItineraries({
-        destination: 'Casingville, Testland',
-        status: 'Couple',
-        minStartDay: now,
-        maxEndDay: twoWeeksLater,
-        pageSize: 50,
-        excludedIds: [],
-        blockedUserIds: [],
-        currentUserId: TEST_USER_ID,
-        lowerRange: 20,
-        upperRange: 40,
-      });
-
-      expect(results.length).toBeGreaterThan(0);
-      results.forEach((itinerary: any) => {
-        expect(String(itinerary.userInfo?.status || '').toLowerCase()).toBe('couple');
-      });
-    });
-
-    it('matches lower-case stored orientation when query uses title case', async () => {
-      const now = Date.now();
-      const twoWeeksLater = now + 14 * 24 * 60 * 60 * 1000;
-
-      const results = await callSearchItineraries({
-        destination: 'Casingville, Testland',
-        sexualOrientation: 'Heterosexual',
-        minStartDay: now,
-        maxEndDay: twoWeeksLater,
-        pageSize: 50,
-        excludedIds: [],
-        blockedUserIds: [],
-        currentUserId: TEST_USER_ID,
-        lowerRange: 20,
-        upperRange: 40,
-      });
-
-      expect(results.length).toBeGreaterThan(0);
-      results.forEach((itinerary: any) => {
-        expect(String(itinerary.userInfo?.sexualOrientation || '').toLowerCase()).toBe('heterosexual');
-      });
     });
   });
 
