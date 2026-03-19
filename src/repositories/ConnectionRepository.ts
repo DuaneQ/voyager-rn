@@ -75,7 +75,6 @@ export class FirestoreConnectionRepository implements IConnectionRepository {
       });
 
       if (existingDoc) {
-        console.log('[ConnectionRepository] Connection already exists between users — skipping duplicate create');
         const data = existingDoc.data();
         return {
           id: existingDoc.id,

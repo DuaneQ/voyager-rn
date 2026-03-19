@@ -95,20 +95,10 @@ const useSearchItineraries = () => {
       lowerRange: currentUserItinerary.lowerRange,
       upperRange: currentUserItinerary.upperRange,
     };
-    console.log('[SEARCH DEBUG] ── searchItineraries RPC CALL ──────────────────');
-    console.log('[SEARCH DEBUG] rpcPayload:', JSON.stringify(rpcPayload));
-    console.log('[SEARCH DEBUG] startDate raw:', currentUserItinerary.startDate, '→ timestamp:', startTimestamp, '→', new Date(startTimestamp).toISOString());
-    console.log('[SEARCH DEBUG] endDate raw:', currentUserItinerary.endDate, '→ timestamp:', endTimestamp, '→', new Date(endTimestamp).toISOString());
-    console.log('[SEARCH DEBUG] excludedIds count:', rpcPayload.excludedIds.length, 'ids:', JSON.stringify(rpcPayload.excludedIds));
-
     const res: any = await callRpc(rpcPayload);
-
-    console.log('[SEARCH DEBUG] RPC raw response success:', res?.data?.success);
-    console.log('[SEARCH DEBUG] RPC raw response shape keys:', res?.data ? Object.keys(res.data) : 'null');
 
     // Normalize response into an array to be defensive against unexpected shapes
     const raw = res?.data?.data;
-    console.log('[SEARCH DEBUG] raw data type:', typeof raw, 'isArray:', Array.isArray(raw));
     let results: Itinerary[] = [];
     if (Array.isArray(raw)) {
       results = raw;
@@ -125,23 +115,15 @@ const useSearchItineraries = () => {
       }
       throw new Error(res?.data?.error || 'Unexpected RPC response');
     }
-
-    console.log('[SEARCH DEBUG] results from cloud function BEFORE client filter:', results.length);
     results.forEach((it: any, i: number) => {
-      console.log(`[SEARCH DEBUG] result[${i}]: id=${it.id} destination=${it.destination} userInfo.uid=${it.userInfo?.uid} startDay=${it.startDay} endDay=${it.endDay}`);
-    });
+  });
 
     setHasMore(results.length >= PAGE_SIZE);
     const seenIds = new Set<string>();
     const filtered = results.filter(it => {
-      if (!validate(it)) { console.log('[SEARCH DEBUG] FILTERED OUT (validate failed):', it?.id); return false; }
-      if (!it.userInfo?.uid) { console.log('[SEARCH DEBUG] FILTERED OUT (no userInfo.uid):', it?.id); return false; }
-      if (it.userInfo.uid === currentUserId) { console.log('[SEARCH DEBUG] FILTERED OUT (own itinerary):', it?.id); return false; }
-      if (seenIds.has(it.id)) { console.log('[SEARCH DEBUG] FILTERED OUT (duplicate id):', it?.id); return false; }
       seenIds.add(it.id);
       return true;
     });
-    console.log('[SEARCH DEBUG] results AFTER client filter:', filtered.length);
     return filtered;
   };
 
