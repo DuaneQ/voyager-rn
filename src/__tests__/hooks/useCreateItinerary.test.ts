@@ -126,7 +126,7 @@ describe('useCreateItinerary', () => {
 
       expect(errors).toContainEqual({
         field: 'profile',
-        message: 'Please complete your profile by setting your date of birth and gender before creating an itinerary.',
+        message: 'Please complete your profile by setting date of birth, gender, status, and sexual orientation before creating an itinerary.',
       });
     });
 
@@ -449,7 +449,7 @@ describe('useCreateItinerary', () => {
       expect(response.error).toBe('Database error');
     });
 
-    it('should handle missing userInfo fields gracefully', async () => {
+    it('should block itinerary creation when required profile fields are missing', async () => {
       mockHttpsCallable.mockResolvedValue({
         data: { success: true, data: { id: 'test-id' } },
       });
@@ -463,14 +463,14 @@ describe('useCreateItinerary', () => {
         // Missing email, status, sexualOrientation
       };
 
+      let response;
       await act(async () => {
-        await result.current.createItinerary(validFormData, partialProfile as any);
+        response = await result.current.createItinerary(validFormData, partialProfile as any);
       });
 
-      const payload = mockHttpsCallable.mock.calls[0][0].itinerary;
-      expect(payload.userInfo.email).toBe('');
-      expect(payload.userInfo.status).toBe('single');
-      expect(payload.userInfo.sexualOrientation).toBe('not specified');
+      expect(response.success).toBe(false);
+      expect(response.error).toContain('Please complete your profile by setting date of birth, gender, status, and sexual orientation before creating an itinerary.');
+      expect(mockHttpsCallable).not.toHaveBeenCalled();
     });
   });
 
