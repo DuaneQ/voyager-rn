@@ -131,37 +131,44 @@ export function useNotifications(): UseNotificationsReturn {
         return;
       }
 
-      // Get device push token (FCM on Android, APNs on iOS)
+      // Set up token refresh listener BEFORE calling getToken().
+      // On iOS, APNs device registration is async — getToken() can return null
+      // if called before APNs completes. onTokenRefresh fires when the FCM token
+      // becomes available (including the first time), so setting it up early
+      // ensures we capture the token even when getToken() loses the race.
+      if (tokenRefreshUnsubscribe.current) {
+        tokenRefreshUnsubscribe.current();
+      }
+      tokenRefreshUnsubscribe.current = notificationService.onTokenRefresh(
+        userId,
+        async (newToken: string) => {
+          setFcmToken(newToken);
+          // Also update AsyncStorage so sign-out cleanup removes the right token
+          await AsyncStorage.setItem(CURRENT_DEVICE_TOKEN_KEY, newToken);
+        }
+      );
+
+      // Get device push token (FCM on Android, APNs→FCM on iOS via Firebase SDK)
       diagnostics.step = 'getting_token';
       const token = await notificationService.getFCMToken();
       diagnostics.tokenReceived = !!token;
       diagnostics.tokenLength = token?.length ?? 0;
 
       if (!token) {
-        diagnostics.step = 'token_null';
-        console.warn('🔔 Failed to get device push token');
+        // Token not yet available — most likely an iOS APNs registration race condition.
+        // The onTokenRefresh listener above will capture the token when APNs responds.
+        diagnostics.step = 'token_null_waiting_refresh';
+        console.warn('🔔 getToken() returned null — waiting for onTokenRefresh (iOS APNs race)');
         await saveDiagnostics(userId, diagnostics);
         return;
       }
 
       setFcmToken(token);
 
-      // Save token to Firestore
+      // Save token to Firestore and locally for sign-out cleanup
       diagnostics.step = 'saving_token';
       await notificationService.saveToken(userId, token);
-      
-      // Store token locally for device-specific cleanup on sign-out
       await AsyncStorage.setItem(CURRENT_DEVICE_TOKEN_KEY, token);
-      // Set up token refresh listener
-      if (tokenRefreshUnsubscribe.current) {
-        tokenRefreshUnsubscribe.current();
-      }
-      tokenRefreshUnsubscribe.current = notificationService.onTokenRefresh(
-        userId,
-        (newToken: string) => {
-          setFcmToken(newToken);
-        }
-      );
 
       diagnostics.step = 'completed';
       await saveDiagnostics(userId, diagnostics);
