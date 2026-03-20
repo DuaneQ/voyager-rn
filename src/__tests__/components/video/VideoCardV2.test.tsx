@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { render, waitFor, act, fireEvent } from '@testing-library/react-native';
+import { Linking } from 'react-native';
 import { VideoCardV2 } from '../../../components/video/VideoCardV2';
 import { VideoPlayerFactory } from '../../../services/video/VideoPlayerFactory';
 import { videoPlaybackManagerV2 } from '../../../services/video/VideoPlaybackManagerV2';
@@ -37,6 +38,9 @@ jest.mock('expo-video', () => ({
   VideoView: 'VideoView',
   useVideoPlayer: jest.fn(),
 }));
+
+// Mock Linking for ad CTA testing
+jest.spyOn(require('react-native').Linking, 'openURL').mockResolvedValue(true);
 
 // Mock IVideoPlayer
 const createMockPlayer = () => {
@@ -1054,6 +1058,176 @@ describe('VideoCardV2', () => {
       await waitFor(() => {
         expect(mockFactory.createPlayer).toHaveBeenCalled();
       });
+    });
+  });
+
+  describe('Ad Overlay Functionality (Phase 1.1)', () => {
+    const mockAdOverlay = {
+      primaryText: 'Discover amazing travel deals in Tokyo',
+      cta: 'Book Now',
+      landingUrl: 'https://example.com/tokyo-deals',
+      businessName: 'Tokyo Tourism Board',
+      onImpression: jest.fn(),
+      onCtaPress: jest.fn(),
+    };
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('should render sponsored badge and ad content when adOverlay is provided', () => {
+      const { getByText, queryByText } = render(
+        <VideoCardV2 {...defaultProps} adOverlay={mockAdOverlay} />
+      );
+
+      // Should show sponsored badge
+      expect(getByText('Sponsored')).toBeTruthy();
+      
+      // Should show business name as title  
+      expect(getByText('Tokyo Tourism Board')).toBeTruthy();
+      
+      // Should show primary text as description
+      expect(getByText('Discover amazing travel deals in Tokyo')).toBeTruthy();
+      
+      // Should NOT show regular video stats
+      expect(queryByText('0 views')).toBeNull();
+    });
+
+    it('should render CTA button with correct text and accessibility', () => {
+      const { getByText, getByRole } = render(
+        <VideoCardV2 {...defaultProps} adOverlay={mockAdOverlay} />
+      );
+
+      const ctaButton = getByText('Book Now →');
+      expect(ctaButton).toBeTruthy();
+      
+      // Check accessibility
+      const buttonElement = getByRole('button');
+      expect(buttonElement.props.accessibilityLabel).toBe('Book Now - opens in browser');
+    });
+
+    it('should call onImpression when component becomes active', async () => {
+      const { rerender } = render(
+        <VideoCardV2 {...defaultProps} isActive={false} adOverlay={mockAdOverlay} />
+      );
+
+      // Should not call onImpression when inactive
+      expect(mockAdOverlay.onImpression).not.toHaveBeenCalled();
+
+      // Should call onImpression when becomes active
+      rerender(
+        <VideoCardV2 {...defaultProps} isActive={true} adOverlay={mockAdOverlay} />
+      );
+
+      await waitFor(() => {
+        expect(mockAdOverlay.onImpression).toHaveBeenCalled();
+      });
+    });
+
+    it('should handle CTA button press correctly', async () => {
+      const { getByText } = render(
+        <VideoCardV2 {...defaultProps} adOverlay={mockAdOverlay} />
+      );
+
+      const ctaButton = getByText('Book Now →');
+      
+      await act(async () => {
+        fireEvent.press(ctaButton);
+      });
+
+      // Should call onCtaPress callback
+      expect(mockAdOverlay.onCtaPress).toHaveBeenCalled();
+      
+      // Should open landing URL via Linking
+      expect(Linking.openURL).toHaveBeenCalledWith('https://example.com/tokyo-deals');
+    });
+
+    it('should fallback to video title when businessName is not provided', () => {
+      const adOverlayWithoutBusiness = {
+        ...mockAdOverlay,
+        businessName: undefined,
+      };
+
+      const { getByText } = render(
+        <VideoCardV2 {...defaultProps} adOverlay={adOverlayWithoutBusiness} />
+      );
+
+      // Should show video title as fallback
+      expect(getByText('Test Video')).toBeTruthy();
+    });
+
+    it('should handle missing onImpression callback gracefully', async () => {
+      const adOverlayWithoutCallbacks = {
+        primaryText: 'Test ad',
+        cta: 'Learn More',
+        landingUrl: 'https://example.com',
+      };
+
+      expect(() => {
+        render(
+          <VideoCardV2 {...defaultProps} isActive={true} adOverlay={adOverlayWithoutCallbacks} />
+        );
+      }).not.toThrow();
+    });
+
+    it('should handle CTA press without callbacks gracefully', async () => {
+      const adOverlayWithoutCallbacks = {
+        primaryText: 'Test ad',
+        cta: 'Learn More', 
+        landingUrl: 'https://example.com',
+      };
+
+      const { getByText } = render(
+        <VideoCardV2 {...defaultProps} adOverlay={adOverlayWithoutCallbacks} />
+      );
+
+      const ctaButton = getByText('Learn More →');
+      
+      expect(async () => {
+        await act(async () => {
+          fireEvent.press(ctaButton);
+        });
+      }).not.toThrow();
+      
+      // Should still call Linking.openURL
+      expect(Linking.openURL).toHaveBeenCalledWith('https://example.com');
+    });
+
+    it('should handle Linking.openURL errors gracefully', async () => {
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      (Linking.openURL as jest.Mock).mockRejectedValueOnce(new Error('Failed to open URL'));
+
+      const { getByText } = render(
+        <VideoCardV2 {...defaultProps} adOverlay={mockAdOverlay} />
+      );
+
+      const ctaButton = getByText('Book Now →');
+      
+      await act(async () => {
+        fireEvent.press(ctaButton);
+      });
+
+      // Should log warning but not crash
+      expect(consoleSpy).toHaveBeenCalledWith('Failed to open ad landing URL:', expect.any(Error));
+      
+      consoleSpy.mockRestore();
+    });
+
+    it('should render regular video content when no adOverlay is provided', () => {
+      const { getByText, queryByText } = render(
+        <VideoCardV2 {...defaultProps} />
+      );
+
+      // Should show regular video content
+      expect(getByText('Test Video')).toBeTruthy();
+      expect(getByText('Test description')).toBeTruthy();
+      expect(getByText('0 views')).toBeTruthy();
+      
+      // Should NOT show sponsored badge
+      expect(queryByText('Sponsored')).toBeNull();
+      
+      // Should NOT show CTA button
+      expect(queryByText(/→/)).toBeNull();
     });
   });
 });

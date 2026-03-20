@@ -10,7 +10,7 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Platform } from 'react-native';
+import { Platform, Linking } from 'react-native';
 import {
   View,
   Text,
@@ -34,6 +34,22 @@ import { createVideoError } from '../../errors/factories/videoErrors';
 
 const { width, height } = Dimensions.get('window');
 
+/** Ad overlay data for rendering CTA when VideoCardV2 displays ad content */
+interface AdOverlay {
+  /** Primary ad text shown in info overlay */
+  primaryText: string;
+  /** CTA button label (e.g., "Book Now", "Learn More") */
+  cta: string;
+  /** Landing URL opened when CTA is tapped */
+  landingUrl: string;
+  /** Business name displayed as title (optional) */
+  businessName?: string;
+  /** Callback for impression tracking */
+  onImpression?: () => void;
+  /** Callback for click tracking */
+  onCtaPress?: () => void;
+}
+
 interface VideoCardV2Props {
   video: VideoType;
   isActive: boolean; // Whether this video is currently in view
@@ -46,6 +62,8 @@ interface VideoCardV2Props {
   onViewTracked?: () => void;
   /** Override the card height (pass safe-area-adjusted height to prevent bleeding under status bar) */
   cardHeight?: number;
+  /** Ad overlay data for rendering video ads in unified component */
+  adOverlay?: AdOverlay;
 }
 
 const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
@@ -59,6 +77,7 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
   onReport,
   onViewTracked,
   cardHeight,
+  adOverlay,
 }) => {
   // Player state
   const [player, setPlayer] = useState<IVideoPlayer | null>(null);
@@ -462,23 +481,69 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
   }, [userId, onComment]);
 
   /**
-   * Render video info overlay
+   * Handle CTA button press for ad overlay
    */
-  const renderVideoInfo = () => (
-    <View style={styles.infoOverlay}>
-      <Text style={styles.title} numberOfLines={2}>
-        {video.title}
-      </Text>
-      {video.description && (
-        <Text style={styles.description} numberOfLines={2}>
-          {video.description}
+  const handleCtaPress = useCallback(async () => {
+    if (!adOverlay) return;
+    
+    // Track click event
+    if (adOverlay.onCtaPress) {
+      adOverlay.onCtaPress();
+    }
+    
+    // Open landing URL
+    try {
+      await Linking.openURL(adOverlay.landingUrl);
+    } catch (error) {
+      console.warn('Failed to open ad landing URL:', error);
+    }
+  }, [adOverlay]);
+
+  /**
+   * Track ad impression when component becomes active
+   */
+  useEffect(() => {
+    if (adOverlay && isActive && adOverlay.onImpression) {
+      adOverlay.onImpression();
+    }
+  }, [adOverlay, isActive]);
+
+  /**
+   * Render video info overlay - supports both regular videos and ad content
+   */
+  const renderVideoInfo = () => {
+    if (adOverlay) {
+      // Ad content rendering
+      return (
+        <View style={styles.infoOverlay}>
+          <Text style={styles.sponsoredBadge}>Sponsored</Text>
+          <Text style={styles.title} numberOfLines={2}>
+            {adOverlay.businessName || video.title}
+          </Text>
+          <Text style={styles.description} numberOfLines={2}>
+            {adOverlay.primaryText}
+          </Text>
+        </View>
+      );
+    }
+
+    // Regular video content rendering
+    return (
+      <View style={styles.infoOverlay}>
+        <Text style={styles.title} numberOfLines={2}>
+          {video.title}
         </Text>
-      )}
-      <View style={styles.statsRow}>
-        <Text style={styles.statText}>{viewCount} views</Text>
+        {video.description && (
+          <Text style={styles.description} numberOfLines={2}>
+            {video.description}
+          </Text>
+        )}
+        <View style={styles.statsRow}>
+          <Text style={styles.statText}>{viewCount} views</Text>
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   /**
    * Render action buttons
@@ -690,13 +755,19 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
       {/* Action buttons */}
       {renderActionButtons()}
       
-      {/* TODO: Ad CTA overlay — when this card renders an ad creative (has a landingUrl),
-           render a small tappable pill/card anchored to the bottom of the frame showing
-           primaryText snippet + CTA label (e.g. "Book Now →") that opens landingUrl in
-           the browser via Linking.openURL(). Pattern: TikTok "Shop Now" bar / Reels CTA
-           pill. Requires VideoCardV2Props to accept an optional `ad` prop with
-           { primaryText, cta, landingUrl } so the component stays decoupled from the
-           campaign data model. */}
+      {/* Ad CTA overlay - implemented in Phase 1.1 */}
+      {adOverlay && (
+        <View style={styles.ctaOverlay}>
+          <TouchableOpacity
+            style={styles.ctaButton}
+            onPress={handleCtaPress}
+            accessibilityRole="button"
+            accessibilityLabel={`${adOverlay.cta} - opens in browser`}
+          >
+            <Text style={styles.ctaButtonText}>{adOverlay.cta} →</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Mute button */}
       <View style={[styles.muteButtonWrapper, { pointerEvents: 'box-none' }]}>
@@ -880,6 +951,44 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#fff',
     opacity: 0.7,
+  },
+  sponsoredBadge: {
+    fontSize: 12,
+    color: '#ffd700',
+    fontWeight: 'bold',
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    alignSelf: 'flex-start',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+  },
+  ctaOverlay: {
+    position: 'absolute',
+    bottom: 80,
+    left: 16,
+    right: 16,
+    zIndex: 20,
+    alignItems: 'center',
+  },
+  ctaButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 25,
+    maxWidth: '80%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  ctaButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });
 
