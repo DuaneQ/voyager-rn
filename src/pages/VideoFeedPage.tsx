@@ -24,7 +24,7 @@ import { VideoCardV2 as VideoCard } from '../components/video/VideoCardV2';
 import { VideoCommentsModal } from '../components/video/VideoCommentsModal';
 import { VideoUploadModal } from '../components/modals/VideoUploadModal';
 import { ReportVideoModal } from '../components/modals/ReportVideoModal';
-import { SponsoredVideoCard } from '../components/ads/SponsoredVideoCard';
+
 import { useVideoFeed, VideoFilter } from '../hooks/video/useVideoFeed';
 import { useVideoUpload } from '../hooks/video/useVideoUpload';
 import { useAdDelivery, useAdTracking, useAdFrequency } from '../hooks/ads';
@@ -436,25 +436,46 @@ const VideoFeedPage: React.FC = () => {
   );
 
   /**
-   * Render individual video card OR sponsored ad card
+   * Render individual video card using unified VideoCardV2 component
    */
   const renderFeedItem = useCallback(
     ({ item: feedItem, index }: { item: FeedItem; index: number }) => {
-      // ── Sponsored ad ──────────────────────────────────────────────────
+      // Build unified props for VideoCardV2 (handles both organic videos and ads)
+      let video, adOverlay;
+      
       if (feedItem.type === 'ad') {
-        return (
-          <SponsoredVideoCard
-            ad={feedItem.ad}
-            isActive={index === currentVideoIndex && isScreenFocused}
-            cardHeight={availableHeight}
-            onImpression={trackImpression}
-            onCtaPress={trackClick}
-          />
-        );
+        const ad = feedItem.ad;
+        // Convert AdUnit to Video structure for unified rendering
+        video = {
+          id: `ad-${ad.campaignId}`,
+          videoUrl: ad.muxPlaybackUrl || ad.assetUrl,
+          thumbnailUrl: ad.assetUrl,
+          title: ad.businessName || 'Sponsored',
+          description: ad.primaryText,
+          createdAt: { toMillis: () => Date.now() },
+          userId: 'sponsored',
+          views: 0,
+          likes: [],
+          userLiked: false,
+        } as VideoType;
+        
+        // Ad overlay for CTA and tracking
+        adOverlay = {
+          primaryText: ad.primaryText,
+          cta: ad.cta,
+          landingUrl: ad.landingUrl,
+          businessName: ad.businessName,
+          onImpression: () => trackImpression(ad.campaignId),
+          onCtaPress: () => trackClick(ad.campaignId),
+        };
+      } else {
+        // Organic video
+        video = feedItem.item;
+        adOverlay = undefined;
       }
 
-      // ── Organic video ─────────────────────────────────────────────────
-      const item = feedItem.item;
+      // ── Unified VideoCardV2 for both organic videos and ads ──────────
+      const item = video;
       const currentUserId = resolvedAuth?.currentUser?.uid;
       const isOwnVideo = item.userId === currentUserId;
 
@@ -471,6 +492,7 @@ const VideoFeedPage: React.FC = () => {
           onReport={!isOwnVideo ? () => handleReportPress(index) : undefined}
           onViewTracked={() => handleViewTracked(item.id)}
           cardHeight={availableHeight}
+          adOverlay={adOverlay}
         />
       );
 

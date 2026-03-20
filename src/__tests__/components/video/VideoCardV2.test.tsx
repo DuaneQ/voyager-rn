@@ -41,6 +41,7 @@ jest.mock('expo-video', () => ({
 
 // Mock Linking for ad CTA testing
 jest.spyOn(require('react-native').Linking, 'openURL').mockResolvedValue(true);
+jest.spyOn(require('react-native').Linking, 'canOpenURL').mockResolvedValue(true);
 
 // Mock IVideoPlayer
 const createMockPlayer = () => {
@@ -1101,9 +1102,9 @@ describe('VideoCardV2', () => {
       const ctaButton = getByText('Book Now →');
       expect(ctaButton).toBeTruthy();
       
-      // Check accessibility
-      const buttonElement = getByRole('button');
-      expect(buttonElement.props.accessibilityLabel).toBe('Book Now - opens in browser');
+      // Check accessibility - CTA should be a link since it opens external URL
+      const linkElement = getByRole('link');
+      expect(linkElement.props.accessibilityLabel).toBe('Book Now - opens in browser');
     });
 
     it('should call onImpression when component becomes active', async () => {
@@ -1120,8 +1121,62 @@ describe('VideoCardV2', () => {
       );
 
       await waitFor(() => {
-        expect(mockAdOverlay.onImpression).toHaveBeenCalled();
+        expect(mockAdOverlay.onImpression).toHaveBeenCalledTimes(1);
       });
+    });
+
+    it('should prevent duplicate impressions on re-render with same ad', async () => {
+      const { rerender } = render(
+        <VideoCardV2 {...defaultProps} isActive={true} adOverlay={mockAdOverlay} />
+      );
+
+      await waitFor(() => {
+        expect(mockAdOverlay.onImpression).toHaveBeenCalledTimes(1);
+      });
+
+      // Re-render with same adOverlay data (new object reference but same landingUrl)
+      const duplicateAdOverlay = {
+        ...mockAdOverlay,
+        onImpression: jest.fn(),
+        onCtaPress: jest.fn(),
+      };
+
+      rerender(
+        <VideoCardV2 {...defaultProps} isActive={true} adOverlay={duplicateAdOverlay} />
+      );
+
+      // Should NOT call impression again for same ad (same landingUrl)
+      expect(duplicateAdOverlay.onImpression).not.toHaveBeenCalled();
+      expect(mockAdOverlay.onImpression).toHaveBeenCalledTimes(1); // Still only once
+    });
+
+    it('should track new impression when different ad is shown', async () => {
+      const { rerender } = render(
+        <VideoCardV2 {...defaultProps} isActive={true} adOverlay={mockAdOverlay} />
+      );
+
+      await waitFor(() => {
+        expect(mockAdOverlay.onImpression).toHaveBeenCalledTimes(1);
+      });
+
+      // Render a different ad (different landingUrl)
+      const differentAdOverlay = {
+        ...mockAdOverlay,
+        landingUrl: 'https://example.com/different-deals',
+        onImpression: jest.fn(),
+        onCtaPress: jest.fn(),
+      };
+
+      rerender(
+        <VideoCardV2 {...defaultProps} isActive={true} adOverlay={differentAdOverlay} />
+      );
+
+      // Should call impression for new ad
+      await waitFor(() => {
+        expect(differentAdOverlay.onImpression).toHaveBeenCalledTimes(1);
+      });
+      
+      expect(mockAdOverlay.onImpression).toHaveBeenCalledTimes(1); // Original still once
     });
 
     it('should handle CTA button press correctly', async () => {
@@ -1138,7 +1193,8 @@ describe('VideoCardV2', () => {
       // Should call onCtaPress callback
       expect(mockAdOverlay.onCtaPress).toHaveBeenCalled();
       
-      // Should open landing URL via Linking
+      // Should open landing URL via Linking after security check
+      expect(Linking.canOpenURL).toHaveBeenCalledWith('https://example.com/tokyo-deals');
       expect(Linking.openURL).toHaveBeenCalledWith('https://example.com/tokyo-deals');
     });
 
@@ -1183,14 +1239,43 @@ describe('VideoCardV2', () => {
 
       const ctaButton = getByText('Learn More →');
       
-      expect(async () => {
-        await act(async () => {
-          fireEvent.press(ctaButton);
-        });
-      }).not.toThrow();
+      // Should not throw when pressed
+      await act(async () => {
+        fireEvent.press(ctaButton);
+      });
       
-      // Should still call Linking.openURL
+      // Should still validate and call Linking.openURL
+      expect(Linking.canOpenURL).toHaveBeenCalledWith('https://example.com');
       expect(Linking.openURL).toHaveBeenCalledWith('https://example.com');
+    });
+
+    it('should reject malicious URLs in CTA press', async () => {
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const maliciousAdOverlay = {
+        primaryText: 'Test ad',
+        cta: 'Click Me',
+        landingUrl: 'javascript:alert("xss")',
+        onCtaPress: jest.fn(),
+      };
+
+      const { getByText } = render(
+        <VideoCardV2 {...defaultProps} adOverlay={maliciousAdOverlay} />
+      );
+
+      const ctaButton = getByText('Click Me →');
+      
+      await act(async () => {
+        fireEvent.press(ctaButton);
+      });
+
+      // Should reject malicious URL and log warning  
+      expect(console.warn).toHaveBeenCalledWith(
+        'Ad landing URL uses unsafe protocol:', 'javascript:'
+      );
+      expect(Linking.openURL).not.toHaveBeenCalled();
+      expect(maliciousAdOverlay.onCtaPress).toHaveBeenCalled();
+      
+      consoleSpy.mockRestore();
     });
 
     it('should handle Linking.openURL errors gracefully', async () => {
@@ -1208,7 +1293,7 @@ describe('VideoCardV2', () => {
       });
 
       // Should log warning but not crash
-      expect(consoleSpy).toHaveBeenCalledWith('Failed to open ad landing URL:', expect.any(Error));
+      expect(consoleSpy).toHaveBeenCalledWith('Invalid or malicious ad landing URL:', 'https://example.com/tokyo-deals', expect.any(Error));
       
       consoleSpy.mockRestore();
     });

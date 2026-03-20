@@ -481,7 +481,7 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
   }, [userId, onComment]);
 
   /**
-   * Handle CTA button press for ad overlay
+   * Handle CTA button press with security validation
    */
   const handleCtaPress = useCallback(async () => {
     if (!adOverlay) return;
@@ -491,20 +491,52 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
       adOverlay.onCtaPress();
     }
     
-    // Open landing URL
+    // Validate and sanitize URL before opening
+    const rawUrl = adOverlay.landingUrl;
+    
     try {
-      await Linking.openURL(adOverlay.landingUrl);
+      // Basic URL validation
+      const url = new URL(rawUrl);
+      
+      // Only allow safe protocols
+      if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+        console.warn('Ad landing URL uses unsafe protocol:', url.protocol);
+        return;
+      }
+      
+      // Check if URL can be opened
+      const canOpen = await Linking.canOpenURL(rawUrl);
+      if (!canOpen) {
+        console.warn('Ad landing URL cannot be opened:', rawUrl);
+        return;
+      }
+      
+      await Linking.openURL(rawUrl);
     } catch (error) {
-      console.warn('Failed to open ad landing URL:', error);
+      console.warn('Invalid or malicious ad landing URL:', rawUrl, error);
     }
   }, [adOverlay]);
 
   /**
    * Track ad impression when component becomes active
    */
+  const adImpressionKeyRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (adOverlay && isActive && adOverlay.onImpression) {
-      adOverlay.onImpression();
+      // Create unique key for this ad to prevent duplicate impressions
+      const adKey = adOverlay.landingUrl; // Use landingUrl as unique identifier
+      
+      // Only fire impression if we haven't already tracked this specific ad
+      if (adImpressionKeyRef.current !== adKey) {
+        adOverlay.onImpression();
+        adImpressionKeyRef.current = adKey;
+      }
+    }
+    
+    // Reset impression tracking when adOverlay becomes null
+    if (!adOverlay) {
+      adImpressionKeyRef.current = null;
     }
   }, [adOverlay, isActive]);
 
@@ -761,7 +793,7 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
           <TouchableOpacity
             style={styles.ctaButton}
             onPress={handleCtaPress}
-            accessibilityRole="button"
+            accessibilityRole="link"
             accessibilityLabel={`${adOverlay.cta} - opens in browser`}
           >
             <Text style={styles.ctaButtonText}>{adOverlay.cta} →</Text>
