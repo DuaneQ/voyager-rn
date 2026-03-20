@@ -21,9 +21,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import {
   GENDER_OPTIONS,
-  STATUS_OPTIONS,
-  SEXUAL_ORIENTATION_OPTIONS,
 } from '../../types/ManualItinerary';
+import {
+  STATUS_PREFERENCE_OPTIONS,
+  ORIENTATION_PREFERENCE_OPTIONS,
+  getPreferenceLabel,
+} from '../../constants/preferenceOptions';
 import { AndroidPickerModal } from '../common/AndroidPickerModal';
 import { CrossPlatformDatePicker } from '../common/CrossPlatformDatePicker';
 import { parseLocalDate } from '../../utils/formatDate';
@@ -118,6 +121,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   const [eduModalVisible, setEduModalVisible] = useState(false);
   const [drinkingModalVisible, setDrinkingModalVisible] = useState(false);
   const [smokingModalVisible, setSmokingModalVisible] = useState(false);
+  const [openTooltip, setOpenTooltip] = useState<'dob' | 'status' | 'gender' | 'orientation' | null>(null);
 
   // Date state for CrossPlatformDatePicker
   const [dateValue, setDateValue] = useState<Date>(() => {
@@ -212,6 +216,10 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
     }
   };
 
+  const toggleTooltip = (field: 'dob' | 'status' | 'gender' | 'orientation') => {
+    setOpenTooltip((prev) => (prev === field ? null : field));
+  };
+
   return (
     <Modal
       visible={visible}
@@ -291,7 +299,22 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
 
           {/* Date of Birth */}
           <View style={styles.fieldContainer}>
-            <Text style={styles.label}>Date of Birth *</Text>
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>Date of Birth *</Text>
+              <TouchableOpacity
+                onPress={() => toggleTooltip('dob')}
+                accessibilityLabel="Date of birth field help"
+                accessibilityRole="button"
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="information-circle-outline" size={16} color="#1976d2" />
+              </TouchableOpacity>
+            </View>
+            {openTooltip === 'dob' && (
+              <Text style={styles.tooltipText}>
+                Your date of birth is used to calculate your age for itinerary matching. Other users can filter by age range. If you change this, only new or updated itineraries will use the new age snapshot. Existing itineraries keep their previous snapshot.
+              </Text>
+            )}
             <CrossPlatformDatePicker
               testID="dob-input"
               value={dateValue}
@@ -312,14 +335,29 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
 
           {/* Status */}
           <View style={styles.fieldContainer}>
-            <Text style={styles.label}>Status *</Text>
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>Status *</Text>
+              <TouchableOpacity
+                onPress={() => toggleTooltip('status')}
+                accessibilityLabel="Status field help"
+                accessibilityRole="button"
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="information-circle-outline" size={16} color="#1976d2" />
+              </TouchableOpacity>
+            </View>
+            {openTooltip === 'status' && (
+              <Text style={styles.tooltipText}>
+                Your status is used for traveler matching. Other users can filter by status preference when searching itineraries. If you change this, only new or updated itineraries will use the new value. Existing itineraries keep their previous snapshot.
+              </Text>
+            )}
             <TouchableOpacity
               testID="status-picker"
               style={[styles.input, errors.status && styles.inputError]}
               onPress={() => setStatusModalVisible(true)}
             >
               <Text style={[styles.inputText, !formData.status && styles.placeholderText]}>
-                {formData.status ? STATUS_OPTIONS.find(opt => opt.toLowerCase() === formData.status) || formData.status : 'Select status...'}
+                {formData.status ? getPreferenceLabel(formData.status, STATUS_PREFERENCE_OPTIONS) : 'Select status...'}
               </Text>
               <Ionicons name="chevron-down" size={20} color="#999" />
             </TouchableOpacity>
@@ -332,7 +370,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                 title="Select Status"
                 options={[
                   { label: 'Select status...', value: '' },
-                  ...STATUS_OPTIONS.map(opt => ({ label: opt, value: opt.toLowerCase() }))
+                  ...STATUS_PREFERENCE_OPTIONS
                 ]}
               />
             ) : (
@@ -344,7 +382,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                 title="Select Status"
                 options={[
                   { label: 'Select status...', value: '' },
-                  ...STATUS_OPTIONS.map(opt => ({ label: opt, value: opt.toLowerCase() }))
+                  ...STATUS_PREFERENCE_OPTIONS
                 ]}
               />
             )}
@@ -355,7 +393,22 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
 
           {/* Gender */}
           <View style={styles.fieldContainer}>
-            <Text style={styles.label}>Gender *</Text>
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>Gender *</Text>
+              <TouchableOpacity
+                onPress={() => toggleTooltip('gender')}
+                accessibilityLabel="Gender field help"
+                accessibilityRole="button"
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="information-circle-outline" size={16} color="#1976d2" />
+              </TouchableOpacity>
+            </View>
+            {openTooltip === 'gender' && (
+              <Text style={styles.tooltipText}>
+                Your gender is used for traveler matching. Other users can filter by gender preference when searching itineraries. If you change this, only new or updated itineraries will use the new value. Existing itineraries keep their previous snapshot.
+              </Text>
+            )}
             <TouchableOpacity
               testID="gender-picker"
               style={[styles.input, errors.gender && styles.inputError]}
@@ -398,14 +451,29 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
 
           {/* Sexual Orientation */}
           <View style={styles.fieldContainer}>
-            <Text style={styles.label}>Sexual Orientation *</Text>
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>Sexual Orientation *</Text>
+              <TouchableOpacity
+                onPress={() => toggleTooltip('orientation')}
+                accessibilityLabel="Sexual orientation field help"
+                accessibilityRole="button"
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="information-circle-outline" size={16} color="#1976d2" />
+              </TouchableOpacity>
+            </View>
+            {openTooltip === 'orientation' && (
+              <Text style={styles.tooltipText}>
+                Your sexual orientation is used for traveler matching. Other users can filter by sexual orientation preference when searching itineraries. If you change this, only new or updated itineraries will use the new value. Existing itineraries keep their previous snapshot.
+              </Text>
+            )}
             <TouchableOpacity
               testID="orientation-picker"
               style={[styles.input, errors.sexualOrientation && styles.inputError]}
               onPress={() => setOrientationModalVisible(true)}
             >
               <Text style={[styles.inputText, !formData.sexualOrientation && styles.placeholderText]}>
-                {formData.sexualOrientation ? SEXUAL_ORIENTATION_OPTIONS.find(opt => opt.toLowerCase() === formData.sexualOrientation) || formData.sexualOrientation : 'Select orientation...'}
+                {formData.sexualOrientation ? getPreferenceLabel(formData.sexualOrientation, ORIENTATION_PREFERENCE_OPTIONS) : 'Select orientation...'}
               </Text>
               <Ionicons name="chevron-down" size={20} color="#999" />
             </TouchableOpacity>
@@ -418,7 +486,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                 title="Sexual Orientation"
                 options={[
                   { label: 'Select orientation...', value: '' },
-                  ...SEXUAL_ORIENTATION_OPTIONS.map(opt => ({ label: opt, value: opt.toLowerCase() }))
+                  ...ORIENTATION_PREFERENCE_OPTIONS
                 ]}
               />
             ) : (
@@ -430,7 +498,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                 title="Sexual Orientation"
                 options={[
                   { label: 'Select orientation...', value: '' },
-                  ...SEXUAL_ORIENTATION_OPTIONS.map(opt => ({ label: opt, value: opt.toLowerCase() }))
+                  ...ORIENTATION_PREFERENCE_OPTIONS
                 ]}
               />
             )}
@@ -617,6 +685,18 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
     marginBottom: 8,
+  },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  tooltipText: {
+    marginTop: -2,
+    marginBottom: 10,
+    fontSize: 12,
+    lineHeight: 17,
+    color: '#4e5d78',
   },
   input: {
     borderWidth: 1,

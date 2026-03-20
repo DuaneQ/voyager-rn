@@ -10,7 +10,7 @@ jest.mock('../../config/firebaseConfig');
 // Require after mocks so the module picks up the mocked Platform
 const { AuthProvider, useAuth } = require('../../context/AuthContext');
 const { signInWithEmailAndPassword, sendPasswordResetEmail, sendEmailVerification, signOut: firebaseSignOut, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signInWithCredential } = require('firebase/auth');
-const { setDoc, getDoc } = require('firebase/firestore');
+const { setDoc, getDoc, runTransaction } = require('firebase/firestore');
 const { auth } = require('../../config/firebaseConfig');
 
 describe('AuthContext (firebase-backed)', () => {
@@ -486,7 +486,14 @@ describe('AuthContext - Google Sign-In', () => {
   it('auto-creates Firestore profile for new users trying to sign in on web', async () => {
     // Mock getDoc to return false (user doesn't exist)
     (getDoc as jest.Mock).mockResolvedValueOnce({ exists: () => false });
-    (setDoc as jest.Mock).mockResolvedValueOnce(undefined);
+    (runTransaction as jest.Mock).mockImplementationOnce(async (_db, callback) =>
+      callback({
+        get: jest.fn().mockResolvedValue({ exists: () => false }),
+        set: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
+      })
+    );
     
     const wrapper = ({ children }: any) => <AuthProvider>{children}</AuthProvider>;
     const { result } = renderHook(() => useAuth(), { wrapper });
@@ -494,13 +501,20 @@ describe('AuthContext - Google Sign-In', () => {
     // Should auto-create profile instead of throwing ACCOUNT_NOT_FOUND
     await act(async () => { await result.current.signInWithGoogle(); });
     
-    expect(setDoc).toHaveBeenCalled();
+    expect(runTransaction).toHaveBeenCalled();
   });
 
   it('signUpWithGoogle throws for web platform', async () => {
     // Mock getDoc to return false (new user signup)
     (getDoc as jest.Mock).mockResolvedValueOnce({ exists: () => false });
-    (setDoc as jest.Mock).mockResolvedValueOnce(undefined);
+    (runTransaction as jest.Mock).mockImplementationOnce(async (_db, callback) =>
+      callback({
+        get: jest.fn().mockResolvedValue({ exists: () => false }),
+        set: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
+      })
+    );
     
     const wrapper = ({ children }: any) => <AuthProvider>{children}</AuthProvider>;
     const { result } = renderHook(() => useAuth(), { wrapper });
@@ -510,7 +524,7 @@ describe('AuthContext - Google Sign-In', () => {
     });
     
     expect(signInWithPopup).toHaveBeenCalled();
-    expect(setDoc).toHaveBeenCalled();
+    expect(runTransaction).toHaveBeenCalled();
   });
 });
 

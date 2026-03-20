@@ -105,6 +105,15 @@ jest.mock('firebase/firestore', () => ({
   setDoc: jest.fn(async () => Promise.resolve()),
   getDoc: jest.fn(async () => ({ exists: () => false, data: () => null })),
   updateDoc: jest.fn(async () => Promise.resolve()),
+  runTransaction: jest.fn(async (_db, updateFunction) => {
+    const transaction = {
+      get: jest.fn(async () => ({ exists: () => false, data: () => null })),
+      set: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    };
+    return updateFunction(transaction);
+  }),
   collection: jest.fn(() => ({})),
   query: jest.fn(() => ({})),
   where: jest.fn(() => ({})),

@@ -22,6 +22,7 @@ import { isAppError } from '../../errors/AppError';
 export const AIItineraryListTab: React.FC = () => {
   const { itineraries, loading, error, refreshItineraries } = useAIGeneratedItineraries();
   const [selectedItineraryId, setSelectedItineraryId] = useState<string | null>(null);
+  const [showTooltip, setShowTooltip] = useState(false);
 
   // Auto-select first itinerary when loaded
   React.useEffect(() => {
@@ -86,7 +87,22 @@ export const AIItineraryListTab: React.FC = () => {
     <View style={styles.container}>
       {/* Dropdown Selector */}
       <View style={styles.dropdownContainer}>
-        <Text style={styles.dropdownLabel}>Select Itinerary:</Text>
+        <View style={styles.labelRow}>
+          <Text style={styles.dropdownLabel}>Select Itinerary:</Text>
+          <TouchableOpacity
+            onPress={() => setShowTooltip(prev => !prev)}
+            accessibilityLabel="Itinerary selector help"
+            accessibilityRole="button"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={styles.tooltipIcon}>ⓘ</Text>
+          </TouchableOpacity>
+        </View>
+        {showTooltip && (
+          <Text style={styles.tooltipText}>
+            To find travellers going to the same destination with overlapping dates, go to the TravalMatch tab and select this itinerary from the dropdown there.{'\n\n'}Want to filter by age, gender, sexual orientation or relationship status? On the TravalMatch tab, tap the Add Itinerary button — that opens the itinerary editor where you can scroll to the bottom to find your itineraries, select this AI generated itinerary and set your match preferences.  Once you save those preferences, we'll only find travelers that match those criteria and are going to the same destination at the same time. You can create multiple itineraries with different match preferences to find different types of travel buddies!
+          </Text>
+        )}
         
         <CrossPlatformPicker
           items={pickerItems}
@@ -202,6 +218,29 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
     marginBottom: 8,
+  },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
+  },
+  tooltipIcon: {
+    fontSize: 15,
+    color: '#007AFF',
+    lineHeight: 20,
+  },
+  tooltipText: {
+    fontSize: 13,
+    color: '#555',
+    backgroundColor: '#f0f6ff',
+    borderLeftWidth: 3,
+    borderLeftColor: '#007AFF',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 6,
+    marginBottom: 8,
+    lineHeight: 18,
   },
   // iOS-specific button style
   iosPickerButton: {

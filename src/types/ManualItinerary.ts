@@ -13,8 +13,32 @@ export interface ManualItineraryFormData {
   
   // Preference filters for matching
   gender: 'Male' | 'Female' | 'Non-binary' | 'Prefer not to say' | 'Transgender Woman' | 'Transgender Man' | 'Gender Neutral' | 'No Preference';
-  status: 'Single' | 'Couple' | 'Group' | 'No Preference';
-  sexualOrientation: 'Heterosexual' | 'Homosexual' | 'Bisexual' | 'Asexual' | 'Pansexual' | 'Queer' | 'Questioning' | 'Other' | 'Prefer not to say' | 'Transgender Woman' | 'Transgender Man' | 'No Preference';
+  status: 'Single' | 'Couple' | 'Group' | 'No Preference' | 'single' | 'couple' | 'group' | 'no preference';
+  sexualOrientation:
+    | 'Heterosexual'
+    | 'Homosexual'
+    | 'Bisexual'
+    | 'Asexual'
+    | 'Pansexual'
+    | 'Queer'
+    | 'Questioning'
+    | 'Other'
+    | 'Prefer not to say'
+    | 'Transgender Woman'
+    | 'Transgender Man'
+    | 'No Preference'
+    | 'heterosexual'
+    | 'homosexual'
+    | 'bisexual'
+    | 'asexual'
+    | 'pansexual'
+    | 'queer'
+    | 'questioning'
+    | 'other'
+    | 'prefer not to say'
+    | 'transgender woman'
+    | 'transgender man'
+    | 'no preference';
   lowerRange: number; // Min age preference
   upperRange: number; // Max age preference
 }

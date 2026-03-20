@@ -72,6 +72,7 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
             gender: itinerary.gender,
             age: itinerary.age,
             status: itinerary.status,
+            sexualOrientation: itinerary.sexualOrientation,
           };
         } else {
           console.error(`[createItinerary] Failed for ${itinerary.destination}:`, result?.result?.error || JSON.stringify(result));
@@ -101,6 +102,17 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
     
     if (createdItineraryIds.length === 0) {
       throw new Error('CRITICAL: No test itineraries were created - all tests will fail!');
+    }
+
+    const berlinBiSeeded = successful.some(
+      (r: any) => r.destination === 'Berlin, Germany' && r.sexualOrientation === 'bisexual'
+    );
+    if (!berlinBiSeeded) {
+      throw new Error(
+        'CRITICAL: Berlin bisexual itinerary failed to seed. ' +
+        'Check [createItinerary] error logs above. ' +
+        'The bisexual orientation filter test cannot run without this data.'
+      );
     }
   }, 60000); // 60 second timeout for seeding
 

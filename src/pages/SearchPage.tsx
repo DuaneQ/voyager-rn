@@ -289,7 +289,6 @@ const SearchPage: React.FC = () => {
 
       // Save as viewed
       saveViewedItinerary(itinerary.id);
-      
       // 1. Update the liked itinerary with current user's ID
       const existingLikes = Array.isArray(itinerary.likes) ? itinerary.likes : [];
       const newLikes = Array.from(new Set([...existingLikes, userId]));
@@ -297,41 +296,34 @@ const SearchPage: React.FC = () => {
       // Persist likes via RPC (this calls the cloud function)
       try {
         const updatedItinerary = await updateItinerary(itinerary.id, { likes: newLikes });
-        
       } catch (updateError) {
         console.error('[SearchPage] ❌ Failed to update itinerary likes:', updateError);
         throw new Error('Failed to save like. Please try again.');
       }
       
       // 2. Fetch fresh itineraries to check for mutual match (important!)
-      
       const freshItineraries = await refreshItineraries();
-      
       // 3. Get the current user's selected itinerary from fresh data
-      const myItinerary = freshItineraries.find(itin => itin.id === selectedItineraryId);
+      const myItinerary = freshItineraries.find((itin: any) => itin.id === selectedItineraryId);
       
       if (!myItinerary) {
-        
+        console.warn('[MATCH DEBUG] ⚠️ myItinerary NOT FOUND in freshItineraries — selectedItineraryId:', selectedItineraryId, '— aborting match check');
         await getNextItinerary();
         return;
-      }
-      
+      }      
       // 4. Check for mutual match
       const otherUserUid = itinerary.userInfo?.uid;
+
       if (!otherUserUid) {
-        
+        console.warn('[MATCH DEBUG] ⚠️ otherUserUid is null/undefined — itinerary.userInfo:', JSON.stringify(itinerary.userInfo), '— aborting match check');
         await getNextItinerary();
         return;
       }
       
       const myLikes = Array.isArray(myItinerary.likes) ? myItinerary.likes : [];
-
-      if (myLikes.includes(otherUserUid)) {
+       if (myLikes.includes(otherUserUid)) {
         // MUTUAL MATCH! Create connection
         try {
-          const myEmail = myItinerary?.userInfo?.email ?? '';
-          const otherEmail = itinerary?.userInfo?.email ?? '';
-
           await connectionRepository.createConnection({
             user1Id: userId,
             user2Id: otherUserUid,
@@ -340,7 +332,6 @@ const SearchPage: React.FC = () => {
             itinerary1: myItinerary as any,
             itinerary2: itinerary as any
           });
-
           showAlert('success', "🎉 It's a match! You can now chat with this traveler.");
         } catch (connError: any) {
           console.error('[SearchPage] ❌ Error creating connection:', connError);
@@ -349,7 +340,7 @@ const SearchPage: React.FC = () => {
           showAlert('warning', 'Match detected but connection setup had issues. Please check Chats.');
         }
       } else {
-        // no mutual match yet
+        console.log('[MATCH DEBUG] No mutual match yet. otherUserUid');
       }
       
       // Advance to next itinerary

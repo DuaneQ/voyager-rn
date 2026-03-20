@@ -2,6 +2,7 @@ import { Platform, PermissionsAndroid } from 'react-native';
 import { getFirestore, doc, updateDoc, arrayRemove } from 'firebase/firestore';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
+import { app } from '../../config/firebaseConfig';
 // Platform-specific import: messaging.native.ts on iOS/Android, messaging.ts on web
 // Metro bundler automatically picks the right one based on platform
 import messaging from './messaging';
@@ -33,7 +34,7 @@ export class NotificationService {
    */
   private get db() {
     if (!this._db) {
-      this._db = getFirestore();
+      this._db = getFirestore(app);
     }
     return this._db;
   }
@@ -92,6 +93,14 @@ export class NotificationService {
       // iOS: Use RNFB messaging for permission (handles APNs registration natively)
       if (Platform.OS === 'ios' && messaging) {
         try {
+          // Some iOS builds require explicit device registration before token retrieval.
+          if (
+            typeof messaging().isDeviceRegisteredForRemoteMessages === 'boolean' &&
+            !messaging().isDeviceRegisteredForRemoteMessages
+          ) {
+            await messaging().registerDeviceForRemoteMessages();
+          }
+
           const authStatus = await messaging().requestPermission();
           const enabled =
             authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
@@ -195,6 +204,15 @@ export class NotificationService {
     // Try RNFB messaging first (works on both platforms, handles APNs→FCM on iOS)
     if (messaging) {
       try {
+        // Defensive: ensure iOS device is registered for remote messages before getToken.
+        if (
+          Platform.OS === 'ios' &&
+          typeof messaging().isDeviceRegisteredForRemoteMessages === 'boolean' &&
+          !messaging().isDeviceRegisteredForRemoteMessages
+        ) {
+          await messaging().registerDeviceForRemoteMessages();
+        }
+
         const token = await messaging().getToken();
         if (token) {
           return token;

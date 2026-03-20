@@ -63,6 +63,29 @@ export class FirestoreConnectionRepository implements IConnectionRepository {
         throw new Error('Missing required connection parameters');
       }
 
+      // Guard: prevent duplicate connections between the same pair of users.
+      // If both users simultaneously detect a mutual match and call createConnection,
+      // this check ensures only one connection document is created.
+      const connectionsRef = collection(this.db, this.connectionsCollection);
+      const existingQuery = query(connectionsRef, where('users', 'array-contains', user1Id));
+      const existingSnapshot = await getDocs(existingQuery);
+      const existingDoc = existingSnapshot.docs.find(d => {
+        const data = d.data();
+        return Array.isArray(data.users) && data.users.includes(user2Id);
+      });
+
+      if (existingDoc) {
+        const data = existingDoc.data();
+        return {
+          id: existingDoc.id,
+          users: data.users,
+          itineraryIds: data.itineraryIds,
+          itineraries: data.itineraries,
+          createdAt: data.createdAt ?? Timestamp.now(),
+          unreadCounts: data.unreadCounts ?? { [user1Id]: 0, [user2Id]: 0 }
+        };
+      }
+
       // Create connection with addDoc (auto-generated ID) - matches PWA exactly
       const connectionData = {
         users: [user1Id, user2Id],

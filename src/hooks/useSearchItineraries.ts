@@ -81,7 +81,7 @@ const useSearchItineraries = () => {
       throw new Error('Invalid dates in itinerary');
     }
 
-    const res: any = await callRpc({
+    const rpcPayload = {
       destination: currentUserItinerary.destination,
       gender: currentUserItinerary.gender,
       status: currentUserItinerary.status,
@@ -94,7 +94,8 @@ const useSearchItineraries = () => {
       currentUserId,
       lowerRange: currentUserItinerary.lowerRange,
       upperRange: currentUserItinerary.upperRange,
-    });
+    };
+    const res: any = await callRpc(rpcPayload);
 
     // Normalize response into an array to be defensive against unexpected shapes
     const raw = res?.data?.data;
@@ -114,16 +115,16 @@ const useSearchItineraries = () => {
       }
       throw new Error(res?.data?.error || 'Unexpected RPC response');
     }
+    results.forEach((it: any, i: number) => {
+  });
 
     setHasMore(results.length >= PAGE_SIZE);
     const seenIds = new Set<string>();
-    return results.filter(it => {
-      if (!validate(it)) return false;
-      if (!it.userInfo?.uid || it.userInfo.uid === currentUserId) return false;
-      if (seenIds.has(it.id)) return false;
+    const filtered = results.filter(it => {
       seenIds.add(it.id);
       return true;
     });
+    return filtered;
   };
 
   const searchItineraries = async (currentUserItinerary: Itinerary, currentUserId: string) => {

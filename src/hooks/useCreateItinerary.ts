@@ -26,10 +26,10 @@ export const useCreateItinerary = () => {
     const errors: ItineraryValidationError[] = [];
 
     // User profile validation
-    if (!userProfile?.dob || !userProfile?.gender) {
+    if (!userProfile?.dob || !userProfile?.gender || !userProfile?.status || !userProfile?.sexualOrientation) {
       errors.push({
         field: 'profile',
-        message: 'Please complete your profile by setting your date of birth and gender before creating an itinerary.',
+        message: 'Please complete your profile by setting date of birth, gender, status, and sexual orientation before creating an itinerary.',
       });
     }
 
@@ -156,12 +156,12 @@ export const useCreateItinerary = () => {
         age: userAge, // Include calculated age for efficient search filtering
         userInfo: {
           username: userProfile.username || 'Anonymous',
-          gender: userProfile.gender || 'Not specified',
+          gender: userProfile.gender,
           dob: userProfile.dob || 'Unknown',
           uid: userId,
           email: userProfile.email || '',
-          status: userProfile.status || 'single',
-          sexualOrientation: userProfile.sexualOrientation || 'not specified',
+          status: userProfile.status,
+          sexualOrientation: userProfile.sexualOrientation,
           blocked: userProfile.blocked || [],
         },
       };

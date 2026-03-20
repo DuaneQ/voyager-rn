@@ -56,9 +56,9 @@ service firebase.storage {
 
     // ─── Helper functions ─────────────────────────────────────────────────────
 
-    // User-content video (video sharing, 100 MB): uses request.resource for writes
+    // User-content video (video sharing, 150 MB): uses request.resource for writes
     function isValidVideoFile() {
-      return request.resource.size < 100 * 1024 * 1024
+      return request.resource.size < 150 * 1024 * 1024
         && request.resource.contentType.matches('video/.*')
         && request.resource.contentType in ['video/mp4', 'video/quicktime'];
     }

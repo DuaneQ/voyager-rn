@@ -24,9 +24,12 @@ import { formatDateLocal, parseLocalDate } from '../../utils/formatDate';
 import {
   ManualItineraryFormData,
   GENDER_OPTIONS,
-  STATUS_OPTIONS,
-  SEXUAL_ORIENTATION_OPTIONS,
 } from '../../types/ManualItinerary';
+import {
+  STATUS_PREFERENCE_OPTIONS,
+  ORIENTATION_PREFERENCE_OPTIONS,
+  getPreferenceLabel,
+} from '../../constants/preferenceOptions';
 import { Itinerary } from '../../hooks/useAllItineraries';
 import ItineraryListItem from './ItineraryListItem';
 
@@ -79,6 +82,11 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
   const [sexualOrientation, setSexualOrientation] = useState<ManualItineraryFormData['sexualOrientation']>('No Preference');
   const [lowerRange, setLowerRange] = useState(25);
   const [upperRange, setUpperRange] = useState(45);
+
+  // Tooltip state — tracks which preference tooltip is currently open
+  const [openTooltip, setOpenTooltip] = useState<'gender' | 'status' | 'orientation' | 'age' | null>(null);
+  const toggleTooltip = (field: 'gender' | 'status' | 'orientation' | 'age') =>
+    setOpenTooltip(prev => (prev === field ? null : field));
 
   // UI state
   const [editingItineraryId, setEditingItineraryId] = useState<string | null>(null);
@@ -339,12 +347,12 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
         {
-          options: ['Cancel', ...STATUS_OPTIONS],
+          options: ['Cancel', ...STATUS_PREFERENCE_OPTIONS.map((option) => option.label)],
           cancelButtonIndex: 0,
         },
         (buttonIndex) => {
           if (buttonIndex > 0) {
-            setStatus(STATUS_OPTIONS[buttonIndex - 1]);
+            setStatus(STATUS_PREFERENCE_OPTIONS[buttonIndex - 1].value as ManualItineraryFormData['status']);
           }
         }
       );
@@ -358,12 +366,12 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
         {
-          options: ['Cancel', ...SEXUAL_ORIENTATION_OPTIONS],
+          options: ['Cancel', ...ORIENTATION_PREFERENCE_OPTIONS.map((option) => option.label)],
           cancelButtonIndex: 0,
         },
         (buttonIndex) => {
           if (buttonIndex > 0) {
-            setSexualOrientation(SEXUAL_ORIENTATION_OPTIONS[buttonIndex - 1]);
+            setSexualOrientation(ORIENTATION_PREFERENCE_OPTIONS[buttonIndex - 1].value as ManualItineraryFormData['sexualOrientation']);
           }
         }
       );
@@ -513,7 +521,22 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
             <Text style={styles.sectionTitle}>Match Preferences</Text>
 
             {/* Gender */}
-            <Text style={styles.label}>Gender Preference *</Text>
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>Gender Preference *</Text>
+              <TouchableOpacity
+                onPress={() => toggleTooltip('gender')}
+                accessibilityLabel="Gender preference help"
+                accessibilityRole="button"
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Text style={styles.tooltipIcon}>ⓘ</Text>
+              </TouchableOpacity>
+            </View>
+            {openTooltip === 'gender' && (
+              <Text style={styles.tooltipText}>
+                Only travellers whose gender matches your selection will appear in search results. Select "No Preference" to see everyone.
+              </Text>
+            )}
             <TouchableOpacity 
               style={styles.selectionButton}
               onPress={handleGenderPress}
@@ -533,12 +556,27 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
             )}
 
             {/* Status */}
-            <Text style={styles.label}>Relationship Status Preference *</Text>
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>Relationship Status Preference *</Text>
+              <TouchableOpacity
+                onPress={() => toggleTooltip('status')}
+                accessibilityLabel="Relationship status preference help"
+                accessibilityRole="button"
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Text style={styles.tooltipIcon}>ⓘ</Text>
+              </TouchableOpacity>
+            </View>
+            {openTooltip === 'status' && (
+              <Text style={styles.tooltipText}>
+                Only travellers whose relationship status matches your selection will appear in search results. Select "No Preference" to see everyone.
+              </Text>
+            )}
             <TouchableOpacity 
               style={styles.selectionButton}
               onPress={handleStatusPress}
             >
-              <Text style={styles.selectionButtonText}>{status}</Text>
+              <Text style={styles.selectionButtonText}>{getPreferenceLabel(status, STATUS_PREFERENCE_OPTIONS)}</Text>
               <Text style={styles.selectionArrow}>▼</Text>
             </TouchableOpacity>
             {(Platform.OS === 'android' || Platform.OS === 'web') && (
@@ -548,17 +586,32 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
                 onSelect={(value) => setStatus(value as ManualItineraryFormData['status'])}
                 selectedValue={status}
                 title="Relationship Status"
-                options={STATUS_OPTIONS.map(opt => ({ label: opt, value: opt }))}
+                options={[...STATUS_PREFERENCE_OPTIONS]}
               />
             )}
 
             {/* Sexual Orientation */}
-            <Text style={styles.label}>Sexual Orientation Preference *</Text>
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>Sexual Orientation Preference *</Text>
+              <TouchableOpacity
+                onPress={() => toggleTooltip('orientation')}
+                accessibilityLabel="Sexual orientation preference help"
+                accessibilityRole="button"
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Text style={styles.tooltipIcon}>ⓘ</Text>
+              </TouchableOpacity>
+            </View>
+            {openTooltip === 'orientation' && (
+              <Text style={styles.tooltipText}>
+                Only travellers whose sexual orientation matches your selection will appear in search results. Select "No Preference" to see everyone.
+              </Text>
+            )}
             <TouchableOpacity 
               style={styles.selectionButton}
               onPress={handleOrientationPress}
             >
-              <Text style={styles.selectionButtonText}>{sexualOrientation}</Text>
+              <Text style={styles.selectionButtonText}>{getPreferenceLabel(sexualOrientation, ORIENTATION_PREFERENCE_OPTIONS)}</Text>
               <Text style={styles.selectionArrow}>▼</Text>
             </TouchableOpacity>
             {(Platform.OS === 'android' || Platform.OS === 'web') && (
@@ -568,12 +621,27 @@ const AddItineraryModal: React.FC<AddItineraryModalProps> = ({
                 onSelect={(value) => setSexualOrientation(value as ManualItineraryFormData['sexualOrientation'])}
                 selectedValue={sexualOrientation}
                 title="Sexual Orientation"
-                options={SEXUAL_ORIENTATION_OPTIONS.map(opt => ({ label: opt, value: opt }))}
+                options={[...ORIENTATION_PREFERENCE_OPTIONS]}
               />
             )}
 
             {/* Age Range */}
-            <Text style={styles.label}>Age Range (18-100) *</Text>
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>Age Range (18-100) *</Text>
+              <TouchableOpacity
+                onPress={() => toggleTooltip('age')}
+                accessibilityLabel="Age range preference help"
+                accessibilityRole="button"
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Text style={styles.tooltipIcon}>ⓘ</Text>
+              </TouchableOpacity>
+            </View>
+            {openTooltip === 'age' && (
+              <Text style={styles.tooltipText}>
+                Only travellers whose age falls within this range will appear in search results.
+              </Text>
+            )}
             <View style={styles.sliderContainer}>
               <RangeSlider
                 min={18}
@@ -761,6 +829,30 @@ const styles = StyleSheet.create({
     marginTop: 12,
     marginBottom: 6,
     color: '#333',
+  },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 12,
+    marginBottom: 6,
+  },
+  tooltipIcon: {
+    fontSize: 15,
+    color: '#007AFF',
+    lineHeight: 20,
+  },
+  tooltipText: {
+    fontSize: 13,
+    color: '#555',
+    backgroundColor: '#f0f6ff',
+    borderLeftWidth: 3,
+    borderLeftColor: '#007AFF',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 6,
+    marginBottom: 8,
+    lineHeight: 18,
   },
   input: {
     borderWidth: 1,

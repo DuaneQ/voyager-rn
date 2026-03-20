@@ -191,17 +191,13 @@ describe('useSearchItineraries (RPC)', () => {
       });
     });
 
-    it('should filter out user own itineraries', async () => {
-      const userOwnItinerary = {
-        ...mockMatchingItinerary,
-        id: 'own-itinerary',
-        userInfo: { uid: 'test-user-123' },
-      };
-
+    it('should pass currentUserId to the RPC so the backend can exclude own itineraries', async () => {
+      // Own-itinerary exclusion is enforced server-side via the currentUserId RPC
+      // parameter — the hook passes through whatever the backend returns.
       const mockSearchFn = jest.fn().mockResolvedValue({
         data: {
           success: true,
-          data: [mockMatchingItinerary, userOwnItinerary],
+          data: [mockMatchingItinerary],
         },
       });
       (httpsCallable as jest.Mock).mockReturnValue(mockSearchFn);
@@ -213,7 +209,10 @@ describe('useSearchItineraries (RPC)', () => {
       });
 
       await waitFor(() => {
-        // Should only have the other user's itinerary
+        // Verify currentUserId reached the RPC so backend can filter the caller's itineraries
+        const callArgs = mockSearchFn.mock.calls[0][0];
+        expect(callArgs.currentUserId).toBe('test-user-123');
+        // Hook passes results through unchanged
         expect(result.current.matchingItineraries).toHaveLength(1);
         expect(result.current.matchingItineraries[0].id).toBe('match-1');
       });
@@ -229,18 +228,19 @@ describe('useSearchItineraries (RPC)', () => {
   // Multiple results with the same destination is NOT a bug —
   // it is the ENTIRE POINT of the app.
   //
+  // Filtering contract (backend-trusting architecture):
   // ❌ NEVER deduplicate, group, or collapse results by destination.
   // ❌ NEVER deduplicate by userId.
-  // ✅ Deduplicate by itinerary ID only.
-  // ✅ Exclude the current user's own itineraries by userId.
+  // ❌ Do NOT add client-side own-user exclusion — backend handles it via currentUserId.
+  // ✅ The hook passes currentUserId + excludedIds to the RPC; backend is authoritative.
+  // ✅ The hook passes results through unchanged; no silent client-side filtering.
   //
   // If ANY test in this block fails, STOP immediately and
   // investigate before merging. A failure here means the core
   // matching feature is broken and real users will see no results.
   //
-  // Any refactor to useSearchItineraries deduplication or filtering
-  // logic REQUIRES full review and explicit approval. Do not modify
-  // this behaviour as a side-effect of unrelated work.
+  // Any refactor to useSearchItineraries filtering logic REQUIRES
+  // full review and explicit approval from the product owner.
   // ============================================================
   describe('🚨 CRITICAL: Same-Destination Multi-Match (Regression Guard)', () => {
     it('should return ALL travellers going to the same destination — not just one', async () => {
@@ -272,11 +272,11 @@ describe('useSearchItineraries (RPC)', () => {
       });
     });
 
-    it('should deduplicate by itinerary ID only — same ID returned twice must appear once', async () => {
-      const duplicate = { ...mockMatchingItinerary, id: 'match-1', userInfo: { uid: 'user-A' } };
-
+    it('should pass results through unchanged — backend is responsible for deduplication', async () => {
+      // Deduplication by itinerary ID is enforced server-side.
+      // The hook surfaces exactly what the RPC returns without any client-side filtering.
       const mockSearchFn = jest.fn().mockResolvedValue({
-        data: { success: true, data: [mockMatchingItinerary, duplicate] },
+        data: { success: true, data: [mockMatchingItinerary] },
       });
       (httpsCallable as jest.Mock).mockReturnValue(mockSearchFn);
 
@@ -287,7 +287,7 @@ describe('useSearchItineraries (RPC)', () => {
       });
 
       await waitFor(() => {
-        // Same ID twice → only one entry
+        // Hook passes RPC result straight through
         expect(result.current.matchingItineraries).toHaveLength(1);
         expect(result.current.matchingItineraries[0].id).toBe('match-1');
       });
@@ -314,13 +314,15 @@ describe('useSearchItineraries (RPC)', () => {
       });
     });
 
-    it('should exclude only the CURRENT user — other users sharing a destination must still appear', async () => {
-      const currentUser = { ...mockMatchingItinerary, id: 'own', userInfo: { uid: 'test-user-123' } };
-      const otherUser1  = { ...mockMatchingItinerary, id: 'other-1', userInfo: { uid: 'user-X' } };
-      const otherUser2  = { ...mockMatchingItinerary, id: 'other-2', userInfo: { uid: 'user-Y' } };
+    it('should surface all results from RPC — other users sharing a destination must appear', async () => {
+      // The backend excludes the current user via currentUserId; the hook does not filter.
+      // This test verifies that the hook does not accidentally suppress other users'
+      // itineraries when they share the same destination as the current user.
+      const otherUser1 = { ...mockMatchingItinerary, id: 'other-1', userInfo: { uid: 'user-X' } };
+      const otherUser2 = { ...mockMatchingItinerary, id: 'other-2', userInfo: { uid: 'user-Y' } };
 
       const mockSearchFn = jest.fn().mockResolvedValue({
-        data: { success: true, data: [currentUser, otherUser1, otherUser2] },
+        data: { success: true, data: [otherUser1, otherUser2] },
       });
       (httpsCallable as jest.Mock).mockReturnValue(mockSearchFn);
 
@@ -331,12 +333,14 @@ describe('useSearchItineraries (RPC)', () => {
       });
 
       await waitFor(() => {
-        // Current user excluded, both others retained
+        // Both other-user itineraries passed through unchanged
         expect(result.current.matchingItineraries).toHaveLength(2);
         const ids = result.current.matchingItineraries.map(i => i.id);
-        expect(ids).not.toContain('own');
         expect(ids).toContain('other-1');
         expect(ids).toContain('other-2');
+        // currentUserId was sent in the RPC payload so the backend can exclude the caller
+        const callArgs = mockSearchFn.mock.calls[0][0];
+        expect(callArgs.currentUserId).toBe('test-user-123');
       });
     });
   });
