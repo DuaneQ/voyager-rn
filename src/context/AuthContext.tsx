@@ -54,6 +54,8 @@ import {
   getDoc,
   serverTimestamp,
   updateDoc,
+  runTransaction,
+  DocumentReference,
 } from 'firebase/firestore';
 import { HashingService } from '../services/contacts/HashingService';
 
@@ -124,6 +126,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [status, setStatus] = useState<AuthStatus>('idle');
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
+
+  const createProfileIfMissing = async (
+    userRef: DocumentReference,
+    profile: Record<string, unknown>
+  ): Promise<void> => {
+    // Atomic check-and-create prevents accidental overwrite if profile is created concurrently.
+    await runTransaction(db, async (transaction) => {
+      const existingDoc = await transaction.get(userRef);
+      if (!existingDoc.exists()) {
+        transaction.set(userRef, profile);
+      }
+    });
+  };
 
   // Initialize Google Sign-In configuration (one-time setup)
   useEffect(() => {
@@ -434,7 +449,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           };
           
           try {
-            await setDoc(doc(db, 'users', user.uid), userProfile);
+            await createProfileIfMissing(doc(db, 'users', user.uid), userProfile);
           } catch (firestoreError: any) {
             console.error('❌ [AuthContext] signInWithGoogle - Profile creation failed:', firestoreError);
             await signOut(auth);
@@ -490,7 +505,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         };
         
         try {
-          await setDoc(doc(db, 'users', user.uid), userProfile);
+          await createProfileIfMissing(doc(db, 'users', user.uid), userProfile);
         } catch (firestoreError: any) {
           console.error('❌ [AuthContext] signInWithGoogle - Profile creation failed:', firestoreError);
           await signOut(auth);
@@ -551,7 +566,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           createdAt: serverTimestamp(),
         };
         
-        await setDoc(doc(db, 'users', user.uid), userProfile);
+        await createProfileIfMissing(doc(db, 'users', user.uid), userProfile);
         setStatus('authenticated');
         return user;
       }
@@ -610,7 +625,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       };
       
       try {
-        await setDoc(doc(db, 'users', user.uid), userProfile);
+        await createProfileIfMissing(doc(db, 'users', user.uid), userProfile);
       } catch (firestoreError: any) {
         console.error('❌ [AuthContext] signUpWithGoogle - FIRESTORE WRITE FAILED:', {
           error: firestoreError,
@@ -700,7 +715,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         };
         
         try {
-          await setDoc(userRef, userProfile);
+          await createProfileIfMissing(userRef, userProfile);
         } catch (firestoreError: any) {
           console.error('❌ [AuthContext] signInWithApple - Profile creation failed:', firestoreError);
           await signOut(auth);
@@ -801,7 +816,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       };
       
       try {
-        await setDoc(userRef, userProfile);
+        await createProfileIfMissing(userRef, userProfile);
       } catch (firestoreError: any) {
         console.error('❌ [AuthContext] signUpWithApple - FIRESTORE WRITE FAILED:', {
           error: firestoreError,

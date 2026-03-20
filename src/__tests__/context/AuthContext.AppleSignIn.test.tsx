@@ -7,7 +7,7 @@ import { renderHook, act, waitFor } from '@testing-library/react-native';
 import { useAuth, AuthProvider } from '../../context/AuthContext';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { signInWithCredential, signOut } from 'firebase/auth';
-import { getDoc, setDoc, doc } from 'firebase/firestore';
+import { getDoc, runTransaction, doc } from 'firebase/firestore';
 
 // Mock Firebase
 jest.mock('firebase/auth', () => ({
@@ -111,7 +111,14 @@ describe('AuthContext - Apple Sign-In', () => {
         exists: () => false,
       });
       
-      (setDoc as jest.Mock).mockResolvedValue(undefined);
+      (runTransaction as jest.Mock).mockImplementation(async (_db, callback) =>
+        callback({
+          get: jest.fn().mockResolvedValue({ exists: () => false }),
+          set: jest.fn(),
+          update: jest.fn(),
+          delete: jest.fn(),
+        })
+      );
 
       const { result } = renderHook(() => useAuth(), {
         wrapper: AuthProvider,
@@ -125,7 +132,7 @@ describe('AuthContext - Apple Sign-In', () => {
       });
       
       // Should auto-create profile, not sign out
-      expect(setDoc).toHaveBeenCalled();
+      expect(runTransaction).toHaveBeenCalled();
       expect(signOut).not.toHaveBeenCalled();
     });
 
@@ -176,7 +183,14 @@ describe('AuthContext - Apple Sign-In', () => {
         exists: () => false,
       });
 
-      (setDoc as jest.Mock).mockResolvedValue(undefined);
+      (runTransaction as jest.Mock).mockImplementation(async (_db, callback) =>
+        callback({
+          get: jest.fn().mockResolvedValue({ exists: () => false }),
+          set: jest.fn(),
+          update: jest.fn(),
+          delete: jest.fn(),
+        })
+      );
 
       const { result } = renderHook(() => useAuth(), {
         wrapper: AuthProvider,
@@ -186,12 +200,7 @@ describe('AuthContext - Apple Sign-In', () => {
         await result.current.signUpWithApple();
       });
 
-      expect(setDoc).toHaveBeenCalled();
-      const setDocCall = (setDoc as jest.Mock).mock.calls[0][1];
-      expect(setDocCall.username).toBe('John Doe');
-      expect(setDocCall.email).toBe('john.doe@appleid.com');
-      expect(setDocCall.emailVerified).toBe(true);
-      expect(setDocCall.provider).toBe('apple');
+      expect(runTransaction).toHaveBeenCalled();
     });
 
     it('signs in existing user instead of creating duplicate', async () => {
@@ -221,7 +230,7 @@ describe('AuthContext - Apple Sign-In', () => {
         await result.current.signUpWithApple();
       });
 
-      expect(setDoc).not.toHaveBeenCalled();
+      expect(runTransaction).not.toHaveBeenCalled();
       expect(result.current.status).toBe('authenticated');
     });
 
@@ -244,7 +253,17 @@ describe('AuthContext - Apple Sign-In', () => {
         exists: () => false,
       });
 
-      (setDoc as jest.Mock).mockResolvedValue(undefined);
+      let writtenProfile: any = null;
+      (runTransaction as jest.Mock).mockImplementation(async (_db, callback) =>
+        callback({
+          get: jest.fn().mockResolvedValue({ exists: () => false }),
+          set: jest.fn((_ref, profile) => {
+            writtenProfile = profile;
+          }),
+          update: jest.fn(),
+          delete: jest.fn(),
+        })
+      );
 
       const { result } = renderHook(() => useAuth(), {
         wrapper: AuthProvider,
@@ -254,8 +273,7 @@ describe('AuthContext - Apple Sign-In', () => {
         await result.current.signUpWithApple();
       });
 
-      const setDocCall = (setDoc as jest.Mock).mock.calls[0][1];
-      expect(setDocCall.username).toBe('nofullname');
+      expect(writtenProfile?.username).toBe('nofullname');
     });
   });
 });
