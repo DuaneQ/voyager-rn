@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
-import { getFirestore, doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../config/firebaseConfig';
 import { notificationService } from '../services/notification/NotificationService';
 import { navigateFromNotification } from '../navigation/navigationRef';
 
@@ -71,7 +72,6 @@ export function useNotifications(): UseNotificationsReturn {
    */
   const saveDiagnostics = async (userId: string, diagnostics: Record<string, unknown>) => {
     try {
-      const db = getFirestore();
       const userRef = doc(db, 'users', userId);
       await updateDoc(userRef, {
         notificationDiagnostics: diagnostics,
