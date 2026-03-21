@@ -578,45 +578,51 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
   };
 
   /**
-   * Render action buttons
+   * Render action buttons.
+   * For ad content (adOverlay present), social actions (like/comment/share/report)
+   * are hidden — the CTA button is the sole call-to-action for sponsored content.
    */
-  const renderActionButtons = () => (
-    <View style={styles.actionsContainer}>
-      {/* Like button */}
-      <TouchableOpacity onPress={handleLike} style={styles.actionButton}>
-        <Ionicons
-          name={isLiked ? 'heart' : 'heart-outline'}
-          size={32}
-          color={isLiked ? '#ff0050' : '#fff'}
-        />
-        {likeCount > 0 && (
-          <Text style={styles.actionText}>{likeCount}</Text>
-        )}
-      </TouchableOpacity>
+  const renderActionButtons = () => {
+    if (adOverlay) return null;
 
-      {/* Comment button */}
-      {onComment && (
-        <TouchableOpacity onPress={handleComment} style={styles.actionButton}>
-          <Ionicons name="chatbubble-outline" size={32} color="#fff" />
-          {commentCount > 0 && (
-            <Text style={styles.actionText}>{commentCount}</Text>
+    return (
+      <View style={styles.actionsContainer}>
+        {/* Like button */}
+        <TouchableOpacity onPress={handleLike} style={styles.actionButton}>
+          <Ionicons
+            name={isLiked ? 'heart' : 'heart-outline'}
+            size={32}
+            color={isLiked ? '#ff0050' : '#fff'}
+          />
+          {likeCount > 0 && (
+            <Text style={styles.actionText}>{likeCount}</Text>
           )}
         </TouchableOpacity>
-      )}
 
-      {/* Share button */}
-      <TouchableOpacity onPress={onShare} style={styles.actionButton}>
-        <Ionicons name="share-social-outline" size={32} color="#fff" />
-      </TouchableOpacity>
+        {/* Comment button */}
+        {onComment && (
+          <TouchableOpacity onPress={handleComment} style={styles.actionButton}>
+            <Ionicons name="chatbubble-outline" size={32} color="#fff" />
+            {commentCount > 0 && (
+              <Text style={styles.actionText}>{commentCount}</Text>
+            )}
+          </TouchableOpacity>
+        )}
 
-      {/* Report button (only for other users' videos) */}
-      {onReport && (
-        <TouchableOpacity onPress={onReport} style={styles.actionButton}>
-          <Ionicons name="flag-outline" size={32} color="#fff" />
+        {/* Share button */}
+        <TouchableOpacity onPress={onShare} style={styles.actionButton}>
+          <Ionicons name="share-social-outline" size={32} color="#fff" />
         </TouchableOpacity>
-      )}
-    </View>
-  );
+
+        {/* Report button (only for other users' videos) */}
+        {onReport && (
+          <TouchableOpacity onPress={onReport} style={styles.actionButton}>
+            <Ionicons name="flag-outline" size={32} color="#fff" />
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  };
 
   /**
    * Render processing state (Android only)
