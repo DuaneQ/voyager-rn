@@ -445,6 +445,11 @@ const VideoFeedPage: React.FC = () => {
       
       if (feedItem.type === 'ad') {
         const ad = feedItem.ad;
+        // Guard: video feed only renders video-creative ads
+        if (ad.creativeType !== 'video' || !ad.muxPlaybackUrl) {
+          console.warn(`[VideoFeedPage] Skipping ad ${ad.campaignId}: creativeType=${ad.creativeType}, muxPlaybackUrl=${ad.muxPlaybackUrl ?? 'absent'}`);
+          return null;
+        }
         // Convert AdUnit to Video structure for unified rendering
         video = {
           id: `ad-${ad.campaignId}`,

@@ -94,8 +94,10 @@ export function useAdDelivery(
 
         const response = result.data
         if (response && Array.isArray(response.ads)) {
+          console.log(`[useAdDelivery] selectAds(${placement}) returned ${response.ads.length} ad(s):`, response.ads.map(a => ({ id: a.campaignId, creativeType: a.creativeType, status: 'active (server-filtered)' })))
           setAds(response.ads)
         } else {
+          console.log(`[useAdDelivery] selectAds(${placement}) returned no ads or unexpected shape:`, response)
           setAds([])
         }
       } catch (err: unknown) {

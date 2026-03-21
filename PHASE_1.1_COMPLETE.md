@@ -167,7 +167,7 @@ The existing `SponsoredVideoCard` approach continues to work perfectly.
 - [x] ✅ **CTA overlay**: TikTok-style CTA button anchored to video frame
 - [x] ✅ **Automatic tracking**: Impression/click events via callbacks
 - [x] ✅ **Accessibility**: ARIA labels and semantic button roles
-- [x] ✅ **Error handling**: Graceful Link.openURL error handling
+- [x] ✅ **Error handling**: Graceful Linking.openURL error handling
 - [x] ✅ **Test coverage**: Comprehensive tests for all new functionality
 - [x] ✅ **No regressions**: All existing VideoCardV2 functionality preserved
 
