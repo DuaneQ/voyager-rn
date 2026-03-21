@@ -427,6 +427,7 @@ const VideoFeedPage: React.FC = () => {
         video = {
           id: `ad-${ad.campaignId}`,
           videoUrl: ad.muxPlaybackUrl || ad.assetUrl,
+          muxPlaybackUrl: ad.muxPlaybackUrl,
           thumbnailUrl: ad.assetUrl,
           title: ad.businessName || 'Sponsored',
           description: ad.primaryText,
