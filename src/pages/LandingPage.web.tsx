@@ -94,142 +94,7 @@ const injectSEOMetaTags = () => {
   canonical.href = `${BASE_URL}/`;
 };
 
-// ── Itinerary Match Mockup ──────────────────────────────────────────────
-// CSS-only visual demonstrating itinerary-based matching (no image dependency)
-const ItineraryMatchMockup: React.FC = () => (
-  <View
-    style={mockupStyles.wrapper}
-    accessibilityLabel="Example showing two travelers matched because their Paris itineraries overlap"
-  >
-    {/* Your Trip Card */}
-    <View style={mockupStyles.card}>
-      <Text style={mockupStyles.cardOwner}>🧳 Your Trip</Text>
-      <Text style={mockupStyles.cardDest}>Paris, France</Text>
-      <Text style={mockupStyles.cardDates}>Jun 1 – 7, 2026</Text>
-      <View style={mockupStyles.tags}>
-        <View style={mockupStyles.tag}><Text style={mockupStyles.tagText}>Museums</Text></View>
-        <View style={mockupStyles.tag}><Text style={mockupStyles.tagText}>Food Tours</Text></View>
-        <View style={mockupStyles.tag}><Text style={mockupStyles.tagText}>Walking</Text></View>
-      </View>
-    </View>
 
-    {/* Match Alert — positioned between the two cards */}
-    <View style={mockupStyles.matchAlertRow}>
-      <View style={mockupStyles.connectorLine} />
-      <View style={mockupStyles.matchAlert}>
-        <Text style={mockupStyles.matchAlertText}>It{"'" + "s"} a Traval Match!</Text>
-        <Text style={mockupStyles.matchAlertScore}>✨ 92% Itinerary Match</Text>
-      </View>
-      <View style={mockupStyles.connectorLine} />
-    </View>
-
-    {/* Alex's Trip Card */}
-    <View style={[mockupStyles.card, mockupStyles.matchedCard]}>
-      <Text style={mockupStyles.cardOwner}>✈️ Alex's Trip</Text>
-      <Text style={mockupStyles.cardDest}>Paris, France</Text>
-      <Text style={mockupStyles.cardDates}>Jun 2 – 8, 2026</Text>
-      <View style={mockupStyles.tags}>
-        <View style={mockupStyles.tag}><Text style={mockupStyles.tagText}>Art</Text></View>
-        <View style={mockupStyles.tag}><Text style={mockupStyles.tagText}>Cafés</Text></View>
-        <View style={mockupStyles.tag}><Text style={mockupStyles.tagText}>Walking</Text></View>
-      </View>
-    </View>
-  </View>
-);
-
-const mockupStyles = StyleSheet.create({
-  wrapper: {
-    alignItems: 'center',
-    paddingVertical: 16,
-    width: '100%',
-    maxWidth: 340,
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
-    width: '100%',
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  matchedCard: {
-    borderWidth: 2,
-    borderColor: '#22c55e',
-    marginBottom: 0,
-  },
-  matchAlertRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '100%',
-    marginVertical: 4,
-  },
-  connectorLine: {
-    flex: 1,
-    height: 2,
-    backgroundColor: 'rgba(34,197,94,0.4)',
-  },
-  matchAlert: {
-    backgroundColor: '#22c55e',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 24,
-    alignItems: 'center',
-    shadowColor: '#22c55e',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  matchAlertText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '800',
-    letterSpacing: 0.3,
-  },
-  matchAlertScore: {
-    color: 'rgba(255,255,255,0.9)',
-    fontSize: 12,
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  cardOwner: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1976d2',
-    marginBottom: 4,
-  },
-  cardDest: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#0f172a',
-    marginBottom: 2,
-  },
-  cardDates: {
-    fontSize: 14,
-    color: '#64748b',
-    marginBottom: 12,
-  },
-  tags: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  tag: {
-    backgroundColor: '#e8f4fd',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  tagText: {
-    fontSize: 12,
-    color: '#1976d2',
-    fontWeight: '500',
-  },
-});
 
 // ── App Screen Mockup ────────────────────────────────────────────────────
 // CSS-only visual simulating the TravalPass search/match screen (replaces stock photo)
@@ -466,7 +331,8 @@ export const LandingPage: React.FC = () => {
       <div style={{
         background: 'linear-gradient(135deg, #0a1628 0%, #1a365d 50%, #1e4e8c 100%)',
         paddingTop: 100,
-        paddingBottom: 60,
+        paddingBottom: 0,
+        overflow: 'hidden',
       }}>
         <View style={styles.heroContent}>
           <View style={styles.heroTextSide}>
@@ -521,7 +387,12 @@ export const LandingPage: React.FC = () => {
           </View>
 
           <View style={styles.heroVisualSide}>
-            <ItineraryMatchMockup />
+            <Image 
+              source={{ uri: '/Matching.png' }}
+              style={styles.heroImage}
+              accessibilityLabel="Example showing two travelers matched because their Paris itineraries overlap"
+              resizeMode="contain"
+            />
           </View>
         </View>
       </div>
@@ -539,11 +410,11 @@ export const LandingPage: React.FC = () => {
               display: 'flex',
               flexWrap: 'wrap',
               justifyContent: 'center',
-              gap: '32px',
+              gap: '200px',
               marginTop: '32px',
             }}>
               {/* Video 1 — Matching */}
-              <div style={{ textAlign: 'center', maxWidth: '300px', flex: '1 1 280px' }}>
+              <div style={{ textAlign: 'center', maxWidth: '340px', flex: '1 1 300px' }}>
                 <video
                   controls
                   preload="metadata"
@@ -551,7 +422,7 @@ export const LandingPage: React.FC = () => {
                   poster="/Matching-poster.jpg"
                   style={{
                     width: '100%',
-                    maxWidth: '300px',
+                    maxWidth: '340px',
                     height: '534px',
                     borderRadius: '12px',
                     boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
@@ -568,7 +439,7 @@ export const LandingPage: React.FC = () => {
               </div>
 
               {/* Video 2 — AI Itinerary */}
-              <div style={{ textAlign: 'center', maxWidth: '300px', flex: '1 1 280px' }}>
+              <div style={{ textAlign: 'center', maxWidth: '340px', flex: '1 1 300px' }}>
                 <video
                   controls
                   preload="metadata"
@@ -576,7 +447,7 @@ export const LandingPage: React.FC = () => {
                   poster="/AIItineraryCreation-poster.jpg"
                   style={{
                     width: '100%',
-                    maxWidth: '300px',
+                    maxWidth: '340px',
                     height: '534px',
                     borderRadius: '12px',
                     boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
@@ -593,7 +464,7 @@ export const LandingPage: React.FC = () => {
               </div>
 
               {/* Video 3 — Manual Itinerary */}
-              <div style={{ textAlign: 'center', maxWidth: '300px', flex: '1 1 280px' }}>
+              <div style={{ textAlign: 'center', maxWidth: '340px', flex: '1 1 300px' }}>
                 <video
                   controls
                   preload="metadata"
@@ -601,7 +472,7 @@ export const LandingPage: React.FC = () => {
                   poster="/ManuallyItinerary-poster.jpg"
                   style={{
                     width: '100%',
-                    maxWidth: '300px',
+                    maxWidth: '340px',
                     height: '534px',
                     borderRadius: '12px',
                     boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
@@ -885,8 +756,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    maxWidth: 1200,
+    paddingHorizontal: 40,
+    maxWidth: 1400,
     marginHorizontal: 'auto',
     width: '100%',
   },
@@ -906,25 +777,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   heroContent: {
-    paddingHorizontal: 20,
-    maxWidth: 1200,
+    paddingHorizontal: 40,
+    maxWidth: 1400,
     width: '100%',
     marginHorizontal: 'auto',
     flexDirection: width < 768 ? 'column' : 'row',
-    alignItems: 'center',
+    alignItems: width < 768 ? 'center' : 'flex-end',
     justifyContent: 'space-between',
     gap: 40,
     zIndex: 2,
   },
   heroTextSide: {
     flex: 1,
-    maxWidth: width < 768 ? '100%' : 560,
+    maxWidth: width < 768 ? '100%' : 640,
     alignItems: width < 768 ? 'center' : 'flex-start',
+    paddingBottom: width < 768 ? 0 : 60,
   },
   heroVisualSide: {
     flex: 1,
-    maxWidth: 360,
+    maxWidth: 560,
     alignItems: 'center',
+    alignSelf: 'flex-end',
+  },
+  heroImage: {
+    width: '100%',
+    maxWidth: 560,
+    height: 620,
   },
   heroTitle: {
     fontSize: width < 768 ? 28 : width < 1024 ? 36 : 46,
@@ -1028,10 +906,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(245, 245, 245, 0.95)',
   },
   sectionContainer: {
-    maxWidth: 1200,
+    maxWidth: 1400,
     width: '100%',
     alignSelf: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 40,
     overflow: 'hidden',
   },
   twoColumnLayout: {

@@ -49,6 +49,12 @@ export interface UseAdTrackingReturn {
   trackQuartile: (campaignId: string, quartile: VideoQuartile) => void
   /** Force-flush any buffered events (useful before navigation). */
   flush: () => Promise<void>
+  /**
+   * Returns all campaign IDs that have received an impression this session.
+   * Pass this to useAdDelivery.fetchAds() so selectAds can deprioritise
+   * already-seen campaigns via its frequency-capping ranking penalty.
+   */
+  getSeenIds: () => string[]
 }
 
 export function useAdTracking(): UseAdTrackingReturn {
@@ -76,14 +82,13 @@ export function useAdTracking(): UseAdTrackingReturn {
     // Swap buffer to avoid double-sends
     bufferRef.current = []
 
+    console.log(`[🎯 ADS-TEST] useAdTracking FLUSHING ${events.length} event(s):`, events.map(e => ({ type: e.type, campaignId: e.campaignId, quartile: (e as any).quartile })))
     try {
       const result = await logAdEventsFn({ events })
       const { processed, skipped } = result.data
+      console.log(`[🎯 ADS-TEST] useAdTracking FLUSH RESULT: processed=${processed} skipped=${skipped}`)
       if (skipped > 0) {
         console.warn(`[useAdTracking] ${skipped} events skipped by server`)
-      }
-      if (processed > 0) {
-        // Success — no action needed
       }
     } catch (err) {
       console.error('[useAdTracking] flush failed:', err)
@@ -128,9 +133,12 @@ export function useAdTracking(): UseAdTrackingReturn {
     (campaignId: string) => {
       if (!campaignId) return
       // Deduplicate within this session
-      if (impressionSetRef.current.has(campaignId)) return
+      if (impressionSetRef.current.has(campaignId)) {
+        console.log(`[🎯 ADS-TEST] trackImpression DEDUPED (already sent this session): ${campaignId}`)
+        return
+      }
       impressionSetRef.current.add(campaignId)
-
+      console.log(`[🎯 ADS-TEST] trackImpression QUEUED: ${campaignId} (buffer: ${bufferRef.current.length + 1})`)
       enqueue({
         type: 'impression',
         campaignId,
@@ -143,6 +151,7 @@ export function useAdTracking(): UseAdTrackingReturn {
   const trackClick = useCallback(
     (campaignId: string) => {
       if (!campaignId) return
+      console.log(`[🎯 ADS-TEST] trackClick QUEUED: ${campaignId} (buffer: ${bufferRef.current.length + 1})`)
       enqueue({
         type: 'click',
         campaignId,
@@ -165,5 +174,9 @@ export function useAdTracking(): UseAdTrackingReturn {
     [enqueue],
   )
 
-  return { trackImpression, trackClick, trackQuartile, flush }
+  const getSeenIds = useCallback((): string[] => {
+    return Array.from(impressionSetRef.current)
+  }, [])
+
+  return { trackImpression, trackClick, trackQuartile, flush, getSeenIds }
 }

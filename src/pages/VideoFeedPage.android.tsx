@@ -37,13 +37,14 @@ import { VideoUploadModal } from '../components/modals/VideoUploadModal';
 import { ReportVideoModal } from '../components/modals/ReportVideoModal';
 import { useVideoFeed, VideoFilter } from '../hooks/video/useVideoFeed';
 import { useVideoUpload } from '../hooks/video/useVideoUpload';
+import { Video } from '../types/Video';
 import { useAlert } from '../context/AlertContext';
 import { isAppError } from '../errors/AppError';
 import { shareVideo } from '../utils/videoSharing';
 import { videoPlaybackManagerV2 as videoPlaybackManager } from '../services/video/VideoPlaybackManagerV2';
 import { doc, getDocFromServer } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
-import { SponsoredVideoCard } from '../components/ads/SponsoredVideoCard';
+import { VideoCardV2 } from '../components/video/VideoCardV2';
 import { useAdDelivery, useAdTracking, useAdFrequency } from '../hooks/ads';
 import { useUserProfile } from '../context/UserProfileContext';
 import { calculateAge } from '../utils/calculateAge';
@@ -412,41 +413,63 @@ const VideoFeedPage: React.FC = () => {
 
   /**
    * Row renderer for RecyclerListView
-   * Handles both organic video cards and sponsored ad cards.
+   * Uses unified VideoCardV2 for both organic videos and sponsored ads.
    */
   const rowRenderer = useCallback(
     (type: string | number, data: FeedItem, index: number) => {
-      // ── Sponsored ad card ──
+      // Build unified props for VideoCardV2 (handles both organic videos and ads)
+      let video, adOverlay;
+      const isActive = index === currentVideoIndexRef.current && isScreenFocused;
+      
       if (data.type === 'ad') {
-        const isActive = index === currentVideoIndexRef.current && isScreenFocused;
-        return (
-          <SponsoredVideoCard
-            ad={data.ad}
-            isActive={isActive}
-            onImpression={trackImpression}
-            onCtaPress={trackClick}
-            cardHeight={height}
-          />
-        );
+        const ad = data.ad;
+        // Convert AdUnit to Video structure for unified rendering
+        video = {
+          id: `ad-${ad.campaignId}`,
+          videoUrl: ad.muxPlaybackUrl || ad.assetUrl,
+          muxPlaybackUrl: ad.muxPlaybackUrl,
+          thumbnailUrl: ad.assetUrl,
+          title: ad.businessName || 'Sponsored',
+          description: ad.primaryText,
+          createdAt: { toMillis: () => Date.now() },
+          userId: 'sponsored',
+          views: 0,
+          likes: [],
+          userLiked: false,
+        } as unknown as Video;
+        
+        // Ad overlay for CTA and tracking
+        adOverlay = {
+          primaryText: ad.primaryText,
+          cta: ad.cta,
+          landingUrl: ad.landingUrl,
+          businessName: ad.businessName,
+          onImpression: () => trackImpression(ad.campaignId),
+          onCtaPress: () => trackClick(ad.campaignId),
+        };
+      } else {
+        // Organic video
+        video = data.item;
+        adOverlay = undefined;
       }
 
-      // ── Organic video card ──
-      const video = data.item;
+      // ── Unified VideoCardV2 for both organic videos and ads ──
       const currentUserId = resolvedAuth?.currentUser?.uid;
       const isOwnVideo = video.userId === currentUserId;
-      const isActive = index === currentVideoIndexRef.current && isScreenFocused;
 
       return (
-        <VideoCard
+        <VideoCardV2
           video={video}
           isActive={isActive}
           isMuted={isMuted}
           onMuteToggle={setIsMuted}
+          cardHeight={height}
           onLike={() => handleLike(video)}
           onComment={() => handleCommentPress(index)}
           onShare={() => handleShare(index)}
           onReport={!isOwnVideo ? () => handleReportPress(index) : undefined}
           onViewTracked={() => handleViewTracked(video.id)}
+          adOverlay={adOverlay}
         />
       );
     },

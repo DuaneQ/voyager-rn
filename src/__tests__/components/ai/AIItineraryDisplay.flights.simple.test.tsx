@@ -30,7 +30,7 @@ jest.mock('../../../config/firebaseConfig', () => {
 // Mock ad delivery and user context hooks added by ad targeting
 jest.mock('../../../hooks/ads', () => ({
   useAdDelivery: () => ({ ads: [], fetchAds: jest.fn() }),
-  useAdTracking: () => ({ trackImpression: jest.fn(), trackClick: jest.fn(), flush: jest.fn() }),
+  useAdTracking: () => ({ trackImpression: jest.fn(), trackClick: jest.fn(), flush: jest.fn(), getSeenIds: () => [] }),
 }));
 jest.mock('../../../context/UserProfileContext', () => ({
   useUserProfile: () => ({ userProfile: null }),

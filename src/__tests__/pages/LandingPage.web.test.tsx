@@ -175,15 +175,11 @@ describe('LandingPage.web', () => {
       Platform.OS = 'web';
     });
 
-    it('renders the itinerary match visual', () => {
-      const { getByText, getAllByText } = renderComponent();
+    it('renders the itinerary match image', () => {
+      const { getByLabelText } = renderComponent();
       
-      // Verify mockup cards are rendered
-      expect(getAllByText(/Your Trip/i).length).toBeGreaterThanOrEqual(1);
-      expect(getByText(/Alex's Trip/i)).toBeTruthy();
-      // Verify match alert between cards
-      expect(getByText(/Traval Match/i)).toBeTruthy();
-      expect(getByText(/92% Itinerary Match/i)).toBeTruthy();
+      // Verify the image is rendered with correct accessibility label
+      expect(getByLabelText(/Example showing two travelers matched because their Paris itineraries overlap/i)).toBeTruthy();
     });
   });
 
