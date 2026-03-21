@@ -37,6 +37,7 @@ import { VideoUploadModal } from '../components/modals/VideoUploadModal';
 import { ReportVideoModal } from '../components/modals/ReportVideoModal';
 import { useVideoFeed, VideoFilter } from '../hooks/video/useVideoFeed';
 import { useVideoUpload } from '../hooks/video/useVideoUpload';
+import { Video } from '../types/Video';
 import { useAlert } from '../context/AlertContext';
 import { isAppError } from '../errors/AppError';
 import { shareVideo } from '../utils/videoSharing';
@@ -434,7 +435,7 @@ const VideoFeedPage: React.FC = () => {
           views: 0,
           likes: [],
           userLiked: false,
-        } as VideoType;
+        } as unknown as Video;
         
         // Ad overlay for CTA and tracking
         adOverlay = {

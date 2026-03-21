@@ -25,6 +25,7 @@ import { VideoCommentsModal } from '../components/video/VideoCommentsModal';
 import { VideoUploadModal } from '../components/modals/VideoUploadModal';
 import { ReportVideoModal } from '../components/modals/ReportVideoModal';
 
+import { Video } from '../types/Video';
 import { useVideoFeed, VideoFilter } from '../hooks/video/useVideoFeed';
 import { useVideoUpload } from '../hooks/video/useVideoUpload';
 import { useAdDelivery, useAdTracking, useAdFrequency } from '../hooks/ads';
@@ -462,7 +463,7 @@ const VideoFeedPage: React.FC = () => {
           views: 0,
           likes: [],
           userLiked: false,
-        } as VideoType;
+        } as unknown as Video;
         
         // Ad overlay for CTA and tracking
         adOverlay = {

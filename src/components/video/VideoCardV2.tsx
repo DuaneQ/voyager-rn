@@ -753,6 +753,9 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
               // surfaceView (default) causes problems with overlapping videos in RecyclerListView
               // See: https://docs.expo.dev/versions/latest/sdk/video/#surfacetype
               surfaceType={Platform.OS === 'android' ? 'textureView' : undefined}
+              // Disable Vision framework Live Text analysis — reduces rendering pipeline
+              // overhead and prevents potential brightness interference on iOS 16+
+              allowsVideoFrameAnalysis={false}
               onFirstFrameRender={() => setShowTransitionOverlay(false)}
             />
 
