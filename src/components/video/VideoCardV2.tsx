@@ -579,25 +579,26 @@ const VideoCardV2Component: React.FC<VideoCardV2Props> = ({
 
   /**
    * Render action buttons.
-   * For ad content (adOverlay present), social actions (like/comment/share/report)
-   * are hidden — the CTA button is the sole call-to-action for sponsored content.
+   * For ad content (adOverlay present), the like button is hidden (liking an ad
+   * slot is semantically meaningless), but share, comment, and report remain
+   * active so users can still moderate and interact with the underlying content.
    */
   const renderActionButtons = () => {
-    if (adOverlay) return null;
-
     return (
       <View style={styles.actionsContainer}>
-        {/* Like button */}
-        <TouchableOpacity onPress={handleLike} style={styles.actionButton}>
-          <Ionicons
-            name={isLiked ? 'heart' : 'heart-outline'}
-            size={32}
-            color={isLiked ? '#ff0050' : '#fff'}
-          />
-          {likeCount > 0 && (
-            <Text style={styles.actionText}>{likeCount}</Text>
-          )}
-        </TouchableOpacity>
+        {/* Like button — hidden for ads */}
+        {!adOverlay && (
+          <TouchableOpacity onPress={handleLike} style={styles.actionButton}>
+            <Ionicons
+              name={isLiked ? 'heart' : 'heart-outline'}
+              size={32}
+              color={isLiked ? '#ff0050' : '#fff'}
+            />
+            {likeCount > 0 && (
+              <Text style={styles.actionText}>{likeCount}</Text>
+            )}
+          </TouchableOpacity>
+        )}
 
         {/* Comment button */}
         {onComment && (

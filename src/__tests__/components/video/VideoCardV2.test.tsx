@@ -1298,6 +1298,26 @@ describe('VideoCardV2', () => {
       consoleSpy.mockRestore();
     });
 
+    it('should hide like button but show share, comment and report when adOverlay is provided', () => {
+      const { queryByTestId, getByTestId } = render(
+        <VideoCardV2
+          {...defaultProps}
+          adOverlay={mockAdOverlay}
+          onComment={jest.fn()}
+          onReport={jest.fn()}
+        />
+      );
+
+      // Like button should NOT appear for ad content
+      expect(queryByTestId('heart-outline')).toBeNull();
+      expect(queryByTestId('heart')).toBeNull();
+
+      // Share, comment, and report should still be visible
+      expect(getByTestId('share-social-outline')).toBeTruthy();
+      expect(getByTestId('chatbubble-outline')).toBeTruthy();
+      expect(getByTestId('flag-outline')).toBeTruthy();
+    });
+
     it('should render regular video content when no adOverlay is provided', () => {
       const { getByText, queryByText } = render(
         <VideoCardV2 {...defaultProps} />

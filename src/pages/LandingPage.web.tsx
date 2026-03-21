@@ -331,7 +331,8 @@ export const LandingPage: React.FC = () => {
       <div style={{
         background: 'linear-gradient(135deg, #0a1628 0%, #1a365d 50%, #1e4e8c 100%)',
         paddingTop: 100,
-        paddingBottom: 60,
+        paddingBottom: 0,
+        overflow: 'hidden',
       }}>
         <View style={styles.heroContent}>
           <View style={styles.heroTextSide}>
@@ -409,11 +410,11 @@ export const LandingPage: React.FC = () => {
               display: 'flex',
               flexWrap: 'wrap',
               justifyContent: 'center',
-              gap: '32px',
+              gap: '200px',
               marginTop: '32px',
             }}>
               {/* Video 1 — Matching */}
-              <div style={{ textAlign: 'center', maxWidth: '300px', flex: '1 1 280px' }}>
+              <div style={{ textAlign: 'center', maxWidth: '340px', flex: '1 1 300px' }}>
                 <video
                   controls
                   preload="metadata"
@@ -421,7 +422,7 @@ export const LandingPage: React.FC = () => {
                   poster="/Matching-poster.jpg"
                   style={{
                     width: '100%',
-                    maxWidth: '300px',
+                    maxWidth: '340px',
                     height: '534px',
                     borderRadius: '12px',
                     boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
@@ -438,7 +439,7 @@ export const LandingPage: React.FC = () => {
               </div>
 
               {/* Video 2 — AI Itinerary */}
-              <div style={{ textAlign: 'center', maxWidth: '300px', flex: '1 1 280px' }}>
+              <div style={{ textAlign: 'center', maxWidth: '340px', flex: '1 1 300px' }}>
                 <video
                   controls
                   preload="metadata"
@@ -446,7 +447,7 @@ export const LandingPage: React.FC = () => {
                   poster="/AIItineraryCreation-poster.jpg"
                   style={{
                     width: '100%',
-                    maxWidth: '300px',
+                    maxWidth: '340px',
                     height: '534px',
                     borderRadius: '12px',
                     boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
@@ -463,7 +464,7 @@ export const LandingPage: React.FC = () => {
               </div>
 
               {/* Video 3 — Manual Itinerary */}
-              <div style={{ textAlign: 'center', maxWidth: '300px', flex: '1 1 280px' }}>
+              <div style={{ textAlign: 'center', maxWidth: '340px', flex: '1 1 300px' }}>
                 <video
                   controls
                   preload="metadata"
@@ -471,7 +472,7 @@ export const LandingPage: React.FC = () => {
                   poster="/ManuallyItinerary-poster.jpg"
                   style={{
                     width: '100%',
-                    maxWidth: '300px',
+                    maxWidth: '340px',
                     height: '534px',
                     borderRadius: '12px',
                     boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
@@ -755,8 +756,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    maxWidth: 1200,
+    paddingHorizontal: 40,
+    maxWidth: 1400,
     marginHorizontal: 'auto',
     width: '100%',
   },
@@ -776,31 +777,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   heroContent: {
-    paddingHorizontal: 20,
-    maxWidth: 1200,
+    paddingHorizontal: 40,
+    maxWidth: 1400,
     width: '100%',
     marginHorizontal: 'auto',
     flexDirection: width < 768 ? 'column' : 'row',
-    alignItems: 'center',
+    alignItems: width < 768 ? 'center' : 'flex-end',
     justifyContent: 'space-between',
     gap: 40,
     zIndex: 2,
   },
   heroTextSide: {
     flex: 1,
-    maxWidth: width < 768 ? '100%' : 560,
+    maxWidth: width < 768 ? '100%' : 640,
     alignItems: width < 768 ? 'center' : 'flex-start',
+    paddingBottom: width < 768 ? 0 : 60,
   },
   heroVisualSide: {
     flex: 1,
-    maxWidth: 480,
+    maxWidth: 560,
     alignItems: 'center',
+    alignSelf: 'flex-end',
   },
   heroImage: {
     width: '100%',
-    maxWidth: 460,
-    height: 'auto',
-    aspectRatio: 1,
+    maxWidth: 560,
+    height: 620,
   },
   heroTitle: {
     fontSize: width < 768 ? 28 : width < 1024 ? 36 : 46,
@@ -904,10 +906,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(245, 245, 245, 0.95)',
   },
   sectionContainer: {
-    maxWidth: 1200,
+    maxWidth: 1400,
     width: '100%',
     alignSelf: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 40,
     overflow: 'hidden',
   },
   twoColumnLayout: {
