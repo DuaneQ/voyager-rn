@@ -86,28 +86,43 @@ const VideoFeedPage: React.FC = () => {
 
   // ── Ad delivery hooks ─────────────────────────────────────────────────────
   const { ads: videoAds, fetchAds: fetchVideoAds } = useAdDelivery('video_feed');
-  const { trackImpression, trackClick, trackQuartile } = useAdTracking();
+  const { trackImpression, trackClick, trackQuartile, getSeenIds } = useAdTracking();
   const { spliceAdsIntoList, resetSessionCount } = useAdFrequency();
   const { userProfile } = useUserProfile();
   const { defaultProfile: travelProfile } = useTravelPreferences();
 
-  // Fetch ads on mount and on refresh — pass demographic + travel preference context for targeting
-  useEffect(() => {
+  // Build targeting context from both profile hooks.
+  // Extracted here so useEffect and handleRefresh share the same logic.
+  const buildAdContext = useCallback(() => {
     const ctx: Record<string, string | number | string[] | undefined> = {};
     if (userProfile?.gender) ctx.gender = userProfile.gender;
     if (userProfile?.dob) {
       const age = calculateAge(userProfile.dob);
       if (age > 0) ctx.age = age;
     }
-    // Enrich with travel preferences from user's default profile
     if (travelProfile?.activities && travelProfile.activities.length > 0) {
       ctx.activityPreferences = travelProfile.activities;
     }
     if (travelProfile?.travelStyle) {
       ctx.travelStyles = [travelProfile.travelStyle];
     }
-    fetchVideoAds(Object.keys(ctx).length > 0 ? ctx as any : undefined);
-  }, [fetchVideoAds, userProfile?.gender, userProfile?.dob, travelProfile?.activities, travelProfile?.travelStyle]);
+    return Object.keys(ctx).length > 0 ? (ctx as any) : undefined;
+  }, [userProfile?.gender, userProfile?.dob, travelProfile?.activities, travelProfile?.travelStyle]);
+
+  // Fetch ads on mount and when profile data changes.
+  // Debounced 300 ms so that userProfile and travelProfile (which resolve
+  // independently) can both settle before we fire a selectAds call — prevents
+  // the double-call race observed when both hooks load on the same render cycle.
+  const fetchAdsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (fetchAdsTimerRef.current) clearTimeout(fetchAdsTimerRef.current);
+    fetchAdsTimerRef.current = setTimeout(() => {
+      fetchVideoAds(buildAdContext(), getSeenIds());
+    }, 300);
+    return () => {
+      if (fetchAdsTimerRef.current) clearTimeout(fetchAdsTimerRef.current);
+    };
+  }, [fetchVideoAds, getSeenIds, buildAdContext]);
 
   // Build mixed feed: organic videos + sponsored ads
   type FeedItem =
@@ -256,26 +271,14 @@ const VideoFeedPage: React.FC = () => {
     setIsRefreshing(true);
     resetSessionCount(); // Reset ad frequency session count
     await refreshVideos();
-    // Re-fetch ads on refresh with demographic + travel preference context
-    const ctx: Record<string, string | number | string[] | undefined> = {};
-    if (userProfile?.gender) ctx.gender = userProfile.gender;
-    if (userProfile?.dob) {
-      const age = calculateAge(userProfile.dob);
-      if (age > 0) ctx.age = age;
-    }
-    if (travelProfile?.activities && travelProfile.activities.length > 0) {
-      ctx.activityPreferences = travelProfile.activities;
-    }
-    if (travelProfile?.travelStyle) {
-      ctx.travelStyles = [travelProfile.travelStyle];
-    }
-    fetchVideoAds(Object.keys(ctx).length > 0 ? ctx as any : undefined);
+    // On refresh, session resets — pass empty seenIds so all ads are eligible again
+    fetchVideoAds(buildAdContext(), []);
     setIsRefreshing(false);
     // Scroll to top after refresh
     if (flatListRef.current && videos.length > 0) {
       flatListRef.current.scrollToIndex({ index: 0, animated: false });
     }
-  }, [refreshVideos, videos.length, resetSessionCount, fetchVideoAds, userProfile?.gender, userProfile?.dob, travelProfile?.activities, travelProfile?.travelStyle]);
+  }, [refreshVideos, videos.length, resetSessionCount, fetchVideoAds, buildAdContext]);
 
   /**
    * Handle comment button press

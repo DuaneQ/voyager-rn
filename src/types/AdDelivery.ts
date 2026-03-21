@@ -46,6 +46,13 @@ export interface AdUnit {
   offerDetails?: string
   /** Image URL shorthand (alias for assetUrl when creativeType is 'image'). */
   imageUrl?: string
+  /**
+   * Campaign run dates (YYYY-MM-DD) — included so the client can perform a
+   * secondary expiry check for ads that were cached before midnight and would
+   * otherwise be stale for the rest of the session.
+   */
+  startDate?: string
+  endDate?: string
 }
 
 // ─── UserAdContext (targeting) ─────────────────────────────────────────────────
@@ -69,6 +76,17 @@ export interface SelectAdsRequest {
   placement: Placement
   limit?: number
   userContext?: UserAdContext
+  /**
+   * Campaign IDs the viewer has already seen this session.
+   * The server applies a -5 ranking penalty so fresh ads surface first.
+   * Send this so frequency capping works correctly.
+   */
+  seenCampaignIds?: string[]
+  /**
+   * Client-generated session ID (UUID v4) for anonymous users.
+   * Used server-side for tie-breaking so different sessions see different orderings.
+   */
+  sessionId?: string
 }
 
 export interface SelectAdsResponse {
