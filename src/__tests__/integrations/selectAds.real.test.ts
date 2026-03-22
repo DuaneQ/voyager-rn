@@ -35,13 +35,18 @@ const SERVICE_ACCOUNT_PATH = path.resolve(__dirname, '..', '..', '..', 'mundo1-d
 // Using set() (upsert) in beforeAll ensures the document always matches
 // regardless of whether the CF serves a cached or fresh response.
 // Note: Firestore rejects IDs that both start AND end with __ (reserved).
-const TEST_CAMPAIGN_ID          = 'integration-test-selectAds-main';
-const LOCATION_CAMPAIGN_ID      = 'integration-test-location-field';
-const ZERO_BUDGET_ID            = 'integration-test-zero-budget';
-const FREQ_CAP_A_ID             = 'integration-test-freq-cap-a';
-const FREQ_CAP_B_ID             = 'integration-test-freq-cap-b';
-const ITINERARY_FEED_CAMPAIGN_ID = 'integration-test-itinerary-feed';
-const AI_SLOT_CAMPAIGN_ID       = 'integration-test-ai-slot';
+//
+// Per-run unique suffixes prevent document collisions when multiple test runs
+// execute concurrently against the same Firebase project, while ensuring all
+// campaigns are seeded before any CF call can prime the cache.
+const TEST_RUN_ID         = Date.now();
+const TEST_CAMPAIGN_ID          = `integration-test-selectAds-main-${TEST_RUN_ID}`;
+const LOCATION_CAMPAIGN_ID      = `integration-test-location-field-${TEST_RUN_ID}`;
+const ZERO_BUDGET_ID            = `integration-test-zero-budget-${TEST_RUN_ID}`;
+const FREQ_CAP_A_ID             = `integration-test-freq-cap-a-${TEST_RUN_ID}`;
+const FREQ_CAP_B_ID             = `integration-test-freq-cap-b-${TEST_RUN_ID}`;
+const ITINERARY_FEED_CAMPAIGN_ID = `integration-test-itinerary-feed-${TEST_RUN_ID}`;
+const AI_SLOT_CAMPAIGN_ID       = `integration-test-ai-slot-${TEST_RUN_ID}`;
 
 // Per-run unique suffixes baked into userContext.destination values.
 //
@@ -53,7 +58,6 @@ const AI_SLOT_CAMPAIGN_ID       = 'integration-test-ai-slot';
 //
 // Using a per-run unique destination on the very first call guarantees a cache
 // MISS → fresh Firestore fetch → all freshly-upserted campaigns included.
-const TEST_RUN_ID         = Date.now();
 const TEST_PARIS_DEST     = `it-paris-${TEST_RUN_ID}`;     // main campaign target
 const TEST_TOKYO_DEST     = `it-tokyo-${TEST_RUN_ID}`;     // location-field campaign
 const TEST_FREQCAP_DEST   = `it-freqcap-${TEST_RUN_ID}`;   // frequency-cap campaigns

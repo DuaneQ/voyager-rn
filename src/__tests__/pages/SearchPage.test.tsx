@@ -95,10 +95,9 @@ jest.mock('../../components/ads', () => {
       onCtaPress,
       onDismiss,
     }: any) => {
-      // eslint-disable-next-line react-hooks/rules-of-hooks
       React.useEffect(() => {
         if (onImpression && ad?.campaignId) onImpression(ad.campaignId);
-      }, []);
+      }, [ad?.campaignId, onImpression]);
       return React.createElement(
         View,
         { testID: 'sponsored-card' },

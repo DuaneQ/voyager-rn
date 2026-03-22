@@ -171,17 +171,18 @@ The TravalMatch page (iOS/Android/Web) requires at least one saved itinerary to 
 
 ---
 
-### T8 — Itinerary Feed: Counter resets when switching itinerary
+### T8 — Itinerary Feed: Counter persists across itinerary switches
 
 | Step | Action | Expected result |
 |------|--------|-----------------|
 | 1 | Start with a fresh state (re-open app or navigate away and back) | — |
 | 2 | Select itinerary A. Do 2 actions (dislike/like). | No ad yet |
-| 3 | Select a **different** itinerary B | Counter resets |
-| 4 | Do 2 more actions | Still no ad (would need 3 from the new itinerary's counter) |
-| 5 | Do 1 more action (3rd total since B was selected) | Ad appears |
+| 3 | Select a **different** itinerary B | Counter persists (still at 2) |
+| 4 | Do 1 more action | Ad appears immediately (3rd total action across session) |
+| 5 | Do 2 more actions after the ad is dismissed | No new ad yet |
+| 6 | Do 1 more action | Next ad appears (6th total action, every 3rd triggers ad) |
 
-**Pass criterion**: Ad trigger counter is per-itinerary-session, not cumulative across selections.
+**Pass criterion**: Ad trigger counter is cumulative across the entire session, spanning itinerary switches.
 
 ---
 
