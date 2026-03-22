@@ -89,7 +89,7 @@ export function useAdDelivery(
         } as UserAdContext
       }
 
-      console.log(`[🎯 ADS-TEST] useAdDelivery(${placement}) → selectAds context: ${JSON.stringify(sanitizedContext ?? {})}`)
+      console.log(`[🎯 ADS-TEST] useAdDelivery(${placement}) → selectAds context: ${JSON.stringify(sanitizedContext ?? {})} seenCampaignIds: [${(seenCampaignIds ?? []).join(', ')}]`)
       try {
         const payload: SelectAdsRequest = {
           placement,

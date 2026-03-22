@@ -195,10 +195,17 @@ const SearchPage: React.FC = () => {
     const userContext: Record<string, string | number | string[] | undefined> = {
       destination: selectedItinerary.destination ?? undefined,
     };
-    // Include date context if available (cast to access fields)
+    // Include date context if available.
+    // startDate/endDate come back from the server as ISO datetimes
+    // ("2026-03-17T00:00:00.000Z") — slice to YYYY-MM-DD so useAdDelivery's
+    // date validator accepts them for targeting.
     const itin = selectedItinerary as unknown as Record<string, unknown>;
-    if (typeof itin.startDate === 'string') userContext.travelStartDate = itin.startDate;
-    if (typeof itin.endDate === 'string') userContext.travelEndDate = itin.endDate;
+    if (typeof itin.startDate === 'string') {
+      userContext.travelStartDate = (itin.startDate as string).slice(0, 10);
+    }
+    if (typeof itin.endDate === 'string') {
+      userContext.travelEndDate = (itin.endDate as string).slice(0, 10);
+    }
     // Include demographic context from user profile for gender/age targeting
     if (userProfile?.gender) userContext.gender = userProfile.gender;
     if (userProfile?.dob) {
