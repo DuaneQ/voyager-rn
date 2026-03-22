@@ -146,8 +146,8 @@ export const SponsoredItineraryCard = React.memo(SponsoredItineraryCardComponent
 const styles = StyleSheet.create({
   card: {
     backgroundColor: '#fff',
-    borderRadius: 16,
-    marginHorizontal: 16,
+    borderRadius: 0,
+    marginHorizontal: 0,
     marginVertical: 8,
     overflow: 'hidden',
     ...Platform.select({
@@ -167,11 +167,13 @@ const styles = StyleSheet.create({
   },
   image: {
     width: '100%',
-    height: 200,
+    // aspectRatio:1 lets the layout engine compute height from the rendered width
+    // — the correct RN pattern for 1:1 square images (1080×1080 spec)
+    aspectRatio: 1,
   },
   imagePlaceholder: {
     width: '100%',
-    height: 200,
+    aspectRatio: 1,
     backgroundColor: '#e0e0e0',
     justifyContent: 'center',
     alignItems: 'center',

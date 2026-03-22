@@ -93,7 +93,7 @@ const SearchPage: React.FC = () => {
 
   // ─── Ad delivery hooks ───────────────────────────────────────────
   const { ads: sponsoredAds, fetchAds: fetchSearchAds } = useAdDelivery('itinerary_feed');
-  const { trackImpression, trackClick } = useAdTracking();
+  const { trackImpression, trackClick, getSeenIds } = useAdTracking();
   const { defaultProfile: travelProfile } = useTravelPreferences();
 
   /** Show interstitial sponsored card after every N like/dislike actions. */
@@ -212,10 +212,10 @@ const SearchPage: React.FC = () => {
     if (travelProfile?.travelStyle) {
       userContext.travelStyles = [travelProfile.travelStyle];
     }
-    fetchSearchAds(userContext as any);
+    fetchSearchAds(userContext as any, getSeenIds());
 
-    // Reset interstitial counter for new search
-    actionCountRef.current = 0;
+    // Do NOT reset actionCountRef — counter is cumulative across the session.
+    // Every 3 like/dislike actions triggers an ad regardless of destination switches.
     setShowingSponsoredAd(false);
 
     // Trigger search for matching itineraries
@@ -524,7 +524,8 @@ const SearchPage: React.FC = () => {
                     showsVerticalScrollIndicator={false}
                   >
                     {showingSponsoredAd && sponsoredAds.length > 0 ? (
-                      <SponsoredItineraryCard
+                      <View style={styles.sponsoredCardWrapper}>
+                        <SponsoredItineraryCard
                         ad={sponsoredAds[currentAdIndexRef.current % sponsoredAds.length]}
                         isVisible
                         onImpression={trackImpression}
@@ -536,6 +537,7 @@ const SearchPage: React.FC = () => {
                           handleAdDismiss();
                         }}
                       />
+                      </View>
                     ) : (
                       <ItineraryCard
                         itinerary={matchingItineraries[0] as any}
@@ -784,6 +786,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 16,
+  },
+  sponsoredCardWrapper: {
+    width: '100%',
+    alignSelf: 'stretch',
   },
 });
 
