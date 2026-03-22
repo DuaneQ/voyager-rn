@@ -795,14 +795,18 @@ const styles = StyleSheet.create({
   },
   heroVisualSide: {
     flex: 1,
-    maxWidth: 560,
+    maxWidth: width < 768 ? '100%' : 560,
     alignItems: 'center',
-    alignSelf: 'flex-end',
+    alignSelf: width < 768 ? 'center' : 'flex-end',
+    justifyContent: 'center',
+    marginTop: width < 768 ? 20 : 0,
   },
   heroImage: {
     width: '100%',
-    maxWidth: 560,
-    height: 620,
+    maxWidth: width < 768 ? '90%' : 560,
+    height: width < 768 ? 350 : 620,
+    aspectRatio: width < 768 ? 846/982 : undefined,
+    alignSelf: 'center',
   },
   heroTitle: {
     fontSize: width < 768 ? 28 : width < 1024 ? 36 : 46,
