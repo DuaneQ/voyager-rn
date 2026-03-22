@@ -2530,7 +2530,7 @@ const styles = StyleSheet.create({
   },
   promotionImage: {
     width: '100%',
-    height: 160,
+    aspectRatio: 1,
   },
   promotionImagePlaceholder: {
     width: '100%',
