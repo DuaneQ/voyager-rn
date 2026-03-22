@@ -35,11 +35,13 @@ const SERVICE_ACCOUNT_PATH = path.resolve(__dirname, '..', '..', '..', 'mundo1-d
 // Using set() (upsert) in beforeAll ensures the document always matches
 // regardless of whether the CF serves a cached or fresh response.
 // Note: Firestore rejects IDs that both start AND end with __ (reserved).
-const TEST_CAMPAIGN_ID      = 'integration-test-selectAds-main';
-const LOCATION_CAMPAIGN_ID  = 'integration-test-location-field';
-const ZERO_BUDGET_ID        = 'integration-test-zero-budget';
-const FREQ_CAP_A_ID         = 'integration-test-freq-cap-a';
-const FREQ_CAP_B_ID         = 'integration-test-freq-cap-b';
+const TEST_CAMPAIGN_ID          = 'integration-test-selectAds-main';
+const LOCATION_CAMPAIGN_ID      = 'integration-test-location-field';
+const ZERO_BUDGET_ID            = 'integration-test-zero-budget';
+const FREQ_CAP_A_ID             = 'integration-test-freq-cap-a';
+const FREQ_CAP_B_ID             = 'integration-test-freq-cap-b';
+const ITINERARY_FEED_CAMPAIGN_ID = 'integration-test-itinerary-feed';
+const AI_SLOT_CAMPAIGN_ID       = 'integration-test-ai-slot';
 
 // Per-run unique suffixes baked into userContext.destination values.
 //
@@ -51,10 +53,12 @@ const FREQ_CAP_B_ID         = 'integration-test-freq-cap-b';
 //
 // Using a per-run unique destination on the very first call guarantees a cache
 // MISS → fresh Firestore fetch → all freshly-upserted campaigns included.
-const TEST_RUN_ID       = Date.now();
-const TEST_PARIS_DEST   = `it-paris-${TEST_RUN_ID}`;    // main campaign target
-const TEST_TOKYO_DEST   = `it-tokyo-${TEST_RUN_ID}`;    // location-field campaign
-const TEST_FREQCAP_DEST = `it-freqcap-${TEST_RUN_ID}`;  // frequency-cap campaigns
+const TEST_RUN_ID         = Date.now();
+const TEST_PARIS_DEST     = `it-paris-${TEST_RUN_ID}`;     // main campaign target
+const TEST_TOKYO_DEST     = `it-tokyo-${TEST_RUN_ID}`;     // location-field campaign
+const TEST_FREQCAP_DEST   = `it-freqcap-${TEST_RUN_ID}`;   // frequency-cap campaigns
+const TEST_ITINFEED_DEST  = `it-itinfeed-${TEST_RUN_ID}`;  // itinerary_feed campaign
+const TEST_AISLOT_DEST    = `it-aislot-${TEST_RUN_ID}`;    // ai_slot campaign
 
 // Campaign dates: today ± 30 days so it's always active during test runs
 function todayYYYYMMDD(): string {
@@ -236,6 +240,53 @@ describeIfLive('selectAds — Live Integration Tests', () => {
         totalImpressions: 0,
         totalClicks: 0,
       }),
+
+      // itinerary_feed campaign — targetDestination used for scoring (same as video_feed)
+      db.collection('ads_campaigns').doc(ITINERARY_FEED_CAMPAIGN_ID).set({
+        uid: 'test-advertiser-uid',
+        name: 'Integration Test — Itinerary Feed',
+        status: 'active',
+        placement: 'itinerary_feed',
+        isUnderReview: false,
+        startDate: offsetDate(-7),
+        endDate: offsetDate(30),
+        creativeType: 'image',
+        assetUrl: 'https://example.com/itinerary-feed-ad.jpg',
+        primaryText: 'Book your dream stay!',
+        cta: 'Book Now',
+        landingUrl: 'https://example.com/itinerary-hotel',
+        billingModel: 'cpm',
+        budgetAmount: '100.00',
+        budgetCents: 10000,
+        businessName: 'Integration Test Hotel Co',
+        targetDestination: TEST_ITINFEED_DEST,
+        totalImpressions: 0,
+        totalClicks: 0,
+      }),
+
+      // ai_slot campaign — uses `location` field (not targetDestination) for destination scoring
+      db.collection('ads_campaigns').doc(AI_SLOT_CAMPAIGN_ID).set({
+        uid: 'test-advertiser-uid',
+        name: 'Integration Test — AI Slot',
+        status: 'active',
+        placement: 'ai_slot',
+        isUnderReview: false,
+        startDate: offsetDate(-7),
+        endDate: offsetDate(30),
+        creativeType: 'image',
+        assetUrl: 'https://example.com/ai-slot-ad.jpg',
+        primaryText: 'Guided tours for your trip!',
+        cta: 'Explore Now',
+        landingUrl: 'https://example.com/tours',
+        billingModel: 'cpc',
+        budgetAmount: '100.00',
+        budgetCents: 10000,
+        businessName: 'Integration Test Tours Co',
+        // ai_slot stores destination in `location`, not `targetDestination`
+        location: TEST_AISLOT_DEST,
+        totalImpressions: 0,
+        totalClicks: 0,
+      }),
     ]);
 
     createdCampaignIds.push(
@@ -244,6 +295,8 @@ describeIfLive('selectAds — Live Integration Tests', () => {
       ZERO_BUDGET_ID,
       FREQ_CAP_A_ID,
       FREQ_CAP_B_ID,
+      ITINERARY_FEED_CAMPAIGN_ID,
+      AI_SLOT_CAMPAIGN_ID,
     );
   }, 30000);
 
@@ -663,6 +716,181 @@ describeIfLive('selectAds — Live Integration Tests', () => {
       const ads: any[] = result.result.ads;
       expect(ads.find((a) => a.campaignId === FREQ_CAP_A_ID)).toBeDefined();
       expect(ads.find((a) => a.campaignId === FREQ_CAP_B_ID)).toBeDefined();
+    }, 20000);
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // selectAds — Itinerary Feed Placement
+  //
+  // itinerary_feed is a separate placement with its own CF cache key.
+  // Campaigns targeting itinerary_feed use `targetDestination` for scoring
+  // (same field as video_feed) and must NOT appear in video_feed results.
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  describe('itinerary_feed placement', () => {
+    // ITINERARY_FEED_CAMPAIGN_ID is seeded in the outer beforeAll.
+
+    it('should return the itinerary_feed campaign for itinerary_feed placement', async () => {
+      const result = await callCloudFunction('selectAds', {
+        placement: 'itinerary_feed',
+        limit: 20,
+        userContext: { destination: TEST_ITINFEED_DEST },
+      });
+
+      expect(result.result).toBeDefined();
+      expect(Array.isArray(result.result.ads)).toBe(true);
+
+      const testAd = result.result.ads.find(
+        (ad: any) => ad.campaignId === ITINERARY_FEED_CAMPAIGN_ID,
+      );
+      expect(testAd).toBeDefined();
+      expect(testAd.placement).toBe('itinerary_feed');
+      expect(testAd.primaryText).toBe('Book your dream stay!');
+      expect(testAd.cta).toBe('Book Now');
+    }, 20000);
+
+    it('should NOT return itinerary_feed campaign in video_feed results', async () => {
+      // Placement isolation: itinerary_feed campaigns must never bleed into
+      // video_feed (and vice versa). The CF queries WHERE placement == X.
+      const result = await callCloudFunction('selectAds', {
+        placement: 'video_feed',
+        limit: 20,
+        userContext: { destination: TEST_ITINFEED_DEST },
+      });
+
+      const leaked = result.result.ads.find(
+        (ad: any) => ad.campaignId === ITINERARY_FEED_CAMPAIGN_ID,
+      );
+      expect(leaked).toBeUndefined();
+    }, 20000);
+
+    it('should boost score for destination match in itinerary_feed', async () => {
+      // Campaign targeting TEST_ITINFEED_DEST scores +10 (destination match).
+      // It should rank above other itinerary_feed campaigns that score 0.
+      const result = await callCloudFunction('selectAds', {
+        placement: 'itinerary_feed',
+        limit: 20,
+        userContext: { destination: TEST_ITINFEED_DEST },
+      });
+
+      const ads: any[] = result.result.ads;
+      const testAd = ads.find((ad) => ad.campaignId === ITINERARY_FEED_CAMPAIGN_ID);
+      expect(testAd).toBeDefined();
+      // Our targeted campaign should rank first (highest score in the set)
+      expect(ads[0].campaignId).toBe(ITINERARY_FEED_CAMPAIGN_ID);
+    }, 20000);
+
+    it('should return all required AdUnit fields for itinerary_feed', async () => {
+      const result = await callCloudFunction('selectAds', {
+        placement: 'itinerary_feed',
+        limit: 5,
+        userContext: { destination: TEST_ITINFEED_DEST },
+      });
+
+      const testAd = result.result.ads.find(
+        (ad: any) => ad.campaignId === ITINERARY_FEED_CAMPAIGN_ID,
+      );
+      expect(testAd).toBeDefined();
+      expect(testAd.campaignId).toBe(ITINERARY_FEED_CAMPAIGN_ID);
+      expect(testAd.placement).toBe('itinerary_feed');
+      expect(testAd.creativeType).toBe('image');
+      expect(testAd.assetUrl).toBe('https://example.com/itinerary-feed-ad.jpg');
+      expect(testAd.primaryText).toBe('Book your dream stay!');
+      expect(testAd.cta).toBe('Book Now');
+      expect(testAd.landingUrl).toBe('https://example.com/itinerary-hotel');
+      expect(testAd.billingModel).toBe('cpm');
+    }, 20000);
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // selectAds — AI Slot Placement
+  //
+  // ai_slot is the third placement. Its campaigns store destination in the
+  // `location` field (not `targetDestination`) — the CF's scoreCampaign()
+  // checks `campaign.targetDestination || campaign.location` for the match.
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  describe('ai_slot placement', () => {
+    // AI_SLOT_CAMPAIGN_ID is seeded in the outer beforeAll.
+
+    it('should return the ai_slot campaign for ai_slot placement', async () => {
+      const result = await callCloudFunction('selectAds', {
+        placement: 'ai_slot',
+        limit: 20,
+        userContext: { destination: TEST_AISLOT_DEST },
+      });
+
+      expect(result.result).toBeDefined();
+      expect(Array.isArray(result.result.ads)).toBe(true);
+
+      const testAd = result.result.ads.find(
+        (ad: any) => ad.campaignId === AI_SLOT_CAMPAIGN_ID,
+      );
+      expect(testAd).toBeDefined();
+      expect(testAd.placement).toBe('ai_slot');
+      expect(testAd.primaryText).toBe('Guided tours for your trip!');
+      expect(testAd.cta).toBe('Explore Now');
+    }, 20000);
+
+    it('should score destination match using the location field for ai_slot', async () => {
+      // AI slot stores destination in `location` (not targetDestination).
+      // scoreCampaign() checks: campaign.targetDestination || campaign.location
+      // Passing the exact location value as destination should yield +10 score.
+      const result = await callCloudFunction('selectAds', {
+        placement: 'ai_slot',
+        limit: 20,
+        userContext: { destination: TEST_AISLOT_DEST },
+      });
+
+      const ads: any[] = result.result.ads;
+      const testAd = ads.find((ad) => ad.campaignId === AI_SLOT_CAMPAIGN_ID);
+      expect(testAd).toBeDefined();
+      // Should rank first — it's the only ai_slot campaign with a destination match
+      expect(ads[0].campaignId).toBe(AI_SLOT_CAMPAIGN_ID);
+    }, 20000);
+
+    it('should NOT return ai_slot campaign in video_feed or itinerary_feed results', async () => {
+      // Placement isolation — ai_slot campaigns must not bleed into other surfaces.
+      const [videoResult, itinResult] = await Promise.all([
+        callCloudFunction('selectAds', {
+          placement: 'video_feed',
+          limit: 20,
+          userContext: { destination: TEST_AISLOT_DEST },
+        }),
+        callCloudFunction('selectAds', {
+          placement: 'itinerary_feed',
+          limit: 20,
+          userContext: { destination: TEST_AISLOT_DEST },
+        }),
+      ]);
+
+      expect(
+        videoResult.result.ads.find((ad: any) => ad.campaignId === AI_SLOT_CAMPAIGN_ID),
+      ).toBeUndefined();
+      expect(
+        itinResult.result.ads.find((ad: any) => ad.campaignId === AI_SLOT_CAMPAIGN_ID),
+      ).toBeUndefined();
+    }, 20000);
+
+    it('should return all required AdUnit fields for ai_slot', async () => {
+      const result = await callCloudFunction('selectAds', {
+        placement: 'ai_slot',
+        limit: 5,
+        userContext: { destination: TEST_AISLOT_DEST },
+      });
+
+      const testAd = result.result.ads.find(
+        (ad: any) => ad.campaignId === AI_SLOT_CAMPAIGN_ID,
+      );
+      expect(testAd).toBeDefined();
+      expect(testAd.campaignId).toBe(AI_SLOT_CAMPAIGN_ID);
+      expect(testAd.placement).toBe('ai_slot');
+      expect(testAd.creativeType).toBe('image');
+      expect(testAd.assetUrl).toBe('https://example.com/ai-slot-ad.jpg');
+      expect(testAd.primaryText).toBe('Guided tours for your trip!');
+      expect(testAd.cta).toBe('Explore Now');
+      expect(testAd.landingUrl).toBe('https://example.com/tours');
+      expect(testAd.billingModel).toBe('cpc');
     }, 20000);
   });
 });

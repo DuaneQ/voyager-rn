@@ -31,7 +31,8 @@ const PROJECT_ID = 'mundo1-dev';
 const FUNCTION_URL = `https://us-central1-${PROJECT_ID}.cloudfunctions.net`;
 const SERVICE_ACCOUNT_PATH = path.resolve(__dirname, '..', '..', '..', 'mundo1-dev-firebase-adminsdk-fbsvc-bb26c2ec85.json');
 
-const TEST_CAMPAIGN_ID = `__test_logAdEvents_${Date.now()}`;
+// Fixed prefix avoids the Firestore reserved-ID error (IDs matching __.*__ are rejected).
+const TEST_CAMPAIGN_ID = `integration-test-logAdEvents-${Date.now()}`;
 
 function offsetDate(days: number): string {
   const d = new Date();
