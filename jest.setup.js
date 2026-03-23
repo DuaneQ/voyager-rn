@@ -118,6 +118,14 @@ jest.mock('firebase/firestore', () => ({
   query: jest.fn(() => ({})),
   where: jest.fn(() => ({})),
   getDocs: jest.fn(async () => ({ docs: [] })),
+  onSnapshot: jest.fn((_ref, onNext) => {
+    // Default: document does not exist (mirrors getDoc's default above).
+    // Individual tests override this via mockImplementation.
+    if (typeof onNext === 'function') {
+      onNext({ exists: () => false, data: () => null });
+    }
+    return jest.fn(); // unsubscribe
+  }),
   serverTimestamp: jest.fn(() => new Date()),
 }));
 

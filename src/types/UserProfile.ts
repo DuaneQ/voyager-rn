@@ -3,6 +3,8 @@
  * Matches PWA UserProfile interface
  */
 
+import { Timestamp } from 'firebase/firestore';
+
 export interface UserProfile {
   uid?: string;
   email?: string;
@@ -63,6 +65,13 @@ export interface UserProfile {
   dailyUsage?: {
     date: string;
     viewCount: number;
+  };
+
+  // Terms of Service acceptance
+  termsOfService?: {
+    accepted: boolean;
+    acceptedAt?: Timestamp | null; // serverTimestamp() resolves to Timestamp on read; null used for local optimistic updates
+    version: string;
   };
   
   // Privacy settings
