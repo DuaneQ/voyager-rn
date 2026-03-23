@@ -21,7 +21,6 @@ import {
   StyleSheet,
   SafeAreaView,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   ScrollView,
   ImageBackground,
