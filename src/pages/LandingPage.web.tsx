@@ -387,12 +387,18 @@ export const LandingPage: React.FC = () => {
           </View>
 
           <View style={styles.heroVisualSide}>
-            <Image 
-              source={{ uri: '/Matching.png' }}
-              style={styles.heroImage}
-              accessibilityLabel="Example showing two travelers matched because their Paris itineraries overlap"
-              resizeMode="contain"
-            />
+            {/* Use native <picture> to serve WebP (111KB) instead of PNG (1.6MB) */}
+            <picture>
+              <source srcSet="/Matching.webp" type="image/webp" />
+              <img
+                src="/Matching.png"
+                alt="Example showing two travelers matched because their Paris itineraries overlap"
+                style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+                width={846}
+                height={982}
+                fetchPriority="high"
+              />
+            </picture>
           </View>
         </View>
       </div>
@@ -419,7 +425,7 @@ export const LandingPage: React.FC = () => {
                   controls
                   preload="metadata"
                   playsInline
-                  poster="/Matching-poster.jpg"
+                  poster="/Matching-poster.webp"
                   style={{
                     width: '100%',
                     maxWidth: '340px',
@@ -444,7 +450,7 @@ export const LandingPage: React.FC = () => {
                   controls
                   preload="metadata"
                   playsInline
-                  poster="/AIItineraryCreation-poster.jpg"
+                  poster="/AIItineraryCreation-poster.webp"
                   style={{
                     width: '100%',
                     maxWidth: '340px',
@@ -469,7 +475,7 @@ export const LandingPage: React.FC = () => {
                   controls
                   preload="metadata"
                   playsInline
-                  poster="/ManuallyItinerary-poster.jpg"
+                  poster="/ManuallyItinerary-poster.webp"
                   style={{
                     width: '100%',
                     maxWidth: '340px',
