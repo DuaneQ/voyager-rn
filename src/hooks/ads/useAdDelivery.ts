@@ -89,7 +89,6 @@ export function useAdDelivery(
         } as UserAdContext
       }
 
-      console.log(`[🎯 ADS-TEST] useAdDelivery(${placement}) → selectAds context: ${JSON.stringify(sanitizedContext ?? {})}`)
       try {
         const payload: SelectAdsRequest = {
           placement,
@@ -103,10 +102,8 @@ export function useAdDelivery(
 
         const response = result.data
         if (response && Array.isArray(response.ads)) {
-          console.log(`[🎯 ADS-TEST] useAdDelivery(${placement}) ← ${response.ads.length} ad(s):`, response.ads.map(a => ({ campaignId: a.campaignId, billingModel: a.billingModel, primaryText: (a.primaryText ?? '').slice(0, 50) })))
           setAds(response.ads)
         } else {
-          console.log(`[useAdDelivery] selectAds(${placement}) returned no ads or unexpected shape:`, response)
           setAds([])
         }
       } catch (err: unknown) {

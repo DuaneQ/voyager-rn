@@ -82,11 +82,9 @@ export function useAdTracking(): UseAdTrackingReturn {
     // Swap buffer to avoid double-sends
     bufferRef.current = []
 
-    console.log(`[🎯 ADS-TEST] useAdTracking FLUSHING ${events.length} event(s):`, events.map(e => ({ type: e.type, campaignId: e.campaignId, quartile: (e as any).quartile })))
     try {
       const result = await logAdEventsFn({ events })
       const { processed, skipped } = result.data
-      console.log(`[🎯 ADS-TEST] useAdTracking FLUSH RESULT: processed=${processed} skipped=${skipped}`)
       if (skipped > 0) {
         console.warn(`[useAdTracking] ${skipped} events skipped by server`)
       }
@@ -134,11 +132,9 @@ export function useAdTracking(): UseAdTrackingReturn {
       if (!campaignId) return
       // Deduplicate within this session
       if (impressionSetRef.current.has(campaignId)) {
-        console.log(`[🎯 ADS-TEST] trackImpression DEDUPED (already sent this session): ${campaignId}`)
         return
       }
       impressionSetRef.current.add(campaignId)
-      console.log(`[🎯 ADS-TEST] trackImpression QUEUED: ${campaignId} (buffer: ${bufferRef.current.length + 1})`)
       enqueue({
         type: 'impression',
         campaignId,
@@ -151,7 +147,6 @@ export function useAdTracking(): UseAdTrackingReturn {
   const trackClick = useCallback(
     (campaignId: string) => {
       if (!campaignId) return
-      console.log(`[🎯 ADS-TEST] trackClick QUEUED: ${campaignId} (buffer: ${bufferRef.current.length + 1})`)
       enqueue({
         type: 'click',
         campaignId,

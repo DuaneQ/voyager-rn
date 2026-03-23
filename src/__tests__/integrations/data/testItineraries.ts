@@ -74,7 +74,7 @@ export const generateTestItineraries = () => {
       age: 30,
       likes: '[]',
       activities: '["Sightseeing", "Museums"]',
-      userInfo: JSON.stringify({
+      userInfo: {
         dob: '1995-01-01',
         uid: generateTestUserId(1),
         email: 'testuser1@test.com',
@@ -83,7 +83,7 @@ export const generateTestItineraries = () => {
         blocked: [],
         username: 'TestUser_Paris_Male',
         sexualOrientation: 'heterosexual',
-      }),
+      },
     },
     {
       id: `test-paris-female-${timestamp}`,
@@ -103,7 +103,7 @@ export const generateTestItineraries = () => {
       age: 28,
       likes: '[]',
       activities: '["Shopping", "Food"]',
-      userInfo: JSON.stringify({
+      userInfo: {
         dob: '1997-01-01',
         uid: generateTestUserId(1),
         email: 'usertravaltest@gmail.com',
@@ -112,7 +112,7 @@ export const generateTestItineraries = () => {
         blocked: [],
         username: 'TestUser_Paris_F',
         sexualOrientation: 'heterosexual',
-      }),
+      },
     },
 
     // Tokyo itinerary (different destination)
@@ -134,7 +134,7 @@ export const generateTestItineraries = () => {
       age: 30,
       likes: '[]',
       activities: '["Anime", "Food"]',
-      userInfo: JSON.stringify({
+      userInfo: {
         dob: '1995-01-01',
         uid: generateTestUserId(2),
         email: 'usertravaltest@gmail.com',
@@ -143,7 +143,7 @@ export const generateTestItineraries = () => {
         blocked: [],
         username: 'TestUser_Tokyo',
         sexualOrientation: 'heterosexual',
-      }),
+      },
     },
 
     // === AGE FILTERING ===
@@ -166,7 +166,7 @@ export const generateTestItineraries = () => {
       age: 22, // Young age
       likes: '[]',
       activities: '["Beach", "Clubs"]',
-      userInfo: JSON.stringify({
+      userInfo: {
         dob: '2003-01-01',
         uid: generateTestUserId(3),
         email: 'usertravaltest@gmail.com',
@@ -175,7 +175,7 @@ export const generateTestItineraries = () => {
         blocked: [],
         username: 'TestUser_Barcelona_Young',
         sexualOrientation: 'heterosexual',
-      }),
+      },
     },
     {
       id: `test-barcelona-age30-${timestamp}`,
@@ -195,7 +195,7 @@ export const generateTestItineraries = () => {
       age: 30, // Mid age
       likes: '[]',
       activities: '["Wine", "Architecture"]',
-      userInfo: JSON.stringify({
+      userInfo: {
         dob: '1995-01-01',
         uid: generateTestUserId(4),
         email: 'usertravaltest@gmail.com',
@@ -204,7 +204,7 @@ export const generateTestItineraries = () => {
         blocked: [],
         username: 'TestUser_Barcelona_Mid',
         sexualOrientation: 'heterosexual',
-      }),
+      },
     },
     {
       id: `test-barcelona-age45-${timestamp}`,
@@ -224,7 +224,7 @@ export const generateTestItineraries = () => {
       age: 45, // Older age
       likes: '[]',
       activities: '["Museums", "Fine Dining"]',
-      userInfo: JSON.stringify({
+      userInfo: {
         dob: '1980-01-01',
         uid: generateTestUserId(5),
         email: 'usertravaltest@gmail.com',
@@ -233,7 +233,7 @@ export const generateTestItineraries = () => {
         blocked: [],
         username: 'TestUser_Barcelona_Older',
         sexualOrientation: 'heterosexual',
-      }),
+      },
     },
 
     // === GENDER FILTERING ===

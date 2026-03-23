@@ -651,7 +651,7 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
   });
 
   describe('Excluded IDs Filtering', () => {
-    it.skip('should exclude itineraries in the excludedIds list', async () => {
+    it('should exclude itineraries in the excludedIds list', async () => {
       const now = Date.now();
       const twoWeeksLater = now + 14 * 24 * 60 * 60 * 1000;
 
@@ -694,7 +694,7 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
   });
 
   describe('Combined Filters', () => {
-    it.skip('should correctly apply multiple filters simultaneously', async () => {
+    it('should correctly apply multiple filters simultaneously', async () => {
       const now = Date.now();
       const twoWeeksLater = now + 14 * 24 * 60 * 60 * 1000;
 
@@ -716,9 +716,9 @@ describe('searchItineraries - Comprehensive Filter Validation', () => {
       expect(results.length).toBeGreaterThan(0);
       results.forEach((itinerary: any) => {
         expect(itinerary.destination).toBe('Paris, France');
-        expect(itinerary.gender).toBe('Female');
-        expect(itinerary.status).toBe('single');
-        expect(itinerary.sexualOrientation).toBe('heterosexual');
+        expect(itinerary.userInfo?.gender).toBe('Female');
+        expect(itinerary.userInfo?.status).toBe('single');
+        expect(itinerary.userInfo?.sexualOrientation).toBe('heterosexual');
         const age = Number(itinerary.age);
         expect(age).toBeGreaterThanOrEqual(25);
         expect(age).toBeLessThanOrEqual(35);

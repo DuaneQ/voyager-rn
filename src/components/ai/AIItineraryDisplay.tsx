@@ -195,7 +195,7 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
 
   // ─── Ad delivery hooks ───────────────────────────────────────────
   const { ads: realAds, fetchAds: fetchSlotAds } = useAdDelivery('ai_slot');
-  const { trackImpression, trackClick, flush: _flushAdEvents } = useAdTracking();
+  const { trackImpression, trackClick, flush: _flushAdEvents, getSeenIds } = useAdTracking();
   const { userProfile } = useUserProfile();
   const { defaultProfile: travelProfile } = useTravelPreferences();
 
@@ -257,8 +257,8 @@ export const AIItineraryDisplay: React.FC<AIItineraryDisplayProps> = ({ itinerar
       ctx.travelStyles = [travelProfile.travelStyle];
     }
 
-    fetchSlotAds(ctx as any);
-  }, [itineraryId, itinerary, userGender, userDob, activitiesKey, userTravelStyle, fetchSlotAds, userProfile, travelProfile]);
+    fetchSlotAds(ctx as any, getSeenIds());
+  }, [itineraryId, itinerary, userGender, userDob, activitiesKey, userTravelStyle, fetchSlotAds, getSeenIds, userProfile, travelProfile]);
 
   // Local itinerary state to immediately reflect saved changes
   const [localItinerary, setLocalItinerary] = useState<AIGeneratedItinerary>(itinerary);
@@ -2530,7 +2530,7 @@ const styles = StyleSheet.create({
   },
   promotionImage: {
     width: '100%',
-    height: 160,
+    aspectRatio: 1,
   },
   promotionImagePlaceholder: {
     width: '100%',

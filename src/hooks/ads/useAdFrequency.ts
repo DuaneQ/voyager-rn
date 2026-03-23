@@ -93,7 +93,6 @@ export function useAdFrequency(): UseAdFrequencyReturn {
       }
 
       const indices = getAdInsertionIndices(contentItems.length, ads.length)
-      console.log(`[🎯 ADS-TEST] useAdFrequency splice: content=${contentItems.length} availableAds=${ads.length} insertionIndices=[${indices.join(', ')}] sessionCount=${sessionCountRef.current}`)
       const indicesSet = new Set(indices)
 
       const result: Array<

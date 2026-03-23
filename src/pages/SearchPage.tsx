@@ -21,7 +21,6 @@ import {
   StyleSheet,
   SafeAreaView,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   ScrollView,
   ImageBackground,
@@ -93,7 +92,7 @@ const SearchPage: React.FC = () => {
 
   // ─── Ad delivery hooks ───────────────────────────────────────────
   const { ads: sponsoredAds, fetchAds: fetchSearchAds } = useAdDelivery('itinerary_feed');
-  const { trackImpression, trackClick } = useAdTracking();
+  const { trackImpression, trackClick, getSeenIds } = useAdTracking();
   const { defaultProfile: travelProfile } = useTravelPreferences();
 
   /** Show interstitial sponsored card after every N like/dislike actions. */
@@ -195,10 +194,17 @@ const SearchPage: React.FC = () => {
     const userContext: Record<string, string | number | string[] | undefined> = {
       destination: selectedItinerary.destination ?? undefined,
     };
-    // Include date context if available (cast to access fields)
+    // Include date context if available.
+    // startDate/endDate come back from the server as ISO datetimes
+    // ("2026-03-17T00:00:00.000Z") — slice to YYYY-MM-DD so useAdDelivery's
+    // date validator accepts them for targeting.
     const itin = selectedItinerary as unknown as Record<string, unknown>;
-    if (typeof itin.startDate === 'string') userContext.travelStartDate = itin.startDate;
-    if (typeof itin.endDate === 'string') userContext.travelEndDate = itin.endDate;
+    if (typeof itin.startDate === 'string') {
+      userContext.travelStartDate = (itin.startDate as string).slice(0, 10);
+    }
+    if (typeof itin.endDate === 'string') {
+      userContext.travelEndDate = (itin.endDate as string).slice(0, 10);
+    }
     // Include demographic context from user profile for gender/age targeting
     if (userProfile?.gender) userContext.gender = userProfile.gender;
     if (userProfile?.dob) {
@@ -212,10 +218,10 @@ const SearchPage: React.FC = () => {
     if (travelProfile?.travelStyle) {
       userContext.travelStyles = [travelProfile.travelStyle];
     }
-    fetchSearchAds(userContext as any);
+    fetchSearchAds(userContext as any, getSeenIds());
 
-    // Reset interstitial counter for new search
-    actionCountRef.current = 0;
+    // Do NOT reset actionCountRef — counter is cumulative across the session.
+    // Every 3 like/dislike actions triggers an ad regardless of destination switches.
     setShowingSponsoredAd(false);
 
     // Trigger search for matching itineraries
@@ -524,7 +530,8 @@ const SearchPage: React.FC = () => {
                     showsVerticalScrollIndicator={false}
                   >
                     {showingSponsoredAd && sponsoredAds.length > 0 ? (
-                      <SponsoredItineraryCard
+                      <View style={styles.sponsoredCardWrapper}>
+                        <SponsoredItineraryCard
                         ad={sponsoredAds[currentAdIndexRef.current % sponsoredAds.length]}
                         isVisible
                         onImpression={trackImpression}
@@ -536,6 +543,7 @@ const SearchPage: React.FC = () => {
                           handleAdDismiss();
                         }}
                       />
+                      </View>
                     ) : (
                       <ItineraryCard
                         itinerary={matchingItineraries[0] as any}
@@ -784,6 +792,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 16,
+  },
+  sponsoredCardWrapper: {
+    width: '100%',
+    alignSelf: 'stretch',
   },
 });
 
