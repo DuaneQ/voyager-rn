@@ -7,7 +7,7 @@
  */
 
 import React, { createContext, useState, useContext, useEffect, useCallback, ReactNode } from 'react';
-import { getDoc, setDoc, doc } from 'firebase/firestore';
+import { onSnapshot, setDoc, doc } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 import { db } from '../config/firebaseConfig';
 import { UserProfile } from '../types/UserProfile';
@@ -65,43 +65,46 @@ const UserProfileProvider: React.FC<UserProfileProviderProps> = ({ children }) =
     }
   }, [user]);
 
-  // Load user profile data from Firestore
+  // Subscribe to the user's Firestore document in real time.
+  // onSnapshot fires immediately from the local cache on writes made
+  // by this device (no extra network read billed), and pushes any
+  // server-side changes automatically. The returned unsubscribe
+  // function is called by React as effect cleanup, preventing stale
+  // listeners after sign-out or user changes.
   useEffect(() => {
-    const loadUserProfile = async () => {
-      setIsLoading(true);
-      try {
-        const userId = user?.uid;
-        const emailVerified = user?.emailVerified;
-
-        // Only load profile if user exists AND email is verified
-        if (userId && emailVerified) {
-          // Get profile data from Firestore
-          const userDoc = await getDoc(doc(db, 'users', userId));
-          
-          if (userDoc.exists()) {
-            // Include uid from auth in the profile
-            setUserProfile({ 
-              uid: userId,
-              ...userDoc.data() as UserProfile 
-            });
-          } else {
-          }
-        }
-      } catch (error) {
-        console.error('[UserProfileContext] Error loading profile:', error);
-        // If profile doesn't exist, that's okay - will be created during onboarding
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    // Wait for auth initialization before loading profile
-    if (user && !isInitializing) {
-      loadUserProfile();
-    } else {
+    // Wait for auth to resolve before subscribing.
+    if (!user || isInitializing) {
       setIsLoading(false);
       setUserProfile(null);
+      return;
     }
+
+    // Don't load profile for unverified email addresses.
+    if (!user.emailVerified) {
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    const userRef = doc(db, 'users', user.uid);
+
+    const unsubscribe = onSnapshot(
+      userRef,
+      (snapshot) => {
+        if (snapshot.exists()) {
+          setUserProfile({ uid: user.uid, ...snapshot.data() as UserProfile });
+        } else {
+          setUserProfile(null);
+        }
+        setIsLoading(false);
+      },
+      (error) => {
+        console.error('[UserProfileContext] onSnapshot error:', error);
+        setIsLoading(false);
+      }
+    );
+
+    return unsubscribe;
   }, [user, isInitializing]);
 
   return (

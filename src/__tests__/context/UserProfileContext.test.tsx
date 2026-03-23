@@ -7,7 +7,7 @@ import React from 'react';
 import { render, act } from '@testing-library/react-native';
 import { UserProfileProvider, useUserProfile } from '../../context/UserProfileContext';
 import { auth } from '../../config/firebaseConfig';
-import { getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
 import storage from '../../utils/storage';
 
 // Mock Firebase
@@ -93,17 +93,19 @@ describe('UserProfileContext', () => {
     (storage.getItem as jest.Mock).mockResolvedValue(null);
     (storage.setItem as jest.Mock).mockResolvedValue(undefined);
     (storage.removeItem as jest.Mock).mockResolvedValue(undefined);
-    // Default getDoc resolves quickly as non-existent
-    (getDoc as jest.Mock).mockResolvedValue({ exists: () => false, data: () => null });
+    // Default: document does not exist — onSnapshot calls onNext immediately with empty snapshot.
+    (onSnapshot as jest.Mock).mockImplementation((_ref: any, onNext: any) => {
+      onNext({ exists: () => false, data: () => null });
+      return jest.fn(); // unsubscribe
+    });
   });
 
   describe('updateProfile', () => {
     it('should use setDoc with merge:true to create document if it does not exist', async () => {
       // Setup: User is authenticated
       (auth as any).currentUser = { uid: mockUserId, emailVerified: true };
-  (setDoc as jest.Mock).mockResolvedValue(undefined);
-  // Ensure initial load doesn't block waiting on Firestore doc (simulate no existing doc)
-  (getDoc as jest.Mock).mockResolvedValue({ exists: () => false, data: () => null });
+      (setDoc as jest.Mock).mockResolvedValue(undefined);
+      // Default onSnapshot mock (non-existent doc) from beforeEach is sufficient here.
 
       const { ref, findByTestId } = renderWithProvider();
       // Allow effect to run
@@ -127,7 +129,7 @@ describe('UserProfileContext', () => {
     it('should create document for new user who signed up but has no profile', async () => {
       // Scenario: User created via sign-up but document creation failed
       (auth as any).currentUser = { uid: mockUserId, emailVerified: true };
-      (getDoc as jest.Mock).mockResolvedValue({ exists: () => false, data: () => null });
+      // Default onSnapshot mock (non-existent doc) from beforeEach is sufficient here.
       (setDoc as jest.Mock).mockResolvedValue(undefined);
 
       const { ref } = renderWithProvider();
@@ -156,7 +158,10 @@ describe('UserProfileContext', () => {
     it('should update existing profile fields', async () => {
       // Setup: User has existing profile
       (auth as any).currentUser = { uid: mockUserId, emailVerified: true };
-      (getDoc as jest.Mock).mockResolvedValue({ exists: () => true, data: () => mockProfile });
+      (onSnapshot as jest.Mock).mockImplementation((_ref: any, onNext: any) => {
+        onNext({ exists: () => true, data: () => mockProfile });
+        return jest.fn();
+      });
       (setDoc as jest.Mock).mockResolvedValue(undefined);
 
       const { ref } = renderWithProvider();
@@ -193,7 +198,10 @@ describe('UserProfileContext', () => {
     it('should update local state after successful Firestore update', async () => {
       // Setup
       (auth as any).currentUser = { uid: mockUserId, emailVerified: true };
-      (getDoc as jest.Mock).mockResolvedValue({ exists: () => true, data: () => mockProfile });
+      (onSnapshot as jest.Mock).mockImplementation((_ref: any, onNext: any) => {
+        onNext({ exists: () => true, data: () => mockProfile });
+        return jest.fn();
+      });
       (setDoc as jest.Mock).mockResolvedValue(undefined);
 
       const { ref } = renderWithProvider();
@@ -215,7 +223,10 @@ describe('UserProfileContext', () => {
   describe('profile loading', () => {
     it('should load profile from Firestore when user is authenticated', async () => {
       (auth as any).currentUser = { uid: mockUserId, emailVerified: true };
-      (getDoc as jest.Mock).mockResolvedValue({ exists: () => true, data: () => mockProfile });
+      (onSnapshot as jest.Mock).mockImplementation((_ref: any, onNext: any) => {
+        onNext({ exists: () => true, data: () => mockProfile });
+        return jest.fn();
+      });
 
       const { ref } = renderWithProvider();
       await act(async () => {});
@@ -224,10 +235,9 @@ describe('UserProfileContext', () => {
   expect(ref.current!.isLoading).toBe(false);
     });
 
-    it('should fall back to cached profile when Firestore has no document', async () => {
-    // Previously we used a cached fallback; with Cloud Functions we expect no profile
+    it('should return null profile when Firestore has no document', async () => {
+    // Default onSnapshot mock (non-existent doc) from beforeEach covers this case.
     (auth as any).currentUser = { uid: mockUserId, emailVerified: true };
-    (getDoc as jest.Mock).mockResolvedValue({ exists: () => false, data: () => null });
 
     const { ref } = renderWithProvider();
     await act(async () => {});
@@ -237,7 +247,7 @@ describe('UserProfileContext', () => {
 
     it('should set isLoading to false when no profile found', async () => {
       (auth as any).currentUser = { uid: mockUserId, emailVerified: true };
-      (getDoc as jest.Mock).mockResolvedValue({ exists: () => false, data: () => null });
+      // Default onSnapshot mock (non-existent doc) from beforeEach covers this case.
       (storage.getItem as jest.Mock).mockResolvedValue(null);
 
       const { ref } = renderWithProvider();
