@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { Platform } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { Platform, AppState, AppStateStatus } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { useNotifications } from '../../hooks/useNotifications';
 
@@ -17,38 +17,55 @@ import { useNotifications } from '../../hooks/useNotifications';
  * 2. Token saved to Firestore users/{uid}.fcmTokens array
  * 3. User signs out → unregisterPushNotifications(userId)
  * 4. Token removed from Firestore
+ * 
+ * Token refresh:
+ * - Runs on sign-in AND every time the app comes back to the foreground.
+ * - APNs can silently issue a new device token after OS updates, new builds,
+ *   or reinstalls. Re-registering on foreground ensures Firestore always has
+ *   the current token and stale tokens never block delivery.
+ * - getFCMToken() is fast (cached by the SDK if unchanged); the cost when
+ *   the token hasn't changed is a single Firestore updateDoc write.
  */
 export function NotificationInitializer() {
   const { user, status } = useAuth();
   const { registerForPushNotifications } = useNotifications();
+  const appState = useRef(AppState.currentState);
 
+  const tryRegister = (uid: string) => {
+    registerForPushNotifications(uid).catch(error => {
+      console.error('❌ Failed to register for push notifications:', error);
+    });
+  };
+
+  // Register on sign-in / auth state resolved
   useEffect(() => {
-    // Only proceed if auth has finished initializing
-    if (status === 'loading' || status === 'idle') {
+    if (status === 'loading' || status === 'idle' || !user?.uid) {
+      return;
+    }
+    tryRegister(user.uid);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid, status]);
+
+  // Re-register whenever the app returns to the foreground.
+  // This catches stale tokens caused by new builds, OS updates, or APNs rotation.
+  useEffect(() => {
+    if (Platform.OS === 'web') {
       return;
     }
 
-    if (!user?.uid) {
-      return;
-    }
+    const subscription = AppState.addEventListener('change', (nextState: AppStateStatus) => {
+      const wasBackground = appState.current === 'background' || appState.current === 'inactive';
+      const isNowActive = nextState === 'active';
 
-    // Register for push notifications when user signs in
-    registerForPushNotifications(user.uid)
-      .catch(error => {
-        console.error('❌ Failed to register for push notifications:', error);
-        if (error instanceof Error) {
-          console.error('Error details:', {
-            message: error.message,
-            stack: error.stack
-          });
-        }
-        // Don't block app startup on push notification failures
-      });
-  }, [user?.uid, status, registerForPushNotifications]);
+      if (wasBackground && isNowActive && user?.uid) {
+        tryRegister(user.uid);
+      }
+      appState.current = nextState;
+    });
 
-  // This component doesn't render anything; cleanup of push tokens on sign-out
-  // is handled explicitly in AuthContext.signOut to avoid affecting other devices.
+    return () => subscription.remove();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid]);
 
-  // This component doesn't render anything
   return null;
 }

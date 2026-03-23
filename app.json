@@ -74,6 +74,8 @@
     ],
     "plugins": [
       "./plugins/withGooglePlacesAndroid",
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging",
       [
         "expo-video",
         {
