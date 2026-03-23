@@ -143,17 +143,34 @@ export function useNotifications(): UseNotificationsReturn {
       // if called before APNs completes. onTokenRefresh fires when the FCM token
       // becomes available (including the first time), so setting it up early
       // ensures we capture the token even when getToken() loses the race.
-      if (tokenRefreshUnsubscribe.current) {
-        tokenRefreshUnsubscribe.current();
-      }
-      tokenRefreshUnsubscribe.current = notificationService.onTokenRefresh(
-        userId,
-        async (newToken: string) => {
-          setFcmToken(newToken);
-          // Also update AsyncStorage so sign-out cleanup removes the right token
-          await AsyncStorage.setItem(CURRENT_DEVICE_TOKEN_KEY, newToken);
+      //
+      // IMPORTANT: wrapped in try-catch because RNFB throws
+      // "No Firebase App '[DEFAULT]' has been created" if the native Firebase
+      // iOS SDK hasn't been initialized (e.g. first cold launch after install).
+      // This must NOT kill the whole flow — getFCMToken() below can still succeed.
+      diagnostics.step = 'setting_up_token_refresh';
+      try {
+        if (tokenRefreshUnsubscribe.current) {
+          tokenRefreshUnsubscribe.current();
         }
-      );
+        tokenRefreshUnsubscribe.current = notificationService.onTokenRefresh(
+          userId,
+          async (newToken: string) => {
+            setFcmToken(newToken);
+            // Also update AsyncStorage so sign-out cleanup removes the right token
+            await AsyncStorage.setItem(CURRENT_DEVICE_TOKEN_KEY, newToken);
+          }
+        );
+        diagnostics.rnfbTokenRefreshSetup = true;
+      } catch (refreshSetupError) {
+        // RNFB native not yet initialized — log and continue.
+        // refreshTokenIfStale (AppState foreground) will catch the token later.
+        diagnostics.rnfbTokenRefreshSetup = false;
+        diagnostics.rnfbTokenRefreshError = refreshSetupError instanceof Error
+          ? refreshSetupError.message
+          : String(refreshSetupError);
+        console.warn('⚠️ onTokenRefresh setup failed (RNFB not yet initialized):', refreshSetupError);
+      }
 
       // Get device push token (FCM on Android, APNs→FCM on iOS via Firebase SDK)
       diagnostics.step = 'getting_token';
