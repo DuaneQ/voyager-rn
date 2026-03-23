@@ -126,6 +126,12 @@ describe('NotificationService (@react-native-firebase/messaging)', () => {
   });
 
   describe('getFCMToken', () => {
+    beforeEach(() => {
+      // The iOS APNS wait logic calls getAPNSToken() before getToken().
+      // Re-establish after jest.clearAllMocks() in the outer beforeEach.
+      (mockMessaging() as any).getAPNSToken.mockResolvedValue('mock-apns-token');
+    });
+
     it('should return FCM token from @react-native-firebase/messaging', async () => {
       (mockMessaging() as any).getToken.mockResolvedValue(mockToken);
 
