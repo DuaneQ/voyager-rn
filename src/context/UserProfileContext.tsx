@@ -6,7 +6,7 @@
  * Profile is loaded after authentication via onAuthStateChanged.
  */
 
-import React, { createContext, useState, useContext, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback, ReactNode, Dispatch, SetStateAction } from 'react';
 import { onSnapshot, setDoc, doc } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 import { db } from '../config/firebaseConfig';
@@ -17,7 +17,7 @@ export type { UserProfile } from '../types/UserProfile';
 
 interface UserProfileContextValue {
   userProfile: UserProfile | null;
-  setUserProfile: (profile: UserProfile | null) => void;
+  setUserProfile: Dispatch<SetStateAction<UserProfile | null>>;
   updateUserProfile: (newProfile: UserProfile) => void;
   updateProfile: (data: Partial<UserProfile>) => Promise<void>;
   isLoading: boolean;

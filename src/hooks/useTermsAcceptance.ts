@@ -73,14 +73,19 @@ export const useTermsAcceptance = (): UseTermsAcceptanceReturn => {
       // Update local profile state immediately so TermsGuard re-renders without
       // waiting for a re-fetch. acceptedAt is null locally because server
       // timestamps are not resolvable on the client.
-      setUserProfile(userProfile ? {
-        ...userProfile,
-        termsOfService: {
-          accepted: true,
-          acceptedAt: null,
-          version: CURRENT_TERMS_VERSION,
-        },
-      } : null);
+      // Uses a functional update so the merge is always applied even when
+      // userProfile is null (e.g. onSnapshot hasn't fired yet on a fresh sign-up).
+      setUserProfile(prev => {
+        const base = prev ?? ({ uid } as any);
+        return {
+          ...base,
+          termsOfService: {
+            accepted: true,
+            acceptedAt: null,
+            version: CURRENT_TERMS_VERSION,
+          },
+        };
+      });
     } catch (err) {
       const appError = isAppError(err)
         ? err
@@ -95,7 +100,9 @@ export const useTermsAcceptance = (): UseTermsAcceptanceReturn => {
 
   // Returns the current derived value.
   // Kept for interface compatibility with the error-retry path in TermsGuard.
+  // Clears any previous error so the retry path can recover from a failed acceptTerms call.
   const checkTermsStatus = useCallback(async (): Promise<boolean> => {
+    setError(null);
     return hasAcceptedTerms;
   }, [hasAcceptedTerms]);
 

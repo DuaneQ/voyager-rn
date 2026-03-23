@@ -113,12 +113,39 @@ describe('useTermsAcceptance', () => {
     });
 
     expect(mockSetDoc).toHaveBeenCalledTimes(1);
-    expect(mockSetUserProfile).toHaveBeenCalledWith(
-      expect.objectContaining({
-        termsOfService: expect.objectContaining({ accepted: true, version: '1.0.0' }),
-      })
-    );
+
+    // setUserProfile receives a functional updater — call it with the existing profile
+    // and verify the merged result.
+    expect(mockSetUserProfile).toHaveBeenCalledTimes(1);
+    const updater = mockSetUserProfile.mock.calls[0][0];
+    const updated = updater(existingProfile);
+    expect(updated).toMatchObject({
+      ...existingProfile,
+      termsOfService: { accepted: true, version: '1.0.0', acceptedAt: null },
+    });
     expect(result.current.error).toBeNull();
+  });
+
+  it('should update profile state even when userProfile is null at the time of acceptance', async () => {
+    // Simulates the race: onSnapshot has not yet fired, userProfile === null.
+    mockProfileContext(null);
+    mockSetDoc.mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => useTermsAcceptance());
+
+    await act(async () => {
+      await result.current.acceptTerms();
+    });
+
+    expect(mockSetDoc).toHaveBeenCalledTimes(1);
+
+    // The functional updater must build a minimal stub rather than returning null.
+    const updater = mockSetUserProfile.mock.calls[0][0];
+    const updated = updater(null);
+    expect(updated).toMatchObject({
+      uid: 'test-user-id',
+      termsOfService: { accepted: true, version: '1.0.0', acceptedAt: null },
+    });
   });
 
   it('should set error state and rethrow when Firestore write fails', async () => {
@@ -151,5 +178,27 @@ describe('useTermsAcceptance', () => {
     expect(checkResult).toBe(true);
     // No Firestore read should happen — derived from userProfile
     expect(mockSetDoc).not.toHaveBeenCalled();
+  });
+
+  it('should clear error state when checkTermsStatus is called (retry path)', async () => {
+    // Simulate a prior failed acceptTerms that set error state.
+    mockProfileContext({ uid: 'test-user-id' });
+    mockSetDoc.mockRejectedValueOnce(new Error('Network error'));
+
+    const { result } = renderHook(() => useTermsAcceptance());
+
+    // First: trigger an error via a failed acceptTerms
+    await act(async () => {
+      await expect(result.current.acceptTerms()).rejects.toBeTruthy();
+    });
+    expect(result.current.error).not.toBeNull();
+
+    // Now: user presses Retry → checkTermsStatus should clear the error
+    await act(async () => {
+      await result.current.checkTermsStatus();
+    });
+    expect(result.current.error).toBeNull();
+    // TermsGuard can now show the ToS modal again (hasAcceptedTerms is still false)
+    expect(result.current.hasAcceptedTerms).toBe(false);
   });
 });
