@@ -691,3 +691,30 @@ These short rules help get consistent, reviewable outputs from AI assistants. Fo
 - [ ] Changes are incremental and each step was verified
 
 **Remember: The cost of fixing a bug in production is 100x the cost of preventing it during development.**
+
+---
+
+## 🚨 NEVER MAKE UNINFORMED CLAIMS — READ THE CODE FIRST 🚨
+
+**ABSOLUTE RULE**: Do NOT make any claim about what code does, what a file contains, what a feature supports, or what is missing UNTIL you have actually read the relevant source files.
+
+**This includes**:
+- Claiming a feature "isn't implemented" without checking the source
+- Describing how something works based on memory or assumptions from earlier in a conversation
+- Summarising what a phase/branch/PRD contains without reading it
+- Asserting a bug exists or doesn't exist without reading the code
+- Describing what a function, component, hook, or service does without reading it
+
+**Required behaviour**:
+1. ✅ **Read first, claim second.** Use `grep_search`, `read_file`, or `semantic_search` to verify before stating facts about the codebase.
+2. ✅ **If unsure, say so and ask.** "I'm not sure — let me check" is always better than a confident wrong answer.
+3. ✅ **Qualify uncertain statements.** If you haven't read the code, say "I haven't verified this yet" rather than stating it as fact.
+4. ✅ **When corrected, don't just apologise — immediately read the code** to understand what's actually there before responding further.
+5. ✅ **Cross-project awareness**: This workspace has multiple projects (voyager-RN, voyager-ads, voyager-pwa/functions). Never assume a feature is missing in one project because you haven't looked at the others.
+
+**Examples of violations that have caused wasted time**:
+- Claiming `voyager-ads` didn't support video creative uploads without reading `StepCreative.tsx` or `CampaignAssetService.ts`
+- Claiming Phase 3 was needed for Mux video ads without reading `VideoFeedPage.tsx`
+- Describing a cloud function as PostgreSQL/Prisma-based without reading `itinerariesRpc.ts`
+
+**If you violate this rule, you waste the user's time and erode trust. Read the code. NO EXCEPTIONS.**
