@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { Platform, AppState, AppStateStatus } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { useNotifications } from '../../hooks/useNotifications';
@@ -24,18 +24,18 @@ import { useNotifications } from '../../hooks/useNotifications';
  *   or reinstalls. Re-registering on foreground ensures Firestore always has
  *   the current token and stale tokens never block delivery.
  * - getFCMToken() is fast (cached by the SDK if unchanged); the cost when
- *   the token hasn't changed is a single Firestore updateDoc write.
+ *   the token hasn't changed is zero Firestore writes (refreshTokenIfStale skips the write).
  */
 export function NotificationInitializer() {
   const { user, status } = useAuth();
   const { registerForPushNotifications, refreshTokenIfStale } = useNotifications();
   const appState = useRef(AppState.currentState);
 
-  const tryRegister = (uid: string) => {
+  const tryRegister = useCallback((uid: string) => {
     registerForPushNotifications(uid).catch(error => {
       console.error('❌ Failed to register for push notifications:', error);
     });
-  };
+  }, [registerForPushNotifications]);
 
   // Register on sign-in / auth state resolved (full flow: permission + diagnostics)
   useEffect(() => {
@@ -43,8 +43,7 @@ export function NotificationInitializer() {
       return;
     }
     tryRegister(user.uid);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.uid, status]);
+  }, [user?.uid, status, tryRegister]);
 
   // Lightweight token check on foreground — compares SDK-cached token against
   // AsyncStorage. Only writes to Firestore if the token has actually changed.
@@ -68,8 +67,7 @@ export function NotificationInitializer() {
     });
 
     return () => subscription.remove();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.uid]);
+  }, [user?.uid, refreshTokenIfStale]);
 
   return null;
 }
