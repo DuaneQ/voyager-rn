@@ -28,7 +28,7 @@ import { useNotifications } from '../../hooks/useNotifications';
  */
 export function NotificationInitializer() {
   const { user, status } = useAuth();
-  const { registerForPushNotifications } = useNotifications();
+  const { registerForPushNotifications, refreshTokenIfStale } = useNotifications();
   const appState = useRef(AppState.currentState);
 
   const tryRegister = (uid: string) => {
@@ -37,7 +37,7 @@ export function NotificationInitializer() {
     });
   };
 
-  // Register on sign-in / auth state resolved
+  // Register on sign-in / auth state resolved (full flow: permission + diagnostics)
   useEffect(() => {
     if (status === 'loading' || status === 'idle' || !user?.uid) {
       return;
@@ -46,8 +46,10 @@ export function NotificationInitializer() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid, status]);
 
-  // Re-register whenever the app returns to the foreground.
-  // This catches stale tokens caused by new builds, OS updates, or APNs rotation.
+  // Lightweight token check on foreground — compares SDK-cached token against
+  // AsyncStorage. Only writes to Firestore if the token has actually changed.
+  // Firebase docs: "no benefit to doing the refresh more frequently than weekly"
+  // so we avoid the 2 Firestore writes of the full registration flow here.
   useEffect(() => {
     if (Platform.OS === 'web') {
       return;
@@ -58,7 +60,9 @@ export function NotificationInitializer() {
       const isNowActive = nextState === 'active';
 
       if (wasBackground && isNowActive && user?.uid) {
-        tryRegister(user.uid);
+        refreshTokenIfStale(user.uid).catch(error => {
+          console.error('❌ Failed to refresh FCM token on foreground:', error);
+        });
       }
       appState.current = nextState;
     });

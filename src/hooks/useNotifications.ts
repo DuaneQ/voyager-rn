@@ -17,6 +17,13 @@ export interface UseNotificationsReturn {
   requestPermission: () => Promise<boolean>;
   registerForPushNotifications: (userId: string) => Promise<void>;
   unregisterPushNotifications: (userId: string) => Promise<void>;
+  /**
+   * Lightweight foreground token refresh.
+   * Gets the SDK-cached FCM token and compares it with the locally-stored token.
+   * Only writes to Firestore if the token has actually changed — prevents
+   * unnecessary writes on every app foreground transition.
+   */
+  refreshTokenIfStale: (userId: string) => Promise<void>;
 }
 
 /**
@@ -294,6 +301,46 @@ export function useNotifications(): UseNotificationsReturn {
     };
   }, []);
 
+  /**
+   * Lightweight token refresh for foreground transitions.
+   * Firebase recommends refreshing tokens periodically (weekly/monthly).
+   * "There is no benefit to doing the refresh more frequently than weekly."
+   * — https://firebase.google.com/docs/cloud-messaging/manage-tokens
+   *
+   * Compares the SDK-cached token against the locally stored one.
+   * Writes to Firestore ONLY when they differ — avoids the 2-writes-per-foreground
+   * cost of calling the full registerForPushNotifications() on every app wake.
+   */
+  const refreshTokenIfStale = useCallback(async (userId: string): Promise<void> => {
+    if (Platform.OS === 'web') {
+      return;
+    }
+    try {
+      const [cachedToken, currentToken] = await Promise.all([
+        AsyncStorage.getItem(CURRENT_DEVICE_TOKEN_KEY),
+        notificationService.getFCMToken(),
+      ]);
+
+      if (!currentToken) {
+        // Token unavailable — common on first cold launch before APNs resolves.
+        // The onTokenRefresh listener set up during registerForPushNotifications will catch it.
+        return;
+      }
+
+      if (currentToken === cachedToken) {
+        // Token unchanged — no Firestore write needed.
+        return;
+      }
+
+      // Token changed (new build, APNs rotation, reinstall) — update Firestore.
+      await notificationService.saveToken(userId, currentToken);
+      await AsyncStorage.setItem(CURRENT_DEVICE_TOKEN_KEY, currentToken);
+      setFcmToken(currentToken);
+    } catch (error) {
+      console.error('❌ Failed to refresh FCM token on foreground:', error);
+    }
+  }, []);
+
   return {
     permissionStatus,
     fcmToken,
@@ -301,5 +348,6 @@ export function useNotifications(): UseNotificationsReturn {
     requestPermission,
     registerForPushNotifications,
     unregisterPushNotifications,
+    refreshTokenIfStale,
   };
 }
