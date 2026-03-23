@@ -21,16 +21,8 @@ platform :ios, podfile_properties['ios.deploymentTarget'] || '15.1'
 prepare_react_native_project!
 
 target 'TravalPass' do
+  use_modular_headers!
   use_expo_modules!
-
-  # React Native Firebase
-  pod 'Firebase/Core', :modular_headers => true
-  pod 'Firebase/Messaging', :modular_headers => true
-  pod 'Firebase/RemoteConfig', :modular_headers => true
-  pod 'FirebaseCore', :modular_headers => true
-  pod 'FirebaseABTesting', :modular_headers => true
-  pod 'FirebaseInstallations', :modular_headers => true
-  pod 'GoogleUtilities', :modular_headers => true
 
   if ENV['EXPO_USE_COMMUNITY_AUTOLINKING'] == '1'
     config_command = ['node', '-e', "process.argv=['', '', 'config'];require('@react-native-community/cli').run()"];
@@ -48,7 +40,8 @@ target 'TravalPass' do
   config = use_native_modules!(config_command)
 
   use_frameworks! :linkage => podfile_properties['ios.useFrameworks'].to_sym if podfile_properties['ios.useFrameworks']
-  use_frameworks! :linkage => ENV['USE_FRAMEWORKS'].to_sym if ENV['USE_FRAMEWORKS']
+    $RNFirebaseAsStaticFramework = true
+use_frameworks! :linkage => ENV['USE_FRAMEWORKS'].to_sym if ENV['USE_FRAMEWORKS']
 
   use_react_native!(
     :path => config[:reactNativePath],
@@ -59,6 +52,31 @@ target 'TravalPass' do
   )
 
   post_install do |installer|
+
+    # Add CLANG_ALLOW_NON_MODULAR_INCLUDES to all targets
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |config|
+        config.build_settings["CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES"] = "YES"
+        
+        # Fix FirebaseAuth Swift header issue
+        if target.name == 'FirebaseAuth'
+          config.build_settings['DEFINES_MODULE'] = 'YES'
+          config.build_settings['SWIFT_VERSION'] = '5.0'
+        end
+      end
+    end
+    
+    # Comment out problematic Swift header import
+    firebase_h_path = File.join(installer.sandbox.root, 'Headers', 'Private', 'Firebase', 'Firebase.h')
+    if File.exist?(firebase_h_path)
+      firebase_h_content = File.read(firebase_h_path)
+      modified_content = firebase_h_content.gsub(
+        '#import <FirebaseAuth/FirebaseAuth-Swift.h>',
+        '// #import <FirebaseAuth/FirebaseAuth-Swift.h> // Commented out for RN Firebase compatibility'
+      )
+      File.write(firebase_h_path, modified_content) if modified_content != firebase_h_content
+    end
+
     react_native_post_install(
       installer,
       config[:reactNativePath],

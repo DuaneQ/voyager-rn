@@ -25,12 +25,17 @@ jest.mock('../../services/notification/messaging', () => {
   const mockRequestPermission = jest.fn().mockResolvedValue(1); // AUTHORIZED
   const mockDeleteToken = jest.fn().mockResolvedValue(undefined);
   const mockOnTokenRefresh = jest.fn().mockReturnValue(jest.fn());
+  const mockGetAPNSToken = jest.fn().mockResolvedValue('mock-apns-token');
+  const mockRegisterDeviceForRemoteMessages = jest.fn().mockResolvedValue(undefined);
 
   const mockInstance = {
     getToken: mockGetToken,
     requestPermission: mockRequestPermission,
     deleteToken: mockDeleteToken,
     onTokenRefresh: mockOnTokenRefresh,
+    getAPNSToken: mockGetAPNSToken,
+    registerDeviceForRemoteMessages: mockRegisterDeviceForRemoteMessages,
+    isDeviceRegisteredForRemoteMessages: true,
   };
 
   const messagingFn: any = jest.fn(() => mockInstance);
