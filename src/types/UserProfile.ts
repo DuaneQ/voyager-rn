@@ -64,6 +64,13 @@ export interface UserProfile {
     date: string;
     viewCount: number;
   };
+
+  // Terms of Service acceptance
+  termsOfService?: {
+    accepted: boolean;
+    acceptedAt?: string | null;
+    version: string;
+  };
   
   // Privacy settings
   privacy?: {

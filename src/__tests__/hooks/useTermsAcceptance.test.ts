@@ -1,179 +1,155 @@
 /**
  * Tests for useTermsAcceptance hook
- * Verifies Terms of Service acceptance logic and Firestore integration
+ * Verifies that hasAcceptedTerms is derived from UserProfileContext (no extra
+ * Firestore read) and that acceptTerms writes to Firestore and updates local state.
  */
 
-import { renderHook, act, waitFor } from '@testing-library/react-native';
+import { renderHook, act } from '@testing-library/react-native';
 import { useTermsAcceptance } from '../../hooks/useTermsAcceptance';
-import { getDoc, setDoc } from 'firebase/firestore';
-import { onAuthStateChanged } from 'firebase/auth';
+import { setDoc } from 'firebase/firestore';
+import { useAuth } from '../../context/AuthContext';
+import { useUserProfile } from '../../context/UserProfileContext';
 
-// Mock Firebase modules
 jest.mock('firebase/firestore');
-jest.mock('firebase/auth');
-jest.mock('../../config/firebaseConfig', () => ({
-  auth: {
-    currentUser: { uid: 'test-user-id' },
-  },
-  db: {},
-}));
+jest.mock('../../config/firebaseConfig', () => ({ auth: {}, db: {} }));
+jest.mock('../../context/AuthContext');
+jest.mock('../../context/UserProfileContext');
 
-const mockGetDoc = getDoc as jest.MockedFunction<typeof getDoc>;
 const mockSetDoc = setDoc as jest.MockedFunction<typeof setDoc>;
-const mockOnAuthStateChanged = onAuthStateChanged as jest.MockedFunction<typeof onAuthStateChanged>;
+const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
+const mockUseUserProfile = useUserProfile as jest.MockedFunction<typeof useUserProfile>;
+const mockSetUserProfile = jest.fn();
+
+const baseAuth = {
+  user: { uid: 'test-user-id', email: 'test@example.com', emailVerified: true } as any,
+  status: 'authenticated' as const,
+  isInitializing: false,
+  signIn: jest.fn(), signUp: jest.fn(), signOut: jest.fn(),
+  sendPasswordReset: jest.fn(), resendVerification: jest.fn(),
+  refreshAuthState: jest.fn(), hasUnverifiedUser: jest.fn(),
+  signInWithGoogle: jest.fn(), signUpWithGoogle: jest.fn(),
+  signInWithApple: jest.fn(), signUpWithApple: jest.fn(),
+};
+
+function mockProfileContext(userProfile: any, isLoading = false) {
+  mockUseUserProfile.mockReturnValue({
+    userProfile,
+    setUserProfile: mockSetUserProfile,
+    updateUserProfile: jest.fn(),
+    updateProfile: jest.fn(),
+    isLoading,
+    loading: isLoading,
+  });
+}
 
 describe('useTermsAcceptance', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    
-    // Default: user is logged in
-    mockOnAuthStateChanged.mockImplementation((auth, callback) => {
-      if (typeof callback === 'function') {
-        callback({ uid: 'test-user-id' } as any);
-      }
-      return jest.fn(); // unsubscribe function
-    });
+    mockUseAuth.mockReturnValue(baseAuth);
+    mockProfileContext(null);
   });
 
-  it('should initialize with loading state', () => {
-    mockGetDoc.mockResolvedValue({
-      exists: () => false,
-      data: () => ({}),
-    } as any);
-
+  it('should return false when userProfile is null', () => {
     const { result } = renderHook(() => useTermsAcceptance());
-    
-    expect(result.current.isLoading).toBe(true);
-  });
-
-  it('should check terms status on mount for authenticated user', async () => {
-    mockGetDoc.mockResolvedValue({
-      exists: () => true,
-      data: () => ({
-        termsOfService: {
-          accepted: true,
-          acceptedAt: new Date(),
-          version: '1.0.0',
-        },
-      }),
-    } as any);
-
-    const { result } = renderHook(() => useTermsAcceptance());
-    
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
-
-    expect(result.current.hasAcceptedTerms).toBe(true);
+    expect(result.current.hasAcceptedTerms).toBe(false);
+    expect(result.current.isLoading).toBe(false);
     expect(result.current.error).toBeNull();
   });
 
-  it('should return false if user has not accepted terms', async () => {
-    mockGetDoc.mockResolvedValue({
-      exists: () => true,
-      data: () => ({
-        termsOfService: {
-          accepted: false,
-          acceptedAt: null,
-          version: '1.0.0',
-        },
-      }),
-    } as any);
-
-    const { result } = renderHook(() => useTermsAcceptance());
-    
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
+  it('should return true when userProfile has accepted current version of terms', () => {
+    mockProfileContext({
+      uid: 'test-user-id',
+      termsOfService: { accepted: true, version: '1.0.0', acceptedAt: null },
     });
 
+    const { result } = renderHook(() => useTermsAcceptance());
+    expect(result.current.hasAcceptedTerms).toBe(true);
+    expect(result.current.isLoading).toBe(false);
+  });
+
+  it('should return false when terms are not accepted', () => {
+    mockProfileContext({
+      uid: 'test-user-id',
+      termsOfService: { accepted: false, version: '1.0.0', acceptedAt: null },
+    });
+
+    const { result } = renderHook(() => useTermsAcceptance());
     expect(result.current.hasAcceptedTerms).toBe(false);
   });
 
-  it('should return false if terms version is outdated', async () => {
-    mockGetDoc.mockResolvedValue({
-      exists: () => true,
-      data: () => ({
-        termsOfService: {
-          accepted: true,
-          acceptedAt: new Date(),
-          version: '0.9.0', // Old version
-        },
-      }),
-    } as any);
-
-    const { result } = renderHook(() => useTermsAcceptance());
-    
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
+  it('should return false when terms version is outdated', () => {
+    mockProfileContext({
+      uid: 'test-user-id',
+      termsOfService: { accepted: true, version: '0.9.0', acceptedAt: null },
     });
 
+    const { result } = renderHook(() => useTermsAcceptance());
     expect(result.current.hasAcceptedTerms).toBe(false);
   });
 
-  it('should accept terms and update Firestore', async () => {
-    mockGetDoc.mockResolvedValue({
-      exists: () => true,
-      data: () => ({
-        termsOfService: {
-          accepted: false,
-        },
-      }),
-    } as any);
+  it('should return false when termsOfService field is absent', () => {
+    mockProfileContext({ uid: 'test-user-id', email: 'test@example.com' });
 
     const { result } = renderHook(() => useTermsAcceptance());
-    
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
+    expect(result.current.hasAcceptedTerms).toBe(false);
+  });
+
+  it('should reflect isLoading from UserProfileContext while profile is loading', () => {
+    mockProfileContext(null, true);
+
+    const { result } = renderHook(() => useTermsAcceptance());
+    expect(result.current.isLoading).toBe(true);
+  });
+
+  it('should accept terms, call setDoc once, and update local profile state', async () => {
+    const existingProfile = { uid: 'test-user-id', email: 'test@example.com' };
+    mockProfileContext(existingProfile);
+    mockSetDoc.mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => useTermsAcceptance());
 
     await act(async () => {
       await result.current.acceptTerms();
     });
 
-    expect(mockSetDoc).toHaveBeenCalled();
-    expect(result.current.hasAcceptedTerms).toBe(true);
-  });
-
-  it('should handle user document not existing', async () => {
-    mockGetDoc.mockResolvedValue({
-      exists: () => false,
-      data: () => undefined,
-    } as any);
-
-    const { result } = renderHook(() => useTermsAcceptance());
-    
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
-
-    expect(result.current.hasAcceptedTerms).toBe(false);
+    expect(mockSetDoc).toHaveBeenCalledTimes(1);
+    expect(mockSetUserProfile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        termsOfService: expect.objectContaining({ accepted: true, version: '1.0.0' }),
+      })
+    );
     expect(result.current.error).toBeNull();
   });
 
-  it('should manually check terms status', async () => {
-    mockGetDoc.mockResolvedValue({
-      exists: () => true,
-      data: () => ({
-        termsOfService: {
-          accepted: true,
-          acceptedAt: new Date(),
-          version: '1.0.0',
-        },
-      }),
-    } as any);
+  it('should set error state and rethrow when Firestore write fails', async () => {
+    mockProfileContext({ uid: 'test-user-id' });
+    mockSetDoc.mockRejectedValue(new Error('Firestore write failed'));
 
     const { result } = renderHook(() => useTermsAcceptance());
-    
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
 
-    let manualCheckResult: boolean = false;
     await act(async () => {
-      manualCheckResult = await result.current.checkTermsStatus();
+      await expect(result.current.acceptTerms()).rejects.toBeTruthy();
     });
 
-    expect(manualCheckResult).toBe(true);
-    expect(mockGetDoc).toHaveBeenCalled();
+    expect(result.current.error).not.toBeNull();
+    expect(mockSetUserProfile).not.toHaveBeenCalled();
+  });
+
+  it('should return hasAcceptedTerms from checkTermsStatus without a Firestore read', async () => {
+    mockProfileContext({
+      uid: 'test-user-id',
+      termsOfService: { accepted: true, version: '1.0.0', acceptedAt: null },
+    });
+
+    const { result } = renderHook(() => useTermsAcceptance());
+
+    let checkResult = false;
+    await act(async () => {
+      checkResult = await result.current.checkTermsStatus();
+    });
+
+    expect(checkResult).toBe(true);
+    // No Firestore read should happen — derived from userProfile
+    expect(mockSetDoc).not.toHaveBeenCalled();
   });
 });
