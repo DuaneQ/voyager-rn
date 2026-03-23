@@ -17,7 +17,6 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  Image,
   Platform,
   StyleSheet,
   Dimensions,
@@ -363,10 +362,14 @@ export const LandingPage: React.FC = () => {
                   aria-label="Download TravalPass on the App Store"
                   style={{ textDecoration: 'none', marginRight: 16 }}
                 >
-                  <Image
-                    source={{ uri: 'https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg' }}
-                    style={styles.appStoreBadge}
-                    accessibilityLabel="Download on the App Store"
+                  {/* Local SVG — eliminates external DNS/TCP/TLS round trip to developer.apple.com */}
+                  <img
+                    src="/app-store-badge.svg"
+                    alt="Download on the App Store"
+                    aria-label="Download on the App Store"
+                    width={150}
+                    height={50}
+                    style={{ width: 150, height: 50, objectFit: 'contain', display: 'block' }}
                   />
                 </a>
                 <a
@@ -376,11 +379,18 @@ export const LandingPage: React.FC = () => {
                   aria-label="Get TravalPass on Google Play"
                   style={{ textDecoration: 'none' }}
                 >
-                  <Image
-                    source={{ uri: 'https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png' }}
-                    style={styles.playStoreBadge}
-                    accessibilityLabel="Get it on Google Play"
-                  />
+                  {/* Local WebP — eliminates external DNS/TCP/TLS round trip to play.google.com */}
+                  <picture>
+                    <source srcSet="/google-play-badge.webp" type="image/webp" />
+                    <img
+                      src="/google-play-badge.png"
+                      alt="Get it on Google Play"
+                      aria-label="Get it on Google Play"
+                      width={200}
+                      height={74}
+                      style={{ width: 200, height: 74, objectFit: 'contain', display: 'block' }}
+                    />
+                  </picture>
                 </a>
               </View>
             )}
@@ -393,6 +403,7 @@ export const LandingPage: React.FC = () => {
               <img
                 src="/Matching.png"
                 alt="Example showing two travelers matched because their Paris itineraries overlap"
+                aria-label="Example showing two travelers matched because their Paris itineraries overlap"
                 style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
                 width={846}
                 height={982}
@@ -423,7 +434,7 @@ export const LandingPage: React.FC = () => {
               <div style={{ textAlign: 'center', maxWidth: '340px', flex: '1 1 300px' }}>
                 <video
                   controls
-                  preload="metadata"
+                  preload="none"
                   playsInline
                   poster="/Matching-poster.webp"
                   style={{
@@ -448,7 +459,7 @@ export const LandingPage: React.FC = () => {
               <div style={{ textAlign: 'center', maxWidth: '340px', flex: '1 1 300px' }}>
                 <video
                   controls
-                  preload="metadata"
+                  preload="none"
                   playsInline
                   poster="/AIItineraryCreation-poster.webp"
                   style={{
@@ -473,7 +484,7 @@ export const LandingPage: React.FC = () => {
               <div style={{ textAlign: 'center', maxWidth: '340px', flex: '1 1 300px' }}>
                 <video
                   controls
-                  preload="metadata"
+                  preload="none"
                   playsInline
                   poster="/ManuallyItinerary-poster.webp"
                   style={{
