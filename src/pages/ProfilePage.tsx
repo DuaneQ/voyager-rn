@@ -613,6 +613,7 @@ const ProfilePage: React.FC = () => {
               : undefined
           }
           profileCompleteness={calculateCompleteness()}
+          subscriptionType={userProfile.subscriptionType}
           onEditPress={handleEditProfile}
           onPhotoPress={handleChangeProfilePhoto}
           onPhotoDelete={handleDeleteProfilePhoto}
