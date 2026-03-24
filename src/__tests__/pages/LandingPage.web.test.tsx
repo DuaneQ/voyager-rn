@@ -46,7 +46,7 @@ describe('LandingPage.web', () => {
       Platform.OS = 'web';
       const { getByText } = renderComponent();
       
-      expect(getByText(/Planning a trip solo/i)).toBeTruthy();
+      expect(getByText(/Find travel companions/i)).toBeTruthy();
     });
 
     it('returns null on non-web platforms', () => {
@@ -97,23 +97,22 @@ describe('LandingPage.web', () => {
     it('renders hero section with main headline and subtitle', () => {
       const { getByText } = renderComponent();
       
-      expect(getByText(/Planning a trip solo/i)).toBeTruthy();
+      expect(getByText(/Find travel companions going to the same place/i)).toBeTruthy();
       expect(getByText(/same place.*same dates/i)).toBeTruthy();
     });
 
     it('renders hero CTA button and micro-incentive', () => {
       const { getByText } = renderComponent();
       
-      expect(getByText('Create My Trip Plan')).toBeTruthy();
+      expect(getByText(/See Who.s Traveling When I Am/i)).toBeTruthy();
       expect(getByText('Sign In')).toBeTruthy();
       expect(getByText(/Free .* No credit card/i)).toBeTruthy();
     });
 
-    it('renders "Stop Planning Alone" section with app mockup', () => {
+    it('renders problem/solution section with app mockup', () => {
       const { getByText } = renderComponent();
       
-      expect(getByText(/Stop Planning Alone/i)).toBeTruthy();
-      expect(getByText(/Find Your Vacation Companion/i)).toBeTruthy();
+      expect(getByText(/Most ways of finding travel companions/i)).toBeTruthy();
       // App screen mockup replaces stock photo
       expect(getByText(/Alex, 28/i)).toBeTruthy();
       expect(getByText(/Maria, 31/i)).toBeTruthy();
@@ -189,11 +188,11 @@ describe('LandingPage.web', () => {
       mockLocation.href = '';
     });
 
-    it('navigates to /auth?mode=register when Create My Trip Plan is clicked', () => {
+    it('navigates to /auth?mode=register when hero CTA is clicked', () => {
       const { getByText } = renderComponent();
       mockLocation.href = '';
 
-      const ctaButton = getByText('Create My Trip Plan');
+      const ctaButton = getByText(/See Who.s Traveling When I Am/i);
       fireEvent.press(ctaButton);
 
       expect(mockLocation.href).toBe('/auth?mode=register');
@@ -243,9 +242,9 @@ describe('LandingPage.web', () => {
         expect(mockLocation.href).toBe('/auth?mode=login');
       });
 
-      // Sign Up / Create My Trip Plan buttons should all go to register
+      // Sign Up / hero CTA buttons should all go to register
       mockLocation.href = '';
-      fireEvent.press(getByText('Create My Trip Plan'));
+      fireEvent.press(getByText(/See Who.s Traveling When I Am/i));
       expect(mockLocation.href).toBe('/auth?mode=register');
 
       mockLocation.href = '';
@@ -384,7 +383,7 @@ describe('LandingPage.web', () => {
       const { getByText } = renderComponent();
       
       // Component should still render its content (even though AppNavigator prevents this)
-      expect(getByText(/Planning a trip solo/i)).toBeTruthy();
+      expect(getByText(/Find travel companions/i)).toBeTruthy();
     });
 
     it('renders normally when user is null', () => {
@@ -396,7 +395,7 @@ describe('LandingPage.web', () => {
 
       const { getByText } = renderComponent();
       
-      expect(getByText(/Planning a trip solo/i)).toBeTruthy();
+      expect(getByText(/Find travel companions/i)).toBeTruthy();
       // No navigation should have occurred
       expect(mockLocation.href).toBe('');
     });

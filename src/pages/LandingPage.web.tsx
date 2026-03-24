@@ -336,8 +336,25 @@ export const LandingPage: React.FC = () => {
         <View style={styles.heroContent}>
           <View style={styles.heroTextSide}>
             <Text style={styles.heroTitle}>
-              Planning a trip solo?
+              Find travel companions going to the same place at the same time using your itinerary?
             </Text>
+
+            {/* 3-step visual — reduces cognitive friction before the CTA */}
+            <View style={styles.stepsContainer}>
+              {[
+                { num: '1', label: 'Enter your destination + dates' },
+                { num: '2', label: 'Get matched with travelers instantly' },
+                { num: '3', label: 'Chat + plan your trip together' },
+              ].map(({ num, label }) => (
+                <View key={num} style={styles.stepRow}>
+                  <View style={styles.stepBadge}>
+                    <Text style={styles.stepBadgeText}>{num}</Text>
+                  </View>
+                  <Text style={styles.stepLabel}>{label}</Text>
+                </View>
+              ))}
+            </View>
+
             <Text style={styles.heroSubtitle}>
               We match you with travelers going to the same place, on the same dates, with the same interests. Not just a profile — a real travel partner.
             </Text>
@@ -345,9 +362,9 @@ export const LandingPage: React.FC = () => {
             <TouchableOpacity
               style={styles.heroCta}
               onPress={handleGetStarted}
-              accessibilityLabel="Create your trip plan on TravalPass"
+              accessibilityLabel="See Who’s Traveling When I Am"
             >
-              <Text style={styles.heroCtaText}>Create My Trip Plan</Text>
+              <Text style={styles.heroCtaText}>See Who’s Traveling When I Am</Text>
             </TouchableOpacity>
 
             <Text style={styles.microIncentive}>✨ Free · No credit card · Under 60 seconds</Text>
@@ -397,6 +414,31 @@ export const LandingPage: React.FC = () => {
           </View>
 
           <View style={styles.heroVisualSide}>
+            {/* Caption sits above the image, not overlapping it */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'center',
+              marginBottom: '12px',
+            }}>
+              <div style={{
+                backgroundColor: 'rgba(10, 22, 40, 0.82)',
+                backdropFilter: 'blur(6px)',
+                WebkitBackdropFilter: 'blur(6px)',
+                borderRadius: '999px',
+                padding: '10px 22px',
+                whiteSpace: 'nowrap',
+              }}>
+                <p style={{
+                  margin: 0,
+                  color: '#fff',
+                  fontSize: '15px',
+                  fontWeight: 700,
+                  letterSpacing: '0.01em',
+                }}>
+                  Matched travelers. Same destination. Same dates.
+                </p>
+              </div>
+            </div>
             {/* Use native <picture> to serve WebP (111KB) instead of PNG (1.6MB) */}
             <picture>
               <source srcSet="/Matching.webp" type="image/webp" />
@@ -413,6 +455,33 @@ export const LandingPage: React.FC = () => {
           </View>
         </View>
       </div>
+
+      {/* Trust Strip */}
+      {Platform.OS === 'web' && (
+        <div style={{
+          backgroundColor: '#0d47a1',
+          padding: '20px 24px',
+          display: 'flex',
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: '32px',
+        }}>
+          {[
+            { icon: '✅', title: 'Free to use', sub: 'No credit card required' },
+            { icon: '🚫', title: 'No hidden fees', sub: 'What you see is what you pay' },
+            { icon: '🤝', title: "We don't book travel", sub: 'We connect travelers — you stay in control' },
+          ].map(({ icon, title, sub }) => (
+            <div key={title} style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: '220px' }}>
+              <span style={{ fontSize: '28px', lineHeight: 1 }}>{icon}</span>
+              <div>
+                <p style={{ margin: 0, color: '#fff', fontWeight: 700, fontSize: '15px' }}>{title}</p>
+                <p style={{ margin: 0, color: 'rgba(255,255,255,0.75)', fontSize: '13px', marginTop: '2px' }}>{sub}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Demo Videos — 3 focused tutorials */}
       <View style={[styles.section, styles.demoSection]}>
@@ -518,12 +587,64 @@ export const LandingPage: React.FC = () => {
             </View>
 
             <View style={styles.column}>
-              <Text style={styles.sectionTitle}>Stop Planning Alone. Find Your Vacation Companion.</Text>
+              <Text style={styles.sectionTitle}>Most ways of finding travel companions are random.</Text>
               <Text style={styles.sectionText}>
-                Whether you're a solo traveler seeking a travel buddy or planning a group adventure, TravalPass connects you with compatible vacation companions. Share travel tips, build collaborative itineraries with your travel partner, and explore destinations together safely.
+                You might find someone online — but they're not going where you're going. Or not traveling when you are. Or not looking for the same experience.
               </Text>
+              <Text style={[styles.sectionText, { fontWeight: '700', color: '#1976d2', marginTop: 0 }]}>
+                TravalPass changes that.
+              </Text>
+              <Text style={styles.sectionText}>
+                We match you based on your destination, your travel dates, and your interests — so you connect with people who are actually planning the same trip.
+              </Text>
+              <Text style={[styles.sectionText, { fontStyle: 'italic' }]}>
+                No guesswork. No endless searching. Just better matches.
+              </Text>
+
+              {/* Comparison table */}
+              {Platform.OS === 'web' && (
+                <div style={{
+                  display: 'flex',
+                  gap: '12px',
+                  marginTop: '20px',
+                  marginBottom: '8px',
+                  flexWrap: 'wrap',
+                }}>
+                  {/* Other Platforms */}
+                  <div style={{
+                    flex: '1 1 160px',
+                    backgroundColor: '#fff5f5',
+                    border: '1px solid #fecaca',
+                    borderRadius: '12px',
+                    padding: '16px',
+                  }}>
+                    <p style={{ margin: '0 0 10px', fontWeight: 700, fontSize: '17px', color: '#991b1b' }}>
+                      Other Platforms ❌
+                    </p>
+                    {['Random matches', 'No date alignment', 'Endless searching'].map(t => (
+                      <p key={t} style={{ margin: '4px 0', fontSize: '15px', color: '#7f1d1d' }}>• {t}</p>
+                    ))}
+                  </div>
+                  {/* TravalPass */}
+                  <div style={{
+                    flex: '1 1 160px',
+                    backgroundColor: '#f0fdf4',
+                    border: '1px solid #bbf7d0',
+                    borderRadius: '12px',
+                    padding: '16px',
+                  }}>
+                    <p style={{ margin: '0 0 10px', fontWeight: 700, fontSize: '17px', color: '#166534' }}>
+                      TravalPass ✅
+                    </p>
+                    {['Same destination', 'Same travel dates', 'Built for travel matching'].map(t => (
+                      <p key={t} style={{ margin: '4px 0', fontSize: '15px', color: '#14532d' }}>• {t}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <TouchableOpacity style={styles.primaryButton} onPress={handleGetStarted}>
-                <Text style={styles.primaryButtonText}>Create Your Free Travel Profile</Text>
+                <Text style={styles.primaryButtonText}>Find My Travel Match</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -773,8 +894,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 40,
-    maxWidth: 1400,
+    paddingHorizontal: width < 768 ? 16 : 24,
+    maxWidth: 1600,
     marginHorizontal: 'auto',
     width: '100%',
   },
@@ -794,8 +915,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   heroContent: {
-    paddingHorizontal: 40,
-    maxWidth: 1400,
+    paddingHorizontal: width < 768 ? 16 : 24,
+    maxWidth: 1600,
     width: '100%',
     marginHorizontal: 'auto',
     flexDirection: width < 768 ? 'column' : 'row',
@@ -833,12 +954,41 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     lineHeight: width < 768 ? 36 : width < 1024 ? 46 : 58,
   },
+  stepsContainer: {
+    marginBottom: 28,
+    gap: 12,
+  },
+  stepRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    justifyContent: width < 768 ? 'center' : 'flex-start',
+  },
+  stepBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  stepBadgeText: {
+    color: '#1976d2',
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  stepLabel: {
+    color: '#fff',
+    fontSize: width < 768 ? 18 : 21,
+    fontWeight: '600',
+  },
   heroSubtitle: {
-    fontSize: width < 768 ? 16 : 18,
+    fontSize: width < 768 ? 18 : 21,
     color: 'rgba(255,255,255,0.85)',
     textAlign: width < 768 ? 'center' : 'left',
     marginBottom: 24,
-    lineHeight: 28,
+    lineHeight: 32,
     maxWidth: 520,
   },
   heroCta: {
@@ -927,10 +1077,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(245, 245, 245, 0.95)',
   },
   sectionContainer: {
-    maxWidth: 1400,
+    maxWidth: 1600,
     width: '100%',
     alignSelf: 'center',
-    paddingHorizontal: 40,
+    paddingHorizontal: width < 768 ? 16 : 24,
     overflow: 'hidden',
   },
   twoColumnLayout: {
@@ -944,7 +1094,7 @@ const styles = StyleSheet.create({
     maxWidth: '100%',
   },
   sectionTitle: {
-    fontSize: 32,
+    fontSize: width < 768 ? 26 : 36,
     fontWeight: '700',
     color: '#1a1a1a',
     marginBottom: 8,
@@ -956,9 +1106,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sectionText: {
-    fontSize: 16,
+    fontSize: width < 768 ? 17 : 19,
     color: '#666',
-    lineHeight: 24,
+    lineHeight: 30,
     marginBottom: 24,
   },
   mainTitle: {
