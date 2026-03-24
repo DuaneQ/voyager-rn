@@ -20,7 +20,6 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useUsageTracking } from '../../hooks/useUsageTracking';
 
 interface ProfileHeaderProps {
   displayName: string;
@@ -29,7 +28,7 @@ interface ProfileHeaderProps {
   bio?: string;
   location?: string;
   profileCompleteness: number;
-  subscriptionType?: 'free' | 'premium'; // kept for API compat but badge uses hasPremium()
+  isPremium?: boolean;
   onEditPress: () => void;
   onPhotoPress?: () => void | Promise<void>; // Optional - triggers photo change
   onPhotoDelete?: () => void; // Optional - triggers photo delete
@@ -45,7 +44,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   bio,
   location,
   profileCompleteness,
-  subscriptionType,
+  isPremium = false,
   onEditPress,
   onPhotoPress,
   onPhotoDelete,
@@ -54,8 +53,6 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   isUploading = false,
 }) => {
   const insets = useSafeAreaInsets();
-  const { hasPremium } = useUsageTracking();
-  const isPremium = hasPremium();
   const [showPhotoMenu, setShowPhotoMenu] = useState(false);
   const [enlargedPhoto, setEnlargedPhoto] = useState(false);
   const [isPickerLoading, setIsPickerLoading] = useState(false);
