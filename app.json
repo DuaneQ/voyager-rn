@@ -15,7 +15,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.travalpass.app",
-      "buildNumber": "43",
+      "buildNumber": "47",
       "googleServicesFile": "./GoogleService-Info.plist",
       "entitlements": {
         "com.apple.developer.applesignin": [
@@ -43,7 +43,7 @@
     },
     "android": {
       "package": "com.travalpass.app",
-      "versionCode": 41,
+      "versionCode": 42,
       "googleServicesFile": "./google-services.json",
       "icon": "./AppIcons/playstore.png",
       "softwareKeyboardLayoutMode": "resize",
@@ -74,6 +74,9 @@
     ],
     "plugins": [
       "./plugins/withGooglePlacesAndroid",
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging",
+      "./plugins/withFirebaseAppDelegateFix",
       [
         "expo-video",
         {

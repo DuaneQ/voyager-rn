@@ -204,13 +204,27 @@ export class NotificationService {
     // Try RNFB messaging first (works on both platforms, handles APNs→FCM on iOS)
     if (messaging) {
       try {
-        // Defensive: ensure iOS device is registered for remote messages before getToken.
-        if (
-          Platform.OS === 'ios' &&
-          typeof messaging().isDeviceRegisteredForRemoteMessages === 'boolean' &&
-          !messaging().isDeviceRegisteredForRemoteMessages
-        ) {
-          await messaging().registerDeviceForRemoteMessages();
+        if (Platform.OS === 'ios') {
+          // Ensure device is registered for remote messages with APNs.
+          if (!messaging().isDeviceRegisteredForRemoteMessages) {
+            await messaging().registerDeviceForRemoteMessages();
+          }
+
+          // Wait for the APNs token — iOS delivers it asynchronously after
+          // remote message registration. Calling getToken() before it arrives
+          // throws "No APNS token specified before fetching FCM Token".
+          let apnsToken = await messaging().getAPNSToken();
+          if (!apnsToken) {
+            for (let i = 0; i < 10; i++) {
+              await new Promise(resolve => setTimeout(resolve, 500));
+              apnsToken = await messaging().getAPNSToken();
+              if (apnsToken) break;
+            }
+          }
+          if (!apnsToken) {
+            console.warn('⚠️ iOS: APNS token not available after 5s — skipping RNFB FCM token fetch');
+            return null;
+          }
         }
 
         const token = await messaging().getToken();

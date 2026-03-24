@@ -25,12 +25,17 @@ jest.mock('../../services/notification/messaging', () => {
   const mockRequestPermission = jest.fn().mockResolvedValue(1); // AUTHORIZED
   const mockDeleteToken = jest.fn().mockResolvedValue(undefined);
   const mockOnTokenRefresh = jest.fn().mockReturnValue(jest.fn());
+  const mockGetAPNSToken = jest.fn().mockResolvedValue('mock-apns-token');
+  const mockRegisterDeviceForRemoteMessages = jest.fn().mockResolvedValue(undefined);
 
   const mockInstance = {
     getToken: mockGetToken,
     requestPermission: mockRequestPermission,
     deleteToken: mockDeleteToken,
     onTokenRefresh: mockOnTokenRefresh,
+    getAPNSToken: mockGetAPNSToken,
+    registerDeviceForRemoteMessages: mockRegisterDeviceForRemoteMessages,
+    isDeviceRegisteredForRemoteMessages: true,
   };
 
   const messagingFn: any = jest.fn(() => mockInstance);
@@ -121,6 +126,12 @@ describe('NotificationService (@react-native-firebase/messaging)', () => {
   });
 
   describe('getFCMToken', () => {
+    beforeEach(() => {
+      // The iOS APNS wait logic calls getAPNSToken() before getToken().
+      // Re-establish after jest.clearAllMocks() in the outer beforeEach.
+      (mockMessaging() as any).getAPNSToken.mockResolvedValue('mock-apns-token');
+    });
+
     it('should return FCM token from @react-native-firebase/messaging', async () => {
       (mockMessaging() as any).getToken.mockResolvedValue(mockToken);
 
