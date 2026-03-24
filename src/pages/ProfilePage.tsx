@@ -110,6 +110,25 @@ const ProfilePage: React.FC = () => {
   const { user } = useAuth();
   const { showAlert } = useAlert();
   const { userProfile, updateProfile, isLoading } = useUserProfile();
+
+  // Compute isPremium from the live onSnapshot-driven profile so the badge
+  // updates immediately when Firestore changes (e.g. subscription cancelled).
+  const isPremium = (() => {
+    if (!userProfile || userProfile.subscriptionType !== 'premium') return false;
+    const s: any = userProfile.subscriptionEndDate;
+    if (!s) return false;
+    let endDate: Date;
+    if (typeof s.toDate === 'function') {
+      endDate = s.toDate();
+    } else if (typeof s.seconds === 'number') {
+      endDate = new Date(s.seconds * 1000 + Math.floor((s.nanoseconds || 0) / 1e6));
+    } else {
+      endDate = new Date(s);
+    }
+    if (isNaN(endDate.getTime())) return false;
+    return new Date() <= endDate;
+  })();
+
   const { selectAndUploadPhoto, deletePhoto, uploadState } = usePhotoUpload();
   const { signOut } = useAuth();
   
@@ -613,6 +632,7 @@ const ProfilePage: React.FC = () => {
               : undefined
           }
           profileCompleteness={calculateCompleteness()}
+          isPremium={isPremium}
           onEditPress={handleEditProfile}
           onPhotoPress={handleChangeProfilePhoto}
           onPhotoDelete={handleDeleteProfilePhoto}

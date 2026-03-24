@@ -16,6 +16,7 @@ import {
   Alert,
   TouchableWithoutFeedback,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -27,6 +28,7 @@ interface ProfileHeaderProps {
   bio?: string;
   location?: string;
   profileCompleteness: number;
+  isPremium?: boolean;
   onEditPress: () => void;
   onPhotoPress?: () => void | Promise<void>; // Optional - triggers photo change
   onPhotoDelete?: () => void; // Optional - triggers photo delete
@@ -42,6 +44,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   bio,
   location,
   profileCompleteness,
+  isPremium = false,
   onEditPress,
   onPhotoPress,
   onPhotoDelete,
@@ -53,6 +56,9 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   const [showPhotoMenu, setShowPhotoMenu] = useState(false);
   const [enlargedPhoto, setEnlargedPhoto] = useState(false);
   const [isPickerLoading, setIsPickerLoading] = useState(false);
+  const [showPremiumTooltip, setShowPremiumTooltip] = useState(false);
+
+  const UPGRADE_URL = 'https://travalpass.com/auth?mode=login&redirect=/app/search';
 
   const getProfileImage = () => {
     if (photoURL) {
@@ -198,6 +204,38 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
           </Text>
         </View>
       </View>
+
+      {/* Premium Membership Badge */}
+      {isPremium && (
+        <View style={styles.premiumContainer}>
+          <TouchableOpacity
+            style={styles.premiumBadge}
+            onPress={() => Linking.openURL(UPGRADE_URL)}
+            onLongPress={() => setShowPremiumTooltip(true)}
+            accessibilityLabel="Premium member — tap to manage subscription"
+            testID="premium-badge"
+          >
+            <Ionicons name="star" size={14} color="#FFD700" />
+            <Text style={styles.premiumBadgeText}>⭐ Premium Member</Text>
+            <Ionicons name="open-outline" size={13} color="rgba(255,255,255,0.8)" />
+          </TouchableOpacity>
+          <Text style={styles.premiumHint}>Tap to manage · Long-press for help</Text>
+
+          {/* Tooltip explaining how to cancel */}
+          {showPremiumTooltip && (
+            <TouchableOpacity
+              style={styles.premiumTooltip}
+              onPress={() => setShowPremiumTooltip(false)}
+              activeOpacity={1}
+            >
+              <Text style={styles.premiumTooltipText}>
+                To cancel or manage your subscription, visit the TravalPass website and go to the same page where you signed up for Premium.
+              </Text>
+              <Text style={styles.premiumTooltipDismiss}>Tap to dismiss</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
 
       {/* Edit Profile Button */}
       <TouchableOpacity
@@ -365,6 +403,51 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     marginLeft: 4,
+  },
+  premiumContainer: {
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  premiumBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#7a5c00',
+    borderWidth: 1.5,
+    borderColor: '#FFD700',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+  },
+  premiumBadgeText: {
+    color: '#FFD700',
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  premiumHint: {
+    color: '#999',
+    fontSize: 11,
+    marginTop: 5,
+  },
+  premiumTooltip: {
+    marginTop: 8,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    maxWidth: 300,
+  },
+  premiumTooltipText: {
+    color: '#fff',
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  premiumTooltipDismiss: {
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: 11,
+    marginTop: 6,
+    textAlign: 'center',
   },
   editButton: {
     flexDirection: 'row',
