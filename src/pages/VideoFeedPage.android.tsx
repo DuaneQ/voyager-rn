@@ -423,13 +423,18 @@ const VideoFeedPage: React.FC = () => {
       
       if (data.type === 'ad') {
         const ad = data.ad;
+        // Guard: video feed only renders video-creative ads with completed Mux processing
+        if (ad.creativeType !== 'video' || !ad.muxPlaybackUrl) {
+          console.warn(`[VideoFeedPage.android] Skipping ad ${ad.campaignId}: creativeType=${ad.creativeType}, muxPlaybackUrl=${ad.muxPlaybackUrl ?? 'absent'}`);
+          return null;
+        }
         // Convert AdUnit to Video structure for unified rendering
         video = {
           id: `ad-${ad.campaignId}`,
           videoUrl: ad.muxPlaybackUrl || ad.assetUrl,
           muxPlaybackUrl: ad.muxPlaybackUrl,
           muxThumbnailUrl: ad.muxThumbnailUrl,
-          thumbnailUrl: ad.muxThumbnailUrl || ad.assetUrl,
+          thumbnailUrl: ad.muxThumbnailUrl || '',  // assetUrl is a video file, not a valid image source
           title: ad.businessName || 'Sponsored',
           description: ad.primaryText,
           createdAt: { toMillis: () => Date.now() },

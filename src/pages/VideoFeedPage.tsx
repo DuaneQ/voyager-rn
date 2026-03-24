@@ -460,7 +460,7 @@ const VideoFeedPage: React.FC = () => {
           videoUrl: ad.muxPlaybackUrl || ad.assetUrl,
           muxPlaybackUrl: ad.muxPlaybackUrl,
           muxThumbnailUrl: ad.muxThumbnailUrl,
-          thumbnailUrl: ad.muxThumbnailUrl || ad.assetUrl,
+          thumbnailUrl: ad.muxThumbnailUrl || '',  // assetUrl is a video file, not a valid image source
           title: ad.businessName || 'Sponsored',
           description: ad.primaryText,
           createdAt: { toMillis: () => Date.now() },
