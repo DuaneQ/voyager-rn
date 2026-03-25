@@ -35,7 +35,6 @@ import { useUserProfile } from '../context/UserProfileContext';
 import { useAuth } from '../context/AuthContext';
 
 // Guards
-import { TermsGuard } from '../components/auth/TermsGuard';
 
 // Validation utility
 import { validateProfileForItinerary } from '../utils/profileValidation';
@@ -184,12 +183,8 @@ const RequireAuth: React.FC<RequireAuthProps> = ({ children }) => {
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
   
-  // User is authenticated - wrap with TermsGuard
-  return (
-    <TermsGuard>
-      {children}
-    </TermsGuard>
-  );
+  // User is authenticated - terms acceptance is checked lazily in SearchPage
+  return <>{children}</>;
 };
 
 // ============================================================================

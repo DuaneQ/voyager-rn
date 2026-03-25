@@ -17,6 +17,10 @@ const mockSignOut = jest.fn();
 // Mock dependencies
 jest.mock('../../../hooks/useTermsAcceptance');
 jest.mock('../../../context/AuthContext');
+// The Quick Agreement modal imports the full legal modal — mock it to avoid native module issues
+jest.mock('../../../components/modals/legal/TermsOfServiceModal', () => ({
+  TermsOfServiceModal: () => null,
+}));
 
 const mockUseTermsAcceptance = useTermsAcceptance as jest.MockedFunction<typeof useTermsAcceptance>;
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
@@ -148,8 +152,7 @@ describe('TermsGuard', () => {
       </TermsGuard>
     );
 
-    expect(getByText('Terms of Service Agreement')).toBeTruthy();
-    expect(getByText('You must accept all terms to use TravalPass')).toBeTruthy();
+    expect(getByText('Quick Agreement')).toBeTruthy();
   });
 
   it('should show modal when user is logged in but has not accepted terms', () => {
@@ -168,7 +171,7 @@ describe('TermsGuard', () => {
     );
 
     // Should show modal, not children
-    expect(getByText('Terms of Service Agreement')).toBeTruthy();
+    expect(getByText('Quick Agreement')).toBeTruthy();
     expect(queryByText('Protected Content')).toBeFalsy();
   });
 
@@ -188,24 +191,17 @@ describe('TermsGuard', () => {
       </TermsGuard>
     );
 
-    // Check all required checkboxes
-    fireEvent.press(getByText(/I have read the complete Terms of Service document/i));
-    fireEvent.press(getByText(/I have read and understand the complete Terms/i));
-    fireEvent.press(getByText(/I understand the risks associated with meeting strangers/i));
-    fireEvent.press(getByText(/I assume full responsibility for my personal safety/i));
-    fireEvent.press(getByText(/I release TravalPass from liability/i));
-    fireEvent.press(getByText(/I am at least 18 years old/i));
-    fireEvent.press(getByText(/I will comply with all applicable laws/i));
-
-    const acceptButton = getByText('I Accept These Terms');
-    fireEvent.press(acceptButton);
+    const continueButton = getByText('Continue');
+    fireEvent.press(continueButton);
 
     await waitFor(() => {
       expect(mockAcceptTerms).toHaveBeenCalled();
     });
   });
 
-  it('should sign out and navigate when user declines', async () => {
+  it('should not expose an explicit decline button (no sign-out button in new UX)', async () => {
+    // The new Quick Agreement modal only has "Continue" and "View Terms".
+    // Sign-out on decline is triggered only via hardware back (onRequestClose).
     mockUseTermsAcceptance.mockReturnValue({
       hasAcceptedTerms: false,
       isLoading: false,
@@ -214,21 +210,14 @@ describe('TermsGuard', () => {
       checkTermsStatus: jest.fn(),
     });
 
-    const { getByText } = render(
+    const { queryByText } = render(
       <TermsGuard>
         <Text>Protected Content</Text>
       </TermsGuard>
     );
 
-    const declineButton = getByText('Decline & Logout');
-    fireEvent.press(declineButton);
-
-    await waitFor(() => {
-      expect(mockSignOut).toHaveBeenCalled();
-    });
-    
-    // Note: We don't check navigation.navigate anymore because
-    // the auth state change will handle the redirect to Auth screen
+    expect(queryByText('Decline & Logout')).toBeFalsy();
+    expect(queryByText('Continue')).toBeTruthy();
   });
 
   it('should show nothing when user is not logged in', () => {

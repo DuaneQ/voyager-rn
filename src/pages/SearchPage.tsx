@@ -55,6 +55,8 @@ import { saveViewedItinerary, hasViewedItinerary } from '../utils/viewedStorage'
 import AddItineraryModal from '../components/search/AddItineraryModal';
 import { FeedbackButton } from '../components/utilities/FeedbackButton';
 import SubscriptionCard from '../components/common/SubscriptionCard';
+import { TermsOfServiceModal } from '../components/modals/TermsOfServiceModal';
+import { useTermsAcceptance } from '../hooks/useTermsAcceptance';
 import { SponsoredItineraryCard } from '../components/ads';
 import { useAdDelivery, useAdTracking } from '../hooks/ads';
 import { calculateAge } from '../utils/calculateAge';
@@ -66,6 +68,8 @@ const SearchPage: React.FC = () => {
   const [currentMockIndex, setCurrentMockIndex] = useState(0);
   const [selectedItineraryId, setSelectedItineraryId] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [termsModalVisible, setTermsModalVisible] = useState(false);
+  const [pendingItineraryId, setPendingItineraryId] = useState<string | null>(null);
   // Stripe checkout result status (Web only)
   const [checkoutStatus, setCheckoutStatus] = useState<'success' | 'cancel' | null>(null);
   const { showAlert } = useAlert();
@@ -73,6 +77,7 @@ const SearchPage: React.FC = () => {
   
   // Usage tracking hook
   const { hasReachedLimit, trackView, dailyViewCount, refreshProfile } = useUsageTracking();
+  const { hasAcceptedTerms, acceptTerms } = useTermsAcceptance();
   
   // Update itinerary hook (for persisting likes)
   const { updateItinerary } = useUpdateItinerary();
@@ -175,14 +180,38 @@ const SearchPage: React.FC = () => {
     }, [userId, refreshItineraries, refreshProfile])
   );
 
+  /**
+   * Called once terms are accepted — proceeds with the itinerary selection that
+   * was pending when the terms modal was shown.
+   */
+  const handleTermsAccepted = async () => {
+    await acceptTerms();
+    if (pendingItineraryId) {
+      await proceedWithItinerarySelect(pendingItineraryId);
+      setPendingItineraryId(null);
+    }
+    setTermsModalVisible(false);
+  };
+
   const handleItinerarySelect = async (id: string) => {
-    setSelectedItineraryId(id);
-    
     if (!userId) {
       showAlert('warning', 'Please log in to search for matches');
       return;
     }
-    
+
+    // Gate: show Quick Agreement if user hasn't accepted terms yet
+    if (!hasAcceptedTerms) {
+      setPendingItineraryId(id);
+      setTermsModalVisible(true);
+      return;
+    }
+
+    await proceedWithItinerarySelect(id);
+  };
+
+  const proceedWithItinerarySelect = async (id: string) => {
+    setSelectedItineraryId(id);
+
     // Find the selected itinerary
     const selectedItinerary = itineraries.find(itin => itin.id === id);
     if (!selectedItinerary) {
@@ -590,6 +619,16 @@ const SearchPage: React.FC = () => {
         onItineraryAdded={handleItineraryAdded}
         itineraries={itineraries}
         userProfile={userProfile}
+      />
+
+      {/* Terms agreement — shown once before user's first match search */}
+      <TermsOfServiceModal
+        visible={termsModalVisible}
+        onAccept={handleTermsAccepted}
+        onDecline={() => {
+          setTermsModalVisible(false);
+          setPendingItineraryId(null);
+        }}
       />
 
       {/* Feedback Button - vertical along right side */}

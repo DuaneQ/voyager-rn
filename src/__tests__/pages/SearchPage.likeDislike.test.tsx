@@ -72,6 +72,16 @@ jest.mock('../../hooks/useAllItineraries');
 jest.mock('../../hooks/useSearchItineraries');
 jest.mock('../../hooks/useUsageTracking');
 jest.mock('../../hooks/useUpdateItinerary');
+// Terms are accepted — these tests are not testing terms acceptance flow.
+jest.mock('../../hooks/useTermsAcceptance', () => ({
+  useTermsAcceptance: jest.fn(() => ({
+    hasAcceptedTerms: true,
+    isLoading: false,
+    error: null,
+    acceptTerms: jest.fn().mockResolvedValue(undefined),
+    checkTermsStatus: jest.fn(),
+  })),
+}));
 
 // Mock ItinerarySelector - simpler mock that auto-selects first itinerary
 jest.mock('../../components/search/ItinerarySelector', () => ({

@@ -169,6 +169,15 @@ jest.mock('../../context/UserProfileContext', () => ({
 }));
 
 jest.mock('../../hooks/useAllItineraries');
+jest.mock('../../hooks/useTermsAcceptance', () => ({
+  useTermsAcceptance: jest.fn(() => ({
+    hasAcceptedTerms: true,
+    isLoading: false,
+    error: null,
+    acceptTerms: jest.fn().mockResolvedValue(undefined),
+    checkTermsStatus: jest.fn(),
+  })),
+}));
 jest.mock('../../hooks/useSearchItineraries', () => ({
   __esModule: true,
   default: jest.fn(() => ({
@@ -220,6 +229,7 @@ const mockUseTravelPreferences = useTravelPreferences as jest.Mock;
 const mockUseUserProfile = useUserProfile as jest.Mock;
 const mockUseUsageTracking = useUsageTracking as jest.Mock;
 const mockUseUpdateItinerary = useUpdateItinerary as jest.Mock;
+const mockUseTermsAcceptance = require('../../hooks/useTermsAcceptance').useTermsAcceptance as jest.Mock;
 
 // Mock AuthProvider
 jest.mock('../../context/AuthContext', () => {
@@ -288,6 +298,14 @@ describe('SearchPage', () => {
       updateItinerary: jest.fn().mockResolvedValue({ id: 'itin-1', likes: [] }),
       isUpdating: false,
       error: null,
+    });
+    // Terms are accepted by default — SearchPage tests are not testing terms acceptance.
+    mockUseTermsAcceptance.mockReturnValue({
+      hasAcceptedTerms: true,
+      isLoading: false,
+      error: null,
+      acceptTerms: jest.fn().mockResolvedValue(undefined),
+      checkTermsStatus: jest.fn(),
     });
   });
 

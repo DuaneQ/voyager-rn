@@ -43,11 +43,6 @@ export const TermsOfServiceModal: React.FC<TermsOfServiceModalProps> = ({ visibl
               an account or using the Platform, you agree to be bound by these Terms.
             </Text>
 
-            <Text style={styles.warningBox}>
-              IMPORTANT: THESE TERMS CONTAIN A BINDING ARBITRATION CLAUSE AND CLASS ACTION WAIVER IN
-              SECTION 15, WHICH AFFECT YOUR LEGAL RIGHTS.
-            </Text>
-
             <Text style={styles.sectionTitle}>1. Acceptance of Terms</Text>
             <Text style={styles.paragraph}>
               By accessing or using TravalPass, you affirm that you:{'\n'}
@@ -119,6 +114,28 @@ export const TermsOfServiceModal: React.FC<TermsOfServiceModalProps> = ({ visibl
               • Use the Platform for any illegal activity{'\n'}
               • Share inappropriate, explicit, or offensive content{'\n'}
               • Use automated systems (bots) to access the Platform
+            </Text>
+
+            <Text style={styles.sectionTitle}>4.1 Zero Tolerance Policy</Text>
+            <Text style={styles.paragraph}>
+              TravalPass maintains a STRICT ZERO TOLERANCE policy for:{'\n'}
+              • Explicit sexual content, nudity, or pornography{'\n'}
+              • Violence, graphic content, or threats{'\n'}
+              • Harassment, bullying, or abusive behavior{'\n'}
+              • Hate speech or discrimination{'\n'}
+              • Illegal activities or fraud{'\n'}
+              • Spam or misleading information
+            </Text>
+            <Text style={styles.paragraph}>
+              <Text style={styles.bold}>Enforcement consequences include:{'\n'}</Text>
+              • Immediate account suspension{'\n'}
+              • Permanent termination and removal from the platform{'\n'}
+              • Reported content removed within 24 hours of a valid report{'\n'}
+              • Severe violations reported to law enforcement
+            </Text>
+            <Text style={styles.paragraph}>
+              You are responsible for reporting objectionable content immediately using the in-app
+              reporting tools. All reports are reviewed within 24 hours.
             </Text>
 
             <Text style={styles.sectionTitle}>5. Content and Intellectual Property</Text>
@@ -218,6 +235,16 @@ export const TermsOfServiceModal: React.FC<TermsOfServiceModalProps> = ({ visibl
             <Text style={styles.paragraph}>
               OUR TOTAL LIABILITY SHALL NOT EXCEED THE AMOUNT YOU PAID TO TRAVALPASS IN THE PAST 12
               MONTHS, OR $100, WHICHEVER IS GREATER.
+            </Text>
+
+            <Text style={styles.subSectionTitle}>7.5 Safety Recommendations</Text>
+            <Text style={styles.paragraph}>
+              To help keep yourself safe when connecting with other travelers:{'\n'}
+              • Meet in public places initially{'\n'}
+              • Inform a trusted contact of your travel plans and who you are meeting{'\n'}
+              • Trust your instincts — if something feels wrong, leave the situation{'\n'}
+              • Obtain appropriate travel insurance before any trip{'\n'}
+              • Verify user information independently before meeting in person
             </Text>
 
             <Text style={styles.sectionTitle}>8. Indemnification</Text>
@@ -367,11 +394,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContainer: {
-    width: width < 768 ? '90%' : '80%',
+    width: width < 768 ? '100%' : '80%',
     maxWidth: 800,
-    maxHeight: '90%',
+    // On small screens take up nearly the full viewport height so content is readable.
+    height: width < 768 ? '100%' : undefined,
+    maxHeight: width < 768 ? '100%' : '90%',
     backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: width < 768 ? 0 : 12,
     overflow: 'hidden',
   },
   header: {

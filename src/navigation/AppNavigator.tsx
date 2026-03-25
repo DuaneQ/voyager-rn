@@ -33,7 +33,6 @@ import SearchPage from '../pages/SearchPage';
 import { DiscoveryResultsPage } from '../pages/DiscoveryResultsPage';
 
 // Guards
-import { TermsGuard } from '../components/auth/TermsGuard';
 
 // Context Providers
 import { AlertProvider } from '../context/AlertContext';
@@ -137,14 +136,8 @@ const MainTabNavigator: React.FC = () => {
 // Removed: Old AuthStackNavigator with separate Login/Register screens
 // Now using single AuthScreen that handles all auth flows internally
 
-// Main Tab Navigator wrapped with TermsGuard
-const GuardedMainTabNavigator: React.FC = () => {
-  return (
-    <TermsGuard>
-      <MainTabNavigator />
-    </TermsGuard>
-  );
-};
+// Main Tab Navigator - terms acceptance is checked lazily in SearchPage
+const GuardedMainTabNavigator: React.FC = () => <MainTabNavigator />;
 
 // Main Stack Navigator with conditional rendering based on auth state
 const RootNavigator: React.FC = () => {
