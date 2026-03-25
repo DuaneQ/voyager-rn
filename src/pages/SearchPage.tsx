@@ -64,9 +64,11 @@ import { useTravelPreferences } from '../hooks/useTravelPreferences';
 import { usePopularDestinations } from '../hooks/usePopularDestinations';
 import { PopularDestinationsCarousel } from '../components/search/PopularDestinationsCarousel';
 import { AddItineraryTooltip } from '../components/search/AddItineraryTooltip';
+import { SelectItineraryTooltip } from '../components/search/SelectItineraryTooltip';
 import * as storage from '../utils/storage';
 
 const TOOLTIP_SEEN_KEY = 'ADD_ITINERARY_TOOLTIP_SEEN';
+const SELECT_TOOLTIP_SEEN_KEY = 'SELECT_ITINERARY_TOOLTIP_SEEN';
 
 const SearchPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -74,6 +76,7 @@ const SearchPage: React.FC = () => {
   const [selectedItineraryId, setSelectedItineraryId] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [tooltipVisible, setTooltipVisible] = useState(false);
+  const [selectTooltipVisible, setSelectTooltipVisible] = useState(false);
   const [selectorBottom, setSelectorBottom] = useState(0);
   const [termsModalVisible, setTermsModalVisible] = useState(false);
   const [pendingItineraryId, setPendingItineraryId] = useState<string | null>(null);
@@ -117,15 +120,29 @@ const SearchPage: React.FC = () => {
   const currentAdIndexRef = useRef(0);
 
   useEffect(() => {
-    // Show tooltip once for new users who have no itineraries
+    // Show add-itinerary tooltip once for users who have no itineraries
     storage.getItem(TOOLTIP_SEEN_KEY).then((seen) => {
       if (!seen) setTooltipVisible(true);
     });
   }, []);
 
+  useEffect(() => {
+    // Show select-itinerary tooltip once for users who have itineraries but haven't selected one
+    if (itinerariesLoading) return;
+    if (itineraries.length === 0) return;
+    storage.getItem(SELECT_TOOLTIP_SEEN_KEY).then((seen) => {
+      if (!seen) setSelectTooltipVisible(true);
+    });
+  }, [itinerariesLoading, itineraries.length]);
+
   const handleTooltipDismiss = useCallback(async () => {
     setTooltipVisible(false);
     await storage.setItem(TOOLTIP_SEEN_KEY, '1');
+  }, []);
+
+  const handleSelectTooltipDismiss = useCallback(async () => {
+    setSelectTooltipVisible(false);
+    await storage.setItem(SELECT_TOOLTIP_SEEN_KEY, '1');
   }, []);
 
   useEffect(() => {
@@ -267,10 +284,17 @@ const SearchPage: React.FC = () => {
   };
 
   const handleItineraryAdded = async () => {
+    // Track whether this is the user's first itinerary before refreshing
+    const isFirstItinerary = itineraries.length === 0;
     // Refresh itinerary list after create/edit/delete
     await refreshItineraries();
     setModalVisible(false);
     showAlert('Itinerary saved successfully!', 'success');
+    // Show select-itinerary coach mark once, after the user's first itinerary
+    if (isFirstItinerary) {
+      const seen = await storage.getItem(SELECT_TOOLTIP_SEEN_KEY);
+      if (!seen) setSelectTooltipVisible(true);
+    }
   };
 
   /**
@@ -603,6 +627,15 @@ const SearchPage: React.FC = () => {
         <AddItineraryTooltip
           visible={tooltipVisible}
           onDismiss={handleTooltipDismiss}
+          top={selectorBottom}
+        />
+      )}
+
+      {/* Select-itinerary coach mark — shown once after first itinerary is created */}
+      {itineraries.length > 0 && !selectedItineraryId && (
+        <SelectItineraryTooltip
+          visible={selectTooltipVisible}
+          onDismiss={handleSelectTooltipDismiss}
           top={selectorBottom}
         />
       )}
