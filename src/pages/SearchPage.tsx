@@ -87,7 +87,7 @@ const SearchPage: React.FC = () => {
   
   // Usage tracking hook
   const { hasReachedLimit, trackView, dailyViewCount, refreshProfile } = useUsageTracking();
-  const { hasAcceptedTerms, acceptTerms } = useTermsAcceptance();
+  const { hasAcceptedTerms, acceptTerms, isLoading: termsLoading, error: termsError } = useTermsAcceptance();
   
   // Popular destinations for the empty-state carousel
   const { destinations: popularDestinations, loading: popularLoading } = usePopularDestinations(3);
@@ -213,8 +213,11 @@ const SearchPage: React.FC = () => {
       return;
     }
 
-    // Gate: show Quick Agreement if user hasn't accepted terms yet
-    if (!hasAcceptedTerms) {
+    // Gate: show Quick Agreement if user hasn't accepted terms yet.
+    // Skip the check while terms state is still loading to prevent a false
+    // positive for users who have already accepted (hasAcceptedTerms defaults
+    // to false before the async check resolves).
+    if (!termsLoading && !hasAcceptedTerms) {
       setPendingItineraryId(id);
       setTermsModalVisible(true);
       return;
@@ -617,6 +620,8 @@ const SearchPage: React.FC = () => {
           setTermsModalVisible(false);
           setPendingItineraryId(null);
         }}
+        loading={termsLoading}
+        error={termsError}
       />
 
       {/* Feedback Button - vertical along right side */}

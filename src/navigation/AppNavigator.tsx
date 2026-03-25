@@ -136,8 +136,7 @@ const MainTabNavigator: React.FC = () => {
 // Removed: Old AuthStackNavigator with separate Login/Register screens
 // Now using single AuthScreen that handles all auth flows internally
 
-// Main Tab Navigator - terms acceptance is checked lazily in SearchPage
-const GuardedMainTabNavigator: React.FC = () => <MainTabNavigator />;
+
 
 // Main Stack Navigator with conditional rendering based on auth state
 const RootNavigator: React.FC = () => {
@@ -172,7 +171,7 @@ const RootNavigator: React.FC = () => {
       {isAuthenticated ? (
         // User is authenticated and verified - check terms acceptance before showing main app
         <>
-          <Stack.Screen name="MainApp" component={GuardedMainTabNavigator} />
+          <Stack.Screen name="MainApp" component={MainTabNavigator} />
           <Stack.Screen name="ChatThread" component={ChatThreadScreen} />
         </>
       ) : showLandingPage ? (
