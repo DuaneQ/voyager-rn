@@ -60,7 +60,7 @@ const ProfileStackNavigator: React.FC = () => {
 const MainTabNavigator: React.FC = () => {
   return (
     <Tab.Navigator
-      initialRouteName="Videos"
+      initialRouteName="Search"
       screenOptions={{
         tabBarActiveTintColor: '#1976d2',
         tabBarInactiveTintColor: 'gray',

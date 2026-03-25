@@ -61,13 +61,20 @@ import { SponsoredItineraryCard } from '../components/ads';
 import { useAdDelivery, useAdTracking } from '../hooks/ads';
 import { calculateAge } from '../utils/calculateAge';
 import { useTravelPreferences } from '../hooks/useTravelPreferences';
+import { usePopularDestinations } from '../hooks/usePopularDestinations';
+import { PopularDestinationsCarousel } from '../components/search/PopularDestinationsCarousel';
+import { AddItineraryTooltip } from '../components/search/AddItineraryTooltip';
+import * as storage from '../utils/storage';
+
+const TOOLTIP_SEEN_KEY = 'ADD_ITINERARY_TOOLTIP_SEEN';
 
 const SearchPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
-  const [currentMockIndex, setCurrentMockIndex] = useState(0);
   const [selectedItineraryId, setSelectedItineraryId] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [tooltipVisible, setTooltipVisible] = useState(false);
+  const [selectorBottom, setSelectorBottom] = useState(0);
   const [termsModalVisible, setTermsModalVisible] = useState(false);
   const [pendingItineraryId, setPendingItineraryId] = useState<string | null>(null);
   // Stripe checkout result status (Web only)
@@ -79,10 +86,13 @@ const SearchPage: React.FC = () => {
   const { hasReachedLimit, trackView, dailyViewCount, refreshProfile } = useUsageTracking();
   const { hasAcceptedTerms, acceptTerms } = useTermsAcceptance();
   
+  // Popular destinations for the empty-state carousel
+  const { destinations: popularDestinations, loading: popularLoading } = usePopularDestinations(3);
+
   // Update itinerary hook (for persisting likes)
   const { updateItinerary } = useUpdateItinerary();
   
-  // Fetch all itineraries (AI + manual) from PostgreSQL
+  // Fetch all itineraries (AI + manual)
   const { itineraries, loading: itinerariesLoading, error: itinerariesError, refreshItineraries } = useAllItineraries();
   
   // Search hook for finding matching itineraries
@@ -106,30 +116,17 @@ const SearchPage: React.FC = () => {
   const [showingSponsoredAd, setShowingSponsoredAd] = useState(false);
   const currentAdIndexRef = useRef(0);
 
-  // Mock itineraries shown only when user has no real itineraries
-  const mockItineraries = [
-    {
-      title: 'Amazing Tokyo Adventure',
-      destination: 'Tokyo, Japan',
-      duration: '7 days',
-      description: 'AI Generated - Here is where you will search for other travelers going to the same destination with overlapping dates.  After saving your user profile, you can click the Add Itinerary button above to manually create an itinerary.',
-      creator: 'TokyoExplorer'
-    },
-    {
-      title: 'Paris Romance',
-      destination: 'Paris, France',
-      duration: '5 days',
-      description: 'You can use AI to create an itinerary for you after saving your travel preference profile. After you have itineraries you will select one from the combobox above. If you have any potential matches they will appear here.',
-      creator: 'ParisianDreamer'
-    },
-    {
-      title: 'NYC Urban Explorer',
-      destination: 'New York, USA',
-      duration: '4 days',
-      description: 'You can view their profile and ratings from past travels with others.  Click the airplane to like their itinerary. If the same traveler likes your itinerary then it is a match! Once you match you can navigate to the Chats tab to start planning your trip together!',
-      creator: 'CityWalker'
-    }
-  ];
+  useEffect(() => {
+    // Show tooltip once for new users who have no itineraries
+    storage.getItem(TOOLTIP_SEEN_KEY).then((seen) => {
+      if (!seen) setTooltipVisible(true);
+    });
+  }, []);
+
+  const handleTooltipDismiss = useCallback(async () => {
+    setTooltipVisible(false);
+    await storage.setItem(TOOLTIP_SEEN_KEY, '1');
+  }, []);
 
   useEffect(() => {
     // Simple auth check
@@ -428,19 +425,6 @@ const SearchPage: React.FC = () => {
     }
   };
 
-  // Handle mock itinerary navigation (only for onboarding)
-  const handleMockLike = () => {
-    nextMockItinerary();
-  };
-
-  const handleMockDislike = () => {
-    nextMockItinerary();
-  };
-
-  const nextMockItinerary = () => {
-    setCurrentMockIndex(prev => (prev + 1) % mockItineraries.length);
-  };
-
   if (isLoading) {
     return (
       <ImageBackground 
@@ -490,14 +474,19 @@ const SearchPage: React.FC = () => {
         {/* Subscription Card - Web only, compact floating style */}
         <SubscriptionCard compact />
 
-        {/* Itinerary Selector Dropdown */}
-        <ItinerarySelector
-          itineraries={itineraries}
-          selectedItineraryId={selectedItineraryId}
-          onSelect={handleItinerarySelect}
-          onAddItinerary={handleAddItinerary}
-          loading={itinerariesLoading}
-        />
+        {/* Itinerary Selector Dropdown — onLayout captures bottom edge for tooltip anchor */}
+        <View onLayout={e => {
+          const { y, height } = e.nativeEvent.layout;
+          setSelectorBottom(y + height);
+        }}>
+          <ItinerarySelector
+            itineraries={itineraries}
+            selectedItineraryId={selectedItineraryId}
+            onSelect={handleItinerarySelect}
+            onAddItinerary={handleAddItinerary}
+            loading={itinerariesLoading}
+          />
+        </View>
 
       {/* Usage Counter - only show when user has itineraries */}
       {itineraries.length > 0 && (
@@ -510,38 +499,13 @@ const SearchPage: React.FC = () => {
       <View style={styles.content}>
         {userId ? (
           <>
-            {/* Show mock itineraries only when user has no real itineraries */}
+            {/* Empty state: show trending destinations */}
             {itineraries.length === 0 ? (
               <View style={styles.cardContainer}>
-                <View style={styles.itineraryCard}>
-                  <Text style={styles.cardTitle}>{mockItineraries[currentMockIndex].title}</Text>
-                  <Text style={styles.cardDestination}>{mockItineraries[currentMockIndex].destination}</Text>
-                  <Text style={styles.cardDuration}>{mockItineraries[currentMockIndex].duration}</Text>
-                  <Text style={styles.cardDescription}>
-                    {mockItineraries[currentMockIndex].description}
-                  </Text>
-                  <View style={styles.userInfo}>
-                    <Text style={styles.userText}>Created by: {mockItineraries[currentMockIndex].creator}</Text>
-                  </View>
-                </View>
-
-                {/* Action Buttons for Mock Itineraries */}
-                <View style={styles.actionButtons}>
-                  <TouchableOpacity 
-                    testID="dislike-button"
-                    style={styles.dislikeButton} 
-                    onPress={handleMockDislike}
-                  >
-                    <Text style={styles.buttonText}>✕</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    testID="like-button"
-                    style={styles.likeButton} 
-                    onPress={handleMockLike}
-                  >
-                    <Text style={styles.buttonText}>✈️</Text>
-                  </TouchableOpacity>
-                </View>
+                <PopularDestinationsCarousel
+                  destinations={popularDestinations}
+                  loading={popularLoading}
+                />
               </View>
             ) : selectedItineraryId ? (
               /* User has selected an itinerary - show matching results */
@@ -633,6 +597,15 @@ const SearchPage: React.FC = () => {
 
       {/* Feedback Button - vertical along right side */}
       <FeedbackButton />
+
+      {/* Tooltip coach-mark — anchored just below the Add Itinerary button */}
+      {itineraries.length === 0 && (
+        <AddItineraryTooltip
+          visible={tooltipVisible}
+          onDismiss={handleTooltipDismiss}
+          top={selectorBottom}
+        />
+      )}
 
     </SafeAreaView>
     </ImageBackground>

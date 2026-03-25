@@ -123,6 +123,11 @@ jest.mock(
 		}),			Animated: {
 				View: createHostComponent('AnimatedView'),
 				Value: function Value(initial = 0) { return { _value: initial, setValue(v){ this._value = v; }, addListener(){}, removeListener(){} }; },
+				// Call the start callback synchronously so fake-timer tests can observe state updates
+				timing: jest.fn(() => ({ start: jest.fn(cb => cb && cb()) })),
+				spring: jest.fn(() => ({ start: jest.fn(cb => cb && cb()) })),
+				parallel: jest.fn(() => ({ start: jest.fn(cb => cb && cb()) })),
+				sequence: jest.fn(() => ({ start: jest.fn(cb => cb && cb()) })),
 				add: (...args) => ({ __animated: 'add', args }),
 				subtract: (...args) => ({ __animated: 'sub', args }),
 			},
