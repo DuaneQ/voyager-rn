@@ -279,7 +279,7 @@ const SearchPage: React.FC = () => {
     if (!userProfile?.dob || !userProfile?.gender) {
       showAlert(
         'warning',
-        'Please complete your profile (date of birth and gender) before creating an itinerary.'
+        'To get the best matches, we need a couple of details from your profile — your date of birth and gender help us fine-tune who we connect you with. Head to your profile to fill these in, then come back to create your itinerary!'
       );
       return;
     }
