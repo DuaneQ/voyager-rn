@@ -55,17 +55,31 @@ import { saveViewedItinerary, hasViewedItinerary } from '../utils/viewedStorage'
 import AddItineraryModal from '../components/search/AddItineraryModal';
 import { FeedbackButton } from '../components/utilities/FeedbackButton';
 import SubscriptionCard from '../components/common/SubscriptionCard';
+import { TermsOfServiceModal } from '../components/modals/TermsOfServiceModal';
+import { useTermsAcceptance } from '../hooks/useTermsAcceptance';
 import { SponsoredItineraryCard } from '../components/ads';
 import { useAdDelivery, useAdTracking } from '../hooks/ads';
 import { calculateAge } from '../utils/calculateAge';
 import { useTravelPreferences } from '../hooks/useTravelPreferences';
+import { usePopularDestinations } from '../hooks/usePopularDestinations';
+import { PopularDestinationsCarousel } from '../components/search/PopularDestinationsCarousel';
+import { AddItineraryTooltip } from '../components/search/AddItineraryTooltip';
+import { SelectItineraryTooltip } from '../components/search/SelectItineraryTooltip';
+import * as storage from '../utils/storage';
+
+const TOOLTIP_SEEN_KEY = 'ADD_ITINERARY_TOOLTIP_SEEN';
+const SELECT_TOOLTIP_SEEN_KEY = 'SELECT_ITINERARY_TOOLTIP_SEEN';
 
 const SearchPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
-  const [currentMockIndex, setCurrentMockIndex] = useState(0);
   const [selectedItineraryId, setSelectedItineraryId] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [tooltipVisible, setTooltipVisible] = useState(false);
+  const [selectTooltipVisible, setSelectTooltipVisible] = useState(false);
+  const [selectorBottom, setSelectorBottom] = useState(0);
+  const [termsModalVisible, setTermsModalVisible] = useState(false);
+  const [pendingItineraryId, setPendingItineraryId] = useState<string | null>(null);
   // Stripe checkout result status (Web only)
   const [checkoutStatus, setCheckoutStatus] = useState<'success' | 'cancel' | null>(null);
   const { showAlert } = useAlert();
@@ -73,11 +87,15 @@ const SearchPage: React.FC = () => {
   
   // Usage tracking hook
   const { hasReachedLimit, trackView, dailyViewCount, refreshProfile } = useUsageTracking();
+  const { hasAcceptedTerms, acceptTerms, isLoading: termsLoading, error: termsError } = useTermsAcceptance();
   
+  // Popular destinations for the empty-state carousel
+  const { destinations: popularDestinations, loading: popularLoading } = usePopularDestinations(3);
+
   // Update itinerary hook (for persisting likes)
   const { updateItinerary } = useUpdateItinerary();
   
-  // Fetch all itineraries (AI + manual) from PostgreSQL
+  // Fetch all itineraries (AI + manual)
   const { itineraries, loading: itinerariesLoading, error: itinerariesError, refreshItineraries } = useAllItineraries();
   
   // Search hook for finding matching itineraries
@@ -101,30 +119,31 @@ const SearchPage: React.FC = () => {
   const [showingSponsoredAd, setShowingSponsoredAd] = useState(false);
   const currentAdIndexRef = useRef(0);
 
-  // Mock itineraries shown only when user has no real itineraries
-  const mockItineraries = [
-    {
-      title: 'Amazing Tokyo Adventure',
-      destination: 'Tokyo, Japan',
-      duration: '7 days',
-      description: 'AI Generated - Here is where you will search for other travelers going to the same destination with overlapping dates.  After saving your user profile, you can click the Add Itinerary button above to manually create an itinerary.',
-      creator: 'TokyoExplorer'
-    },
-    {
-      title: 'Paris Romance',
-      destination: 'Paris, France',
-      duration: '5 days',
-      description: 'You can use AI to create an itinerary for you after saving your travel preference profile. After you have itineraries you will select one from the combobox above. If you have any potential matches they will appear here.',
-      creator: 'ParisianDreamer'
-    },
-    {
-      title: 'NYC Urban Explorer',
-      destination: 'New York, USA',
-      duration: '4 days',
-      description: 'You can view their profile and ratings from past travels with others.  Click the airplane to like their itinerary. If the same traveler likes your itinerary then it is a match! Once you match you can navigate to the Chats tab to start planning your trip together!',
-      creator: 'CityWalker'
-    }
-  ];
+  useEffect(() => {
+    // Show add-itinerary tooltip once for users who have no itineraries
+    storage.getItem(TOOLTIP_SEEN_KEY).then((seen) => {
+      if (!seen) setTooltipVisible(true);
+    });
+  }, []);
+
+  useEffect(() => {
+    // Show select-itinerary tooltip once for users who have itineraries but haven't selected one
+    if (itinerariesLoading) return;
+    if (itineraries.length === 0) return;
+    storage.getItem(SELECT_TOOLTIP_SEEN_KEY).then((seen) => {
+      if (!seen) setSelectTooltipVisible(true);
+    });
+  }, [itinerariesLoading, itineraries.length]);
+
+  const handleTooltipDismiss = useCallback(async () => {
+    setTooltipVisible(false);
+    await storage.setItem(TOOLTIP_SEEN_KEY, '1');
+  }, []);
+
+  const handleSelectTooltipDismiss = useCallback(async () => {
+    setSelectTooltipVisible(false);
+    await storage.setItem(SELECT_TOOLTIP_SEEN_KEY, '1');
+  }, []);
 
   useEffect(() => {
     // Simple auth check
@@ -175,14 +194,41 @@ const SearchPage: React.FC = () => {
     }, [userId, refreshItineraries, refreshProfile])
   );
 
+  /**
+   * Called once terms are accepted — proceeds with the itinerary selection that
+   * was pending when the terms modal was shown.
+   */
+  const handleTermsAccepted = async () => {
+    await acceptTerms();
+    if (pendingItineraryId) {
+      await proceedWithItinerarySelect(pendingItineraryId);
+      setPendingItineraryId(null);
+    }
+    setTermsModalVisible(false);
+  };
+
   const handleItinerarySelect = async (id: string) => {
-    setSelectedItineraryId(id);
-    
     if (!userId) {
       showAlert('warning', 'Please log in to search for matches');
       return;
     }
-    
+
+    // Gate: show Quick Agreement if user hasn't accepted terms yet.
+    // Skip the check while terms state is still loading to prevent a false
+    // positive for users who have already accepted (hasAcceptedTerms defaults
+    // to false before the async check resolves).
+    if (!termsLoading && !hasAcceptedTerms) {
+      setPendingItineraryId(id);
+      setTermsModalVisible(true);
+      return;
+    }
+
+    await proceedWithItinerarySelect(id);
+  };
+
+  const proceedWithItinerarySelect = async (id: string) => {
+    setSelectedItineraryId(id);
+
     // Find the selected itinerary
     const selectedItinerary = itineraries.find(itin => itin.id === id);
     if (!selectedItinerary) {
@@ -233,7 +279,7 @@ const SearchPage: React.FC = () => {
     if (!userProfile?.dob || !userProfile?.gender) {
       showAlert(
         'warning',
-        'Please complete your profile (date of birth and gender) before creating an itinerary.'
+        'To get the best matches, we need a couple of details from your profile — your date of birth and gender help us fine-tune who we connect you with. Head to your profile to fill these in, then come back to create your itinerary!'
       );
       return;
     }
@@ -241,10 +287,17 @@ const SearchPage: React.FC = () => {
   };
 
   const handleItineraryAdded = async () => {
+    // Track whether this is the user's first itinerary before refreshing
+    const isFirstItinerary = itineraries.length === 0;
     // Refresh itinerary list after create/edit/delete
     await refreshItineraries();
     setModalVisible(false);
     showAlert('Itinerary saved successfully!', 'success');
+    // Show select-itinerary coach mark once, after the user's first itinerary
+    if (isFirstItinerary) {
+      const seen = await storage.getItem(SELECT_TOOLTIP_SEEN_KEY);
+      if (!seen) setSelectTooltipVisible(true);
+    }
   };
 
   /**
@@ -399,19 +452,6 @@ const SearchPage: React.FC = () => {
     }
   };
 
-  // Handle mock itinerary navigation (only for onboarding)
-  const handleMockLike = () => {
-    nextMockItinerary();
-  };
-
-  const handleMockDislike = () => {
-    nextMockItinerary();
-  };
-
-  const nextMockItinerary = () => {
-    setCurrentMockIndex(prev => (prev + 1) % mockItineraries.length);
-  };
-
   if (isLoading) {
     return (
       <ImageBackground 
@@ -461,14 +501,19 @@ const SearchPage: React.FC = () => {
         {/* Subscription Card - Web only, compact floating style */}
         <SubscriptionCard compact />
 
-        {/* Itinerary Selector Dropdown */}
-        <ItinerarySelector
-          itineraries={itineraries}
-          selectedItineraryId={selectedItineraryId}
-          onSelect={handleItinerarySelect}
-          onAddItinerary={handleAddItinerary}
-          loading={itinerariesLoading}
-        />
+        {/* Itinerary Selector Dropdown — onLayout captures bottom edge for tooltip anchor */}
+        <View onLayout={e => {
+          const { y, height } = e.nativeEvent.layout;
+          setSelectorBottom(y + height);
+        }}>
+          <ItinerarySelector
+            itineraries={itineraries}
+            selectedItineraryId={selectedItineraryId}
+            onSelect={handleItinerarySelect}
+            onAddItinerary={handleAddItinerary}
+            loading={itinerariesLoading}
+          />
+        </View>
 
       {/* Usage Counter - only show when user has itineraries */}
       {itineraries.length > 0 && (
@@ -481,38 +526,13 @@ const SearchPage: React.FC = () => {
       <View style={styles.content}>
         {userId ? (
           <>
-            {/* Show mock itineraries only when user has no real itineraries */}
+            {/* Empty state: show trending destinations */}
             {itineraries.length === 0 ? (
               <View style={styles.cardContainer}>
-                <View style={styles.itineraryCard}>
-                  <Text style={styles.cardTitle}>{mockItineraries[currentMockIndex].title}</Text>
-                  <Text style={styles.cardDestination}>{mockItineraries[currentMockIndex].destination}</Text>
-                  <Text style={styles.cardDuration}>{mockItineraries[currentMockIndex].duration}</Text>
-                  <Text style={styles.cardDescription}>
-                    {mockItineraries[currentMockIndex].description}
-                  </Text>
-                  <View style={styles.userInfo}>
-                    <Text style={styles.userText}>Created by: {mockItineraries[currentMockIndex].creator}</Text>
-                  </View>
-                </View>
-
-                {/* Action Buttons for Mock Itineraries */}
-                <View style={styles.actionButtons}>
-                  <TouchableOpacity 
-                    testID="dislike-button"
-                    style={styles.dislikeButton} 
-                    onPress={handleMockDislike}
-                  >
-                    <Text style={styles.buttonText}>✕</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    testID="like-button"
-                    style={styles.likeButton} 
-                    onPress={handleMockLike}
-                  >
-                    <Text style={styles.buttonText}>✈️</Text>
-                  </TouchableOpacity>
-                </View>
+                <PopularDestinationsCarousel
+                  destinations={popularDestinations}
+                  loading={popularLoading}
+                />
               </View>
             ) : selectedItineraryId ? (
               /* User has selected an itinerary - show matching results */
@@ -592,8 +612,38 @@ const SearchPage: React.FC = () => {
         userProfile={userProfile}
       />
 
+      {/* Terms agreement — shown once before user's first match search */}
+      <TermsOfServiceModal
+        visible={termsModalVisible}
+        onAccept={handleTermsAccepted}
+        onDecline={() => {
+          setTermsModalVisible(false);
+          setPendingItineraryId(null);
+        }}
+        loading={termsLoading}
+        error={termsError}
+      />
+
       {/* Feedback Button - vertical along right side */}
       <FeedbackButton />
+
+      {/* Tooltip coach-mark — anchored just below the Add Itinerary button */}
+      {itineraries.length === 0 && (
+        <AddItineraryTooltip
+          visible={tooltipVisible}
+          onDismiss={handleTooltipDismiss}
+          top={selectorBottom}
+        />
+      )}
+
+      {/* Select-itinerary coach mark — shown once after first itinerary is created */}
+      {itineraries.length > 0 && !selectedItineraryId && (
+        <SelectItineraryTooltip
+          visible={selectTooltipVisible}
+          onDismiss={handleSelectTooltipDismiss}
+          top={selectorBottom}
+        />
+      )}
 
     </SafeAreaView>
     </ImageBackground>

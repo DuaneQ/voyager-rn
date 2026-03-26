@@ -33,7 +33,6 @@ import SearchPage from '../pages/SearchPage';
 import { DiscoveryResultsPage } from '../pages/DiscoveryResultsPage';
 
 // Guards
-import { TermsGuard } from '../components/auth/TermsGuard';
 
 // Context Providers
 import { AlertProvider } from '../context/AlertContext';
@@ -61,7 +60,7 @@ const ProfileStackNavigator: React.FC = () => {
 const MainTabNavigator: React.FC = () => {
   return (
     <Tab.Navigator
-      initialRouteName="Videos"
+      initialRouteName="Search"
       screenOptions={{
         tabBarActiveTintColor: '#1976d2',
         tabBarInactiveTintColor: 'gray',
@@ -137,14 +136,7 @@ const MainTabNavigator: React.FC = () => {
 // Removed: Old AuthStackNavigator with separate Login/Register screens
 // Now using single AuthScreen that handles all auth flows internally
 
-// Main Tab Navigator wrapped with TermsGuard
-const GuardedMainTabNavigator: React.FC = () => {
-  return (
-    <TermsGuard>
-      <MainTabNavigator />
-    </TermsGuard>
-  );
-};
+
 
 // Main Stack Navigator with conditional rendering based on auth state
 const RootNavigator: React.FC = () => {
@@ -179,7 +171,7 @@ const RootNavigator: React.FC = () => {
       {isAuthenticated ? (
         // User is authenticated and verified - check terms acceptance before showing main app
         <>
-          <Stack.Screen name="MainApp" component={GuardedMainTabNavigator} />
+          <Stack.Screen name="MainApp" component={MainTabNavigator} />
           <Stack.Screen name="ChatThread" component={ChatThreadScreen} />
         </>
       ) : showLandingPage ? (

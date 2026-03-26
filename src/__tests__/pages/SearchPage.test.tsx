@@ -169,6 +169,15 @@ jest.mock('../../context/UserProfileContext', () => ({
 }));
 
 jest.mock('../../hooks/useAllItineraries');
+jest.mock('../../hooks/useTermsAcceptance', () => ({
+  useTermsAcceptance: jest.fn(() => ({
+    hasAcceptedTerms: true,
+    isLoading: false,
+    error: null,
+    acceptTerms: jest.fn().mockResolvedValue(undefined),
+    checkTermsStatus: jest.fn(),
+  })),
+}));
 jest.mock('../../hooks/useSearchItineraries', () => ({
   __esModule: true,
   default: jest.fn(() => ({
@@ -220,6 +229,7 @@ const mockUseTravelPreferences = useTravelPreferences as jest.Mock;
 const mockUseUserProfile = useUserProfile as jest.Mock;
 const mockUseUsageTracking = useUsageTracking as jest.Mock;
 const mockUseUpdateItinerary = useUpdateItinerary as jest.Mock;
+const mockUseTermsAcceptance = require('../../hooks/useTermsAcceptance').useTermsAcceptance as jest.Mock;
 
 // Mock AuthProvider
 jest.mock('../../context/AuthContext', () => {
@@ -288,6 +298,14 @@ describe('SearchPage', () => {
       updateItinerary: jest.fn().mockResolvedValue({ id: 'itin-1', likes: [] }),
       isUpdating: false,
       error: null,
+    });
+    // Terms are accepted by default — SearchPage tests are not testing terms acceptance.
+    mockUseTermsAcceptance.mockReturnValue({
+      hasAcceptedTerms: true,
+      isLoading: false,
+      error: null,
+      acceptTerms: jest.fn().mockResolvedValue(undefined),
+      checkTermsStatus: jest.fn(),
     });
   });
 
@@ -1114,6 +1132,131 @@ describe('SearchPage', () => {
         expect.any(Object),
         ['campaign-abc', 'campaign-xyz'],
       );
+    });
+  });
+
+  // ─── Terms acceptance gate ───────────────────────────────────────────────────
+  describe('Terms acceptance gate', () => {
+    const mockOwnerItinerary = {
+      id: 'itin-1',
+      userId: 'test-user-123',
+      destination: 'Tokyo, Japan',
+      startDate: '2025-06-01',
+      endDate: '2025-06-07',
+      startDay: Date.parse('2025-06-01'),
+      endDay: Date.parse('2025-06-07'),
+    };
+
+    const mockMatchingItinerary = {
+      id: 'match-1',
+      userId: 'other-user-456',
+      destination: 'Tokyo, Japan',
+      startDate: '2025-06-03',
+      endDate: '2025-06-09',
+      startDay: Date.parse('2025-06-03'),
+      endDay: Date.parse('2025-06-09'),
+      userInfo: { uid: 'other-user-456' },
+      likes: [],
+    };
+
+    let mockSearchItineraries: jest.Mock;
+
+    beforeEach(() => {
+      // Synchronous auth delivery so userId is set before the first render.
+      const firebaseConfig = require('../../config/firebaseConfig');
+      firebaseConfig.getAuthInstance = jest.fn(() => ({
+        currentUser: { uid: 'test-user-123' },
+        onAuthStateChanged: jest.fn((callback: (user: any) => void) => {
+          callback({ uid: 'test-user-123' });
+          return jest.fn();
+        }),
+      }));
+      (auth as any).currentUser = { uid: 'test-user-123' };
+
+      mockUseAllItineraries.mockReturnValue({
+        itineraries: [mockOwnerItinerary],
+        loading: false,
+        error: null,
+        refreshItineraries: jest.fn().mockResolvedValue([mockOwnerItinerary]),
+      });
+
+      mockSearchItineraries = jest.fn().mockResolvedValue(undefined);
+      mockUseSearchItineraries.mockReturnValue({
+        matchingItineraries: [mockMatchingItinerary],
+        searchItineraries: mockSearchItineraries,
+        getNextItinerary: jest.fn().mockResolvedValue(undefined),
+        loading: false,
+        hasMore: true,
+        error: null,
+      });
+    });
+
+    it('should show terms modal and block search when hasAcceptedTerms is false', async () => {
+      mockUseTermsAcceptance.mockReturnValue({
+        hasAcceptedTerms: false,
+        isLoading: false,
+        error: null,
+        acceptTerms: jest.fn().mockResolvedValue(undefined),
+        checkTermsStatus: jest.fn(),
+      });
+
+      const { getByTestId, getByText } = renderWithProviders(<SearchPage />);
+      await waitFor(() => expect(getByTestId('select-first-button')).toBeTruthy());
+
+      fireEvent.press(getByTestId('select-first-button'));
+
+      // The terms modal becomes visible — "Quick Agreement" is its title.
+      await waitFor(() => expect(getByText('Quick Agreement')).toBeTruthy());
+      // Search must NOT have proceeded.
+      expect(mockSearchItineraries).not.toHaveBeenCalled();
+    });
+
+    it('should bypass the terms gate and proceed with search while termsLoading is true', async () => {
+      mockUseTermsAcceptance.mockReturnValue({
+        hasAcceptedTerms: false,
+        isLoading: true,
+        error: null,
+        acceptTerms: jest.fn(),
+        checkTermsStatus: jest.fn(),
+      });
+
+      const { getByTestId } = renderWithProviders(<SearchPage />);
+      await waitFor(() => expect(getByTestId('select-first-button')).toBeTruthy());
+
+      fireEvent.press(getByTestId('select-first-button'));
+
+      // Terms state is still loading — gate must be skipped so the search proceeds.
+      await waitFor(() => expect(mockSearchItineraries).toHaveBeenCalled());
+    });
+
+    it('should call acceptTerms then proceed with the pending itinerary on Continue press', async () => {
+      const mockAcceptTerms = jest.fn().mockResolvedValue(undefined);
+      mockUseTermsAcceptance.mockReturnValue({
+        hasAcceptedTerms: false,
+        isLoading: false,
+        error: null,
+        acceptTerms: mockAcceptTerms,
+        checkTermsStatus: jest.fn(),
+      });
+
+      const { getByTestId, getByText } = renderWithProviders(<SearchPage />);
+      await waitFor(() => expect(getByTestId('select-first-button')).toBeTruthy());
+
+      // Trigger the gate.
+      fireEvent.press(getByTestId('select-first-button'));
+      await waitFor(() => expect(getByText('Quick Agreement')).toBeTruthy());
+      expect(mockSearchItineraries).not.toHaveBeenCalled();
+
+      // Accept terms via the modal Continue button.
+      fireEvent.press(getByText('Continue'));
+
+      await waitFor(() => {
+        expect(mockAcceptTerms).toHaveBeenCalledTimes(1);
+        expect(mockSearchItineraries).toHaveBeenCalledWith(
+          expect.objectContaining({ id: 'itin-1' }),
+          'test-user-123',
+        );
+      });
     });
   });
 });

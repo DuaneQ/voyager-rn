@@ -370,7 +370,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                 title="Select Status"
                 options={[
                   { label: 'Select status...', value: '' },
-                  ...STATUS_PREFERENCE_OPTIONS
+                  ...STATUS_PREFERENCE_OPTIONS.filter(o => o.value !== 'No Preference')
                 ]}
               />
             ) : (
@@ -382,7 +382,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                 title="Select Status"
                 options={[
                   { label: 'Select status...', value: '' },
-                  ...STATUS_PREFERENCE_OPTIONS
+                  ...STATUS_PREFERENCE_OPTIONS.filter(o => o.value !== 'No Preference')
                 ]}
               />
             )}
@@ -428,7 +428,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                 title="Select Gender"
                 options={[
                   { label: 'Select gender...', value: '' },
-                  ...GENDER_OPTIONS.map(opt => ({ label: opt, value: opt }))
+                  ...GENDER_OPTIONS.filter(opt => opt !== 'No Preference').map(opt => ({ label: opt, value: opt }))
                 ]}
               />
             ) : (
@@ -440,7 +440,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                 title="Select Gender"
                 options={[
                   { label: 'Select gender...', value: '' },
-                  ...GENDER_OPTIONS.map(opt => ({ label: opt, value: opt }))
+                  ...GENDER_OPTIONS.filter(opt => opt !== 'No Preference').map(opt => ({ label: opt, value: opt }))
                 ]}
               />
             )}
@@ -486,7 +486,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                 title="Sexual Orientation"
                 options={[
                   { label: 'Select orientation...', value: '' },
-                  ...ORIENTATION_PREFERENCE_OPTIONS
+                  ...ORIENTATION_PREFERENCE_OPTIONS.filter(o => o.value !== 'No Preference')
                 ]}
               />
             ) : (
@@ -498,7 +498,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                 title="Sexual Orientation"
                 options={[
                   { label: 'Select orientation...', value: '' },
-                  ...ORIENTATION_PREFERENCE_OPTIONS
+                  ...ORIENTATION_PREFERENCE_OPTIONS.filter(o => o.value !== 'No Preference')
                 ]}
               />
             )}

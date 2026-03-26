@@ -197,6 +197,16 @@ export const TravelPreferencesTab: React.FC<TravelPreferencesTabProps> = ({
 
   return (
     <View style={styles.container}>
+      {/* First-time user banner — shown until they create their first profile */}
+      {profiles.length === 0 && (
+        <View style={styles.firstTimeBanner}>
+          <Text style={styles.firstTimeBannerTitle}>👋 Set up your Travel Profile</Text>
+          <Text style={styles.firstTimeBannerBody}>
+            Tell us your travel style, activities, and preferences so our AI can craft the perfect itinerary for you. Required before generating your first AI trip.
+          </Text>
+        </View>
+      )}
+
       {/* Load Existing Profile Dropdown (only show if profiles exist) */}
       {profiles.length > 0 && (
         <View style={styles.section}>
@@ -653,6 +663,26 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F5F5F5',
+  },
+  firstTimeBanner: {
+    margin: 16,
+    marginBottom: 8,
+    backgroundColor: '#E3F2FD',
+    borderLeftWidth: 4,
+    borderLeftColor: '#1565C0',
+    borderRadius: 8,
+    padding: 14,
+  },
+  firstTimeBannerTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0D47A1',
+    marginBottom: 6,
+  },
+  firstTimeBannerBody: {
+    fontSize: 13,
+    color: '#1565C0',
+    lineHeight: 18,
   },
   centerContainer: {
     flex: 1,

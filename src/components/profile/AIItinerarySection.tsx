@@ -93,8 +93,18 @@ export const AIItinerarySection: React.FC<AIItinerarySectionProps> = ({
     }
     
     // Refresh travel preferences to ensure we have the latest profiles
-    
     await refreshPreferences();
+
+    // Guard: at least one travel preference profile is required
+    const hasPreferenceProfiles = preferences?.profiles && preferences.profiles.length > 0;
+    if (!hasPreferenceProfiles) {
+      showAlert(
+        'warning',
+        'You need at least one Travel Preference profile before generating an AI itinerary.\n\nSwitch to the "Travel Preferences" tab above to create one — it only takes a minute!'
+      );
+      setActiveSubTab('preferences');
+      return;
+    }
 
     // Profile is valid, open the AI generation modal
     setModalVisible(true);

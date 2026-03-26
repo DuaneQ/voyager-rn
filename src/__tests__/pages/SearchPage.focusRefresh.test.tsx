@@ -47,7 +47,19 @@ jest.mock('../../context/UserProfileContext', () => ({
       gender: 'prefer-not-to-say',
     },
     isLoading: false,
+    setUserProfile: jest.fn(),
   }),
+}));
+
+// Terms are accepted — these tests are not testing terms acceptance flow.
+jest.mock('../../hooks/useTermsAcceptance', () => ({
+  useTermsAcceptance: jest.fn(() => ({
+    hasAcceptedTerms: true,
+    isLoading: false,
+    error: null,
+    acceptTerms: jest.fn().mockResolvedValue(undefined),
+    checkTermsStatus: jest.fn(),
+  })),
 }));
 
 jest.mock('../../hooks/useUsageTracking', () => ({
