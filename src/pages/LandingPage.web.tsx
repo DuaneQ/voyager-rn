@@ -26,6 +26,8 @@ import { PrivacyPolicyModal } from '../components/modals/legal/PrivacyPolicyModa
 import { TermsOfServiceModal } from '../components/modals/legal/TermsOfServiceModal';
 import { SafetyGuidelinesModal } from '../components/modals/legal/SafetyGuidelinesModal';
 import { CookiePolicyModal } from '../components/modals/legal/CookiePolicyModal';
+import { PopularDestinationsCarousel } from '../components/search/PopularDestinationsCarousel';
+import type { PopularDestination } from '../hooks/usePopularDestinations';
 
 // Platform-safe useNavigation
 const useNavigation = () => ({
@@ -265,6 +267,19 @@ const appMockStyles = StyleSheet.create({
     color: '#1565c0',
   },
 });
+
+// Hardcoded destinations for unauthenticated landing page — avoids Firestore auth reads.
+// These are plausible figures that convey social proof without making live API calls.
+const FAKE_POPULAR_DESTINATIONS: PopularDestination[] = [
+  { destination: 'Paris, France', count: 142 },
+  { destination: 'Tokyo, Japan', count: 118 },
+  { destination: 'Bali, Indonesia', count: 97 },
+  { destination: 'New York, USA', count: 89 },
+  { destination: 'Rome, Italy', count: 76 },
+  { destination: 'Barcelona, Spain', count: 68 },
+  { destination: 'Bangkok, Thailand', count: 61 },
+  { destination: 'Lisbon, Portugal', count: 54 },
+];
 
 export const LandingPage: React.FC = () => {
   const navigation = useNavigation();
@@ -689,6 +704,17 @@ export const LandingPage: React.FC = () => {
               </Text>
             </View>
           </View>
+        </View>
+      </View>
+
+      {/* Popular Destinations — social proof carousel (hardcoded, no auth required) */}
+      <View style={[styles.section, styles.demoSection]}>
+        <View style={styles.sectionContainer}>
+          <Text style={styles.mainTitle}>Where Travelers Are Going</Text>
+          <PopularDestinationsCarousel
+            destinations={FAKE_POPULAR_DESTINATIONS}
+            loading={false}
+          />
         </View>
       </View>
 

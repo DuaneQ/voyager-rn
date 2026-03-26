@@ -11,6 +11,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   ActivityIndicator,
+  Dimensions,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -19,6 +20,14 @@ import {
 import { PopularDestination } from '../../hooks/usePopularDestinations';
 
 const INTERVAL_MS = 3500;
+
+const { width: screenWidth } = Dimensions.get('window');
+/** Scale factor — 1.5× on tablet/desktop, 1× on mobile */
+const FS = screenWidth >= 768 ? 1.5 : 1;
+/** Card width — fills 85% of narrow screens, max 450 on wide */
+const CARD_WIDTH = screenWidth >= 768
+  ? Math.min(Math.round(screenWidth * 0.45), 450)
+  : Math.min(Math.round(screenWidth * 0.85), 300);
 
 // Generic travel emojis — cycled by slide index so every destination
 // gets a consistent, accurate-looking icon without brittle string-matching.
@@ -117,84 +126,87 @@ export const PopularDestinationsCarousel: React.FC<PopularDestinationsCarouselPr
   );
 };
 
+const r = (n: number) => Math.round(n * FS);
+
 const styles = StyleSheet.create({
   loadingContainer: {
-    paddingVertical: 24,
+    paddingVertical: r(24),
     alignItems: 'center',
   },
   container: {
-    paddingTop: 24,
-    paddingBottom: 16,
+    paddingTop: r(24),
+    paddingBottom: r(16),
     alignItems: 'center',
+    width: '100%',
   },
   heading: {
-    fontSize: 18,
+    fontSize: r(18),
     fontWeight: '700',
     color: '#FFFFFF',
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: r(16),
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
   },
   card: {
     backgroundColor: 'rgba(255,255,255,0.95)',
-    borderRadius: 20,
-    paddingVertical: 36,
-    paddingHorizontal: 32,
+    borderRadius: r(20),
+    paddingVertical: r(36),
+    paddingHorizontal: r(32),
     alignItems: 'center',
-    width: 300,
+    width: CARD_WIDTH,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
+    shadowOffset: { width: 0, height: r(6) },
     shadowOpacity: 0.18,
-    shadowRadius: 12,
+    shadowRadius: r(12),
     elevation: 8,
   },
   emoji: {
-    fontSize: 56,
-    marginBottom: 14,
+    fontSize: r(56),
+    marginBottom: r(14),
   },
   destination: {
-    fontSize: 22,
+    fontSize: r(22),
     fontWeight: '800',
     color: '#1A1A1A',
     textAlign: 'center',
-    marginBottom: 12,
+    marginBottom: r(12),
     letterSpacing: -0.3,
   },
   badge: {
     backgroundColor: '#E8F0FE',
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
+    borderRadius: r(20),
+    paddingHorizontal: r(14),
+    paddingVertical: r(6),
   },
   badgeText: {
-    fontSize: 13,
+    fontSize: r(13),
     color: '#1976d2',
     fontWeight: '600',
   },
   dotsRow: {
     flexDirection: 'row',
-    gap: 7,
-    marginTop: 16,
+    gap: r(7),
+    marginTop: r(16),
     alignItems: 'center',
   },
   dot: {
-    width: 7,
-    height: 7,
+    width: r(7),
+    height: r(7),
     borderRadius: 4,
     backgroundColor: 'rgba(255,255,255,0.4)',
   },
   dotActive: {
     backgroundColor: '#FFFFFF',
-    width: 20,
+    width: r(20),
     borderRadius: 4,
   },
   cta: {
-    fontSize: 13,
+    fontSize: r(13),
     color: '#FFFFFF',
     textAlign: 'center',
-    marginTop: 16,
+    marginTop: r(16),
     opacity: 0.9,
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 1 },
