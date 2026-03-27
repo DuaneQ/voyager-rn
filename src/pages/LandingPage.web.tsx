@@ -272,21 +272,21 @@ const MOCK_ITINERARIES = [
     title: 'Amazing Tokyo Adventure',
     destination: 'Tokyo, Japan',
     duration: '7 days',
-    description: 'Here is where you will search for other travelers going to the same destination with overlapping dates. After saving your profile, tap "Add Itinerary" to create your own.',
+    description: 'TravalPass shows you real travelers headed to the same destination during your dates. Like the ones that interest you — if they like you back, it\'s a match.',
     creator: 'TokyoExplorer',
   },
   {
     title: 'Paris Romance',
     destination: 'Paris, France',
     duration: '5 days',
-    description: 'Use AI to generate a full itinerary after setting up your travel preferences. Select an itinerary from the picker above — matching travelers will appear here.',
+    description: 'Every card is a real traveler\'s itinerary. You can see their destination, dates, and interests before you connect — no guessing, no cold messages.',
     creator: 'ParisianDreamer',
   },
   {
     title: 'NYC Urban Explorer',
     destination: 'New York, USA',
     duration: '4 days',
-    description: 'View profiles and ratings from past travels. Tap ✈️ to like an itinerary — if they like yours back, it\'s a match! Head to Chats to start planning together.',
+    description: 'When two travelers like each other\'s itineraries, it\'s a match. From there, you can chat, share plans, and decide how much to do together.',
     creator: 'CityWalker',
   },
 ];
@@ -302,9 +302,9 @@ const ExampleItineraryCards: React.FC<{ onGetStarted: () => void }> = ({ onGetSt
   return (
     <View style={[mockStyles.section, mockStyles.bg]}>
       <View style={mockStyles.inner}>
-        <Text style={mockStyles.heading}>See How It Works</Text>
+        <Text style={mockStyles.heading}>Browse Real Traveler Itineraries</Text>
         <Text style={mockStyles.sub}>
-          This is what matching looks like. Like or skip to browse — then sign up to find real travel companions.
+          These are the kinds of trips other travelers have planned. When you join, you'll see people going to your destination on your dates. Tap ✈️ to express interest — if they do the same, you're matched and can start chatting.
         </Text>
 
         {/* Dot indicators */}
