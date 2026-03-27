@@ -26,8 +26,7 @@ import { PrivacyPolicyModal } from '../components/modals/legal/PrivacyPolicyModa
 import { TermsOfServiceModal } from '../components/modals/legal/TermsOfServiceModal';
 import { SafetyGuidelinesModal } from '../components/modals/legal/SafetyGuidelinesModal';
 import { CookiePolicyModal } from '../components/modals/legal/CookiePolicyModal';
-import { PopularDestinationsCarousel } from '../components/search/PopularDestinationsCarousel';
-import type { PopularDestination } from '../hooks/usePopularDestinations';
+
 
 // Platform-safe useNavigation
 const useNavigation = () => ({
@@ -268,18 +267,236 @@ const appMockStyles = StyleSheet.create({
   },
 });
 
-// Hardcoded destinations for unauthenticated landing page — avoids Firestore auth reads.
-// These are plausible figures that convey social proof without making live API calls.
-const FAKE_POPULAR_DESTINATIONS: PopularDestination[] = [
-  { destination: 'Paris, France', count: 142 },
-  { destination: 'Tokyo, Japan', count: 118 },
-  { destination: 'Bali, Indonesia', count: 97 },
-  { destination: 'New York, USA', count: 89 },
-  { destination: 'Rome, Italy', count: 76 },
-  { destination: 'Barcelona, Spain', count: 68 },
-  { destination: 'Bangkok, Thailand', count: 61 },
-  { destination: 'Lisbon, Portugal', count: 54 },
+const MOCK_ITINERARIES = [
+  {
+    title: 'Amazing Tokyo Adventure',
+    destination: 'Tokyo, Japan',
+    duration: '7 days',
+    description: 'Here is where you will search for other travelers going to the same destination with overlapping dates. After saving your profile, tap "Add Itinerary" to create your own.',
+    creator: 'TokyoExplorer',
+  },
+  {
+    title: 'Paris Romance',
+    destination: 'Paris, France',
+    duration: '5 days',
+    description: 'Use AI to generate a full itinerary after setting up your travel preferences. Select an itinerary from the picker above — matching travelers will appear here.',
+    creator: 'ParisianDreamer',
+  },
+  {
+    title: 'NYC Urban Explorer',
+    destination: 'New York, USA',
+    duration: '4 days',
+    description: 'View profiles and ratings from past travels. Tap ✈️ to like an itinerary — if they like yours back, it\'s a match! Head to Chats to start planning together.',
+    creator: 'CityWalker',
+  },
 ];
+
+// ── Example Itinerary Cards ──────────────────────────────────────────────
+// Re-creates the onboarding card+buttons experience from SearchPage so
+// unauthenticated visitors can feel how matching works.
+const ExampleItineraryCards: React.FC<{ onGetStarted: () => void }> = ({ onGetStarted }) => {
+  const [mockIndex, setMockIndex] = useState(0);
+  const current = MOCK_ITINERARIES[mockIndex];
+  const next = () => setMockIndex(prev => (prev + 1) % MOCK_ITINERARIES.length);
+
+  return (
+    <View style={[mockStyles.section, mockStyles.bg]}>
+      <View style={mockStyles.inner}>
+        <Text style={mockStyles.heading}>See How It Works</Text>
+        <Text style={mockStyles.sub}>
+          This is what matching looks like. Like or skip to browse — then sign up to find real travel companions.
+        </Text>
+
+        {/* Dot indicators */}
+        <View style={mockStyles.dotsRow} accessibilityElementsHidden>
+          {MOCK_ITINERARIES.map((_, i) => (
+            <View key={i} style={[mockStyles.dot, i === mockIndex && mockStyles.dotActive]} />
+          ))}
+        </View>
+
+        {/* Card */}
+        <View style={mockStyles.card}>
+          <Text style={mockStyles.cardTitle}>{current.title}</Text>
+          <Text style={mockStyles.cardDestination}>📍 {current.destination}</Text>
+          <Text style={mockStyles.cardDuration}>🗓 {current.duration}</Text>
+          <Text style={mockStyles.cardDescription}>{current.description}</Text>
+          <View style={mockStyles.userInfo}>
+            <Text style={mockStyles.userText}>Created by: {current.creator}</Text>
+          </View>
+        </View>
+
+        {/* Action buttons */}
+        <View style={mockStyles.buttons}>
+          <TouchableOpacity
+            style={mockStyles.dislikeBtn}
+            onPress={next}
+            accessibilityRole="button"
+            accessibilityLabel="Skip this itinerary"
+          >
+            <Text style={mockStyles.btnText}>✕</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={mockStyles.likeBtn}
+            onPress={next}
+            accessibilityRole="button"
+            accessibilityLabel="Like this itinerary"
+          >
+            <Text style={mockStyles.btnText}>✈️</Text>
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity style={mockStyles.cta} onPress={onGetStarted}>
+          <Text style={mockStyles.ctaText}>Find My Travel Match →</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+};
+
+const { width: screenW } = Dimensions.get('window');
+const mockStyles = StyleSheet.create({
+  section: {
+    paddingVertical: 72,
+  },
+  bg: {
+    backgroundColor: 'rgba(245, 245, 245, 0.95)',
+  },
+  inner: {
+    maxWidth: 520,
+    width: '100%',
+    alignSelf: 'center',
+    alignItems: 'center',
+    paddingHorizontal: screenW < 768 ? 16 : 24,
+  },
+  heading: {
+    fontSize: screenW < 768 ? 26 : 36,
+    fontWeight: '800',
+    color: '#1a1a1a',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  sub: {
+    fontSize: screenW < 768 ? 15 : 17,
+    color: '#555',
+    textAlign: 'center',
+    lineHeight: 26,
+    marginBottom: 24,
+  },
+  dotsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#ccc',
+  },
+  dotActive: {
+    width: 22,
+    backgroundColor: '#1976d2',
+    borderRadius: 4,
+  },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: screenW < 768 ? 20 : 28,
+    width: '100%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 14,
+    elevation: 8,
+    marginBottom: 8,
+  },
+  cardTitle: {
+    fontSize: screenW < 768 ? 20 : 24,
+    fontWeight: '800',
+    color: '#1a1a1a',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  cardDestination: {
+    fontSize: screenW < 768 ? 16 : 18,
+    color: '#1976d2',
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  cardDuration: {
+    fontSize: screenW < 768 ? 14 : 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  cardDescription: {
+    fontSize: screenW < 768 ? 14 : 16,
+    color: '#444',
+    lineHeight: 24,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  userInfo: {
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    paddingTop: 14,
+  },
+  userText: {
+    fontSize: 13,
+    color: '#888',
+    textAlign: 'center',
+  },
+  buttons: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '60%',
+    paddingVertical: 28,
+  },
+  dislikeBtn: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#f44336',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  likeBtn: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#4caf50',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  btnText: {
+    fontSize: 26,
+    textAlign: 'center',
+  },
+  cta: {
+    backgroundColor: '#1976d2',
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    borderRadius: 12,
+    marginTop: 4,
+  },
+  ctaText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+});
 
 export const LandingPage: React.FC = () => {
   const navigation = useNavigation();
@@ -707,16 +924,8 @@ export const LandingPage: React.FC = () => {
         </View>
       </View>
 
-      {/* Popular Destinations — social proof carousel (hardcoded, no auth required) */}
-      <View style={[styles.section, styles.demoSection]}>
-        <View style={styles.sectionContainer}>
-          <Text style={styles.mainTitle}>Where Travelers Are Going</Text>
-          <PopularDestinationsCarousel
-            destinations={FAKE_POPULAR_DESTINATIONS}
-            loading={false}
-          />
-        </View>
-      </View>
+      {/* Example Itinerary Cards — show what the matching screen looks like */}
+      <ExampleItineraryCards onGetStarted={handleGetStarted} />
 
       {/* FAQ Section */}
       <View style={[styles.section, styles.faqSection]}>

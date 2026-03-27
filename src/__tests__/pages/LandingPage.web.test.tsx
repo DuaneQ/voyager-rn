@@ -269,7 +269,7 @@ describe('LandingPage.web', () => {
     });
 
     it('closes Privacy Policy modal when close is clicked', () => {
-      const { getByText, queryByText } = renderComponent();
+      const { getByText, getAllByText, queryByText } = renderComponent();
       
       // Open modal
       const privacyLink = getByText('Privacy Policy');
@@ -278,9 +278,9 @@ describe('LandingPage.web', () => {
       // Modal should be visible
       expect(queryByText(/1\. Information We Collect/i)).toBeTruthy();
       
-      // Close modal
-      const closeButton = getByText('✕');
-      fireEvent.press(closeButton);
+      // Close modal — use getAllByText[1] because the dislike button also renders ✕ at index [0]
+      const closeButtons = getAllByText('✕');
+      fireEvent.press(closeButtons[1]);
       
       // Modal should be closed (content not visible)
       expect(queryByText(/1\. Information We Collect/i)).toBeNull();
@@ -323,7 +323,7 @@ describe('LandingPage.web', () => {
     });
 
     it('closes Safety Guidelines modal when close is clicked', () => {
-      const { getByText, queryByText } = renderComponent();
+      const { getByText, getAllByText, queryByText } = renderComponent();
       
       // Open modal
       const safetyLink = getByText('Safety Guidelines');
@@ -331,9 +331,9 @@ describe('LandingPage.web', () => {
       
       expect(queryByText(/1\. Before Meeting in Person/i)).toBeTruthy();
       
-      // Close modal
-      const closeButton = getByText('✕');
-      fireEvent.press(closeButton);
+      // Close modal — use getAllByText[1] because the dislike button also renders ✕ at index [0]
+      const closeButtons = getAllByText('✕');
+      fireEvent.press(closeButtons[1]);
       
       expect(queryByText(/1\. Before Meeting in Person/i)).toBeNull();
     });
