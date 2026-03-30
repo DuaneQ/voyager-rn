@@ -96,6 +96,31 @@ const ChatThreadWrapper: React.FC = () => {
   );
 };
 
+// ---------------------------------------------------------------------------
+// Clarity Route Listener
+// Listens to React Router location changes and notifies Microsoft Clarity.
+// Requires Clarity script to be injected (see App.web.tsx). Uses a safe guard
+// so missing Clarity does not throw.
+// ---------------------------------------------------------------------------
+const ClarityRouteListener: React.FC = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined' && (window as any).clarity) {
+        // Set the current page/path so Clarity records SPA navigations
+        (window as any).clarity('set', 'page', location.pathname + (location.search || ''));
+      }
+    } catch (e) {
+      // Non-fatal — don't block app if Clarity isn't available
+      // eslint-disable-next-line no-console
+      console.debug('Clarity route update failed', e);
+    }
+  }, [location]);
+
+  return null;
+};
+
 // ============================================================================
 // WEB BOTTOM TAB BAR
 // Replicates native tab bar for visual consistency
@@ -233,7 +258,7 @@ const RootNavigator: React.FC = () => {
         path="/" 
         element={
           isAuthenticated ? (
-            <Navigate to="/app/videos" replace />
+            <Navigate to="/app/search" replace />
           ) : (
             <LandingPage />
           )
@@ -260,7 +285,7 @@ const RootNavigator: React.FC = () => {
               )) {
                 return redirectParam;
               }
-              return '/app/videos';
+              return '/app/search';
             })()} replace />
           ) : (
             <AuthPage />
@@ -328,7 +353,7 @@ const RootNavigator: React.FC = () => {
       {/* Default redirect for /app */}
       <Route 
         path="/app" 
-        element={<Navigate to="/app/videos" replace />} 
+        element={<Navigate to="/app/search" replace />} 
       />
 
       {/* Catch-all redirect */}
@@ -336,7 +361,7 @@ const RootNavigator: React.FC = () => {
         path="*" 
         element={
           isAuthenticated ? (
-            <Navigate to="/app/videos" replace />
+            <Navigate to="/app/search" replace />
           ) : (
             <Navigate to="/" replace />
           )
@@ -353,6 +378,7 @@ const RootNavigator: React.FC = () => {
 const AppNavigator: React.FC = () => {
   return (
     <BrowserRouter>
+      <ClarityRouteListener />
       <RootNavigator />
     </BrowserRouter>
   );
