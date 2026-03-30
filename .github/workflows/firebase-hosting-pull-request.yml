@@ -50,6 +50,7 @@ jobs:
           CI: false
           # Firebase config is hardcoded in src/config/firebaseConfig.ts and switches based on __DEV__
           # Only Google Places API key needs to be provided as environment variable
+          EXPO_PUBLIC_CLARITY_ID: ${{ secrets.EXPO_PUBLIC_CLARITY_ID }}
           EXPO_PUBLIC_GOOGLE_PLACES_API_KEY: ${{ secrets.REACT_APP_GOOGLE_PLACES_API_KEY }}
 
       - name: "Preflight: check required secrets for preview deploy"

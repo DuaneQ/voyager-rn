@@ -33,6 +33,36 @@ enableScreens(true);
 export default function App() {
   const [fontsLoaded, setFontsLoaded] = useState(false);
 
+  // Clarity: configure via environment variable or global window var.
+  // Set `EXPO_PUBLIC_CLARITY_ID` (preferred for Expo),
+  // or `REACT_APP_CLARITY_ID`, or `window.__CLARITY_PROJECT_ID__` at runtime.
+  const CLARITY_PROJECT_ID =
+    (typeof process !== 'undefined' && process.env && (process.env.EXPO_PUBLIC_CLARITY_ID as unknown as string)) ||
+    (typeof process !== 'undefined' && process.env && (process.env.REACT_APP_CLARITY_ID as unknown as string)) ||
+    (typeof window !== 'undefined' && (window as any).__CLARITY_PROJECT_ID__) ||
+    'REPLACE_WITH_CLARITY_ID';
+
+  useEffect(() => {
+    // Inject Clarity script on web only
+    if (typeof document === 'undefined') return;
+
+    if (!CLARITY_PROJECT_ID || CLARITY_PROJECT_ID === 'REPLACE_WITH_CLARITY_ID') {
+      // Not configured yet — skip injection. Developer should replace placeholder with real ID.
+      console.info('Microsoft Clarity not initialized: set EXPO_PUBLIC_CLARITY_ID (or REACT_APP_CLARITY_ID) or window.__CLARITY_PROJECT_ID__');
+      return;
+    }
+
+    // Avoid injecting twice
+    if (document.querySelector("script[data-clarity-id='" + CLARITY_PROJECT_ID + "']")) return;
+
+    (function(c,l,a,r,i,t,y){
+      c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+      t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+      t.setAttribute('data-clarity-id', i);
+      y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, 'clarity', 'script', CLARITY_PROJECT_ID);
+  }, []);
+
   useEffect(() => {
     async function loadFonts() {
       // Load fonts on web platform to fix icon rendering in production
