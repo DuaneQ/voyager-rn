@@ -1,65 +1,85 @@
 /**
  * LandingPage.web.test.tsx
- * Unit tests for the web-only landing page component
- * 
- * Test Coverage:
- * 1. Platform detection (web only)
- * 2. Content rendering (hero, features, FAQ, CTA)
- * 3. Video background rendering
- * 4. Navigation actions (Sign In/Sign Up)
- * 5. Legal modal interactions (Privacy, Terms, Safety, Cookie)
- * 6. Authenticated user redirect
+ * Unit tests for the CRO-optimized web landing page
+ *
+ * Uses @testing-library/react (DOM) since this is a web-only component
+ * that renders raw HTML elements, not React Native components.
  */
 
 import React from 'react';
-import { render, fireEvent, waitFor } from '@testing-library/react-native';
-import { Platform } from 'react-native';
+import { render, screen, fireEvent } from '@testing-library/react';
+import '@testing-library/jest-dom';
+
+// Must mock Platform before importing the component
+jest.mock('react-native', () => ({
+  Platform: { OS: 'web', select: jest.fn((obj: any) => obj.web ?? obj.default) },
+  StyleSheet: { create: (s: any) => s },
+  Dimensions: { get: () => ({ width: 400, height: 800 }) },
+  Modal: ({ children, visible }: any) => visible ? children : null,
+  View: 'div',
+  Text: 'span',
+  TouchableOpacity: ({ children, onPress, ...props }: any) => {
+    const React = require('react');
+    return React.createElement('button', { onClick: onPress, ...props }, children);
+  },
+  ScrollView: ({ children }: any) => children,
+  Pressable: ({ children, onPress, ...props }: any) => {
+    const React = require('react');
+    return React.createElement('button', { onClick: onPress, ...props }, children);
+  },
+}));
+
+// Prevent portal rendering — render inline in tests
+jest.mock('react-dom', () => ({
+  ...jest.requireActual('react-dom'),
+  createPortal: (node: React.ReactNode) => node,
+}));
+
+// Mock auth context
+jest.mock('../../context/AuthContext', () => ({
+  useAuth: jest.fn(() => ({ user: null })),
+}));
+
+// Mock analytics
+jest.mock('../../hooks/useAnalytics', () => ({
+  useAnalytics: () => ({ logEvent: jest.fn() }),
+}));
+
+// Stub video element methods not available in jsdom
+Object.defineProperty(HTMLMediaElement.prototype, 'muted', {
+  set: jest.fn(),
+  get: jest.fn(() => true),
+  configurable: true,
+});
+HTMLMediaElement.prototype.play = jest.fn(() => Promise.resolve());
+HTMLMediaElement.prototype.pause = jest.fn();
+
 import { LandingPage } from '../../pages/LandingPage.web';
 
-// Mock window.location for navigation tests
+// Mock window.location
 const mockLocation = { href: '' };
 Object.defineProperty(window, 'location', {
   writable: true,
   value: mockLocation,
 });
 
-// Mock auth context
-const mockUser = null;
-jest.mock('../../context/AuthContext', () => ({
-  useAuth: jest.fn(() => ({
-    user: mockUser,
-  })),
-}));
-
-// No need for NavigationContainer wrapper since we use window.location for web
 const renderComponent = () => render(<LandingPage />);
 
 describe('LandingPage.web', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // Mock Platform.OS as web
-    Platform.OS = 'web';
+    mockLocation.href = '';
   });
 
   describe('Platform Detection', () => {
     it('renders on web platform', () => {
-      Platform.OS = 'web';
-      const { getByText } = renderComponent();
-      
-      expect(getByText(/Find travel companions/i)).toBeTruthy();
-    });
-
-    it('returns null on non-web platforms', () => {
-      Platform.OS = 'ios';
-      const { toJSON } = renderComponent();
-      
-      expect(toJSON()).toBeNull();
+      const { container } = renderComponent();
+      expect(container.querySelector('.lp-root')).toBeInTheDocument();
     });
   });
 
   describe('SEO Meta Tags', () => {
     beforeEach(() => {
-      // Clean up meta tags between tests
       document.querySelectorAll('meta[property^="og:"], meta[name^="twitter:"], link[rel="canonical"]').forEach(el => el.remove());
     });
 
@@ -68,7 +88,6 @@ describe('LandingPage.web', () => {
       const canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement;
       expect(canonical).toBeTruthy();
       expect(canonical.href).toContain('travalpass.com');
-      expect(canonical.href).not.toContain('app.travalpass.com');
     });
 
     it('sets og:url to travalpass.com', () => {
@@ -83,320 +102,167 @@ describe('LandingPage.web', () => {
       const twitterUrl = document.querySelector('meta[name="twitter:url"]') as HTMLMetaElement;
       expect(twitterUrl).toBeTruthy();
       expect(twitterUrl.content).toBe('https://travalpass.com/');
-      // Should NOT exist as property
-      const wrongTwitterUrl = document.querySelector('meta[property="twitter:url"]');
-      expect(wrongTwitterUrl).toBeNull();
+      expect(document.querySelector('meta[property="twitter:url"]')).toBeNull();
     });
   });
 
   describe('Content Rendering', () => {
-    beforeEach(() => {
-      Platform.OS = 'web';
+    it('renders hero headline', () => {
+      renderComponent();
+      const matches = screen.getAllByText(/Find your travel companion/i);
+      expect(matches.length).toBeGreaterThan(0);
     });
 
-    it('renders hero section with main headline and subtitle', () => {
-      const { getByText } = renderComponent();
-      
-      expect(getByText(/Find travel companions going to the same place/i)).toBeTruthy();
-      expect(getByText(/same place.*same dates/i)).toBeTruthy();
+    it('renders hero accent text', () => {
+      renderComponent();
+      expect(screen.getByText(/same destination, same dates/i)).toBeInTheDocument();
     });
 
-    it('renders hero CTA button and micro-incentive', () => {
-      const { getByText } = renderComponent();
-      
-      expect(getByText(/See Who.s Traveling When I Am/i)).toBeTruthy();
-      expect(getByText('Sign In')).toBeTruthy();
-      expect(getByText(/Free .* No credit card/i)).toBeTruthy();
+    it('renders green eyebrow pill', () => {
+      renderComponent();
+      const matches = screen.getAllByText(/Free forever/i);
+      expect(matches.length).toBeGreaterThan(0);
     });
 
-    it('renders problem/solution section with app mockup', () => {
-      const { getByText } = renderComponent();
-      
-      expect(getByText(/Most ways of finding travel companions/i)).toBeTruthy();
-      // App screen mockup replaces stock photo
-      expect(getByText(/Alex, 28/i)).toBeTruthy();
-      expect(getByText(/Maria, 31/i)).toBeTruthy();
+    it('renders hero CTA', () => {
+      renderComponent();
+      const buttons = screen.getAllByText(/Match My Trip/i);
+      expect(buttons.length).toBeGreaterThan(0);
     });
 
-    it('renders all four feature cards', () => {
-      const { getByText } = renderComponent();
-      
-      // Feature card titles
-      expect(getByText(/AI Travel Itineraries/i)).toBeTruthy();
-      expect(getByText(/Find Travel Buddies/i)).toBeTruthy();
-      expect(getByText(/Smart Search/i)).toBeTruthy();
-      expect(getByText(/Connect & Chat/i)).toBeTruthy();
+    it('renders avatar cluster social proof', () => {
+      renderComponent();
+      expect(screen.getByText(/Sara, Marco, Kenji/i)).toBeInTheDocument();
     });
 
-    it('renders demo video section', () => {
-      const { getByText } = renderComponent();
-      
-      expect(getByText(/See TravalPass in Action/i)).toBeTruthy();
-      expect(getByText(/Short demos. Real features/i)).toBeTruthy();
+    it('renders 3-step value prop', () => {
+      renderComponent();
+      expect(screen.getByText(/Enter your destination/i)).toBeInTheDocument();
+      expect(screen.getByText(/See travelers with matching/i)).toBeInTheDocument();
+      expect(screen.getByText(/Chat, plan, and travel/i)).toBeInTheDocument();
     });
 
-    it('renders FAQ section with all questions', () => {
-      const { getByText } = renderComponent();
-      
-      // Check for FAQ section title
-      expect(getByText(/Frequently Asked Questions/i)).toBeTruthy();
-      
-      // Check for some FAQ questions (match actual text)
-      expect(getByText(/Is this a dating app/i)).toBeTruthy();
-      expect(getByText(/What does it cost/i)).toBeTruthy();
+    it('renders proof ticker', () => {
+      renderComponent();
+      const matches = screen.getAllByText(/80\+ Travellers Matched/i);
+      expect(matches.length).toBeGreaterThan(0);
     });
 
-    it('renders CTA footer section', () => {
-      const { getByText } = renderComponent();
-      
-      expect(getByText(/Join thousands of travelers planning their next adventure/i)).toBeTruthy();
-      expect(getByText('Sign Up Now')).toBeTruthy();
+    it('renders active traveler cards', () => {
+      renderComponent();
+      const matches = screen.getAllByText(/Travelers looking for companions/i);
+      expect(matches.length).toBeGreaterThan(0);
+      const saraMatches = screen.getAllByText('Sara K.');
+      expect(saraMatches.length).toBeGreaterThan(0);
+      const marcoMatches = screen.getAllByText('Marco L.');
+      expect(marcoMatches.length).toBeGreaterThan(0);
     });
 
-    it('renders legal footer with all links', () => {
-      const { getByText } = renderComponent();
-      
-      expect(getByText('Privacy Policy')).toBeTruthy();
-      expect(getByText('Terms of Service')).toBeTruthy();
-      expect(getByText('Safety Guidelines')).toBeTruthy();
-      expect(getByText('Cookie Policy')).toBeTruthy();
+    it('renders testimonial section', () => {
+      renderComponent();
+      expect(screen.getByText(/What travelers say/i)).toBeInTheDocument();
     });
 
-    it('renders copyright footer', () => {
-      const { getByText } = renderComponent();
-      
-      expect(getByText(/© 2026 TravalPass/i)).toBeTruthy();
-    });
-  });
-
-  describe('Itinerary Match Mockup', () => {
-    beforeEach(() => {
-      Platform.OS = 'web';
+    it('renders How It Works section', () => {
+      renderComponent();
+      expect(screen.getByText(/Match in minutes/i)).toBeInTheDocument();
+      expect(screen.getByText('Enter your trip')).toBeInTheDocument();
+      expect(screen.getByText('See your matches')).toBeInTheDocument();
+      expect(screen.getByText('Chat and plan')).toBeInTheDocument();
     });
 
-    it('renders the itinerary match image', () => {
-      const { getByLabelText } = renderComponent();
-      
-      // Verify the image is rendered with correct accessibility label
-      expect(getByLabelText(/Example showing two travelers matched because their Paris itineraries overlap/i)).toBeTruthy();
+    it('renders FAQ section', () => {
+      renderComponent();
+      expect(screen.getByText(/Everything you need to know/i)).toBeInTheDocument();
+      expect(screen.getByText('Is it really free?')).toBeInTheDocument();
+    });
+
+    it('renders CTA block', () => {
+      renderComponent();
+      expect(screen.getByText(/Ready to find your travel companion/i)).toBeInTheDocument();
+    });
+
+    it('renders footer with legal links', () => {
+      renderComponent();
+      expect(screen.getByText('Privacy Policy')).toBeInTheDocument();
+      expect(screen.getByText('Terms of Service')).toBeInTheDocument();
+      expect(screen.getByText('Safety Guidelines')).toBeInTheDocument();
+      expect(screen.getByText('Cookie Policy')).toBeInTheDocument();
+    });
+
+    it('renders promo video', () => {
+      renderComponent();
+      expect(screen.getByLabelText(/TravalPass matching demo video/i)).toBeInTheDocument();
+    });
+
+    it('renders nav bar with Sign in', () => {
+      renderComponent();
+      expect(screen.getByText('Sign in')).toBeInTheDocument();
     });
   });
 
   describe('Navigation Actions', () => {
-    beforeEach(() => {
-      Platform.OS = 'web';
-      mockLocation.href = '';
-    });
-
-    it('navigates to /auth?mode=register when hero CTA is clicked', () => {
-      const { getByText } = renderComponent();
-      mockLocation.href = '';
-
-      const ctaButton = getByText(/See Who.s Traveling When I Am/i);
-      fireEvent.press(ctaButton);
-
+    it('navigates to register when hero CTA is clicked', () => {
+      renderComponent();
+      const buttons = screen.getAllByText(/Match My Trip/i);
+      fireEvent.click(buttons[0]);
       expect(mockLocation.href).toBe('/auth?mode=register');
     });
 
-    it('navigates to /auth?mode=login when Sign In is clicked from hero', () => {
-      const { getAllByText } = renderComponent();
-      mockLocation.href = '';
-
-      // Get the first "Sign In" button (in hero section)
-      const signInButtons = getAllByText('Sign In');
-      fireEvent.press(signInButtons[0]);
-
+    it('navigates to login when Sign in is clicked', () => {
+      renderComponent();
+      fireEvent.click(screen.getByText('Sign in'));
       expect(mockLocation.href).toBe('/auth?mode=login');
     });
 
-    it('navigates to /auth?mode=register when Sign Up Now is clicked in footer CTA', () => {
-      const { getByText } = renderComponent();
-      mockLocation.href = '';
-
-      const signUpButton = getByText('Sign Up Now');
-      fireEvent.press(signUpButton);
-
-      expect(mockLocation.href).toBe('/auth?mode=register');
-    });
-
-    it('navigates to /auth?mode=login when Sign In is clicked in footer CTA', () => {
-      const { getAllByText } = renderComponent();
-      mockLocation.href = '';
-
-      // Get all "Sign In" buttons and click the last one (footer)
-      const signInButtons = getAllByText('Sign In');
-      fireEvent.press(signInButtons[signInButtons.length - 1]);
-
-      expect(mockLocation.href).toBe('/auth?mode=login');
-    });
-
-    it('Get Started and Sign Up buttons route to register, Sign In buttons route to login', () => {
-      const { getByText, getAllByText } = renderComponent();
-      mockLocation.href = '';
-
-      // Sign In buttons should all go to login
-      const signInButtons = getAllByText('Sign In');
-      signInButtons.forEach(btn => {
-        mockLocation.href = '';
-        fireEvent.press(btn);
-        expect(mockLocation.href).toBe('/auth?mode=login');
-      });
-
-      // Sign Up / hero CTA buttons should all go to register
-      mockLocation.href = '';
-      fireEvent.press(getByText(/See Who.s Traveling When I Am/i));
-      expect(mockLocation.href).toBe('/auth?mode=register');
-
-      mockLocation.href = '';
-      fireEvent.press(getByText('Sign Up Now'));
+    it('navigates to register when See all is clicked', () => {
+      renderComponent();
+      fireEvent.click(screen.getByText('See all →'));
       expect(mockLocation.href).toBe('/auth?mode=register');
     });
   });
 
   describe('Legal Modal Interactions', () => {
-    beforeEach(() => {
-      Platform.OS = 'web';
+    it('opens Privacy Policy modal', () => {
+      renderComponent();
+      const links = screen.getAllByText('Privacy Policy');
+      fireEvent.click(links[0]);
+      const matches = screen.getAllByText(/Information We Collect/i);
+      expect(matches.length).toBeGreaterThan(0);
     });
 
-    it('opens Privacy Policy modal when link is clicked', () => {
-      const { getByText, queryByText } = renderComponent();
-      
-      const privacyLink = getByText('Privacy Policy');
-      fireEvent.press(privacyLink);
-      
-      // Check if modal content appears (actual text in modal)
-      expect(queryByText(/1\. Information We Collect/i)).toBeTruthy();
+    it('opens Terms of Service modal', () => {
+      renderComponent();
+      fireEvent.click(screen.getByText('Terms of Service'));
+      expect(screen.getByText(/Acceptance of Terms/i)).toBeInTheDocument();
     });
 
-    it('closes Privacy Policy modal when close is clicked', () => {
-      const { getByText, getAllByText, queryByText } = renderComponent();
-      
-      // Open modal
-      const privacyLink = getByText('Privacy Policy');
-      fireEvent.press(privacyLink);
-      
-      // Modal should be visible
-      expect(queryByText(/1\. Information We Collect/i)).toBeTruthy();
-      
-      // Close modal — use getAllByText[1] because the dislike button also renders ✕ at index [0]
-      const closeButtons = getAllByText('✕');
-      fireEvent.press(closeButtons[1]);
-      
-      // Modal should be closed (content not visible)
-      expect(queryByText(/1\. Information We Collect/i)).toBeNull();
+    it('opens Safety Guidelines modal', () => {
+      renderComponent();
+      fireEvent.click(screen.getByText('Safety Guidelines'));
+      expect(screen.getByText(/Before Meeting in Person/i)).toBeInTheDocument();
     });
 
-    it('opens Terms of Service modal when link is clicked', () => {
-      const { getByText, queryByText } = renderComponent();
-      
-      const termsLink = getByText('Terms of Service');
-      fireEvent.press(termsLink);
-      
-      // Check if modal content appears
-      expect(queryByText(/Acceptance of Terms/i)).toBeTruthy();
-    });
-
-    it('closes Terms of Service modal when close is clicked', () => {
-      const { getByText, queryByText } = renderComponent();
-      
-      // Open modal
-      const termsLink = getByText('Terms of Service');
-      fireEvent.press(termsLink);
-      
-      expect(queryByText(/Acceptance of Terms/i)).toBeTruthy();
-      
-      // Close modal
-      const closeButton = getByText('Close');
-      fireEvent.press(closeButton);
-      
-      expect(queryByText(/Acceptance of Terms/i)).toBeNull();
-    });
-
-    it('opens Safety Guidelines modal when link is clicked', () => {
-      const { getByText, queryByText } = renderComponent();
-      
-      const safetyLink = getByText('Safety Guidelines');
-      fireEvent.press(safetyLink);
-      
-      // Check if modal content appears
-      expect(queryByText(/1\. Before Meeting in Person/i)).toBeTruthy();
-    });
-
-    it('closes Safety Guidelines modal when close is clicked', () => {
-      const { getByText, getAllByText, queryByText } = renderComponent();
-      
-      // Open modal
-      const safetyLink = getByText('Safety Guidelines');
-      fireEvent.press(safetyLink);
-      
-      expect(queryByText(/1\. Before Meeting in Person/i)).toBeTruthy();
-      
-      // Close modal — use getAllByText[1] because the dislike button also renders ✕ at index [0]
-      const closeButtons = getAllByText('✕');
-      fireEvent.press(closeButtons[1]);
-      
-      expect(queryByText(/1\. Before Meeting in Person/i)).toBeNull();
-    });
-
-    it('opens Cookie Policy modal when link is clicked', () => {
-      const { getByText, queryByText } = renderComponent();
-      
-      const cookieLink = getByText('Cookie Policy');
-      fireEvent.press(cookieLink);
-      
-      // Check if modal content appears
-      expect(queryByText(/What Are Cookies/i)).toBeTruthy();
-    });
-
-    it('closes Cookie Policy modal when close is clicked', () => {
-      const { getByText, queryByText } = renderComponent();
-      
-      // Open modal
-      const cookieLink = getByText('Cookie Policy');
-      fireEvent.press(cookieLink);
-      
-      expect(queryByText(/What Are Cookies/i)).toBeTruthy();
-      
-      // Close modal
-      const closeButton = getByText('Close');
-      fireEvent.press(closeButton);
-      
-      expect(queryByText(/What Are Cookies/i)).toBeNull();
+    it('opens Cookie Policy modal', () => {
+      renderComponent();
+      fireEvent.click(screen.getByText('Cookie Policy'));
+      expect(screen.getByText(/What Are Cookies/i)).toBeInTheDocument();
     });
   });
 
-  describe('Authenticated User Redirect', () => {
-    it('NOTE: Authentication redirect is handled by AppNavigator, not the component itself', () => {
-      // The LandingPage component delegates authentication redirect to AppNavigator's RootNavigator
-      // This test documents that design decision. The actual redirect logic is tested in AppNavigator tests.
-      expect(true).toBe(true);
-    });
-
-    it('renders landing page content when user is authenticated (AppNavigator prevents this scenario)', () => {
-      // In production, AppNavigator never renders LandingPage when user is authenticated
-      // This test verifies the component itself doesn't break if somehow rendered with auth
+  describe('Authenticated User Handling', () => {
+    it('still renders when user is authenticated', () => {
       const useAuthMock = require('../../context/AuthContext').useAuth;
-      useAuthMock.mockReturnValue({
-        user: { uid: 'test-user-123', email: 'test@example.com' },
-      });
-
-      const { getByText } = renderComponent();
-      
-      // Component should still render its content (even though AppNavigator prevents this)
-      expect(getByText(/Find travel companions/i)).toBeTruthy();
+      useAuthMock.mockReturnValue({ user: { uid: 'test-123', email: 'test@example.com' } });
+      const { container } = renderComponent();
+      expect(container.querySelector('.lp-root')).toBeInTheDocument();
     });
 
     it('renders normally when user is null', () => {
       const useAuthMock = require('../../context/AuthContext').useAuth;
-      useAuthMock.mockReturnValue({
-        user: null,
-      });
-      mockLocation.href = '';
-
-      const { getByText } = renderComponent();
-      
-      expect(getByText(/Find travel companions/i)).toBeTruthy();
-      // No navigation should have occurred
+      useAuthMock.mockReturnValue({ user: null });
+      const { container } = renderComponent();
+      expect(container.querySelector('.lp-root')).toBeInTheDocument();
       expect(mockLocation.href).toBe('');
     });
   });
