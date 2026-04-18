@@ -1,0 +1,1754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TravalPass — Find Your Travel Companion</title>
+<style>
+/* ═══════════════════════════════════════════════
+   TRAVALPASS DESIGN SYSTEM
+   Colors extracted from original site screenshot
+═══════════════════════════════════════════════ */
+:root {
+  --navy:        #0d1b35;   /* hero bg, footer, dark cards */
+  --navy-light:  #162444;   /* darker card surfaces */
+  --blue:        #1565c0;   /* primary CTA, links */
+  --blue-hover:  #1976d2;   /* hover state */
+  --blue-light:  #e3f2fd;   /* tinted backgrounds */
+  --blue-mid:    #bbdefb;   /* borders on blue tint */
+  --green:       #43a047;   /* active dots, success, checkmarks */
+  --green-light: #e8f5e9;   /* tinted green bg */
+  --green-border:#a5d6a7;
+  --text:        #212121;   /* primary body text */
+  --text-2:      #5f6368;   /* secondary text */
+  --text-3:      #9aa0a6;   /* placeholder, hints */
+  --border:      #e0e0e0;   /* dividers */
+  --bg-gray:     #f5f7fa;   /* alternate section bg */
+  --white:       #ffffff;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: var(--text);
+  background: var(--white);
+  line-height: 1.5;
+}
+
+/* ─── UTILITIES ─────────────────────────────── */
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+.sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); }
+
+/* ─── BUTTONS ───────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+  font-family: inherit;
+}
+.btn:active { transform: scale(0.98); }
+
+.btn-primary {
+  background: var(--blue);
+  color: var(--white);
+  padding: 14px 28px;
+  font-size: 15px;
+}
+.btn-primary:hover { background: var(--blue-hover); box-shadow: 0 4px 14px rgba(21,101,192,0.35); }
+
+.btn-primary-lg {
+  background: var(--blue);
+  color: var(--white);
+  padding: 18px 36px;
+  font-size: 17px;
+  border-radius: 10px;
+  font-weight: 700;
+}
+.btn-primary-lg:hover { background: var(--blue-hover); box-shadow: 0 6px 20px rgba(21,101,192,0.4); }
+
+.btn-outline {
+  background: transparent;
+  border: 2px solid var(--white);
+  color: var(--white);
+  padding: 12px 24px;
+  font-size: 14px;
+}
+.btn-outline:hover { background: rgba(255,255,255,0.1); }
+
+.btn-google {
+  background: var(--white);
+  border: 1.5px solid var(--border);
+  color: var(--text);
+  padding: 13px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  width: 100%;
+  border-radius: 8px;
+}
+.btn-google:hover { background: var(--bg-gray); border-color: #bdbdbd; }
+
+.btn-success {
+  background: var(--green);
+  color: var(--white);
+  padding: 15px 20px;
+  font-size: 15px;
+  width: 100%;
+  border-radius: 8px;
+  font-weight: 700;
+}
+.btn-success:hover { background: #388e3c; }
+
+/* ─── NAVIGATION ────────────────────────────── */
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+.nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+}
+.nav-logo {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--navy);
+  text-decoration: none;
+  letter-spacing: -0.3px;
+}
+.nav-logo span { color: var(--blue); }
+.nav-links {
+  display: flex;
+  gap: 28px;
+  list-style: none;
+}
+.nav-links a {
+  font-size: 14px;
+  color: var(--text-2);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.15s;
+}
+.nav-links a:hover { color: var(--text); }
+.nav-cta { display: flex; align-items: center; gap: 12px; }
+.nav-signin {
+  font-size: 14px;
+  color: var(--blue);
+  font-weight: 600;
+  text-decoration: none;
+  padding: 8px 0;
+}
+.nav-signin:hover { text-decoration: underline; }
+
+/* ─── PROOF TICKER ──────────────────────────── */
+.proof-ticker {
+  background: var(--green-light);
+  border-bottom: 1px solid var(--green-border);
+  padding: 10px 0;
+}
+.proof-ticker-inner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.ticker-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #2e7d32;
+  font-weight: 500;
+}
+.ticker-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--green);
+  border-radius: 50%;
+  flex-shrink: 0;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.85); }
+}
+.ticker-sep { color: #a5d6a7; margin: 0 8px; font-size: 16px; }
+
+/* ─── HERO ──────────────────────────────────── */
+.hero {
+  background: var(--white);
+  padding: 72px 0 64px;
+  position: relative;
+  overflow: hidden;
+  border-bottom: 1px solid var(--border);
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 60%;
+  height: 100%;
+  background: radial-gradient(ellipse at top right, rgba(21,101,192,0.06) 0%, transparent 65%);
+  pointer-events: none;
+}
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  gap: 56px;
+  align-items: center;
+  position: relative;
+}
+.hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--green-light);
+  border: 1px solid var(--green-border);
+  border-radius: 100px;
+  padding: 6px 14px;
+  font-size: 12px;
+  color: #2e7d32;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  margin-bottom: 22px;
+}
+.hero-eyebrow .dot { width: 6px; height: 6px; background: var(--green); border-radius: 50%; }
+.hero-h1 {
+  font-size: clamp(28px, 4vw, 44px);
+  font-weight: 800;
+  color: var(--navy);
+  line-height: 1.18;
+  margin-bottom: 18px;
+  letter-spacing: -0.5px;
+}
+.hero-h1 .accent { color: var(--blue); }
+.hero-sub {
+  font-size: 16px;
+  color: var(--text-2);
+  line-height: 1.7;
+  margin-bottom: 28px;
+  max-width: 460px;
+}
+.hero-steps {
+  list-style: none;
+  margin-bottom: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.hero-steps li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 15px;
+  color: var(--text);
+}
+.step-badge {
+  width: 26px;
+  height: 26px;
+  background: var(--blue);
+  color: var(--white);
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.hero-cta-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.hero-cta-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.hero-microcopy {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.hero-microcopy span {
+  font-size: 12px;
+  color: var(--text-2);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.hero-microcopy .check { color: var(--green); font-size: 13px; }
+
+/* Avatar cluster */
+.avatar-cluster-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.avatars {
+  display: flex;
+  align-items: center;
+}
+.av {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2.5px solid var(--white);
+  margin-left: -9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.av:first-child { margin-left: 0; }
+.av-a { background: #ffd54f; color: #5d4037; }
+.av-b { background: #80cbc4; color: #004d40; }
+.av-c { background: #ef9a9a; color: #b71c1c; }
+.av-d { background: #ce93d8; color: #4a148c; }
+.av-e { background: #90caf9; color: #0d47a1; }
+.cluster-text { font-size: 13px; color: var(--text-2); line-height: 1.5; }
+.cluster-text strong { color: var(--text); }
+
+/* ─── MATCH CARD (hero right) ───────────────── */
+.match-card {
+  background: var(--navy-light);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 18px;
+  padding: 22px;
+  box-shadow: 0 24px 48px rgba(0,0,0,0.4);
+}
+.mc-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #546e7a;
+  margin-bottom: 14px;
+}
+.mc-profiles {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.mc-profile {
+  flex: 1;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 12px 8px;
+  text-align: center;
+  transition: border-color 0.2s;
+}
+.mc-profile.you {
+  border-color: var(--blue);
+  background: rgba(21,101,192,0.15);
+}
+.mc-name { font-size: 13px; font-weight: 700; color: #eceff1; margin-bottom: 3px; }
+.mc-profile.you .mc-name { color: #64b5f6; }
+.mc-dest { font-size: 11px; color: #78909c; }
+.mc-dates { font-size: 10px; color: #546e7a; margin-top: 3px; }
+.mc-match-badge {
+  background: var(--blue);
+  color: var(--white);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 10px;
+}
+.mc-active-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.mc-pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 100px;
+  padding: 5px 11px;
+  font-size: 11px;
+  color: #90a4ae;
+}
+.active-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--green);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.mc-footer {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255,255,255,0.07);
+  font-size: 11px;
+  color: #546e7a;
+  text-align: center;
+}
+
+/* ─── UGC VIDEO PLACEHOLDER ─────────────────── */
+.ugc-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.ugc-phone {
+  width: 260px;
+  background: #111;
+  border-radius: 38px;
+  border: 3px solid #2a2a2a;
+  box-shadow: 0 32px 64px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.08);
+  overflow: hidden;
+  position: relative;
+}
+.ugc-notch {
+  width: 80px;
+  height: 10px;
+  background: #111;
+  border-radius: 0 0 12px 12px;
+  margin: 10px auto 0;
+  position: relative;
+  z-index: 2;
+}
+.ugc-screen {
+  width: 100%;
+  aspect-ratio: 9/16;
+  background: linear-gradient(160deg, #1a3a5c 0%, #0d2137 40%, #1a2e1a 100%);
+  position: relative;
+  overflow: hidden;
+}
+/* Subtle destination imagery suggestion */
+.ugc-screen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 30% 60%, rgba(255,200,100,0.12) 0%, transparent 55%),
+    radial-gradient(ellipse at 70% 30%, rgba(100,180,255,0.1) 0%, transparent 50%);
+}
+.ugc-video-area {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.ugc-play {
+  width: 60px;
+  height: 60px;
+  background: rgba(255,255,255,0.15);
+  border: 2px solid rgba(255,255,255,0.3);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+  margin-bottom: 12px;
+}
+.ugc-caption {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 20px 14px 16px;
+  background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 100%);
+}
+.ugc-user-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ugc-av {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--blue);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid rgba(255,255,255,0.4);
+  flex-shrink: 0;
+}
+.ugc-username { font-size: 12px; font-weight: 700; color: #fff; }
+.ugc-dest-tag { font-size: 11px; color: rgba(255,255,255,0.75); margin-top: 1px; }
+.ugc-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+}
+.ugc-note {
+  font-size: 11px;
+  color: var(--text-3);
+  text-align: center;
+  font-style: italic;
+}
+
+/* ─── SECTION SHARED ────────────────────────── */
+.section { padding: 64px 0; }
+.section-alt { background: var(--bg-gray); }
+.section-dark { background: var(--navy); }
+
+.section-eyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--blue);
+  margin-bottom: 10px;
+}
+.section-h2 {
+  font-size: clamp(22px, 3vw, 32px);
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 12px;
+  letter-spacing: -0.3px;
+  line-height: 1.2;
+}
+.section-h2-light { color: var(--white); }
+.section-sub {
+  font-size: 16px;
+  color: var(--text-2);
+  max-width: 520px;
+  line-height: 1.6;
+}
+.section-sub-light { color: #90a4ae; }
+
+/* ─── ACTIVE USERS STRIP ────────────────────── */
+.users-strip { padding: 48px 0; background: var(--white); }
+.users-strip-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.users-strip-header h2 { font-size: 20px; font-weight: 700; color: var(--text); }
+.see-all {
+  font-size: 13px;
+  color: var(--blue);
+  font-weight: 600;
+  text-decoration: none;
+}
+.see-all:hover { text-decoration: underline; }
+.user-cards {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.user-card {
+  flex-shrink: 0;
+  width: 155px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px 14px;
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+.user-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.09); border-color: #bdbdbd; }
+.uc-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.uc-name { font-size: 14px; font-weight: 600; color: var(--text); }
+.uc-dest { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+.uc-active {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--green);
+  font-weight: 500;
+  margin-top: 8px;
+}
+.uc-more {
+  border-style: dashed;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--bg-gray);
+  cursor: pointer;
+}
+.uc-more:hover { background: var(--blue-light); border-color: var(--blue-mid); }
+.uc-more-count {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--blue);
+}
+.uc-more-label { font-size: 11px; color: var(--text-2); text-align: center; line-height: 1.4; }
+
+/* ─── HOW IT WORKS ──────────────────────────── */
+.how-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 32px;
+  margin-top: 40px;
+}
+.how-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px 24px;
+  text-align: center;
+}
+.how-icon {
+  width: 56px;
+  height: 56px;
+  background: var(--blue-light);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 18px;
+  font-size: 24px;
+}
+.how-num {
+  width: 28px;
+  height: 28px;
+  background: var(--blue);
+  color: var(--white);
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 12px;
+}
+.how-title { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+.how-desc { font-size: 14px; color: var(--text-2); line-height: 1.65; }
+
+/* ─── TESTIMONIAL ───────────────────────────── */
+.testimonial-wrap {
+  display: flex;
+  justify-content: center;
+  margin-top: 40px;
+}
+.testimonial {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 32px;
+  max-width: 580px;
+  width: 100%;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+}
+.test-stars { color: #f9a825; font-size: 18px; margin-bottom: 14px; letter-spacing: 2px; }
+.test-quote {
+  font-size: 16px;
+  color: var(--text);
+  line-height: 1.75;
+  font-style: italic;
+  margin-bottom: 20px;
+}
+.test-quote::before { content: '\201C'; }
+.test-quote::after { content: '\201D'; }
+.test-author { display: flex; align-items: center; gap: 12px; }
+.test-av {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--blue-light);
+  color: var(--blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.test-name { font-size: 14px; font-weight: 700; color: var(--text); }
+.test-meta { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+.verified-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--green-light);
+  color: #2e7d32;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 100px;
+  margin-top: 3px;
+}
+
+/* ─── CTA BLOCK ─────────────────────────────── */
+.cta-block {
+  background: var(--blue);
+  padding: 64px 0;
+  text-align: center;
+}
+.cta-block h2 {
+  font-size: clamp(22px, 3vw, 34px);
+  font-weight: 800;
+  color: var(--white);
+  margin-bottom: 10px;
+  letter-spacing: -0.3px;
+}
+.cta-block p {
+  font-size: 16px;
+  color: #bbdefb;
+  margin-bottom: 28px;
+}
+.cta-microcopy {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+.cta-microcopy span {
+  font-size: 13px;
+  color: #bbdefb;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.cta-microcopy .check { color: #a5d6a7; font-size: 14px; }
+
+/* ─── FAQ ───────────────────────────────────── */
+.faq-list {
+  margin-top: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.faq-item {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--white);
+}
+.faq-q {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 20px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  user-select: none;
+  gap: 12px;
+}
+.faq-q:hover { background: var(--bg-gray); }
+.faq-chevron {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  color: var(--text-2);
+  transition: transform 0.2s;
+}
+.faq-item.open .faq-chevron { transform: rotate(180deg); }
+.faq-a {
+  display: none;
+  padding: 0 20px 18px;
+  font-size: 14px;
+  color: var(--text-2);
+  line-height: 1.7;
+  border-top: 1px solid var(--border);
+}
+.faq-item.open .faq-a { display: block; }
+
+/* ─── FOOTER ────────────────────────────────── */
+footer {
+  background: var(--navy);
+  padding: 40px 0;
+  text-align: center;
+}
+.footer-logo {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--white);
+  letter-spacing: -0.3px;
+  margin-bottom: 12px;
+}
+.footer-logo span { color: #64b5f6; }
+.footer-links {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.footer-links a {
+  font-size: 13px;
+  color: #78909c;
+  text-decoration: none;
+}
+.footer-links a:hover { color: #b0bec5; }
+.footer-copy { font-size: 12px; color: #455a64; }
+
+/* ─── MODAL ─────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(13,27,53,0.75);
+  backdrop-filter: blur(4px);
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+.modal-overlay.active {
+  opacity: 1;
+  pointer-events: all;
+}
+.modal {
+  background: var(--white);
+  border-radius: 20px;
+  padding: 36px;
+  width: 100%;
+  max-width: 420px;
+  position: relative;
+  transform: translateY(16px);
+  transition: transform 0.2s;
+  box-shadow: 0 32px 80px rgba(0,0,0,0.3);
+}
+.modal-overlay.active .modal { transform: translateY(0); }
+.modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: var(--bg-gray);
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-2);
+}
+.modal-close:hover { background: var(--border); }
+
+/* Step indicator */
+.steps-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  margin-bottom: 28px;
+}
+.si-circle {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+.si-circle.done    { background: var(--blue); color: var(--white); }
+.si-circle.active  { background: var(--blue); color: var(--white); box-shadow: 0 0 0 5px var(--blue-light); }
+.si-circle.pending { background: #e0e0e0; color: #9e9e9e; }
+.si-line { width: 44px; height: 2px; background: #e0e0e0; transition: background 0.2s; }
+.si-line.done { background: var(--blue); }
+
+/* Form elements */
+.modal-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+  text-align: center;
+}
+.modal-sub {
+  font-size: 13px;
+  color: var(--text-2);
+  text-align: center;
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+.form-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0;
+  color: var(--text-3);
+  font-size: 12px;
+}
+.form-divider::before,
+.form-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.form-field { margin-bottom: 16px; }
+.form-field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.form-field input {
+  width: 100%;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 14px;
+  color: var(--text);
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.15s;
+}
+.form-field input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-light); }
+.form-trust {
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 14px;
+  line-height: 1.7;
+}
+.form-trust a { color: var(--text-3); }
+.form-trust a:hover { color: var(--text-2); }
+
+/* OTP boxes */
+.otp-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin: 20px 0;
+}
+.otp-box {
+  width: 56px;
+  height: 62px;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--blue);
+  background: var(--bg-gray);
+  text-align: center;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.otp-box:focus { border-color: var(--blue); background: var(--blue-light); box-shadow: 0 0 0 3px rgba(21,101,192,0.15); }
+.otp-resend {
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-2);
+  margin-top: 4px;
+}
+.otp-resend a { color: var(--blue); font-weight: 600; text-decoration: none; }
+
+/* Checkbox */
+.checkbox-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px;
+  background: var(--bg-gray);
+  border-radius: 10px;
+  margin-bottom: 16px;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: border-color 0.15s, background 0.15s;
+}
+.checkbox-row:hover { border-color: var(--blue-mid); background: var(--blue-light); }
+.checkbox-row input[type=checkbox] { margin-top: 2px; accent-color: var(--blue); }
+.checkbox-row label {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.5;
+  cursor: pointer;
+}
+.pw-fields { display: none; }
+.pw-fields.visible { display: block; }
+.opt-badge {
+  background: #f5f5f5;
+  color: var(--text-3);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 100px;
+  letter-spacing: 0.5px;
+  vertical-align: middle;
+  margin-left: 6px;
+  text-transform: uppercase;
+}
+
+/* Step panels */
+.step-panel { display: none; }
+.step-panel.active { display: block; }
+
+/* Blurred preview */
+.blurred-preview {
+  margin-top: 12px;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+  border: 1px solid var(--border);
+}
+.bp-title {
+  background: var(--bg-gray);
+  padding: 12px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+.bp-cards {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  filter: blur(3px);
+  user-select: none;
+  pointer-events: none;
+  background: var(--white);
+}
+.bp-card {
+  flex: 1;
+  background: var(--bg-gray);
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
+}
+.bp-av { width: 32px; height: 32px; border-radius: 50%; margin: 0 auto 6px; }
+.bp-name { font-size: 12px; font-weight: 600; }
+.bp-dest { font-size: 11px; color: var(--text-2); }
+.bp-overlay {
+  background: linear-gradient(to bottom, transparent 0%, rgba(255,255,255,0.97) 55%);
+  padding: 32px 16px 16px;
+  text-align: center;
+  margin-top: -60px;
+  position: relative;
+}
+.bp-overlay p { font-size: 13px; color: var(--text); font-weight: 600; margin-bottom: 4px; }
+.bp-overlay span { font-size: 12px; color: var(--text-2); }
+
+/* ─── TOP MARQUEE BAR (above nav) ──────────── */
+.top-marquee {
+  background: var(--blue);
+  padding: 8px 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.top-marquee-track {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  animation: marquee-scroll 22s linear infinite;
+}
+.top-marquee-track:hover { animation-play-state: paused; }
+.top-marquee-item {
+  font-size: 12px;
+  font-weight: 500;
+  color: #e3f2fd;
+  letter-spacing: 0.4px;
+  padding: 0 6px;
+}
+.top-marquee-item strong { color: #fff; font-weight: 700; }
+.top-marquee-sep {
+  color: rgba(255,255,255,0.35);
+  font-size: 12px;
+  padding: 0 10px;
+}
+
+/* ─── MARQUEE ───────────────────────────────── */
+.marquee-strip {
+  background: var(--navy);
+  border-top: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  padding: 13px 0;
+  overflow: hidden;
+  white-space: nowrap;
+  position: relative;
+}
+.marquee-strip::before,
+.marquee-strip::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: 80px;
+  height: 100%;
+  z-index: 2;
+  pointer-events: none;
+}
+.marquee-strip::before {
+  left: 0;
+  background: linear-gradient(to right, var(--navy), transparent);
+}
+.marquee-strip::after {
+  right: 0;
+  background: linear-gradient(to left, var(--navy), transparent);
+}
+.marquee-track {
+  display: inline-flex;
+  gap: 0;
+  animation: marquee-scroll 28s linear infinite;
+}
+.marquee-track:hover { animation-play-state: paused; }
+@keyframes marquee-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.marquee-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 36px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #90a4ae;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+.marquee-item strong { color: #eceff1; font-weight: 700; }
+.marquee-sep {
+  color: var(--blue);
+  font-size: 18px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+/* ─── RESPONSIVE ─────────────────────────────── */
+@media (max-width: 768px) {
+  .hero-grid { grid-template-columns: 1fr; gap: 40px; }
+  .hero::before { display: none; }
+  .match-card { max-width: 100%; }
+  .how-grid { grid-template-columns: 1fr; }
+  .nav-links { display: none; }
+  .hero-h1 { font-size: 28px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════ TOP MARQUEE ════════════════════════ -->
+<div class="top-marquee">
+  <div class="top-marquee-track">
+    <span class="top-marquee-item"><strong>80+ Travellers Matched</strong></span>
+    <span class="top-marquee-sep">·</span>
+    <span class="top-marquee-item">Never Travel Alone</span>
+    <span class="top-marquee-sep">·</span>
+    <span class="top-marquee-item"><strong>Early Access to Perks</strong></span>
+    <span class="top-marquee-sep">·</span>
+    <span class="top-marquee-item">80+ Travellers Matched</span>
+    <span class="top-marquee-sep">·</span>
+    <span class="top-marquee-item">Never Travel Alone</span>
+    <span class="top-marquee-sep">·</span>
+    <span class="top-marquee-item"><strong>Early Access to Perks</strong></span>
+    <span class="top-marquee-sep">·</span>
+    <span class="top-marquee-item">80+ Travellers Matched</span>
+    <span class="top-marquee-sep">·</span>
+    <span class="top-marquee-item">Never Travel Alone</span>
+    <span class="top-marquee-sep">·</span>
+    <span class="top-marquee-item"><strong>Early Access to Perks</strong></span>
+    <span class="top-marquee-sep">·</span>
+    <span class="top-marquee-item">80+ Travellers Matched</span>
+    <span class="top-marquee-sep">·</span>
+    <span class="top-marquee-item">Never Travel Alone</span>
+    <span class="top-marquee-sep">·</span>
+    <span class="top-marquee-item"><strong>Early Access to Perks</strong></span>
+    <span class="top-marquee-sep">·</span>
+  </div>
+</div>
+
+<!-- ════════════════════════ NAV ════════════════════════ -->
+<nav class="nav">
+  <div class="container nav-inner">
+    <a href="#" class="nav-logo">Traval<span>Pass</span></a>
+    <ul class="nav-links">
+      <li><a href="#how">How it works</a></li>
+      <li><a href="#destinations">Destinations</a></li>
+      <li><a href="#faq">FAQ</a></li>
+    </ul>
+    <div class="nav-cta">
+      <a href="#" class="nav-signin">Sign in</a>
+      <button class="btn btn-primary" style="padding:9px 20px; font-size:14px; white-space:nowrap;" onclick="openModal()">Match My Trip</button>
+    </div>
+  </div>
+</nav>
+
+<!-- ════════════════════════ PROOF TICKER ════════════════════════ -->
+<div class="proof-ticker">
+  <div class="proof-ticker-inner container">
+    <div class="ticker-item">
+      <div class="ticker-dot"></div>
+      <span><strong>80+</strong> travelers matched</span>
+    </div>
+    <span class="ticker-sep">·</span>
+    <div class="ticker-item">
+      <div class="ticker-dot"></div>
+      <span>Active now in <strong>Tokyo, Bali, Lisbon</strong></span>
+    </div>
+    <span class="ticker-sep">·</span>
+    <div class="ticker-item">
+      <div class="ticker-dot"></div>
+      <span>Avg match time: <strong>under 1 hr</strong></span>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════ HERO ════════════════════════ -->
+<section class="hero">
+  <div class="container hero-grid">
+    <!-- Left: copy + CTA -->
+    <div>
+      <div class="hero-eyebrow">
+        <span class="dot"></span>
+        Free forever · No card required
+      </div>
+
+      <h1 class="hero-h1">
+        Find your travel companion —<br>
+        <span class="accent">same destination, same dates.</span>
+      </h1>
+
+      <p class="hero-sub">
+        We match solo travelers by itinerary, not just interest.
+        See who's going to your destination before you even book.
+      </p>
+
+      <ul class="hero-steps">
+        <li><span class="step-badge">1</span> Enter your destination + travel dates</li>
+        <li><span class="step-badge">2</span> See travelers with matching itineraries</li>
+        <li><span class="step-badge">3</span> Chat, plan, and travel together</li>
+      </ul>
+
+      <!-- Avatar cluster -->
+      <div class="avatar-cluster-row">
+        <div class="avatars">
+          <div class="av av-a">S</div>
+          <div class="av av-b">M</div>
+          <div class="av av-c">K</div>
+          <div class="av av-d">A</div>
+          <div class="av av-e">R</div>
+        </div>
+        <div class="cluster-text">
+          <strong>Sara, Marco, Kenji + 77 others</strong><br>
+          found travel companions on TravalPass
+        </div>
+      </div>
+
+      <div class="hero-cta-group">
+        <div class="hero-cta-row">
+          <button class="btn btn-primary-lg" onclick="openModal()">
+            Match My Trip — Free Forever
+          </button>
+        </div>
+        <div class="hero-microcopy">
+          <span><span class="check">✓</span> Free forever</span>
+          <span><span class="check">✓</span> No card required</span>
+          <span><span class="check">✓</span> Just your email</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: UGC video placeholder -->
+    <div>
+      <div class="ugc-wrap">
+        <!-- Phone frame -->
+        <div class="ugc-phone">
+          <div class="ugc-notch"></div>
+          <div class="ugc-screen">
+            <!-- Video placeholder area -->
+            <div class="ugc-video-area">
+              <div class="ugc-play">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>
+              </div>
+              <div class="ugc-caption">
+                <div class="ugc-user-row">
+                  <div class="ugc-av">M</div>
+                  <div>
+                    <div class="ugc-username">@marco_travels</div>
+                    <div class="ugc-dest-tag">Tokyo with a stranger 🇯🇵</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Floating match badge -->
+        <div class="ugc-badge">
+          <div class="active-dot"></div>
+          <span>Matched via TravalPass · Tokyo</span>
+        </div>
+        <!-- Dev note -->
+        <p class="ugc-note">↑ Drop in a real UGC video or Reel from a matched traveller here</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════ ACTIVE USERS ════════════════════════ -->
+<section class="users-strip" id="destinations">
+  <div class="container">
+    <div class="users-strip-header">
+      <h2>Travelers looking for companions right now</h2>
+      <a href="#" class="see-all" onclick="openModal(); return false;">See all →</a>
+    </div>
+    <div class="user-cards">
+      <div class="user-card">
+        <div class="uc-avatar" style="background:#e3f2fd; color:#1565c0;">S</div>
+        <div class="uc-name">Sara K.</div>
+        <div class="uc-dest">Tokyo · May 15–22</div>
+        <div class="uc-active"><div class="active-dot"></div> Active 4 min ago</div>
+      </div>
+      <div class="user-card">
+        <div class="uc-avatar" style="background:#fff8e1; color:#f57f17;">M</div>
+        <div class="uc-name">Marco L.</div>
+        <div class="uc-dest">Bali · Jun 1–14</div>
+        <div class="uc-active"><div class="active-dot"></div> Active 11 min ago</div>
+      </div>
+      <div class="user-card">
+        <div class="uc-avatar" style="background:#e8f5e9; color:#2e7d32;">K</div>
+        <div class="uc-name">Kenji T.</div>
+        <div class="uc-dest">Lisbon · May 20–27</div>
+        <div class="uc-active"><div class="active-dot"></div> Active 28 min ago</div>
+      </div>
+      <div class="user-card">
+        <div class="uc-avatar" style="background:#fce4ec; color:#c62828;">A</div>
+        <div class="uc-name">Aisha R.</div>
+        <div class="uc-dest">Barcelona · Jun 3–10</div>
+        <div class="uc-active"><div class="active-dot"></div> Active 1 hr ago</div>
+      </div>
+      <div class="user-card">
+        <div class="uc-avatar" style="background:#f3e5f5; color:#7b1fa2;">P</div>
+        <div class="uc-name">Priya S.</div>
+        <div class="uc-dest">Paris · May 25–Jun 2</div>
+        <div class="uc-active"><div class="active-dot"></div> Active 2 hr ago</div>
+      </div>
+      <div class="user-card uc-more" onclick="openModal()">
+        <div class="uc-more-count">+76</div>
+        <div class="uc-more-label">more travelers<br>waiting for a match</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════ TESTIMONIAL ════════════════════════ -->
+<section class="section section-alt">
+  <div class="container" style="text-align:center;">
+    <div class="section-eyebrow">What travelers say</div>
+    <h2 class="section-h2">Real matches. Real trips.</h2>
+    <div class="testimonial-wrap">
+      <div class="testimonial">
+        <div class="test-stars">★★★★★</div>
+        <p class="test-quote">
+          I was nervous about traveling to Tokyo alone. TravalPass matched me with Sara — we had the exact same dates and both wanted to visit Kyoto. We ended up spending 5 days together. It felt completely safe because we could see each other's full itinerary before saying yes.
+        </p>
+        <div class="test-author">
+          <div class="test-av">M</div>
+          <div>
+            <div class="test-name">Marco L.</div>
+            <div class="test-meta">Tokyo, Japan · March 2026</div>
+            <div class="verified-badge">
+              <svg width="10" height="10" viewBox="0 0 20 20" fill="currentColor"><path d="M10 0l2.5 7.5H20l-6 4.5 2.5 7.5L10 15l-6.5 4.5 2.5-7.5L0 7.5h7.5z"/></svg>
+              Verified match
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════ HOW IT WORKS ════════════════════════ -->
+<section class="section" id="how">
+  <div class="container" style="text-align:center;">
+    <div class="section-eyebrow">How it works</div>
+    <h2 class="section-h2">Match in minutes, not months</h2>
+    <p class="section-sub" style="margin:0 auto;">No algorithm guessing. We match you by destination and dates — the only two things that actually matter for finding a travel companion.</p>
+    <div class="how-grid">
+      <div class="how-card">
+        <div class="how-num">1</div>
+        <div class="how-title">Enter your trip</div>
+        <div class="how-desc">Add your destination and travel dates. Takes 30 seconds. Free forever, no card required.</div>
+      </div>
+      <div class="how-card">
+        <div class="how-num">2</div>
+        <div class="how-title">See your matches</div>
+        <div class="how-desc">We show you travelers going to the same place at the same time. See their full itinerary before deciding.</div>
+      </div>
+      <div class="how-card">
+        <div class="how-num">3</div>
+        <div class="how-title">Chat and plan</div>
+        <div class="how-desc">Message matches directly. Plan shared days, split costs, or just have someone to explore with. You're in control.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════ SECOND CTA ════════════════════════ -->
+<div class="cta-block">
+  <div class="container">
+    <p style="font-size:12px; color:#90caf9; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; margin-bottom:8px;">FREE FOREVER · NO CARD REQUIRED · 30 SECONDS</p>
+    <h2>Ready to find your travel companion?</h2>
+    <p>80+ travelers are already waiting. Enter your email and see who's going where you're going.</p>
+    <button class="btn btn-primary-lg" style="background:#fff; color:var(--blue);" onclick="openModal()">
+      Match My Trip — Free Forever
+    </button>
+    <div class="cta-microcopy">
+      <span><span class="check">✓</span> Free forever</span>
+      <span><span class="check">✓</span> Cancel anytime</span>
+      <span><span class="check">✓</span> No card required</span>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════ FAQ ════════════════════════ -->
+<section class="section" id="faq">
+  <div class="container" style="text-align:center;">
+    <div class="section-eyebrow">Frequently asked questions</div>
+    <h2 class="section-h2">Everything you need to know</h2>
+    <div class="faq-list">
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">
+          Is it really free?
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="faq-a">Yes. Matching, messaging, and viewing itineraries is free forever. We offer premium features for travelers who want extra tools, but you can find a companion without spending a cent.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">
+          Are these real people or bots?
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="faq-a">All profiles are verified by email. We review every account before it can send a match request. The "active X min ago" timestamps are real — we show them so you know who's actually here right now.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">
+          Is it safe to travel with someone I met online?
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="faq-a">We let you see each other's full itinerary, read travel history, and chat before agreeing to anything. You're never locked in. Most travelers start with just a shared day trip before committing to anything longer.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">
+          What if no one matches my dates yet?
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="faq-a">We notify you by email the moment a matching traveler signs up. Some matches happen instantly, others take a few days. You don't need to check the app — we alert you when someone matches your itinerary.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">
+          Do I need to download an app?
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="faq-a">TravalPass works in your browser on any device. iOS and Android apps are also available on the App Store and Google Play.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════ FOOTER ════════════════════════ -->
+<footer>
+  <div class="container">
+    <div class="footer-logo">Traval<span>Pass</span></div>
+    <div class="footer-links">
+      <a href="#">How it works</a>
+      <a href="#">Destinations</a>
+      <a href="#">Pricing</a>
+      <a href="#">Privacy Policy</a>
+      <a href="#">Terms of Service</a>
+      <a href="#">Contact</a>
+    </div>
+    <p class="footer-copy">© 2026 TravalPass. All rights reserved.</p>
+  </div>
+</footer>
+
+<!-- ════════════════════════ SIGNUP MODAL ════════════════════════ -->
+<div class="modal-overlay" id="signupModal" onclick="handleOverlayClick(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+
+    <!-- Step Indicator -->
+    <div class="steps-indicator" id="stepsIndicator">
+      <div class="si-circle active" id="si1">1</div>
+      <div class="si-line" id="sl1"></div>
+      <div class="si-circle pending" id="si2">2</div>
+      <div class="si-line" id="sl2"></div>
+      <div class="si-circle pending" id="si3">3</div>
+    </div>
+
+    <!-- ─── STEP 1: Email ─── -->
+    <div class="step-panel active" id="step1">
+      <div class="modal-title">See who's traveling where you are</div>
+      <div class="modal-sub">Enter your email to see travelers matching your dates. Free forever, no card required.</div>
+
+      <button class="btn btn-google" onclick="googleSignup()">
+        <svg width="18" height="18" viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+        </svg>
+        Continue with Google
+      </button>
+
+      <div class="form-divider">or use your email</div>
+
+      <div class="form-field">
+        <label for="emailInput">Email address</label>
+        <input type="email" id="emailInput" placeholder="your@email.com" />
+      </div>
+
+      <button class="btn btn-primary" style="width:100%; padding:14px; font-size:15px; border-radius:10px;" onclick="goToStep2()">
+        Show My Matches →
+      </button>
+
+      <div class="form-trust">
+        We'll send a 4-digit code to verify.<br>
+        No spam. Unsubscribe any time. <a href="#">Privacy policy</a>
+      </div>
+    </div>
+
+    <!-- ─── STEP 2: Verify ─── -->
+    <div class="step-panel" id="step2">
+      <div style="text-align:center; margin-bottom:4px;">
+        <div style="font-size:36px; margin-bottom:10px;">📬</div>
+        <div class="modal-title">Check your inbox</div>
+        <div class="modal-sub">We sent a 4-digit code to <strong id="emailDisplay"></strong><br>Enter it below to continue.</div>
+      </div>
+
+      <div class="otp-row">
+        <input type="text" class="otp-box" maxlength="1" oninput="otpInput(this, 0)" />
+        <input type="text" class="otp-box" maxlength="1" oninput="otpInput(this, 1)" />
+        <input type="text" class="otp-box" maxlength="1" oninput="otpInput(this, 2)" />
+        <input type="text" class="otp-box" maxlength="1" oninput="otpInput(this, 3)" />
+      </div>
+
+      <button class="btn btn-primary" id="verifyBtn" style="width:100%; padding:14px; font-size:15px; border-radius:10px; opacity:0.4;" disabled onclick="goToStep3()">
+        Verify →
+      </button>
+
+      <div class="otp-resend" style="margin-top:14px;">
+        Didn't receive it? <a href="#" onclick="return false;">Resend code</a>
+      </div>
+      <div class="form-trust">Code expires in 10 minutes.</div>
+    </div>
+
+    <!-- ─── STEP 3: Optional password ─── -->
+    <div class="step-panel" id="step3">
+      <div class="modal-title">You're almost in. 🎉</div>
+      <div class="modal-sub">
+        Would you like to set a password for easier login next time?
+        <span class="opt-badge">Optional</span>
+      </div>
+
+      <label class="checkbox-row" for="setPwCheck">
+        <input type="checkbox" id="setPwCheck" onchange="togglePw(this)" />
+        <span>Yes, I'd like to set a password so I can log in with email + password</span>
+      </label>
+
+      <div class="pw-fields" id="pwFields">
+        <div class="form-field">
+          <label for="pwInput">Password</label>
+          <input type="password" id="pwInput" placeholder="Create a password" />
+        </div>
+        <div class="form-field">
+          <label for="pwConfirm">Confirm password</label>
+          <input type="password" id="pwConfirm" placeholder="Confirm your password" />
+        </div>
+      </div>
+
+      <button class="btn btn-success" onclick="goToStep4()">
+        Enter TravalPass →
+      </button>
+
+      <div class="form-trust">
+        Skipping password? No problem — log in with an email code any time,<br>or set a password later in your profile.
+      </div>
+    </div>
+
+    <!-- ─── STEP 4: Done + blurred preview ─── -->
+    <div class="step-panel" id="step4">
+      <div style="text-align:center; margin-bottom:20px;">
+        <div style="font-size:40px; margin-bottom:10px;">🎉</div>
+        <div class="modal-title">You're in!</div>
+        <div class="modal-sub">Add your destination to unlock your matches.</div>
+      </div>
+      <div class="blurred-preview">
+        <div class="bp-title">Travelers matching your destination</div>
+        <div class="bp-cards">
+          <div class="bp-card">
+            <div class="bp-av" style="background:#e3f2fd;"></div>
+            <div class="bp-name">Sara K.</div>
+            <div class="bp-dest">Tokyo</div>
+          </div>
+          <div class="bp-card">
+            <div class="bp-av" style="background:#e8f5e9;"></div>
+            <div class="bp-name">Marco L.</div>
+            <div class="bp-dest">Tokyo</div>
+          </div>
+          <div class="bp-card">
+            <div class="bp-av" style="background:#fff8e1;"></div>
+            <div class="bp-name">Kenji T.</div>
+            <div class="bp-dest">Tokyo</div>
+          </div>
+        </div>
+        <div class="bp-overlay">
+          <p>Add your destination to see your matches</p>
+          <span>Takes 30 seconds. You'll see exactly who's traveling where you are.</span>
+        </div>
+      </div>
+      <button class="btn btn-primary" style="width:100%; padding:14px; font-size:15px; border-radius:10px; margin-top:14px;">
+        Add My Trip →
+      </button>
+    </div>
+
+  </div><!-- /modal -->
+</div><!-- /overlay -->
+
+<!-- ════════════════════════ JS ════════════════════════ -->
+<script>
+// ── Modal ──────────────────────────────────────────
+function openModal() {
+  document.getElementById('signupModal').classList.add('active');
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => document.getElementById('emailInput').focus(), 250);
+}
+function closeModal() {
+  document.getElementById('signupModal').classList.remove('active');
+  document.body.style.overflow = '';
+}
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('signupModal')) closeModal();
+}
+
+// ── Step navigation ────────────────────────────────
+function goToStep(n) {
+  document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('step' + n).classList.add('active');
+
+  // Update step indicator
+  for (let i = 1; i <= 3; i++) {
+    const circle = document.getElementById('si' + i);
+    if (i < n) {
+      circle.className = 'si-circle done';
+      circle.textContent = '✓';
+    } else if (i === n) {
+      circle.className = 'si-circle active';
+      circle.textContent = i;
+    } else {
+      circle.className = 'si-circle pending';
+      circle.textContent = i;
+    }
+  }
+  for (let i = 1; i <= 2; i++) {
+    const line = document.getElementById('sl' + i);
+    line.className = 'si-line' + (i < n ? ' done' : '');
+  }
+
+  // Hide indicator on step 4
+  document.getElementById('stepsIndicator').style.display = n === 4 ? 'none' : 'flex';
+}
+
+function goToStep2() {
+  const email = document.getElementById('emailInput').value.trim();
+  if (!email || !email.includes('@')) {
+    document.getElementById('emailInput').focus();
+    document.getElementById('emailInput').style.borderColor = '#e53935';
+    return;
+  }
+  document.getElementById('emailInput').style.borderColor = '';
+  document.getElementById('emailDisplay').textContent = email;
+  goToStep(2);
+  setTimeout(() => document.querySelectorAll('.otp-box')[0].focus(), 200);
+}
+
+function goToStep3() { goToStep(3); }
+function goToStep4() { goToStep(4); }
+function googleSignup() { goToStep(4); }
+
+// ── OTP boxes ──────────────────────────────────────
+function otpInput(el, idx) {
+  el.value = el.value.replace(/[^0-9]/g, '');
+  const boxes = document.querySelectorAll('.otp-box');
+  if (el.value && idx < 3) boxes[idx + 1].focus();
+  const filled = [...boxes].filter(b => b.value).length;
+  const btn = document.getElementById('verifyBtn');
+  btn.disabled = filled < 4;
+  btn.style.opacity = filled < 4 ? '0.4' : '1';
+  if (filled === 4) { btn.style.opacity = '1'; btn.click(); }
+}
+
+// ── Password toggle ────────────────────────────────
+function togglePw(cb) {
+  const fields = document.getElementById('pwFields');
+  fields.classList.toggle('visible', cb.checked);
+  if (cb.checked) document.getElementById('pwInput').focus();
+}
+
+// ── FAQ accordion ──────────────────────────────────
+function toggleFaq(el) {
+  const item = el.closest('.faq-item');
+  const isOpen = item.classList.contains('open');
+  document.querySelectorAll('.faq-item.open').forEach(i => i.classList.remove('open'));
+  if (!isOpen) item.classList.add('open');
+}
+
+// ── Keyboard close ─────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+});
+</script>
+</body>
+</html>
