@@ -63,8 +63,13 @@ import { calculateAge } from '../utils/calculateAge';
 import { useTravelPreferences } from '../hooks/useTravelPreferences';
 import { usePopularDestinations } from '../hooks/usePopularDestinations';
 import { PopularDestinationsCarousel } from '../components/search/PopularDestinationsCarousel';
+import { WelcomeEmptyState } from '../components/search/WelcomeEmptyState';
+import { NoMatchesSuggestion } from '../components/search/NoMatchesSuggestion';
 import { AddItineraryTooltip } from '../components/search/AddItineraryTooltip';
 import { SelectItineraryTooltip } from '../components/search/SelectItineraryTooltip';
+import { EditProfileModal, ProfileData } from '../components/profile/EditProfileModal';
+import { getProfileCompletion } from '../utils/profileCompletion';
+import { analyticsService } from '../services/analytics/AnalyticsService';
 import * as storage from '../utils/storage';
 
 const TOOLTIP_SEEN_KEY = 'ADD_ITINERARY_TOOLTIP_SEEN';
@@ -75,6 +80,7 @@ const SearchPage: React.FC = () => {
   const [userId, setUserId] = useState<string | null>(null);
   const [selectedItineraryId, setSelectedItineraryId] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [profileModalVisible, setProfileModalVisible] = useState(false);
   const [tooltipVisible, setTooltipVisible] = useState(false);
   const [selectTooltipVisible, setSelectTooltipVisible] = useState(false);
   const [selectorBottom, setSelectorBottom] = useState(0);
@@ -83,7 +89,7 @@ const SearchPage: React.FC = () => {
   // Stripe checkout result status (Web only)
   const [checkoutStatus, setCheckoutStatus] = useState<'success' | 'cancel' | null>(null);
   const { showAlert } = useAlert();
-  const { userProfile } = useUserProfile();
+  const { userProfile, updateProfile } = useUserProfile();
   
   // Usage tracking hook
   const { hasReachedLimit, trackView, dailyViewCount, refreshProfile } = useUsageTracking();
@@ -277,13 +283,27 @@ const SearchPage: React.FC = () => {
   const handleAddItinerary = () => {
     // Check profile completion before opening modal
     if (!userProfile?.dob || !userProfile?.gender) {
-      showAlert(
-        'warning',
-        'To get the best matches, we need a couple of details from your profile — your date of birth and gender help us fine-tune who we connect you with. Head to your profile to fill these in, then come back to create your itinerary!'
-      );
+      analyticsService.logEvent('onboard_profile_nudge_shown');
+      setProfileModalVisible(true);
       return;
     }
+    analyticsService.logEvent('onboard_first_itinerary_start');
     setModalVisible(true);
+  };
+
+  const handleProfileSave = async (data: ProfileData) => {
+    try {
+      await updateProfile(data);
+      setProfileModalVisible(false);
+      analyticsService.logEvent('onboard_profile_completed');
+      showAlert('success', 'Profile updated! Now create your itinerary.');
+      analyticsService.logEvent('onboard_first_itinerary_start');
+      setModalVisible(true);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      showAlert('error', 'Failed to update profile');
+      throw error;
+    }
   };
 
   const handleItineraryAdded = async () => {
@@ -295,6 +315,7 @@ const SearchPage: React.FC = () => {
     showAlert('Itinerary saved successfully!', 'success');
     // Show select-itinerary coach mark once, after the user's first itinerary
     if (isFirstItinerary) {
+      analyticsService.logEvent('onboard_first_itinerary_complete');
       const seen = await storage.getItem(SELECT_TOOLTIP_SEEN_KEY);
       if (!seen) setSelectTooltipVisible(true);
     }
@@ -526,14 +547,22 @@ const SearchPage: React.FC = () => {
       <View style={styles.content}>
         {userId ? (
           <>
-            {/* Empty state: show trending destinations */}
+            {/* Empty state: welcome + blurred preview + trending destinations */}
             {itineraries.length === 0 ? (
-              <View style={styles.cardContainer}>
-                <PopularDestinationsCarousel
+              <ScrollView
+                style={{ flex: 1 }}
+                contentContainerStyle={{ flexGrow: 1 }}
+                showsVerticalScrollIndicator={false}
+              >
+                <WelcomeEmptyState
+                  username={userProfile?.username}
+                  onAddItinerary={handleAddItinerary}
                   destinations={popularDestinations}
-                  loading={popularLoading}
+                  destinationsLoading={popularLoading}
+                  profileCompletion={getProfileCompletion(userProfile).completion}
+                  missingFields={getProfileCompletion(userProfile).missingFields}
                 />
-              </View>
+              </ScrollView>
             ) : selectedItineraryId ? (
               /* User has selected an itinerary - show matching results */
               <>
@@ -574,18 +603,11 @@ const SearchPage: React.FC = () => {
                     )}
                   </ScrollView>
                 ) : (
-                  /* No matches found */
-                  <View style={styles.centerContent}>
-                    <Text style={styles.emptyText}>
-                      {searchError ? (
-                        <Text style={{ color: '#fff' }}>Error: {searchError}</Text>
-                      ) : (
-                        <Text style={{ color: '#fff' }}>
-                          No matches found for this itinerary. Try adjusting your preferences or dates.
-                        </Text>
-                      )}
-                    </Text>
-                  </View>
+                  /* No matches found — show destination stats */
+                  <NoMatchesSuggestion
+                    destination={itineraries.find(i => i.id === selectedItineraryId)?.destination ?? ''}
+                    searchError={searchError}
+                  />
                 )}
               </>
             ) : (
@@ -603,6 +625,23 @@ const SearchPage: React.FC = () => {
           </View>
         )}
       </View>
+
+      <EditProfileModal
+        visible={profileModalVisible}
+        onClose={() => setProfileModalVisible(false)}
+        onSave={handleProfileSave}
+        initialData={{
+          username: userProfile?.username || '',
+          bio: userProfile?.bio || '',
+          dob: userProfile?.dob || '',
+          gender: userProfile?.gender || '',
+          sexualOrientation: userProfile?.sexualOrientation || '',
+          status: userProfile?.status || '',
+          edu: userProfile?.edu || '',
+          drinking: userProfile?.drinking || '',
+          smoking: userProfile?.smoking || '',
+        }}
+      />
 
       <AddItineraryModal
         visible={modalVisible}

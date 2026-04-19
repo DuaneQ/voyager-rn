@@ -2,7 +2,7 @@
   "expo": {
     "name": "TravalPass",
     "slug": "voyager-rn",
-    "version": "1.8.2",
+    "version": "1.8.3",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "icon": "./assets/icon.png",
@@ -15,11 +15,15 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.travalpass.app",
-      "buildNumber": "49",
+      "buildNumber": "51",
       "googleServicesFile": "./GoogleService-Info.plist",
       "entitlements": {
         "com.apple.developer.applesignin": [
           "Default"
+        ],
+        "com.apple.developer.associated-domains": [
+          "applinks:mundo1-dev.web.app",
+          "applinks:travalpass.com"
         ]
       },
       "infoPlist": {
@@ -43,7 +47,7 @@
     },
     "android": {
       "package": "com.travalpass.app",
-      "versionCode": 44,
+      "versionCode": 51,
       "googleServicesFile": "./google-services.json",
       "icon": "./AppIcons/playstore.png",
       "softwareKeyboardLayoutMode": "resize",
@@ -54,6 +58,25 @@
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE",
         "POST_NOTIFICATIONS"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "mundo1-dev.web.app",
+              "pathPrefix": "/auth"
+            },
+            {
+              "scheme": "https",
+              "host": "travalpass.com",
+              "pathPrefix": "/auth"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
       ]
     },
     "web": {

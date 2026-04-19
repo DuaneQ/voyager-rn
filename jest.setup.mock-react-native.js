@@ -140,7 +140,7 @@ jest.mock(
 			canOpenURL: jest.fn(() => Promise.resolve(true)),
 			openURL: jest.fn(() => Promise.resolve(true)),
 			getInitialURL: jest.fn(() => Promise.resolve(null)),
-			addEventListener: jest.fn(),
+			addEventListener: jest.fn(() => ({ remove: jest.fn() })),
 			removeEventListener: jest.fn(),
 		},			Alert: { alert: jest.fn(() => {}) },
 			AppState: {

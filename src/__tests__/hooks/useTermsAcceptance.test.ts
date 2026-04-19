@@ -29,6 +29,7 @@ const baseAuth = {
   refreshAuthState: jest.fn(), hasUnverifiedUser: jest.fn(),
   signInWithGoogle: jest.fn(), signUpWithGoogle: jest.fn(),
   signInWithApple: jest.fn(), signUpWithApple: jest.fn(),
+  sendEmailLink: jest.fn(), completeEmailLinkSignIn: jest.fn(), isEmailLinkUrl: jest.fn(() => false),
 };
 
 function mockProfileContext(userProfile: any, isLoading = false) {

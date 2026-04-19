@@ -42,6 +42,9 @@ describe('AuthPage', () => {
       status: 'idle',
       user: null,
       error: null,
+      sendEmailLink: jest.fn(),
+      completeEmailLinkSignIn: jest.fn(),
+      isEmailLinkUrl: jest.fn(() => false),
     });
 
     (useAlert as jest.Mock).mockReturnValue({
@@ -65,7 +68,7 @@ describe('AuthPage', () => {
     fireEvent.press(registerLink);
 
     expect(getByText('Sign up')).toBeTruthy();
-    expect(getByText('Username *')).toBeTruthy();
+    expect(getByText('Free forever · No card required · Just your email')).toBeTruthy();
   });
 
   it('switches to forgot password form when clicking forgot password link', () => {
@@ -120,6 +123,7 @@ describe('AuthPage', () => {
 
 describe('LoginForm', () => {
   const mockOnSubmit = jest.fn();
+  const mockOnEmailLink = jest.fn();
   const mockOnGoogleSignIn = jest.fn();
   const mockOnAppleSignIn = jest.fn();
   const mockOnForgotPassword = jest.fn();
@@ -134,6 +138,7 @@ describe('LoginForm', () => {
     const { getByPlaceholderText, getByTestId, getByText } = render(
       <LoginForm
         onSubmit={mockOnSubmit}
+        onEmailLink={mockOnEmailLink}
         onGoogleSignIn={mockOnGoogleSignIn}
         onAppleSignIn={mockOnAppleSignIn}
         onForgotPassword={mockOnForgotPassword}
@@ -153,6 +158,7 @@ describe('LoginForm', () => {
     const { getByPlaceholderText } = render(
       <LoginForm
         onSubmit={mockOnSubmit}
+        onEmailLink={mockOnEmailLink}
         onGoogleSignIn={mockOnGoogleSignIn}
         onAppleSignIn={mockOnAppleSignIn}
         onForgotPassword={mockOnForgotPassword}
@@ -176,6 +182,7 @@ describe('LoginForm', () => {
     const { getByPlaceholderText, getByTestId } = render(
       <LoginForm
         onSubmit={mockOnSubmit}
+        onEmailLink={mockOnEmailLink}
         onGoogleSignIn={mockOnGoogleSignIn}
         onAppleSignIn={mockOnAppleSignIn}
         onForgotPassword={mockOnForgotPassword}
@@ -202,6 +209,7 @@ describe('LoginForm', () => {
     const { getByTestId } = render(
       <LoginForm
         onSubmit={mockOnSubmit}
+        onEmailLink={mockOnEmailLink}
         onGoogleSignIn={mockOnGoogleSignIn}
         onAppleSignIn={mockOnAppleSignIn}
         onForgotPassword={mockOnForgotPassword}
@@ -220,6 +228,7 @@ describe('LoginForm', () => {
     const { getByTestId } = render(
       <LoginForm
         onSubmit={mockOnSubmit}
+        onEmailLink={mockOnEmailLink}
         onGoogleSignIn={mockOnGoogleSignIn}
         onAppleSignIn={mockOnAppleSignIn}
         onForgotPassword={mockOnForgotPassword}
@@ -238,6 +247,7 @@ describe('LoginForm', () => {
     const { getByTestId } = render(
       <LoginForm
         onSubmit={mockOnSubmit}
+        onEmailLink={mockOnEmailLink}
         onGoogleSignIn={mockOnGoogleSignIn}
         onAppleSignIn={mockOnAppleSignIn}
         onForgotPassword={mockOnForgotPassword}
@@ -256,6 +266,7 @@ describe('LoginForm', () => {
     const { getByPlaceholderText, getByTestId } = render(
       <LoginForm
         onSubmit={mockOnSubmit}
+        onEmailLink={mockOnEmailLink}
         onGoogleSignIn={mockOnGoogleSignIn}
         onAppleSignIn={mockOnAppleSignIn}
         onForgotPassword={mockOnForgotPassword}

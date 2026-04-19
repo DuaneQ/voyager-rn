@@ -48,6 +48,9 @@ describe('TermsGuard', () => {
       signUpWithGoogle: jest.fn(),
       signInWithApple: jest.fn(),
       signUpWithApple: jest.fn(),
+      sendEmailLink: jest.fn(),
+      completeEmailLinkSignIn: jest.fn(),
+      isEmailLinkUrl: jest.fn(() => false),
     });
     
     // Default mock for useTermsAcceptance
@@ -238,8 +241,10 @@ describe('TermsGuard', () => {
       signUpWithGoogle: jest.fn(),
       signInWithApple: jest.fn(),
       signUpWithApple: jest.fn(),
+      sendEmailLink: jest.fn(),
+      completeEmailLinkSignIn: jest.fn(),
+      isEmailLinkUrl: jest.fn(() => false),
     });
-
     mockUseTermsAcceptance.mockReturnValue({
       hasAcceptedTerms: false,
       isLoading: false,

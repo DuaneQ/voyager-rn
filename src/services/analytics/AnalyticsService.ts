@@ -34,9 +34,12 @@ export type SignupEvent =
 
 export type OnboardEvent =
   | 'onboard_start'
+  | 'onboard_profile_nudge_shown'
+  | 'onboard_profile_completed'
   | 'onboard_first_itinerary_start'
   | 'onboard_first_itinerary_complete'
-  | 'onboard_first_match_view';
+  | 'onboard_first_match_view'
+  | 'onboard_no_matches_suggestion';
 
 export type AnalyticsEvent = LandingEvent | SignupEvent | OnboardEvent;
 

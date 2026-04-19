@@ -18,6 +18,7 @@ export const auth = {
 export const functions = {};
 export const db = {};
 export const app = {};
+export const APP_DOMAIN = 'https://mundo1-dev.web.app';
 
 export default {
   auth,

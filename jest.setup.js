@@ -56,6 +56,7 @@ jest.mock('./src/config/firebaseConfig', () => {
   return {
     auth: mockAuth,
     db: {},
+    APP_DOMAIN: 'https://mundo1-dev.web.app',
     getAuthInstance: () => mockAuth,
   };
 });
@@ -95,6 +96,11 @@ jest.mock('firebase/auth', () => {
     }),
     signInWithCredential: jest.fn(async () => {
       return { user: { uid: 'google-uid-mobile', email: 'google-mobile@example.com', emailVerified: true } };
+    }),
+    sendSignInLinkToEmail: jest.fn(async () => Promise.resolve()),
+    isSignInWithEmailLink: jest.fn(() => false),
+    signInWithEmailLink: jest.fn(async () => {
+      return { user: { uid: 'email-link-uid', email: 'emaillink@example.com', emailVerified: true, isAnonymous: false, providerData: [] } };
     }),
   };
 });

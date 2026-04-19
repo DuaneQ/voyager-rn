@@ -16,7 +16,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { auth, db } from '../config/firebaseConfig';
+import { auth, db, APP_DOMAIN } from '../config/firebaseConfig';
 import { SafeGoogleSignin } from '../utils/SafeGoogleSignin';
 import * as AppleAuthentication from 'expo-apple-authentication';
 
@@ -46,6 +46,9 @@ import {
   OAuthProvider,
   signInWithPopup,
   signInWithCredential,
+  sendSignInLinkToEmail,
+  isSignInWithEmailLink,
+  signInWithEmailLink,
   User as FirebaseAuthUser,
 } from 'firebase/auth';
 import {
@@ -114,6 +117,9 @@ interface AuthContextValue {
   signUpWithGoogle: () => Promise<any>;
   signInWithApple: () => Promise<any>;
   signUpWithApple: () => Promise<any>;
+  sendEmailLink: (email: string) => Promise<void>;
+  completeEmailLinkSignIn: (email: string, link: string) => Promise<void>;
+  isEmailLinkUrl: (url: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -844,6 +850,121 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  /**
+   * Email Link Sign-In (Passwordless)
+   * Sends a sign-in link to the user's email. The user clicks the link to authenticate.
+   * No password or username required at sign-up time.
+   */
+  const sendEmailLink = async (email: string): Promise<void> => {
+    try {
+      setStatus('loading');
+
+      // Determine the URL where the user will be redirected after clicking the link
+      const continueUrl = Platform.OS === 'web' && typeof window !== 'undefined'
+        ? `${window.location.origin}/auth?mode=finishEmailLink`
+        : `${APP_DOMAIN}/auth?mode=finishEmailLink`;
+
+      const actionCodeSettings = {
+        url: continueUrl,
+        handleCodeInApp: true,
+      };
+
+      await sendSignInLinkToEmail(auth, email, actionCodeSettings);
+
+      // Store email for retrieval when the user clicks the link
+      await AsyncStorage.setItem('EMAIL_LINK_PENDING', email);
+
+      setStatus('idle');
+    } catch (error: any) {
+      console.error('❌ Send email link error:', error);
+      setStatus('error');
+      throw error;
+    }
+  };
+
+  /**
+   * Complete Email Link Sign-In
+   * Called when the user returns to the app after clicking the email link.
+   * Uses createProfileIfMissing (Firestore transaction) to safely create profile
+   * without overwriting existing data — same pattern as Google/Apple sign-in.
+   */
+  const completeEmailLinkSignIn = async (email: string, link: string): Promise<void> => {
+    try {
+      setStatus('loading');
+
+      const result = await signInWithEmailLink(auth, email, link);
+      const user = result.user;
+
+      // Use the same safe transaction pattern as social auth to prevent profile overwrite
+      const userRef = doc(db, 'users', user.uid);
+      const hashingService = new HashingService();
+      const emailHash = user.email ? await hashingService.hashEmail(user.email) : '';
+
+      const userProfile = {
+        username: user.email?.split('@')[0] || 'newuser',
+        email: user.email || email,
+        emailHash,
+        bio: '',
+        gender: '',
+        sexualOrientation: '',
+        edu: '',
+        drinking: '',
+        smoking: '',
+        dob: '',
+        photos: ['', '', '', '', ''],
+        subscriptionType: 'free',
+        subscriptionStartDate: null,
+        subscriptionEndDate: null,
+        subscriptionCancelled: false,
+        stripeCustomerId: null,
+        emailVerified: true,
+        provider: 'email-link',
+        dailyUsage: {
+          date: new Date().toISOString().split('T')[0],
+          viewCount: 0,
+        },
+        createdAt: serverTimestamp(),
+      };
+
+      try {
+        await createProfileIfMissing(userRef, userProfile);
+      } catch (firestoreError: any) {
+        console.error('❌ [AuthContext] completeEmailLinkSignIn - Profile creation failed:', firestoreError);
+        await signOut(auth);
+        setStatus('idle');
+        throw new Error(`Failed to create user profile: ${firestoreError.message}`);
+      }
+
+      // Clean up stored email
+      await AsyncStorage.removeItem('EMAIL_LINK_PENDING');
+
+      // Store credentials
+      const userCredentials = {
+        user: {
+          uid: user.uid,
+          email: user.email,
+          emailVerified: user.emailVerified,
+          isAnonymous: user.isAnonymous,
+          providerData: user.providerData,
+        },
+      };
+      await AsyncStorage.setItem('USER_CREDENTIALS', JSON.stringify(userCredentials));
+
+      setStatus('authenticated');
+    } catch (error: any) {
+      console.error('❌ Complete email link sign-in error:', error);
+      setStatus('error');
+      throw error;
+    }
+  };
+
+  /**
+   * Check if a URL is a Firebase email sign-in link
+   */
+  const isEmailLinkUrl = (url: string): boolean => {
+    return isSignInWithEmailLink(auth, url);
+  };
+
   const value: AuthContextValue = {
     user,
     status,
@@ -859,6 +980,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signUpWithGoogle,
     signInWithApple,
     signUpWithApple,
+    sendEmailLink,
+    completeEmailLinkSignIn,
+    isEmailLinkUrl,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

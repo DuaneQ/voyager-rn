@@ -53,3 +53,9 @@ export const reauthenticateWithCredential = jest.fn(() => Promise.resolve());
 export const EmailAuthProvider = {
   credential: jest.fn(() => ({})),
 };
+
+export const sendSignInLinkToEmail = jest.fn(() => Promise.resolve());
+
+export const isSignInWithEmailLink = jest.fn(() => false);
+
+export const signInWithEmailLink = jest.fn(() => Promise.resolve({ user: mockUser }));

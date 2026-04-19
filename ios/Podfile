@@ -69,6 +69,9 @@ use_frameworks! :linkage => ENV['USE_FRAMEWORKS'].to_sym if ENV['USE_FRAMEWORKS'
     # Comment out problematic Swift header import
     firebase_h_path = File.join(installer.sandbox.root, 'Headers', 'Private', 'Firebase', 'Firebase.h')
     if File.exist?(firebase_h_path)
+      # Resolve symlink and make target writable before modifying
+      real_path = File.realpath(firebase_h_path)
+      File.chmod(0755, real_path) unless File.writable?(real_path)
       firebase_h_content = File.read(firebase_h_path)
       modified_content = firebase_h_content.gsub(
         '#import <FirebaseAuth/FirebaseAuth-Swift.h>',
