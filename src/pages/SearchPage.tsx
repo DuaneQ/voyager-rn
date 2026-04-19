@@ -554,14 +554,19 @@ const SearchPage: React.FC = () => {
                 contentContainerStyle={{ flexGrow: 1 }}
                 showsVerticalScrollIndicator={false}
               >
-                <WelcomeEmptyState
-                  username={userProfile?.username}
-                  onAddItinerary={handleAddItinerary}
-                  destinations={popularDestinations}
-                  destinationsLoading={popularLoading}
-                  profileCompletion={getProfileCompletion(userProfile).completion}
-                  missingFields={getProfileCompletion(userProfile).missingFields}
-                />
+                {(() => {
+                  const completion = getProfileCompletion(userProfile);
+                  return (
+                    <WelcomeEmptyState
+                      username={userProfile?.username}
+                      onAddItinerary={handleAddItinerary}
+                      destinations={popularDestinations}
+                      destinationsLoading={popularLoading}
+                      profileCompletion={completion.completion}
+                      missingFields={completion.missingFields}
+                    />
+                  );
+                })()}
               </ScrollView>
             ) : selectedItineraryId ? (
               /* User has selected an itinerary - show matching results */

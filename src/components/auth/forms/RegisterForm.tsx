@@ -12,7 +12,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import GoogleIcon from '../../icons/GoogleIcon';
 import AppleSignInButton from '../buttons/AppleSignInButton';
 import StepIndicator from '../StepIndicator';
@@ -25,6 +25,8 @@ interface RegisterFormProps {
   onAppleSignUp: () => void;
   onSignInPress: () => void;
   isLoading?: boolean;
+  /** Suppress analytics (e.g. when rendered as a loading placeholder) */
+  suppressAnalytics?: boolean;
 }
 
 const RegisterForm: React.FC<RegisterFormProps> = ({
@@ -33,15 +35,18 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
   onAppleSignUp,
   onSignInPress,
   isLoading = false,
+  suppressAnalytics = false,
 }) => {
   const [step, setStep] = useState<1 | 2>(1);
   const [email, setEmail] = useState('');
   const [emailError, setEmailError] = useState(false);
 
-  // Track signup_start on first render
+  // Track signup_start on first render (skip for non-signup contexts)
   useEffect(() => {
-    analyticsService.logEvent('signup_start', { method: 'email_link' });
-  }, []);
+    if (!suppressAnalytics) {
+      analyticsService.logEvent('signup_start', { method: 'email_link' });
+    }
+  }, [suppressAnalytics]);
 
   const validateEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 

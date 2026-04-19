@@ -14,6 +14,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View,
+  Text,
   StyleSheet,
   SafeAreaView,
   ScrollView,
@@ -21,6 +22,7 @@ import {
   Platform,
   ImageBackground,
   Linking,
+  ActivityIndicator,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/AuthContext';
@@ -319,17 +321,14 @@ const AuthPage: React.FC = () => {
 
       case 'finishEmailLink':
         // This mode is active while email link sign-in is completing
-        // The useEffect handles the actual completion
+        // The useEffect handles the actual completion — show a loading view
         return (
-          <RegisterForm
-            onEmailLink={handleEmailLink}
-            onGoogleSignUp={handleGoogleSignUp}
-            onAppleSignUp={handleAppleSignUp}
-            onSignInPress={() => {
-              setMode('login');
-            }}
-            isLoading={true}
-          />
+          <View style={{ alignItems: 'center', paddingTop: 60 }}>
+            <ActivityIndicator size="large" color="#1976d2" />
+            <Text style={{ marginTop: 16, fontSize: 16, color: '#333', textAlign: 'center' }}>
+              Completing sign-in...
+            </Text>
+          </View>
         );
 
       case 'forgot':
