@@ -85,6 +85,18 @@ export default StyleSheet.create({
   buttonDisabled: {
     backgroundColor: '#ccc',
   },
+  secondaryButton: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#1976d2',
+  },
+  secondaryButtonText: {
+    color: '#1976d2',
+    fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    textAlign: 'center',
+  },
   buttonText: {
     color: 'white',
     fontSize: 14,

@@ -31,6 +31,9 @@ jest.mock('../../context/AuthContext', () => ({
     signUpWithGoogle: jest.fn(),
     signInWithApple: jest.fn(),
     signUpWithApple: jest.fn(),
+    sendEmailLink: jest.fn(),
+    completeEmailLinkSignIn: jest.fn(),
+    isEmailLinkUrl: jest.fn(() => false),
     status: 'idle',
     user: null,
   })),
@@ -98,9 +101,8 @@ describe('AuthPage — ?mode= query param initialisation', () => {
     it('does NOT show the register form when mode=login', () => {
       setSearch('?mode=login');
       const { queryByText } = render(<AuthPage />);
-      // 'SIGN UP' (uppercase button) only appears in the register form; the login form
-      // has a lowercase 'Sign up' cross-link so we use the button text for uniqueness.
-      expect(queryByText('SIGN UP')).toBeNull();
+      // 'CONTINUE WITH EMAIL' (uppercase button) only appears in the register form
+      expect(queryByText('CONTINUE WITH EMAIL')).toBeNull();
     });
   });
 

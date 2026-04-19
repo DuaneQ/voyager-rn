@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.travalpass.app",
+      "sha256_cert_fingerprints": [
+        "1F:5D:50:1E:78:D4:30:38:94:08:0F:B6:8B:CE:97:2E:63:D3:36:03:4D:97:C1:64:1D:FD:35:EC:C4:5F:1D:E9"
+      ]
+    }
+  }
+]

@@ -29,23 +29,23 @@ _Existing page already has: hero + 3-step value prop, trust strip, demo videos (
 
 ## 3. Auth Flow Optimization
 - [ ] 3.1 Redesign signup modal as multi-step: Step 1 (Email + Google/Apple), Step 2 (Verify), Step 3 (Optional password), Step 4 (Blurred preview + "Add My Trip")
-- [ ] 3.2 Implement step indicator component (1-2-3 progress dots)
-- [ ] 3.3 Implement email-first Step 1: email input + Google sign-in button + trust microcopy
-- [ ] 3.4 Implement verification Step 2 using Firebase Email Link (Magic Link) — show "Check your inbox" screen with email displayed, auto-advance on link click
+- [x] 3.2 Implement step indicator component (1-2-3 progress dots)
+- [x] 3.3 Implement email-first Step 1: email input + Google sign-in button + trust microcopy
+- [x] 3.4 Implement verification Step 2 using Firebase Email Link (Magic Link) — show "Check your inbox" screen with email displayed, auto-advance on link click
 - [ ] 3.5 Implement optional password Step 3 with checkbox toggle
-- [ ] 3.6 Implement blurred matches preview Step 4 with "Add My Trip" CTA
-- [ ] 3.7 Remove username requirement from signup (defer to profile completion)
-- [ ] 3.8 Update `AuthContext.tsx` to support new flow (deferred username, optional password)
-- [ ] 3.9 Ensure backward compatibility with existing users
-- [ ] 3.10 Add analytics events for each step transition and drop-off
+- [x] 3.6 Implement blurred matches preview Step 4 with "Add My Trip" CTA
+- [x] 3.7 Remove username requirement from signup (defer to profile completion)
+- [x] 3.8 Update `AuthContext.tsx` to support new flow (deferred username, optional password)
+- [x] 3.9 Ensure backward compatibility with existing users
+- [x] 3.10 Add analytics events for each step transition and drop-off
 
 ## 4. Post-Signup Onboarding
-- [ ] 4.1 Create guided first-itinerary flow triggered from signup Step 4 "Add My Trip" CTA
-- [ ] 4.2 Implement profile completion progress indicator (% or step count)
+- [x] 4.1 Create guided first-itinerary flow triggered from signup Step 4 "Add My Trip" CTA
+- [x] 4.2 Implement profile completion progress indicator (% or step count)
 - [ ] 4.3 Optimize App Store listing (screenshots, description, keywords) for conversion — separate ASO task
-- [ ] 4.4 Replace or enhance existing tooltips (`AddItineraryTooltip`, `SelectItineraryTooltip`) with onboarding flow
-- [ ] 4.5 Add "complete your profile" nudge for users who skip profile fields
-- [ ] 4.6 Add analytics events for onboarding progress
+- [x] 4.4 Replace or enhance existing tooltips (`AddItineraryTooltip`, `SelectItineraryTooltip`) with onboarding flow
+- [x] 4.5 Add "complete your profile" nudge for users who skip profile fields
+- [x] 4.6 Add analytics events for onboarding progress
 
 ## 5. Verification & Iteration
 - [x] 5.1 Run `npx tsc --noEmit` — zero type errors

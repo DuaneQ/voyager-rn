@@ -63,11 +63,10 @@ export const AddItineraryTooltip: React.FC<AddItineraryTooltipProps> = ({
         <Text style={styles.emoji}>✈️</Text>
         <Text style={styles.title}>Start here!</Text>
         <Text style={styles.body}>
-          Create your first trip plan to connect with other travelers going to
-          the same destination.
+          Tap "+ Add Itinerary" above to create your first trip and get matched with fellow travelers.
         </Text>
         <Text style={styles.hint}>
-          Complete your profile to unlock matching.
+          It only takes a minute — just pick a destination and dates.
         </Text>
         <Text style={styles.dismiss}>Tap to dismiss</Text>
       </TouchableOpacity>

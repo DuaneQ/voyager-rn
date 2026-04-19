@@ -87,7 +87,7 @@ describeIfLive('logAdEvents — Live Integration Tests', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: 'feedback@travalpass.com',
+          email: 'support@travalpass.com',
           password: '1111111111',
           returnSecureToken: true,
         }),

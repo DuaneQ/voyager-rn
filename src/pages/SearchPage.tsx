@@ -55,6 +55,7 @@ import { saveViewedItinerary, hasViewedItinerary } from '../utils/viewedStorage'
 import AddItineraryModal from '../components/search/AddItineraryModal';
 import { FeedbackButton } from '../components/utilities/FeedbackButton';
 import SubscriptionCard from '../components/common/SubscriptionCard';
+import PremiumPerksModal from '../components/common/PremiumPerksModal';
 import { TermsOfServiceModal } from '../components/modals/TermsOfServiceModal';
 import { useTermsAcceptance } from '../hooks/useTermsAcceptance';
 import { SponsoredItineraryCard } from '../components/ads';
@@ -63,18 +64,26 @@ import { calculateAge } from '../utils/calculateAge';
 import { useTravelPreferences } from '../hooks/useTravelPreferences';
 import { usePopularDestinations } from '../hooks/usePopularDestinations';
 import { PopularDestinationsCarousel } from '../components/search/PopularDestinationsCarousel';
+import { WelcomeEmptyState } from '../components/search/WelcomeEmptyState';
+import { NoMatchesSuggestion } from '../components/search/NoMatchesSuggestion';
 import { AddItineraryTooltip } from '../components/search/AddItineraryTooltip';
 import { SelectItineraryTooltip } from '../components/search/SelectItineraryTooltip';
+import { EditProfileModal, ProfileData } from '../components/profile/EditProfileModal';
+import { getProfileCompletion } from '../utils/profileCompletion';
+import { analyticsService } from '../services/analytics/AnalyticsService';
 import * as storage from '../utils/storage';
 
 const TOOLTIP_SEEN_KEY = 'ADD_ITINERARY_TOOLTIP_SEEN';
 const SELECT_TOOLTIP_SEEN_KEY = 'SELECT_ITINERARY_TOOLTIP_SEEN';
+const ONBOARD_START_FIRED_KEY = 'ONBOARD_START_EVENT_FIRED';
+const FIRST_MATCH_VIEW_FIRED_KEY = 'ONBOARD_FIRST_MATCH_VIEW_FIRED';
 
 const SearchPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   const [selectedItineraryId, setSelectedItineraryId] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [profileModalVisible, setProfileModalVisible] = useState(false);
   const [tooltipVisible, setTooltipVisible] = useState(false);
   const [selectTooltipVisible, setSelectTooltipVisible] = useState(false);
   const [selectorBottom, setSelectorBottom] = useState(0);
@@ -82,8 +91,10 @@ const SearchPage: React.FC = () => {
   const [pendingItineraryId, setPendingItineraryId] = useState<string | null>(null);
   // Stripe checkout result status (Web only)
   const [checkoutStatus, setCheckoutStatus] = useState<'success' | 'cancel' | null>(null);
+  // Premium perks modal (Web only) — opened from inline button or daily limit paywall
+  const [perksModalVisible, setPerksModalVisible] = useState(false);
   const { showAlert } = useAlert();
-  const { userProfile } = useUserProfile();
+  const { userProfile, updateProfile } = useUserProfile();
   
   // Usage tracking hook
   const { hasReachedLimit, trackView, dailyViewCount, refreshProfile } = useUsageTracking();
@@ -119,12 +130,66 @@ const SearchPage: React.FC = () => {
   const [showingSponsoredAd, setShowingSponsoredAd] = useState(false);
   const currentAdIndexRef = useRef(0);
 
+  // Gate: true once the backfill check has completed, so downstream onboard
+  // effects don't read storage before existing-user keys have been seeded.
+  const [onboardKeysReady, setOnboardKeysReady] = useState(false);
+
   useEffect(() => {
     // Show add-itinerary tooltip once for users who have no itineraries
     storage.getItem(TOOLTIP_SEEN_KEY).then((seen) => {
       if (!seen) setTooltipVisible(true);
     });
   }, []);
+
+  // Backfill: pre-seed onboarding keys for existing users so analytics events
+  // don't fire for users who already completed these steps before the keys existed.
+  // If the user has already dismissed tooltips or viewed itineraries, they aren't new.
+  useEffect(() => {
+    if (!userId) return;
+    (async () => {
+      const [tooltipSeen, selectSeen, viewedRaw, onboardFired, matchFired] = await Promise.all([
+        storage.getItem(TOOLTIP_SEEN_KEY),
+        storage.getItem(SELECT_TOOLTIP_SEEN_KEY),
+        storage.getItem('VIEWED_ITINERARIES'),
+        storage.getItem(ONBOARD_START_FIRED_KEY),
+        storage.getItem(FIRST_MATCH_VIEW_FIRED_KEY),
+      ]);
+      const isExistingUser = tooltipSeen || selectSeen || viewedRaw;
+      if (isExistingUser) {
+        if (!onboardFired) await storage.setItem(ONBOARD_START_FIRED_KEY, '1');
+        if (!matchFired) await storage.setItem(FIRST_MATCH_VIEW_FIRED_KEY, '1');
+      }
+      setOnboardKeysReady(true);
+    })();
+  }, [userId]);
+
+  // Fire onboard_start once when a user with no itineraries reaches the search page.
+  // Waits for onboardKeysReady so existing users won't fire false events.
+  useEffect(() => {
+    if (!onboardKeysReady) return;
+    if (itinerariesLoading || !userId) return;
+    if (itineraries.length > 0) return;
+    storage.getItem(ONBOARD_START_FIRED_KEY).then((fired) => {
+      if (!fired) {
+        analyticsService.logEvent('onboard_start');
+        storage.setItem(ONBOARD_START_FIRED_KEY, '1');
+      }
+    });
+  }, [onboardKeysReady, itinerariesLoading, itineraries.length, userId]);
+
+  // Fire onboard_first_match_view once when matches first appear.
+  // Waits for onboardKeysReady so existing users won't fire false events.
+  useEffect(() => {
+    if (!onboardKeysReady) return;
+    if (!searchLoading && matchingItineraries.length > 0) {
+      storage.getItem(FIRST_MATCH_VIEW_FIRED_KEY).then((fired) => {
+        if (!fired) {
+          analyticsService.logEvent('onboard_first_match_view');
+          storage.setItem(FIRST_MATCH_VIEW_FIRED_KEY, '1');
+        }
+      });
+    }
+  }, [onboardKeysReady, searchLoading, matchingItineraries.length]);
 
   useEffect(() => {
     // Show select-itinerary tooltip once for users who have itineraries but haven't selected one
@@ -277,13 +342,27 @@ const SearchPage: React.FC = () => {
   const handleAddItinerary = () => {
     // Check profile completion before opening modal
     if (!userProfile?.dob || !userProfile?.gender) {
-      showAlert(
-        'warning',
-        'To get the best matches, we need a couple of details from your profile — your date of birth and gender help us fine-tune who we connect you with. Head to your profile to fill these in, then come back to create your itinerary!'
-      );
+      analyticsService.logEvent('onboard_profile_nudge_shown');
+      setProfileModalVisible(true);
       return;
     }
+    analyticsService.logEvent('onboard_first_itinerary_start');
     setModalVisible(true);
+  };
+
+  const handleProfileSave = async (data: ProfileData) => {
+    try {
+      await updateProfile(data);
+      setProfileModalVisible(false);
+      analyticsService.logEvent('onboard_profile_completed');
+      showAlert('success', 'Profile updated! Now create your itinerary.');
+      analyticsService.logEvent('onboard_first_itinerary_start');
+      setModalVisible(true);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      showAlert('error', 'Failed to update profile');
+      throw error;
+    }
   };
 
   const handleItineraryAdded = async () => {
@@ -295,6 +374,7 @@ const SearchPage: React.FC = () => {
     showAlert('Itinerary saved successfully!', 'success');
     // Show select-itinerary coach mark once, after the user's first itinerary
     if (isFirstItinerary) {
+      analyticsService.logEvent('onboard_first_itinerary_complete');
       const seen = await storage.getItem(SELECT_TOOLTIP_SEEN_KEY);
       if (!seen) setSelectTooltipVisible(true);
     }
@@ -333,7 +413,7 @@ const SearchPage: React.FC = () => {
     if (!success) {
       console.error('[SearchPage] ⛔ Like BLOCKED: trackView returned false (limit reached)');
       if (Platform.OS === 'web') {
-        showAlert('info', 'Daily limit reached. Tap Upgrade for unlimited views and AI Itineraries');
+        setPerksModalVisible(true);
       } else {
         showAlert(
           'info', 
@@ -425,7 +505,7 @@ const SearchPage: React.FC = () => {
     if (!success) {
       console.error('[SearchPage] ⛔ Dislike BLOCKED: trackView returned false (limit reached)');
       if (Platform.OS === 'web') {
-        showAlert('info', 'Daily limit reached. Tap Upgrade for unlimited views and 20 AI Itineraries per day');
+        setPerksModalVisible(true);
       } else {
         showAlert(
           'info', 
@@ -499,7 +579,7 @@ const SearchPage: React.FC = () => {
         )}
 
         {/* Subscription Card - Web only, compact floating style */}
-        <SubscriptionCard compact />
+        {/* Moved inline into ItinerarySelector top bar per CRO recommendation */}
 
         {/* Itinerary Selector Dropdown — onLayout captures bottom edge for tooltip anchor */}
         <View onLayout={e => {
@@ -512,6 +592,8 @@ const SearchPage: React.FC = () => {
             onSelect={handleItinerarySelect}
             onAddItinerary={handleAddItinerary}
             loading={itinerariesLoading}
+            hideAddButton={itineraries.length === 0}
+            rightSlot={<SubscriptionCard inline onPress={() => setPerksModalVisible(true)} />}
           />
         </View>
 
@@ -526,14 +608,27 @@ const SearchPage: React.FC = () => {
       <View style={styles.content}>
         {userId ? (
           <>
-            {/* Empty state: show trending destinations */}
+            {/* Empty state: welcome + blurred preview + trending destinations */}
             {itineraries.length === 0 ? (
-              <View style={styles.cardContainer}>
-                <PopularDestinationsCarousel
-                  destinations={popularDestinations}
-                  loading={popularLoading}
-                />
-              </View>
+              <ScrollView
+                style={{ flex: 1 }}
+                contentContainerStyle={{ flexGrow: 1 }}
+                showsVerticalScrollIndicator={false}
+              >
+                {(() => {
+                  const completion = getProfileCompletion(userProfile);
+                  return (
+                    <WelcomeEmptyState
+                      username={userProfile?.username}
+                      onAddItinerary={handleAddItinerary}
+                      destinations={popularDestinations}
+                      destinationsLoading={popularLoading}
+                      profileCompletion={completion.completion}
+                      missingFields={completion.missingFields}
+                    />
+                  );
+                })()}
+              </ScrollView>
             ) : selectedItineraryId ? (
               /* User has selected an itinerary - show matching results */
               <>
@@ -574,18 +669,11 @@ const SearchPage: React.FC = () => {
                     )}
                   </ScrollView>
                 ) : (
-                  /* No matches found */
-                  <View style={styles.centerContent}>
-                    <Text style={styles.emptyText}>
-                      {searchError ? (
-                        <Text style={{ color: '#fff' }}>Error: {searchError}</Text>
-                      ) : (
-                        <Text style={{ color: '#fff' }}>
-                          No matches found for this itinerary. Try adjusting your preferences or dates.
-                        </Text>
-                      )}
-                    </Text>
-                  </View>
+                  /* No matches found — show destination stats */
+                  <NoMatchesSuggestion
+                    destination={itineraries.find(i => i.id === selectedItineraryId)?.destination ?? ''}
+                    searchError={searchError}
+                  />
                 )}
               </>
             ) : (
@@ -603,6 +691,23 @@ const SearchPage: React.FC = () => {
           </View>
         )}
       </View>
+
+      <EditProfileModal
+        visible={profileModalVisible}
+        onClose={() => setProfileModalVisible(false)}
+        onSave={handleProfileSave}
+        initialData={{
+          username: userProfile?.username || '',
+          bio: userProfile?.bio || '',
+          dob: userProfile?.dob || '',
+          gender: userProfile?.gender || '',
+          sexualOrientation: userProfile?.sexualOrientation || '',
+          status: userProfile?.status || '',
+          edu: userProfile?.edu || '',
+          drinking: userProfile?.drinking || '',
+          smoking: userProfile?.smoking || '',
+        }}
+      />
 
       <AddItineraryModal
         visible={modalVisible}
@@ -624,11 +729,17 @@ const SearchPage: React.FC = () => {
         error={termsError}
       />
 
+      {/* Premium perks modal — opened from 🔒 Unlimited Searches or daily limit paywall */}
+      <PremiumPerksModal
+        visible={perksModalVisible}
+        onClose={() => setPerksModalVisible(false)}
+      />
+
       {/* Feedback Button - vertical along right side */}
       <FeedbackButton />
 
-      {/* Tooltip coach-mark — anchored just below the Add Itinerary button */}
-      {itineraries.length === 0 && (
+      {/* Tooltip coach-mark — hidden when WelcomeEmptyState provides the CTA */}
+      {itineraries.length > 0 && (
         <AddItineraryTooltip
           visible={tooltipVisible}
           onDismiss={handleTooltipDismiss}

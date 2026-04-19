@@ -10,6 +10,7 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  Platform,
 } from 'react-native';
 import { CrossPlatformPicker, PickerItem } from '../common/CrossPlatformPicker';
 import { Itinerary } from '../../hooks/useAllItineraries';
@@ -21,6 +22,10 @@ interface ItinerarySelectorProps {
   onSelect: (id: string) => void;
   onAddItinerary: () => void;
   loading?: boolean;
+  /** Hide the "+ Add Itinerary" button (e.g. when WelcomeEmptyState provides the CTA) */
+  hideAddButton?: boolean;
+  /** Optional React node rendered at the trailing edge of the header row */
+  rightSlot?: React.ReactNode;
 }
 
 export const ItinerarySelector: React.FC<ItinerarySelectorProps> = ({
@@ -29,6 +34,8 @@ export const ItinerarySelector: React.FC<ItinerarySelectorProps> = ({
   onSelect,
   onAddItinerary,
   loading = false,
+  hideAddButton = false,
+  rightSlot,
 }) => {
   const formatItineraryLabel = (itinerary: Itinerary) => {
     const isAI = itinerary.ai_status === 'completed';
@@ -67,13 +74,17 @@ export const ItinerarySelector: React.FC<ItinerarySelectorProps> = ({
           )}
         </View>
 
-        <TouchableOpacity 
-          style={styles.addButton}
-          onPress={onAddItinerary}
-          testID="add-itinerary-button"
-        >
-          <Text style={styles.addButtonText}>+ Add Itinerary</Text>
-        </TouchableOpacity>
+        {!hideAddButton && (
+          <TouchableOpacity 
+            style={styles.addButton}
+            onPress={onAddItinerary}
+            testID="add-itinerary-button"
+          >
+            <Text style={styles.addButtonText}>+ Add Itinerary</Text>
+          </TouchableOpacity>
+        )}
+
+        {rightSlot}
       </View>
     </View>
   );
@@ -92,10 +103,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
+    ...(Platform.OS === 'web' ? { flexWrap: 'wrap' as const, gap: 8 } : {}),
   },
   dropdownSection: {
     flex: 1,
-    marginRight: 12,
+    flexShrink: 1,
+    minWidth: Platform.OS === 'web' ? 180 : 0,
+    marginRight: 8,
   },
   loadingText: {
     fontSize: 14,
@@ -150,11 +164,11 @@ const styles = StyleSheet.create({
   },
   addButton: {
     backgroundColor: '#1976d2',
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 6,
-    minWidth: 130,
     alignItems: 'center',
+    flexShrink: 0,
   },
   addButtonText: {
     color: 'white',

@@ -14,6 +14,7 @@ import LoginForm from '../../../components/auth/forms/LoginForm';
 
 describe('LoginForm', () => {
   const mockOnSubmit = jest.fn();
+  const mockOnEmailLink = jest.fn();
   const mockOnGoogleSignIn = jest.fn();
   const mockOnAppleSignIn = jest.fn();
   const mockOnForgotPassword = jest.fn();
@@ -26,6 +27,7 @@ describe('LoginForm', () => {
 
   const defaultProps = {
     onSubmit: mockOnSubmit,
+    onEmailLink: mockOnEmailLink,
     onGoogleSignIn: mockOnGoogleSignIn,
     onAppleSignIn: mockOnAppleSignIn,
     onForgotPassword: mockOnForgotPassword,
@@ -288,6 +290,34 @@ describe('LoginForm', () => {
       fireEvent.press(registerLink);
 
       expect(mockOnSignUpPress).toHaveBeenCalled();
+    });
+  });
+
+  describe('Email Link Sign-In', () => {
+    it('renders email link sign-in button', () => {
+      const { getByTestId } = render(<LoginForm {...defaultProps} />);
+      expect(getByTestId('email-link-signin-button')).toBeTruthy();
+    });
+
+    it('calls onEmailLink with email when pressed', async () => {
+      const { getByPlaceholderText, getByTestId } = render(
+        <LoginForm {...defaultProps} />
+      );
+
+      fireEvent.changeText(getByPlaceholderText('your@email.com'), 'test@example.com');
+      fireEvent.press(getByTestId('email-link-signin-button'));
+
+      await waitFor(() => {
+        expect(mockOnEmailLink).toHaveBeenCalledWith('test@example.com');
+      });
+    });
+
+    it('does not call onEmailLink without a valid email', () => {
+      const { getByTestId } = render(<LoginForm {...defaultProps} />);
+
+      fireEvent.press(getByTestId('email-link-signin-button'));
+
+      expect(mockOnEmailLink).not.toHaveBeenCalled();
     });
   });
 });

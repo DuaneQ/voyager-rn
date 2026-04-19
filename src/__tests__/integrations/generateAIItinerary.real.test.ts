@@ -20,7 +20,7 @@
 import generateTestPreferenceProfiles, { TestPreferenceProfile } from './data/testPreferenceProfiles';
 import { formatDateLocal } from '../../utils/formatDate';
 
-const TEST_USER_EMAIL = 'feedback@travalpass.com';
+const TEST_USER_EMAIL = 'support@travalpass.com';
 const TEST_PASSWORD = '1111111111';
 const FUNCTION_URL = 'https://us-central1-mundo1-dev.cloudfunctions.net';
 

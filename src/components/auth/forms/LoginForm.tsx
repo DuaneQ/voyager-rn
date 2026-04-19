@@ -10,6 +10,7 @@ import AppleSignInButton from '../buttons/AppleSignInButton';
 
 interface LoginFormProps {
   onSubmit: (email: string, password: string) => Promise<void>;
+  onEmailLink: (email: string) => Promise<void>;
   onGoogleSignIn: () => void;
   onAppleSignIn: () => void;
   onForgotPassword: () => void;
@@ -20,6 +21,7 @@ interface LoginFormProps {
 
 const LoginForm: React.FC<LoginFormProps> = ({
   onSubmit,
+  onEmailLink,
   onGoogleSignIn,
   onAppleSignIn,
   onForgotPassword,
@@ -52,6 +54,15 @@ const LoginForm: React.FC<LoginFormProps> = ({
     if (!email || !password) return;
     if (emailError || passwordError) return;
     await onSubmit(email, password);
+  };
+
+  const handleEmailLinkSignIn = async () => {
+    if (!email) {
+      setEmailError(true);
+      return;
+    }
+    if (emailError) return;
+    await onEmailLink(email);
   };
 
   return (
@@ -130,6 +141,15 @@ const LoginForm: React.FC<LoginFormProps> = ({
           <Text style={styles.linkSmall}>Resend email verification</Text>
         </TouchableOpacity>
       </View>
+
+      <TouchableOpacity
+        testID="email-link-signin-button"
+        style={[styles.button, styles.secondaryButton, isLoading && styles.buttonDisabled]}
+        onPress={handleEmailLinkSignIn}
+        disabled={isLoading}
+      >
+        <Text style={styles.secondaryButtonText}>Send me a sign-in link</Text>
+      </TouchableOpacity>
 
       <View style={styles.dividerContainer}>
         <View style={styles.dividerLine} />

@@ -32,4 +32,6 @@ export const getCloudFunctionUrl = jest.fn((functionName: string) =>
   `https://${FUNCTIONS_REGION}-${FUNCTIONS_PROJECT_ID}.cloudfunctions.net/${functionName}`
 );
 
+export const APP_DOMAIN = 'https://mundo1-dev.web.app';
+
 export { mockApp as app, mockDb as db, mockStorage as storage, mockFunctions as functions };

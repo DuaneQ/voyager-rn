@@ -1,0 +1,11 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "77WCFLF5AV.com.travalpass.app",
+        "paths": ["/auth*"]
+      }
+    ]
+  }
+}
