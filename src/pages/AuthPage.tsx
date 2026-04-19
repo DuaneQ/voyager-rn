@@ -28,6 +28,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
 import mapAuthError from '../utils/auth/firebaseAuthErrorMapper';
+import { analyticsService } from '../services/analytics/AnalyticsService';
 
 // Form Components
 import LoginForm from '../components/auth/forms/LoginForm';
@@ -104,6 +105,8 @@ const AuthPage: React.FC = () => {
         return;
       }
       await completeEmailLinkSignIn(storedEmail, link);
+      analyticsService.logEvent('signup_verification_complete', { method: 'email_link' });
+      analyticsService.logEvent('signup_complete', { method: 'email_link' });
       showAlert('success', 'Welcome to TravalPass!');
       // Clean up URL parameters on web
       if (typeof window !== 'undefined') {
@@ -227,6 +230,7 @@ const AuthPage: React.FC = () => {
     setIsSubmitting(true);
     try {
       await signUpWithGoogle();
+      analyticsService.logEvent('signup_complete', { method: 'google' });
       // Success - navigation happens automatically via AuthContext
       showAlert('success', 'Successfully signed up with Google! Welcome to TravalPass.');
     } catch (error: any) {
@@ -274,6 +278,7 @@ const AuthPage: React.FC = () => {
     setIsSubmitting(true);
     try {
       await signUpWithApple();
+      analyticsService.logEvent('signup_complete', { method: 'apple' });
       showAlert('success', 'Successfully signed up with Apple! Welcome to TravalPass.');
     } catch (error: any) {
       const errorMessage = error instanceof Error ? error.message : 'Apple sign-up failed';

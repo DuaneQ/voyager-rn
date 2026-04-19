@@ -55,6 +55,7 @@ import { saveViewedItinerary, hasViewedItinerary } from '../utils/viewedStorage'
 import AddItineraryModal from '../components/search/AddItineraryModal';
 import { FeedbackButton } from '../components/utilities/FeedbackButton';
 import SubscriptionCard from '../components/common/SubscriptionCard';
+import PremiumPerksModal from '../components/common/PremiumPerksModal';
 import { TermsOfServiceModal } from '../components/modals/TermsOfServiceModal';
 import { useTermsAcceptance } from '../hooks/useTermsAcceptance';
 import { SponsoredItineraryCard } from '../components/ads';
@@ -74,6 +75,8 @@ import * as storage from '../utils/storage';
 
 const TOOLTIP_SEEN_KEY = 'ADD_ITINERARY_TOOLTIP_SEEN';
 const SELECT_TOOLTIP_SEEN_KEY = 'SELECT_ITINERARY_TOOLTIP_SEEN';
+const ONBOARD_START_FIRED_KEY = 'ONBOARD_START_EVENT_FIRED';
+const FIRST_MATCH_VIEW_FIRED_KEY = 'ONBOARD_FIRST_MATCH_VIEW_FIRED';
 
 const SearchPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -88,6 +91,8 @@ const SearchPage: React.FC = () => {
   const [pendingItineraryId, setPendingItineraryId] = useState<string | null>(null);
   // Stripe checkout result status (Web only)
   const [checkoutStatus, setCheckoutStatus] = useState<'success' | 'cancel' | null>(null);
+  // Premium perks modal (Web only) — opened from inline button or daily limit paywall
+  const [perksModalVisible, setPerksModalVisible] = useState(false);
   const { showAlert } = useAlert();
   const { userProfile, updateProfile } = useUserProfile();
   
@@ -125,12 +130,66 @@ const SearchPage: React.FC = () => {
   const [showingSponsoredAd, setShowingSponsoredAd] = useState(false);
   const currentAdIndexRef = useRef(0);
 
+  // Gate: true once the backfill check has completed, so downstream onboard
+  // effects don't read storage before existing-user keys have been seeded.
+  const [onboardKeysReady, setOnboardKeysReady] = useState(false);
+
   useEffect(() => {
     // Show add-itinerary tooltip once for users who have no itineraries
     storage.getItem(TOOLTIP_SEEN_KEY).then((seen) => {
       if (!seen) setTooltipVisible(true);
     });
   }, []);
+
+  // Backfill: pre-seed onboarding keys for existing users so analytics events
+  // don't fire for users who already completed these steps before the keys existed.
+  // If the user has already dismissed tooltips or viewed itineraries, they aren't new.
+  useEffect(() => {
+    if (!userId) return;
+    (async () => {
+      const [tooltipSeen, selectSeen, viewedRaw, onboardFired, matchFired] = await Promise.all([
+        storage.getItem(TOOLTIP_SEEN_KEY),
+        storage.getItem(SELECT_TOOLTIP_SEEN_KEY),
+        storage.getItem('VIEWED_ITINERARIES'),
+        storage.getItem(ONBOARD_START_FIRED_KEY),
+        storage.getItem(FIRST_MATCH_VIEW_FIRED_KEY),
+      ]);
+      const isExistingUser = tooltipSeen || selectSeen || viewedRaw;
+      if (isExistingUser) {
+        if (!onboardFired) await storage.setItem(ONBOARD_START_FIRED_KEY, '1');
+        if (!matchFired) await storage.setItem(FIRST_MATCH_VIEW_FIRED_KEY, '1');
+      }
+      setOnboardKeysReady(true);
+    })();
+  }, [userId]);
+
+  // Fire onboard_start once when a user with no itineraries reaches the search page.
+  // Waits for onboardKeysReady so existing users won't fire false events.
+  useEffect(() => {
+    if (!onboardKeysReady) return;
+    if (itinerariesLoading || !userId) return;
+    if (itineraries.length > 0) return;
+    storage.getItem(ONBOARD_START_FIRED_KEY).then((fired) => {
+      if (!fired) {
+        analyticsService.logEvent('onboard_start');
+        storage.setItem(ONBOARD_START_FIRED_KEY, '1');
+      }
+    });
+  }, [onboardKeysReady, itinerariesLoading, itineraries.length, userId]);
+
+  // Fire onboard_first_match_view once when matches first appear.
+  // Waits for onboardKeysReady so existing users won't fire false events.
+  useEffect(() => {
+    if (!onboardKeysReady) return;
+    if (!searchLoading && matchingItineraries.length > 0) {
+      storage.getItem(FIRST_MATCH_VIEW_FIRED_KEY).then((fired) => {
+        if (!fired) {
+          analyticsService.logEvent('onboard_first_match_view');
+          storage.setItem(FIRST_MATCH_VIEW_FIRED_KEY, '1');
+        }
+      });
+    }
+  }, [onboardKeysReady, searchLoading, matchingItineraries.length]);
 
   useEffect(() => {
     // Show select-itinerary tooltip once for users who have itineraries but haven't selected one
@@ -354,7 +413,7 @@ const SearchPage: React.FC = () => {
     if (!success) {
       console.error('[SearchPage] ⛔ Like BLOCKED: trackView returned false (limit reached)');
       if (Platform.OS === 'web') {
-        showAlert('info', 'Daily limit reached. Tap Upgrade for unlimited views and AI Itineraries');
+        setPerksModalVisible(true);
       } else {
         showAlert(
           'info', 
@@ -446,7 +505,7 @@ const SearchPage: React.FC = () => {
     if (!success) {
       console.error('[SearchPage] ⛔ Dislike BLOCKED: trackView returned false (limit reached)');
       if (Platform.OS === 'web') {
-        showAlert('info', 'Daily limit reached. Tap Upgrade for unlimited views and 20 AI Itineraries per day');
+        setPerksModalVisible(true);
       } else {
         showAlert(
           'info', 
@@ -520,7 +579,7 @@ const SearchPage: React.FC = () => {
         )}
 
         {/* Subscription Card - Web only, compact floating style */}
-        <SubscriptionCard compact />
+        {/* Moved inline into ItinerarySelector top bar per CRO recommendation */}
 
         {/* Itinerary Selector Dropdown — onLayout captures bottom edge for tooltip anchor */}
         <View onLayout={e => {
@@ -533,6 +592,8 @@ const SearchPage: React.FC = () => {
             onSelect={handleItinerarySelect}
             onAddItinerary={handleAddItinerary}
             loading={itinerariesLoading}
+            hideAddButton={itineraries.length === 0}
+            rightSlot={<SubscriptionCard inline onPress={() => setPerksModalVisible(true)} />}
           />
         </View>
 
@@ -668,11 +729,17 @@ const SearchPage: React.FC = () => {
         error={termsError}
       />
 
+      {/* Premium perks modal — opened from 🔒 Unlimited Searches or daily limit paywall */}
+      <PremiumPerksModal
+        visible={perksModalVisible}
+        onClose={() => setPerksModalVisible(false)}
+      />
+
       {/* Feedback Button - vertical along right side */}
       <FeedbackButton />
 
-      {/* Tooltip coach-mark — anchored just below the Add Itinerary button */}
-      {itineraries.length === 0 && (
+      {/* Tooltip coach-mark — hidden when WelcomeEmptyState provides the CTA */}
+      {itineraries.length > 0 && (
         <AddItineraryTooltip
           visible={tooltipVisible}
           onDismiss={handleTooltipDismiss}

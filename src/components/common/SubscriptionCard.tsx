@@ -17,6 +17,7 @@ import {
   Platform,
   Linking,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useUsageTracking } from '../../hooks/useUsageTracking';
 import { useStripePortal } from '../../hooks/useStripePortal';
@@ -27,6 +28,10 @@ interface SubscriptionCardProps {
   hideManage?: boolean;
   /** Use compact floating style (bottom-left corner) */
   compact?: boolean;
+  /** Inline style for embedding in a top-bar row (no absolute positioning) */
+  inline?: boolean;
+  /** Called when the inline button is pressed (e.g. to open perks modal) */
+  onPress?: () => void;
 }
 
 /**
@@ -36,7 +41,9 @@ interface SubscriptionCardProps {
  */
 const SubscriptionCard: React.FC<SubscriptionCardProps> = ({ 
   hideManage = false, 
-  compact = false 
+  compact = false,
+  inline = false,
+  onPress,
 }) => {
   const { hasPremium, userProfile } = useUsageTracking();
   const { openPortal, loading: managingPortal, error: portalError } = useStripePortal();
@@ -100,8 +107,35 @@ const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
     return null;
   }
 
+  const cardStyle = inline ? styles.inlineCard : compact ? styles.compactCard : styles.fullCard;
+
+  // Inline variant: simple tappable label with padlock — no Upgrade/Manage UI.
+  // Premium users see "Premium ✓", free users see "🔒 Unlimited Searches".
+  if (inline) {
+    if (isPremium) {
+      return (
+        <View style={cardStyle}>
+          <Ionicons name="checkmark-circle" size={14} color="#4CAF50" style={{ marginRight: 4 }} />
+          <Text style={styles.label}>Premium</Text>
+        </View>
+      );
+    }
+    return (
+      <TouchableOpacity
+        style={cardStyle}
+        onPress={onPress}
+        activeOpacity={0.7}
+        accessibilityLabel="Unlimited Searches"
+        accessibilityRole="button"
+      >
+        <Ionicons name="lock-closed" size={14} color="#1976d2" style={{ marginRight: 4 }} />
+        <Text style={styles.inlineLabel}>Unlimited Searches</Text>
+      </TouchableOpacity>
+    );
+  }
+
   return (
-    <View style={compact ? styles.compactCard : styles.fullCard}>
+    <View style={cardStyle}>
       <Text style={styles.label}>
         {isPremium ? 'Premium' : 'Unlimited Searches'}
       </Text>
@@ -173,6 +207,17 @@ const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
 };
 
 const styles = StyleSheet.create({
+  // Inline style for embedding in a top-bar row (e.g. ItinerarySelector header)
+  inlineCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    marginLeft: 8,
+    flexShrink: 0,
+  },
   // Compact floating style (bottom-left corner, just above bottom nav)
   // 5px gap between button and bottom nav bar
   compactCard: {
@@ -212,6 +257,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#333',
     marginRight: 8,
+  },
+  inlineLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1976d2',
   },
   button: {
     paddingVertical: 4,
