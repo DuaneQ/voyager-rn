@@ -21,10 +21,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ImageBackground,
-  Linking,
-  ActivityIndicator,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
 import mapAuthError from '../utils/auth/firebaseAuthErrorMapper';
@@ -36,15 +33,12 @@ import RegisterForm from '../components/auth/forms/RegisterForm';
 import ForgotPasswordForm from '../components/auth/forms/ForgotPasswordForm';
 import ResendVerificationForm from '../components/auth/forms/ResendVerificationForm';
 
-type AuthMode = 'login' | 'register' | 'forgot' | 'resend' | 'finishEmailLink';
+type AuthMode = 'login' | 'register' | 'forgot' | 'resend';
 
 /** Read initial mode from ?mode= query param on web, default to 'login' */
 const getInitialMode = (): AuthMode => {
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
     const param = new URLSearchParams(window.location.search).get('mode');
-    if (param === 'finishEmailLink') {
-      return 'finishEmailLink';
-    }
     if (param === 'login' || param === 'register') {
       return param as AuthMode;
     }
@@ -56,70 +50,10 @@ const AuthPage: React.FC = () => {
   const [mode, setMode] = useState<AuthMode>(getInitialMode);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const { signIn, signUp, sendPasswordReset, resendVerification, status, signInWithGoogle, signUpWithGoogle, signInWithApple, signUpWithApple, sendEmailLink, completeEmailLinkSignIn, isEmailLinkUrl } = useAuth();
+  const { signIn, signUp, sendPasswordReset, resendVerification, status, signInWithGoogle, signUpWithGoogle, signInWithApple, signUpWithApple } = useAuth();
   const { showAlert } = useAlert();
   
   const isLoading = status === 'loading' || isSubmitting;
-
-  // Handle email link sign-in completion on web page load
-  useEffect(() => {
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      const url = window.location.href;
-      if (isEmailLinkUrl(url)) {
-        handleEmailLinkCompletion(url);
-      }
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Handle email link sign-in completion on native (iOS/Android) via deep link
-  useEffect(() => {
-    if (Platform.OS === 'web') return;
-
-    // Check if app was opened via a deep link (cold start)
-    const checkInitialUrl = async () => {
-      const initialUrl = await Linking.getInitialURL();
-      if (initialUrl && isEmailLinkUrl(initialUrl)) {
-        handleEmailLinkCompletion(initialUrl);
-      }
-    };
-    checkInitialUrl();
-
-    // Listen for deep links while app is running (warm start)
-    const subscription = Linking.addEventListener('url', ({ url }) => {
-      if (isEmailLinkUrl(url)) {
-        handleEmailLinkCompletion(url);
-      }
-    });
-
-    return () => subscription.remove();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handleEmailLinkCompletion = async (link: string) => {
-    setIsSubmitting(true);
-    try {
-      // Retrieve stored email from when the link was sent
-      const storedEmail = await AsyncStorage.getItem('EMAIL_LINK_PENDING');
-      if (!storedEmail) {
-        showAlert('error', 'Could not complete sign-in. Please try signing up again.');
-        setMode('register');
-        return;
-      }
-      await completeEmailLinkSignIn(storedEmail, link);
-      analyticsService.logEvent('signup_verification_complete', { method: 'email_link' });
-      analyticsService.logEvent('signup_complete', { method: 'email_link' });
-      showAlert('success', 'Welcome to TravalPass!');
-      // Clean up URL parameters on web
-      if (typeof window !== 'undefined') {
-        window.history.replaceState({}, '', '/auth');
-      }
-    } catch (error: any) {
-      const friendly = mapAuthError(error);
-      showAlert('error', friendly.message);
-      setMode('register');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   /**
    * Login Handler - Matches PWA's SignInForm.tsx handleSubmit exactly
@@ -143,13 +77,14 @@ const AuthPage: React.FC = () => {
   };
 
   /**
-   * Email Link Handler - Sends passwordless sign-in link
+   * Register Handler - email + password sign-up
    */
-  const handleEmailLink = async (email: string) => {
+  const handleRegister = async (username: string, email: string, password: string) => {
     setIsSubmitting(true);
     try {
-      await sendEmailLink(email);
-      showAlert('success', 'A sign-in link has been sent to your email. Please check your inbox and spam folder.');
+      await signUp(username, email, password);
+      analyticsService.logEvent('signup_complete', { method: 'email' });
+      showAlert('success', 'Account created! Please check your email to verify your account.');
     } catch (error: any) {
       const friendly = mapAuthError(error);
       showAlert('error', friendly.message);
@@ -295,7 +230,6 @@ const AuthPage: React.FC = () => {
         return (
           <LoginForm
             onSubmit={handleLogin}
-            onEmailLink={handleEmailLink}
             onGoogleSignIn={handleGoogleSignIn}
             onAppleSignIn={handleAppleSignIn}
             onForgotPassword={() => {
@@ -314,7 +248,7 @@ const AuthPage: React.FC = () => {
       case 'register':
         return (
           <RegisterForm
-            onEmailLink={handleEmailLink}
+            onSubmit={handleRegister}
             onGoogleSignUp={handleGoogleSignUp}
             onAppleSignUp={handleAppleSignUp}
             onSignInPress={() => {
@@ -322,18 +256,6 @@ const AuthPage: React.FC = () => {
             }}
             isLoading={isLoading}
           />
-        );
-
-      case 'finishEmailLink':
-        // This mode is active while email link sign-in is completing
-        // The useEffect handles the actual completion — show a loading view
-        return (
-          <View style={{ alignItems: 'center', paddingTop: 60 }}>
-            <ActivityIndicator size="large" color="#1976d2" />
-            <Text style={{ marginTop: 16, fontSize: 16, color: '#333', textAlign: 'center' }}>
-              Completing sign-in...
-            </Text>
-          </View>
         );
 
       case 'forgot':

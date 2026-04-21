@@ -4,6 +4,23 @@
 
 ## ⚠️ CRITICAL TESTING RULES - READ FIRST ⚠️
 
+### 🚨 NEVER TOUCH AUTH SIGN-UP FLOW WITHOUT EXTREME CAUTION 🚨
+
+**KNOWN RISK**: The authentication sign-up and sign-in flow has a **history of intermittently overwriting user profiles**. This happened silently — users who signed out and signed back in occasionally had their profiles replaced with empty/default data. The root cause was race conditions between `onAuthStateChanged` triggering profile creation when a profile already existed.
+
+**Rules when modifying ANY auth code** (`AuthContext.tsx`, `AuthPage.tsx`, `RegisterForm.tsx`, `LoginForm.tsx`, any sign-up/sign-in service):
+
+1. ✅ **Never overwrite existing profiles**: All `setDoc` / `updateDoc` calls on user documents MUST check if the document already exists before writing. Use `{ merge: true }` or read-then-write with existence checks.
+2. ✅ **Understand the full sign-in lifecycle**: `onAuthStateChanged` fires on EVERY sign-in — including returning users. Code inside it must distinguish between new users and existing users.
+3. ✅ **Search for all profile write paths** before adding a new one: `grep_search` for `setDoc`, `updateDoc`, `usersCollection`, `users/`, profile creation before touching anything.
+4. ✅ **Test sign-out + sign-in with an existing account**: After any auth change, manually verify that signing out and back in does NOT alter an existing user's profile data.
+5. ✅ **Never simplify auth flows by removing guards**: Existence checks, `merge: true` flags, and null guards in auth are not redundant — they are protecting against silent data loss.
+6. ✅ **Get explicit user confirmation before changing sign-up or sign-in logic** — this is high-risk, non-obvious territory.
+
+**If you violate this rule, you may silently destroy user profile data. NO EXCEPTIONS.**
+
+---
+
 ### 🚨 ALWAYS VERIFY CODE BEFORE CLAIMING COMPLETION 🚨
 
 **ABSOLUTE RULE**: You MUST verify your code compiles and passes tests BEFORE telling the user you're done.

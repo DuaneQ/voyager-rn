@@ -88,7 +88,7 @@ const LANDING_CSS = `
   background: var(--white);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
-  font-size: 16px;
+  font-size: 14.1px;
   /* Portal renders this directly into body - take full viewport */
   position: absolute;
   top: 0;
@@ -115,14 +115,14 @@ const LANDING_CSS = `
 }
 .lp-top-marquee-track:hover { animation-play-state: paused; }
 .lp-top-marquee-item {
-  font-size: 15px;
+  font-size: 13.2px;
   font-weight: 500;
   color: #e3f2fd;
   letter-spacing: 0.4px;
   padding: 0 8px;
 }
 .lp-top-marquee-item strong { color: #fff; font-weight: 700; }
-.lp-top-marquee-sep { color: rgba(255,255,255,0.35); font-size: 14px; padding: 0 12px; }
+.lp-top-marquee-sep { color: rgba(255,255,255,0.35); font-size: 12.3px; padding: 0 12px; }
 
 @keyframes lp-marquee {
   0% { transform: translateX(0); }
@@ -145,7 +145,7 @@ const LANDING_CSS = `
   height: 76px;
 }
 .lp-nav-logo {
-  font-size: 28px;
+  font-size: 24.6px;
   font-weight: 800;
   color: var(--navy);
   text-decoration: none;
@@ -160,7 +160,7 @@ const LANDING_CSS = `
   padding: 0;
 }
 .lp-nav-links a {
-  font-size: 17px;
+  font-size: 15px;
   color: var(--text-2);
   text-decoration: none;
   font-weight: 500;
@@ -169,7 +169,7 @@ const LANDING_CSS = `
 .lp-nav-links a:hover { color: var(--text); }
 .lp-nav-cta { display: flex; align-items: center; gap: 12px; }
 .lp-nav-signin {
-  font-size: 17px;
+  font-size: 15px;
   color: var(--blue);
   font-weight: 600;
   text-decoration: none;
@@ -184,7 +184,7 @@ const LANDING_CSS = `
   background: var(--blue);
   color: var(--white);
   padding: 14px 28px;
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 600;
   border: none;
   border-radius: 8px;
@@ -213,7 +213,7 @@ const LANDING_CSS = `
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 17px;
+  font-size: 15px;
   color: #2e7d32;
   font-weight: 500;
 }
@@ -229,7 +229,7 @@ const LANDING_CSS = `
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.6; transform: scale(0.85); }
 }
-.lp-ticker-sep { color: #a5d6a7; margin: 0 12px; font-size: 18px; }
+.lp-ticker-sep { color: #a5d6a7; margin: 0 12px; font-size: 15.8px; }
 
 /* ─── HERO ─── */
 .lp-hero {
@@ -263,7 +263,7 @@ const LANDING_CSS = `
   border: 1px solid var(--green-border);
   border-radius: 100px;
   padding: 10px 20px;
-  font-size: 16px;
+  font-size: 14.1px;
   color: #2e7d32;
   font-weight: 600;
   letter-spacing: 0.5px;
@@ -271,7 +271,7 @@ const LANDING_CSS = `
 }
 .lp-hero-eyebrow-dot { width: 6px; height: 6px; background: var(--green); border-radius: 50%; }
 .lp-hero-h1 {
-  font-size: 56px;
+  font-size: 32px;
   font-weight: 800;
   color: var(--navy);
   line-height: 1.15;
@@ -280,7 +280,7 @@ const LANDING_CSS = `
 }
 .lp-hero-h1 .accent { color: var(--blue); }
 .lp-hero-sub {
-  font-size: 21px;
+  font-size: 18.5px;
   color: var(--text-2);
   line-height: 1.7;
   margin: 0 0 32px;
@@ -298,7 +298,7 @@ const LANDING_CSS = `
   display: flex;
   align-items: center;
   gap: 14px;
-  font-size: 20px;
+  font-size: 17.6px;
   color: var(--text);
 }
 .lp-step-badge {
@@ -307,7 +307,7 @@ const LANDING_CSS = `
   background: var(--blue);
   color: var(--white);
   border-radius: 50%;
-  font-size: 16px;
+  font-size: 14.1px;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -332,7 +332,7 @@ const LANDING_CSS = `
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 15px;
+  font-size: 13.2px;
   font-weight: 700;
   flex-shrink: 0;
 }
@@ -342,7 +342,7 @@ const LANDING_CSS = `
 .lp-av-c { background: #ef9a9a; color: #b71c1c; }
 .lp-av-d { background: #ce93d8; color: #4a148c; }
 .lp-av-e { background: #90caf9; color: #0d47a1; }
-.lp-cluster-text { font-size: 17px; color: var(--text-2); line-height: 1.5; }
+.lp-cluster-text { font-size: 15px; color: var(--text-2); line-height: 1.5; }
 .lp-cluster-text strong { color: var(--text); }
 
 /* Hero CTA */
@@ -352,7 +352,7 @@ const LANDING_CSS = `
   background: var(--blue);
   color: var(--white);
   padding: 22px 44px;
-  font-size: 21px;
+  font-size: 18.5px;
   border-radius: 12px;
   font-weight: 700;
   border: none;
@@ -369,13 +369,13 @@ const LANDING_CSS = `
 .lp-btn-primary-lg:active { transform: scale(0.98); }
 .lp-hero-microcopy { display: flex; gap: 18px; flex-wrap: wrap; }
 .lp-hero-microcopy span {
-  font-size: 16px;
+  font-size: 14.1px;
   color: var(--text-2);
   display: flex;
   align-items: center;
   gap: 6px;
 }
-.lp-hero-microcopy .check { color: var(--green); font-size: 17px; }
+.lp-hero-microcopy .check { color: var(--green); font-size: 15px; }
 
 /* ─── UGC VIDEO ─── */
 .lp-ugc-wrap {
@@ -432,7 +432,7 @@ const LANDING_CSS = `
   border-radius: 50%;
   background: var(--blue);
   color: #fff;
-  font-size: 13px;
+  font-size: 11.4px;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -440,8 +440,8 @@ const LANDING_CSS = `
   border: 1.5px solid rgba(255,255,255,0.4);
   flex-shrink: 0;
 }
-.lp-ugc-username { font-size: 12px; font-weight: 700; color: #fff; }
-.lp-ugc-dest-tag { font-size: 11px; color: rgba(255,255,255,0.75); margin-top: 1px; }
+.lp-ugc-username { font-size: 10.6px; font-weight: 700; color: #fff; }
+.lp-ugc-dest-tag { font-size: 9.7px; color: rgba(255,255,255,0.75); margin-top: 1px; }
 .lp-mute-toggle {
   position: absolute;
   top: 20px;
@@ -453,7 +453,7 @@ const LANDING_CSS = `
   background: rgba(0,0,0,0.5);
   border: 1px solid rgba(255,255,255,0.25);
   color: #fff;
-  font-size: 16px;
+  font-size: 14.1px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -475,7 +475,7 @@ const LANDING_CSS = `
   border: 1px solid var(--border);
   border-radius: 100px;
   padding: 7px 14px;
-  font-size: 12px;
+  font-size: 10.6px;
   font-weight: 600;
   color: var(--text);
   box-shadow: 0 2px 10px rgba(0,0,0,0.08);
@@ -498,9 +498,9 @@ const LANDING_CSS = `
   flex-wrap: wrap;
   gap: 8px;
 }
-.lp-users-strip-header h2 { font-size: 28px; font-weight: 700; color: var(--text); margin: 0; }
+.lp-users-strip-header h2 { font-size: 24.6px; font-weight: 700; color: var(--text); margin: 0; }
 .lp-see-all {
-  font-size: 16px;
+  font-size: 14.1px;
   color: var(--blue);
   font-weight: 600;
   text-decoration: none;
@@ -535,17 +535,17 @@ const LANDING_CSS = `
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
+  font-size: 21.1px;
   font-weight: 700;
   margin-bottom: 12px;
 }
-.lp-uc-name { font-size: 18px; font-weight: 600; color: var(--text); margin: 0; }
-.lp-uc-dest { font-size: 15px; color: var(--text-2); margin: 3px 0 0; }
+.lp-uc-name { font-size: 15.8px; font-weight: 600; color: var(--text); margin: 0; }
+.lp-uc-dest { font-size: 13.2px; color: var(--text-2); margin: 3px 0 0; }
 .lp-uc-active {
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 14px;
+  font-size: 12.3px;
   color: var(--green);
   font-weight: 500;
   margin-top: 10px;
@@ -561,13 +561,13 @@ const LANDING_CSS = `
   cursor: pointer;
 }
 .lp-uc-more:hover { background: var(--blue-light); border-color: var(--blue-mid); }
-.lp-uc-more-count { font-size: 28px; font-weight: 800; color: var(--blue); margin: 0; }
-.lp-uc-more-label { font-size: 14px; color: var(--text-2); text-align: center; line-height: 1.4; margin: 0; }
+.lp-uc-more-count { font-size: 24.6px; font-weight: 800; color: var(--blue); margin: 0; }
+.lp-uc-more-label { font-size: 12.3px; color: var(--text-2); text-align: center; line-height: 1.4; margin: 0; }
 
 /* ─── TESTIMONIAL ─── */
 .lp-testimonial-section { padding: 64px 0; background: var(--bg-gray); text-align: center; }
 .lp-section-eyebrow {
-  font-size: 15px;
+  font-size: 13.2px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1.5px;
@@ -575,7 +575,7 @@ const LANDING_CSS = `
   margin: 0 0 10px;
 }
 .lp-section-h2 {
-  font-size: 40px;
+  font-size: 35.2px;
   font-weight: 800;
   color: var(--text);
   margin: 0 0 14px;
@@ -593,9 +593,9 @@ const LANDING_CSS = `
   box-shadow: 0 4px 24px rgba(0,0,0,0.06);
   text-align: left;
 }
-.lp-test-stars { color: #f9a825; font-size: 28px; margin: 0 0 16px; letter-spacing: 4px; }
+.lp-test-stars { color: #f9a825; font-size: 24.6px; margin: 0 0 16px; letter-spacing: 4px; }
 .lp-test-quote {
-  font-size: 21px;
+  font-size: 18.5px;
   color: var(--text);
   line-height: 1.75;
   font-style: italic;
@@ -612,18 +612,18 @@ const LANDING_CSS = `
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: 20px;
+  font-size: 17.6px;
   flex-shrink: 0;
 }
-.lp-test-name { font-size: 18px; font-weight: 700; color: var(--text); margin: 0; }
-.lp-test-meta { font-size: 15px; color: var(--text-3); margin: 3px 0 0; }
+.lp-test-name { font-size: 15.8px; font-weight: 700; color: var(--text); margin: 0; }
+.lp-test-meta { font-size: 13.2px; color: var(--text-3); margin: 3px 0 0; }
 .lp-verified-badge {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   background: var(--green-light);
   color: #2e7d32;
-  font-size: 14px;
+  font-size: 12.3px;
   font-weight: 600;
   padding: 2px 8px;
   border-radius: 100px;
@@ -651,15 +651,22 @@ const LANDING_CSS = `
   background: var(--blue);
   color: var(--white);
   border-radius: 50%;
-  font-size: 18px;
+  font-size: 15.8px;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0 auto 14px;
 }
-.lp-how-title { font-size: 22px; font-weight: 700; color: var(--text); margin: 0 0 10px; }
-.lp-how-desc { font-size: 18px; color: var(--text-2); line-height: 1.65; margin: 0; }
+.lp-how-title { font-size: 19.4px; font-weight: 700; color: var(--text); margin: 0 0 10px; }
+.lp-how-desc { font-size: 15.8px; color: var(--text-2); line-height: 1.65; margin: 0; }
+.lp-how-intro {
+  font-size: 14.1px;
+  color: #5f6368;
+  max-width: 520px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
 
 /* ─── CTA BLOCK ─── */
 .lp-cta-block {
@@ -668,19 +675,19 @@ const LANDING_CSS = `
   text-align: center;
 }
 .lp-cta-block h2 {
-  font-size: 42px;
+  font-size: 37px;
   font-weight: 800;
   color: var(--white);
   margin: 0 0 14px;
   letter-spacing: -0.3px;
 }
 .lp-cta-block .lp-cta-sub {
-  font-size: 21px;
+  font-size: 18.5px;
   color: #bbdefb;
   margin: 0 0 32px;
 }
 .lp-cta-block .lp-cta-label {
-  font-size: 14px;
+  font-size: 12.3px;
   color: #90caf9;
   font-weight: 700;
   letter-spacing: 1.5px;
@@ -691,7 +698,7 @@ const LANDING_CSS = `
   background: var(--white);
   color: var(--blue);
   padding: 22px 44px;
-  font-size: 21px;
+  font-size: 18.5px;
   border-radius: 12px;
   font-weight: 700;
   border: none;
@@ -709,13 +716,13 @@ const LANDING_CSS = `
   margin-top: 14px;
 }
 .lp-cta-microcopy span {
-  font-size: 16px;
+  font-size: 14.1px;
   color: #bbdefb;
   display: flex;
   align-items: center;
   gap: 5px;
 }
-.lp-cta-microcopy .check { color: #a5d6a7; font-size: 17px; }
+.lp-cta-microcopy .check { color: #a5d6a7; font-size: 15px; }
 
 /* ─── FAQ ─── */
 .lp-faq-section { padding: 64px 0; text-align: center; }
@@ -740,7 +747,7 @@ const LANDING_CSS = `
   justify-content: space-between;
   align-items: center;
   padding: 22px 24px;
-  font-size: 20px;
+  font-size: 17.6px;
   font-weight: 600;
   color: var(--text);
   cursor: pointer;
@@ -765,7 +772,7 @@ const LANDING_CSS = `
 .lp-faq-a {
   display: none;
   padding: 0 24px 22px;
-  font-size: 18px;
+  font-size: 15.8px;
   color: var(--text-2);
   line-height: 1.7;
   border-top: 1px solid var(--border);
@@ -779,7 +786,7 @@ const LANDING_CSS = `
   text-align: center;
 }
 .lp-footer-logo {
-  font-size: 30px;
+  font-size: 26.4px;
   font-weight: 800;
   color: var(--white);
   letter-spacing: -0.3px;
@@ -794,7 +801,7 @@ const LANDING_CSS = `
   margin-bottom: 20px;
 }
 .lp-footer-links button {
-  font-size: 16px;
+  font-size: 14.1px;
   color: #78909c;
   text-decoration: none;
   background: none;
@@ -804,7 +811,7 @@ const LANDING_CSS = `
   padding: 0;
 }
 .lp-footer-links button:hover { color: #b0bec5; }
-.lp-footer-copy { font-size: 15px; color: #455a64; margin: 0; }
+.lp-footer-copy { font-size: 13.2px; color: #455a64; margin: 0; }
 
 /* ─── STICKY BAR ─── */
 .lp-sticky-bar {
@@ -824,7 +831,7 @@ const LANDING_CSS = `
 }
 .lp-sticky-bar span {
   color: #fff;
-  font-size: 18px;
+  font-size: 15.8px;
   font-weight: 600;
 }
 .lp-sticky-bar-btn {
@@ -834,7 +841,7 @@ const LANDING_CSS = `
   padding: 14px 28px;
   border-radius: 8px;
   font-weight: 700;
-  font-size: 17px;
+  font-size: 15px;
   cursor: pointer;
   white-space: nowrap;
   font-family: inherit;
@@ -843,7 +850,7 @@ const LANDING_CSS = `
   background: none;
   border: none;
   color: rgba(255,255,255,0.7);
-  font-size: 20px;
+  font-size: 17.6px;
   cursor: pointer;
   padding: 4px 8px;
   line-height: 1;
@@ -907,6 +914,7 @@ const LANDING_CSS = `
   .lp-how-num { width: 28px; height: 28px; font-size: 13px; }
   .lp-how-title { font-size: 16px; }
   .lp-how-desc { font-size: 14px; }
+  .lp-how-intro { font-size: 8.1px; }
   .lp-cta-block { padding: 48px 0; }
   .lp-cta-block .lp-cta-sub { font-size: 15px; }
   .lp-cta-btn-white { padding: 16px 28px; font-size: 16px; }
@@ -1263,7 +1271,7 @@ export const LandingPage: React.FC = () => {
           <div className="lp-container" style={{ textAlign: 'center' }}>
             <p className="lp-section-eyebrow">How it works</p>
             <h2 className="lp-section-h2">Match in minutes, not months</h2>
-            <p style={{ fontSize: 16, color: '#5f6368', maxWidth: 520, margin: '0 auto', lineHeight: 1.6 }}>
+            <p className="lp-how-intro">
               No algorithm guessing. We match you by destination and dates — the only two things that actually matter for finding a travel companion.
             </p>
             <div className="lp-how-grid">

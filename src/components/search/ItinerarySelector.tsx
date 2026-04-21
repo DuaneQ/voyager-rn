@@ -1,7 +1,7 @@
 /**
  * Itinerary Selector Dropdown Component
  * Displays dropdown for selecting from user's itineraries (AI + manual)
- * Shows "+ Add Itinerary" button for creating new itineraries
+ * Shows "Add/Edit Itinerary" button for creating or editing itineraries
  */
 
 import React from 'react';
@@ -22,7 +22,7 @@ interface ItinerarySelectorProps {
   onSelect: (id: string) => void;
   onAddItinerary: () => void;
   loading?: boolean;
-  /** Hide the "+ Add Itinerary" button (e.g. when WelcomeEmptyState provides the CTA) */
+  /** Hide the "Add/Edit Itinerary" button (e.g. when WelcomeEmptyState provides the CTA) */
   hideAddButton?: boolean;
   /** Optional React node rendered at the trailing edge of the header row */
   rightSlot?: React.ReactNode;
@@ -80,7 +80,7 @@ export const ItinerarySelector: React.FC<ItinerarySelectorProps> = ({
             onPress={onAddItinerary}
             testID="add-itinerary-button"
           >
-            <Text style={styles.addButtonText}>+ Add Itinerary</Text>
+            <Text style={styles.addButtonText}>Add/Edit Itinerary</Text>
           </TouchableOpacity>
         )}
 

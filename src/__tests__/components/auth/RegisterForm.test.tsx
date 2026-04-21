@@ -3,7 +3,7 @@ import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import RegisterForm from '../../../components/auth/forms/RegisterForm';
 
 describe('RegisterForm', () => {
-  const mockOnEmailLink = jest.fn();
+  const mockOnSubmit = jest.fn();
   const mockOnGoogleSignUp = jest.fn();
   const mockOnAppleSignUp = jest.fn();
   const mockOnSignInPress = jest.fn();
@@ -11,36 +11,52 @@ describe('RegisterForm', () => {
   beforeEach(() => jest.clearAllMocks());
 
   const defaultProps = {
-    onEmailLink: mockOnEmailLink,
+    onSubmit: mockOnSubmit,
     onGoogleSignUp: mockOnGoogleSignUp,
     onAppleSignUp: mockOnAppleSignUp,
     onSignInPress: mockOnSignInPress,
     isLoading: false,
   };
 
-  it('renders step 1 elements', () => {
-    const { getByText, getByPlaceholderText, getByTestId, queryByPlaceholderText } = render(
+  it('renders all form fields', () => {
+    const { getByPlaceholderText, getByText, getByTestId } = render(
       <RegisterForm {...defaultProps} />
     );
 
     expect(getByText('Sign up')).toBeTruthy();
+    expect(getByPlaceholderText('Choose a username')).toBeTruthy();
     expect(getByPlaceholderText('your@email.com')).toBeTruthy();
+    expect(getByPlaceholderText('Min 6 characters')).toBeTruthy();
     expect(getByTestId('signup-button')).toBeTruthy();
     expect(getByTestId('google-signup-button')).toBeTruthy();
-    // No username, password, or confirm password fields
-    expect(queryByPlaceholderText('Username')).toBeNull();
-    expect(queryByPlaceholderText('Enter your password')).toBeNull();
-    expect(queryByPlaceholderText('Confirm your password')).toBeNull();
   });
 
-  it('validates email and prevents submit on invalid', async () => {
+  it('validates username and shows error', async () => {
     const { getByPlaceholderText, getByTestId, queryByText } = render(
       <RegisterForm {...defaultProps} />
     );
 
+    const username = getByPlaceholderText('Choose a username');
+    const submit = getByTestId('signup-button');
+
+    fireEvent.changeText(username, 'a');
+    fireEvent.press(submit);
+
+    await waitFor(() => {
+      expect(queryByText('Username must be at least 2 characters')).toBeTruthy();
+    });
+  });
+
+  it('validates email format', async () => {
+    const { getByPlaceholderText, getByTestId, queryByText } = render(
+      <RegisterForm {...defaultProps} />
+    );
+
+    const username = getByPlaceholderText('Choose a username');
     const email = getByPlaceholderText('your@email.com');
     const submit = getByTestId('signup-button');
 
+    fireEvent.changeText(username, 'validuser');
     fireEvent.changeText(email, 'not-an-email');
     fireEvent.press(submit);
 
@@ -48,81 +64,50 @@ describe('RegisterForm', () => {
       expect(queryByText('Please enter a valid email address')).toBeTruthy();
     });
 
-    expect(mockOnEmailLink).not.toHaveBeenCalled();
+    expect(mockOnSubmit).not.toHaveBeenCalled();
   });
 
-  it('sends email link with valid email', async () => {
-    const { getByPlaceholderText, getByTestId } = render(
+  it('validates password length', async () => {
+    const { getByPlaceholderText, getByTestId, queryByText } = render(
       <RegisterForm {...defaultProps} />
     );
 
+    const username = getByPlaceholderText('Choose a username');
     const email = getByPlaceholderText('your@email.com');
+    const password = getByPlaceholderText('Min 6 characters');
     const submit = getByTestId('signup-button');
 
+    fireEvent.changeText(username, 'validuser');
     fireEvent.changeText(email, 'test@example.com');
+    fireEvent.changeText(password, '12345');
     fireEvent.press(submit);
 
     await waitFor(() => {
-      expect(mockOnEmailLink).toHaveBeenCalledWith('test@example.com');
+      expect(queryByText('Password must be at least 6 characters')).toBeTruthy();
     });
+
+    expect(mockOnSubmit).not.toHaveBeenCalled();
   });
 
-  it('shows step 2 after email link sent', async () => {
-    const { getByPlaceholderText, getByTestId, getByText } = render(
-      <RegisterForm {...defaultProps} />
-    );
+  it('submits with valid credentials', async () => {
+    mockOnSubmit.mockResolvedValue(undefined);
 
-    fireEvent.changeText(getByPlaceholderText('your@email.com'), 'test@example.com');
-    fireEvent.press(getByTestId('signup-button'));
-
-    await waitFor(() => {
-      expect(getByText('Check your inbox')).toBeTruthy();
-      expect(getByText('test@example.com')).toBeTruthy();
-      expect(getByTestId('resend-link-button')).toBeTruthy();
-      expect(getByTestId('different-email-button')).toBeTruthy();
-    });
-  });
-
-  it('resends link from step 2', async () => {
     const { getByPlaceholderText, getByTestId } = render(
       <RegisterForm {...defaultProps} />
     );
 
-    // Go to step 2
-    fireEvent.changeText(getByPlaceholderText('your@email.com'), 'test@example.com');
-    fireEvent.press(getByTestId('signup-button'));
+    const username = getByPlaceholderText('Choose a username');
+    const email = getByPlaceholderText('your@email.com');
+    const password = getByPlaceholderText('Min 6 characters');
+    const submit = getByTestId('signup-button');
+
+    fireEvent.changeText(username, 'testuser');
+    fireEvent.changeText(email, 'test@example.com');
+    fireEvent.changeText(password, 'password123');
+    fireEvent.press(submit);
 
     await waitFor(() => {
-      expect(getByTestId('resend-link-button')).toBeTruthy();
-    });
-
-    mockOnEmailLink.mockClear();
-    fireEvent.press(getByTestId('resend-link-button'));
-
-    await waitFor(() => {
-      expect(mockOnEmailLink).toHaveBeenCalledWith('test@example.com');
-    });
-  });
-
-  it('returns to step 1 when "use different email" pressed', async () => {
-    const { getByPlaceholderText, getByTestId, getByText } = render(
-      <RegisterForm {...defaultProps} />
-    );
-
-    // Go to step 2
-    fireEvent.changeText(getByPlaceholderText('your@email.com'), 'test@example.com');
-    fireEvent.press(getByTestId('signup-button'));
-
-    await waitFor(() => {
-      expect(getByText('Check your inbox')).toBeTruthy();
-    });
-
-    // Press "Use different email"
-    fireEvent.press(getByTestId('different-email-button'));
-
-    await waitFor(() => {
-      expect(getByText('Sign up')).toBeTruthy();
-      expect(getByPlaceholderText('your@email.com')).toBeTruthy();
+      expect(mockOnSubmit).toHaveBeenCalledWith('testuser', 'test@example.com', 'password123');
     });
   });
 
@@ -140,42 +125,33 @@ describe('RegisterForm', () => {
     expect(mockOnSignInPress).toHaveBeenCalled();
   });
 
-  it('disables email input when loading', () => {
-    const { getByPlaceholderText } = render(<RegisterForm {...defaultProps} isLoading={true} />);
+  it('disables inputs when loading', () => {
+    const { getByPlaceholderText } = render(
+      <RegisterForm {...defaultProps} isLoading={true} />
+    );
+
+    const username = getByPlaceholderText('Choose a username');
     const email = getByPlaceholderText('your@email.com');
+    const password = getByPlaceholderText('Min 6 characters');
+
+    expect(username.props.editable).toBe(false);
     expect(email.props.editable).toBe(false);
+    expect(password.props.editable).toBe(false);
   });
 
-  it('clears email error when input becomes empty', async () => {
-    const { getByPlaceholderText, queryByText } = render(<RegisterForm {...defaultProps} />);
-    const email = getByPlaceholderText('your@email.com');
+  it('toggles password visibility', () => {
+    const { getByPlaceholderText, getByTestId } = render(
+      <RegisterForm {...defaultProps} />
+    );
 
-    // Set invalid email to trigger error
-    fireEvent.changeText(email, 'not-an-email');
-    await waitFor(() => {
-      expect(queryByText('Please enter a valid email address')).toBeTruthy();
-    });
+    const password = getByPlaceholderText('Min 6 characters');
+    const toggle = getByTestId('toggle-password-visibility');
 
-    // Clear email - error should disappear
-    fireEvent.changeText(email, '');
-    await waitFor(() => {
-      expect(queryByText('Please enter a valid email address')).toBeNull();
-    });
-  });
+    expect(password.props.secureTextEntry).toBe(true);
 
-  it('prevents submit when email is empty', async () => {
-    const { getByTestId } = render(<RegisterForm {...defaultProps} />);
-    const submit = getByTestId('signup-button');
+    fireEvent.press(toggle);
 
-    fireEvent.press(submit);
-
-    await waitFor(() => {
-      expect(mockOnEmailLink).not.toHaveBeenCalled();
-    });
-  });
-
-  it('shows trust microcopy', () => {
-    const { getByText } = render(<RegisterForm {...defaultProps} />);
-    expect(getByText('Free forever · No card required · Just your email')).toBeTruthy();
+    expect(getByPlaceholderText('Min 6 characters').props.secureTextEntry).toBe(false);
   });
 });
+

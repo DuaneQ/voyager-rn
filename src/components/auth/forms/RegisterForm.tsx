@@ -1,54 +1,50 @@
 /**
- * RegisterForm Component (Multi-Step Passwordless)
+ * RegisterForm Component
  * 
- * Redesigned for conversion optimization:
- * - Step 1: Email input + Google/Apple social buttons (no password, no username)
- * - Step 2: "Check your inbox" verification pending screen
+ * Email + password registration form with Google/Apple social sign-up options.
+ * Collects username, email, and password. Sends a verification email after sign-up.
  * 
  * Follows S.O.L.I.D principles:
- * - Single Responsibility: Handles only registration form UI and step transitions
- * - Open/Closed: Steps can be extended through composition
+ * - Single Responsibility: Handles only registration form UI
  * - Dependency Inversion: Depends on callbacks, not concrete implementations
  */
 
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import GoogleIcon from '../../icons/GoogleIcon';
 import AppleSignInButton from '../buttons/AppleSignInButton';
-import StepIndicator from '../StepIndicator';
 import { analyticsService } from '../../../services/analytics/AnalyticsService';
 import styles from './authFormStyles';
 
 interface RegisterFormProps {
-  onEmailLink: (email: string) => Promise<void>;
+  onSubmit: (username: string, email: string, password: string) => Promise<void>;
   onGoogleSignUp: () => void;
   onAppleSignUp: () => void;
   onSignInPress: () => void;
   isLoading?: boolean;
-  /** Suppress analytics (e.g. when rendered as a loading placeholder) */
-  suppressAnalytics?: boolean;
 }
 
 const RegisterForm: React.FC<RegisterFormProps> = ({
-  onEmailLink,
+  onSubmit,
   onGoogleSignUp,
   onAppleSignUp,
   onSignInPress,
   isLoading = false,
-  suppressAnalytics = false,
 }) => {
-  const [step, setStep] = useState<1 | 2>(1);
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [usernameError, setUsernameError] = useState(false);
   const [emailError, setEmailError] = useState(false);
-
-  // Track signup_start on first render (skip for non-signup contexts)
-  useEffect(() => {
-    if (!suppressAnalytics) {
-      analyticsService.logEvent('signup_start', { method: 'email_link' });
-    }
-  }, [suppressAnalytics]);
+  const [passwordError, setPasswordError] = useState(false);
 
   const validateEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+
+  const handleUsernameChange = (value: string) => {
+    setUsername(value);
+    setUsernameError(value.length > 0 && value.trim().length < 2);
+  };
 
   const handleEmailChange = (value: string) => {
     setEmail(value);
@@ -59,91 +55,49 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
     setEmailError(!validateEmail(value));
   };
 
-  const handleSendLink = async () => {
-    if (!email || !validateEmail(email)) {
-      setEmailError(true);
-      return;
-    }
-    analyticsService.logEvent('signup_email_entered', { step: 1 });
-    await onEmailLink(email);
-    analyticsService.logEvent('signup_verification_sent', { step: 2 });
-    setStep(2);
+  const handlePasswordChange = (value: string) => {
+    setPassword(value);
+    setPasswordError(value.length > 0 && value.length < 6);
   };
 
-  const handleResend = async () => {
-    await onEmailLink(email);
+  const handleSubmit = async () => {
+    const isUsernameValid = username.trim().length >= 2;
+    const isEmailValid = validateEmail(email);
+    const isPasswordValid = password.length >= 6;
+
+    if (!isUsernameValid) { setUsernameError(true); return; }
+    if (!isEmailValid) { setEmailError(true); return; }
+    if (!isPasswordValid) { setPasswordError(true); return; }
+
+    analyticsService.logEvent('signup_start', { method: 'email' });
+    await onSubmit(username.trim(), email, password);
   };
-
-  const handleUseDifferentEmail = () => {
-    setStep(1);
-  };
-
-  if (step === 2) {
-    return (
-      <View>
-        <StepIndicator currentStep={2} totalSteps={2} />
-        <Text style={styles.title}>Check your inbox</Text>
-        <Text style={registerStyles.verifyDescription}>
-          We sent a sign-in link to{'\n'}
-          <Text style={registerStyles.emailHighlight}>{email}</Text>
-        </Text>
-        <Text style={registerStyles.verifyHint}>
-          Click the link in your email to sign in. Check your spam folder if you don't see it.
-        </Text>
-
-        <TouchableOpacity
-          testID="resend-link-button"
-          style={[styles.button, styles.primaryButton, isLoading && styles.buttonDisabled]}
-          onPress={handleResend}
-          disabled={isLoading}
-        >
-          <Text style={styles.buttonText}>
-            {isLoading ? 'SENDING...' : 'RESEND LINK'}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          testID="different-email-button"
-          style={registerStyles.secondaryAction}
-          onPress={handleUseDifferentEmail}
-          disabled={isLoading}
-        >
-          <Text style={registerStyles.secondaryActionText}>Use a different email</Text>
-        </TouchableOpacity>
-
-        <View style={styles.dividerContainer}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>or</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        <View style={styles.signinContainer}>
-          <Text style={styles.signinText}>Already have an account? </Text>
-          <TouchableOpacity
-            testID="signin-link"
-            onPress={onSignInPress}
-            disabled={isLoading}
-          >
-            <Text style={styles.signinLink}>Sign in</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
 
   return (
     <View>
-      <StepIndicator currentStep={1} totalSteps={2} />
-
-      {/* Header */}
       <Text style={styles.title}>Sign up</Text>
-      <Text style={registerStyles.subtitle}>
-        Free forever · No card required · Just your email
-      </Text>
 
-      {/* Email Input */}
+      {/* Username */}
       <View style={styles.inputContainer}>
-        <Text style={styles.label}>Email</Text>
+        <Text style={styles.label}>Username *</Text>
+        <TextInput
+          testID="register-username-input"
+          style={[styles.input, usernameError && styles.inputError]}
+          value={username}
+          onChangeText={handleUsernameChange}
+          autoCapitalize="none"
+          placeholder="Choose a username"
+          placeholderTextColor="#999"
+          editable={!isLoading}
+        />
+        {usernameError && (
+          <Text style={styles.errorText}>Username must be at least 2 characters</Text>
+        )}
+      </View>
+
+      {/* Email */}
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>Email *</Text>
         <TextInput
           testID="register-email-input"
           style={[styles.input, emailError && styles.inputError]}
@@ -160,15 +114,43 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
         )}
       </View>
 
-      {/* Continue with Email Button */}
+      {/* Password */}
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>Password *</Text>
+        <View style={styles.passwordRow}>
+          <TextInput
+            testID="register-password-input"
+            style={[styles.input, passwordError && styles.inputError, styles.passwordInput]}
+            value={password}
+            onChangeText={handlePasswordChange}
+            secureTextEntry={!showPassword}
+            placeholder="Min 6 characters"
+            placeholderTextColor="#999"
+            editable={!isLoading}
+          />
+          <TouchableOpacity
+            testID="toggle-password-visibility"
+            style={styles.passwordToggle}
+            onPress={() => setShowPassword(prev => !prev)}
+            disabled={isLoading}
+          >
+            <Text style={styles.passwordToggleText}>{showPassword ? 'Hide' : 'Show'}</Text>
+          </TouchableOpacity>
+        </View>
+        {passwordError && (
+          <Text style={styles.errorText}>Password must be at least 6 characters</Text>
+        )}
+      </View>
+
+      {/* Submit */}
       <TouchableOpacity
         testID="signup-button"
         style={[styles.button, styles.primaryButton, isLoading && styles.buttonDisabled]}
-        onPress={handleSendLink}
+        onPress={handleSubmit}
         disabled={isLoading}
       >
         <Text style={styles.buttonText}>
-          {isLoading ? 'SENDING...' : 'CONTINUE WITH EMAIL'}
+          {isLoading ? 'CREATING ACCOUNT...' : 'CREATE ACCOUNT'}
         </Text>
       </TouchableOpacity>
 
@@ -221,41 +203,5 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
   );
 };
 
-const registerStyles = StyleSheet.create({
-  subtitle: {
-    fontSize: 13,
-    color: '#666',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  verifyDescription: {
-    fontSize: 15,
-    color: '#333',
-    textAlign: 'center',
-    marginBottom: 12,
-    lineHeight: 22,
-  },
-  emailHighlight: {
-    fontWeight: '600',
-    color: '#1976d2',
-  },
-  verifyHint: {
-    fontSize: 13,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 20,
-    lineHeight: 18,
-  },
-  secondaryAction: {
-    alignItems: 'center',
-    marginTop: 12,
-    paddingVertical: 8,
-  },
-  secondaryActionText: {
-    color: '#1976d2',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-});
-
 export default RegisterForm;
+
