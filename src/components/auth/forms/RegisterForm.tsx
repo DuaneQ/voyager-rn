@@ -80,31 +80,16 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
   };
 
   const handleSubmit = async () => {
-    if (!inputs.email || !inputs.username || !inputs.password || !inputs.confirm) {
-      return;
-    }
+    const nextErrors = {
+      username: !validateUsername(inputs.username),
+      email: !validateEmail(inputs.email),
+      password: !validatePassword(inputs.password),
+      confirm: !validatePasswordConfirm(inputs.confirm),
+    };
 
-    if (inputs.password !== inputs.confirm) {
-      setErrors(prev => ({ ...prev, confirm: true }));
-      return;
-    }
+    setErrors(nextErrors);
 
-    if (!validateUsername(inputs.username)) {
-      setErrors(prev => ({ ...prev, username: true }));
-      return;
-    }
-
-    if (!validateEmail(inputs.email)) {
-      setErrors(prev => ({ ...prev, email: true }));
-      return;
-    }
-
-    if (!validatePassword(inputs.password)) {
-      setErrors(prev => ({ ...prev, password: true }));
-      return;
-    }
-
-    if (errors.username || errors.email || errors.password || errors.confirm) {
+    if (nextErrors.username || nextErrors.email || nextErrors.password || nextErrors.confirm) {
       return;
     }
 

@@ -1,7 +1,7 @@
 /**
  * AddItineraryTooltip
  * Coach-mark tooltip shown once on first visit, pointing up at the
- * "Add/Edit Itinerary" button. Dismissed on tap or after 6 seconds.
+ * "Add/Edit Itinerary" button. Dismissed on tap or after 10 seconds.
  * Shown state is persisted in AsyncStorage so it only ever shows once.
  */
 

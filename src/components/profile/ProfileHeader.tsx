@@ -29,6 +29,7 @@ interface ProfileHeaderProps {
   location?: string;
   profileCompleteness: number;
   isPremium?: boolean;
+  missingFields?: string[];
   onEditPress: () => void;
   onPhotoPress?: () => void | Promise<void>; // Optional - triggers photo change
   onPhotoDelete?: () => void; // Optional - triggers photo delete
@@ -45,6 +46,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   location,
   profileCompleteness,
   isPremium = false,
+  missingFields = [],
   onEditPress,
   onPhotoPress,
   onPhotoDelete,
@@ -203,6 +205,11 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
             {profileCompleteness}% {getCompletenessLabel()}
           </Text>
         </View>
+        {profileCompleteness < 80 && missingFields.length > 0 && (
+          <Text style={styles.missingFieldsText}>
+            Missing: {missingFields.join(', ')}
+          </Text>
+        )}
       </View>
 
       {/* Premium Membership Badge */}
@@ -390,6 +397,7 @@ const styles = StyleSheet.create({
   },
   completenessContainer: {
     marginBottom: 16,
+    alignItems: 'center',
   },
   completenessBadge: {
     flexDirection: 'row',
@@ -403,6 +411,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     marginLeft: 4,
+  },
+  missingFieldsText: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 8,
+    textAlign: 'center',
+    maxWidth: 320,
   },
   premiumContainer: {
     marginBottom: 12,

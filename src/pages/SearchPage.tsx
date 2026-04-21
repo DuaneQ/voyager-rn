@@ -69,7 +69,6 @@ import { NoMatchesSuggestion } from '../components/search/NoMatchesSuggestion';
 import { AddItineraryTooltip } from '../components/search/AddItineraryTooltip';
 import { SelectItineraryTooltip } from '../components/search/SelectItineraryTooltip';
 import { EditProfileModal, ProfileData } from '../components/profile/EditProfileModal';
-import { getProfileCompletion } from '../utils/profileCompletion';
 import { analyticsService } from '../services/analytics/AnalyticsService';
 import * as storage from '../utils/storage';
 
@@ -343,7 +342,8 @@ const SearchPage: React.FC = () => {
     // Check profile completion before opening modal
     if (!userProfile?.dob || !userProfile?.gender) {
       analyticsService.logEvent('onboard_profile_nudge_shown');
-      setProfileModalVisible(true);
+      showAlert('info', 'Just this once — we need your date of birth & gender to match you with the right travelers.');
+      setTimeout(() => setProfileModalVisible(true), 800);
       return;
     }
     analyticsService.logEvent('onboard_first_itinerary_start');
@@ -616,15 +616,12 @@ const SearchPage: React.FC = () => {
                 showsVerticalScrollIndicator={false}
               >
                 {(() => {
-                  const completion = getProfileCompletion(userProfile);
                   return (
                     <WelcomeEmptyState
                       username={userProfile?.username}
                       onAddItinerary={handleAddItinerary}
                       destinations={popularDestinations}
                       destinationsLoading={popularLoading}
-                      profileCompletion={completion.completion}
-                      missingFields={completion.missingFields}
                     />
                   );
                 })()}
@@ -680,7 +677,7 @@ const SearchPage: React.FC = () => {
               /* User has itineraries but hasn't selected one yet */
               <View style={styles.centerContent}>
                 <Text style={styles.emptyText}>
-                  Select an itinerary above to find travel companions
+                  Select an itinerary above to find Traval companions
                 </Text>
               </View>
             )}

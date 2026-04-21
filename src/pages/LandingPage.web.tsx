@@ -914,7 +914,7 @@ const LANDING_CSS = `
   .lp-how-num { width: 28px; height: 28px; font-size: 13px; }
   .lp-how-title { font-size: 16px; }
   .lp-how-desc { font-size: 14px; }
-  .lp-how-intro { font-size: 8.1px; }
+  .lp-how-intro { font-size: 12px; }
   .lp-cta-block { padding: 48px 0; }
   .lp-cta-block .lp-cta-sub { font-size: 15px; }
   .lp-cta-btn-white { padding: 16px 28px; font-size: 16px; }

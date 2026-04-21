@@ -32,6 +32,7 @@ import { ContactDiscoveryRepository } from '../repositories/contacts/ContactDisc
 import { MatchedContact, UnmatchedContact } from '../services/contacts/types';
 import { ContactToInvite } from '../components/contacts/InviteContactCard';
 import type { PhotoSlot } from '../types/Photo';
+import { getProfileCompletion } from '../utils/profileCompletion';
 
 // Platform-specific route param handling
 let useRouteParams: () => { openEditModal?: boolean; incompleteProfile?: boolean; missingFields?: string[] };
@@ -166,45 +167,8 @@ const ProfilePage: React.FC = () => {
   // Profile completion is now only enforced when creating itineraries
   // Users can explore the app without being forced to complete their profile
 
-  // Calculate profile completeness based on PWA fields
-  const calculateCompleteness = (): number => {
-    if (!userProfile) return 0;
-    
-    let score = 0;
-    const weights = {
-      username: 15,
-      bio: 10,
-      dob: 15,
-      gender: 15,
-      sexualOrientation: 15,
-      status: 15,
-      photoURL: 15,
-    };
-
-    // Check for non-empty string values (trim to handle whitespace)
-    const usernameCheck = userProfile.username?.trim();
-    if (usernameCheck) score += weights.username;
-    
-    const bioCheck = userProfile.bio?.trim();
-    if (bioCheck) score += weights.bio;
-    
-    const dobCheck = userProfile.dob?.trim();
-    if (dobCheck) score += weights.dob;
-    
-    const genderCheck = userProfile.gender?.trim();
-    if (genderCheck) score += weights.gender;
-    
-    const orientationCheck = userProfile.sexualOrientation?.trim();
-    if (orientationCheck) score += weights.sexualOrientation;
-    
-    const statusCheck = userProfile.status?.trim();
-    if (statusCheck) score += weights.status;
-    
-    const photoCheck = userProfile.photoURL || userProfile.photos?.profile;
-    if (photoCheck) score += weights.photoURL;
-    
-    return score;
-  };
+  // Use shared utility — single source of truth
+  const profileCompletion = getProfileCompletion(userProfile ?? null);
 
   const handleEditProfile = () => {
     setEditModalVisible(true);
@@ -631,7 +595,8 @@ const ProfilePage: React.FC = () => {
                   .join(', ')
               : undefined
           }
-          profileCompleteness={calculateCompleteness()}
+          profileCompleteness={profileCompletion.percentage}
+          missingFields={profileCompletion.missingFields}
           isPremium={isPremium}
           onEditPress={handleEditProfile}
           onPhotoPress={handleChangeProfilePhoto}

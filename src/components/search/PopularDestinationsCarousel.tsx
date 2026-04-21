@@ -85,6 +85,7 @@ export const PopularDestinationsCarousel: React.FC<PopularDestinationsCarouselPr
 
   const current = destinations[index];
   const isInteractive = typeof onDestinationPress === 'function';
+  const cardAccessibilityLabel = `${current.destination}, ${current.count} traveler${current.count !== 1 ? 's' : ''} planning to visit. Slide ${index + 1} of ${destinations.length}.`;
 
   const cardContent = (
     <Animated.View
@@ -113,12 +114,18 @@ export const PopularDestinationsCarousel: React.FC<PopularDestinationsCarouselPr
           activeOpacity={0.8}
           onPress={() => onDestinationPress(current.destination)}
           accessibilityRole="button"
-          accessibilityLabel={`${current.destination}, ${current.count} traveler${current.count !== 1 ? 's' : ''} planning to visit. Slide ${index + 1} of ${destinations.length}.`}
+          accessibilityLabel={cardAccessibilityLabel}
         >
           {cardContent}
         </TouchableOpacity>
       ) : (
-        <View testID="destination-card">{cardContent}</View>
+        <View
+          testID="destination-card"
+          accessible
+          accessibilityLabel={cardAccessibilityLabel}
+        >
+          {cardContent}
+        </View>
       )}
 
       {/* Dot indicators */}

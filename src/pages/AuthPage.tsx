@@ -48,7 +48,7 @@ const getInitialMode = (): AuthMode => {
 };
 
 const AuthPage: React.FC = () => {
-  const width = Dimensions.get('window').width;
+  const [width, setWidth] = useState(() => Dimensions.get('window').width);
   const [mode, setMode] = useState<AuthMode>(getInitialMode);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -56,6 +56,18 @@ const AuthPage: React.FC = () => {
   const { showAlert } = useAlert();
 
   const isLargeWebDevice = Platform.OS === 'web' && width >= 1200;
+  
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setWidth(window.width);
+    });
+
+    return () => {
+      if (subscription && typeof subscription.remove === 'function') {
+        subscription.remove();
+      }
+    };
+  }, []);
   
   const isLoading = status === 'loading' || isSubmitting;
 
@@ -351,7 +363,8 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   cardLargeWeb: {
-    transform: [{ scale: 2 }],
+    maxWidth: 720,
+    padding: 32,
   },
 });
 

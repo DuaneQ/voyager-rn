@@ -183,6 +183,9 @@ describe('PopularDestinationsCarousel', () => {
     );
     const card = getByTestId('destination-card');
     expect(card.props.accessibilityRole).not.toBe('button');
+    expect(card.props.accessibilityLabel).toMatch('Paris, France');
+    expect(card.props.accessibilityLabel).toMatch('5 travelers');
+    expect(card.props.accessibilityLabel).toMatch('Slide 1 of 1');
   });
 
   // ── Accessibility ─────────────────────────────────────────────────────────

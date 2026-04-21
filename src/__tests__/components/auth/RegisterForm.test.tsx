@@ -32,6 +32,23 @@ describe('RegisterForm', () => {
     expect(getByTestId('google-signup-button')).toBeTruthy();
   });
 
+  it('shows validation errors when submit is pressed with empty required fields', async () => {
+    const { getByTestId, queryByText } = render(
+      <RegisterForm {...defaultProps} />
+    );
+
+    fireEvent.press(getByTestId('signup-button'));
+
+    await waitFor(() => {
+      expect(queryByText('Username must be at least 2 characters')).toBeTruthy();
+      expect(queryByText('Please enter a valid email address')).toBeTruthy();
+      expect(queryByText('Password must be at least 10 characters')).toBeTruthy();
+      expect(queryByText('Passwords do not match')).toBeTruthy();
+    });
+
+    expect(mockOnSubmit).not.toHaveBeenCalled();
+  });
+
   it('validates username and shows error', async () => {
     const { getByPlaceholderText, getByTestId, queryByText } = render(
       <RegisterForm {...defaultProps} />
