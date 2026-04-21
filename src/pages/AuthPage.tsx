@@ -21,6 +21,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ImageBackground,
+  Dimensions,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
@@ -47,11 +48,14 @@ const getInitialMode = (): AuthMode => {
 };
 
 const AuthPage: React.FC = () => {
+  const width = Dimensions.get('window').width;
   const [mode, setMode] = useState<AuthMode>(getInitialMode);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const { signIn, signUp, sendPasswordReset, resendVerification, status, signInWithGoogle, signUpWithGoogle, signInWithApple, signUpWithApple } = useAuth();
   const { showAlert } = useAlert();
+
+  const isLargeWebDevice = Platform.OS === 'web' && width >= 1200;
   
   const isLoading = status === 'loading' || isSubmitting;
 
@@ -301,7 +305,7 @@ const AuthPage: React.FC = () => {
             contentContainerStyle={styles.scrollContainer}
             keyboardShouldPersistTaps="handled"
           >
-            <View style={styles.card}>
+            <View style={[styles.card, isLargeWebDevice && styles.cardLargeWeb]}>
               {renderForm()}
             </View>
           </ScrollView>
@@ -345,6 +349,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 12,
     elevation: 8,
+  },
+  cardLargeWeb: {
+    transform: [{ scale: 2 }],
   },
 });
 

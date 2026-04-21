@@ -31,46 +31,85 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
   onSignInPress,
   isLoading = false,
 }) => {
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [inputs, setInputs] = useState({
+    username: '',
+    email: '',
+    password: '',
+    confirm: '',
+  });
+
+  const [errors, setErrors] = useState({
+    username: false,
+    email: false,
+    password: false,
+    confirm: false,
+  });
   const [showPassword, setShowPassword] = useState(false);
-  const [usernameError, setUsernameError] = useState(false);
-  const [emailError, setEmailError] = useState(false);
-  const [passwordError, setPasswordError] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const validateEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+  const validateUsername = (value: string) => value.trim().length >= 2;
+  const validatePassword = (value: string) => value.length >= 10;
+  const validatePasswordConfirm = (value: string) => value === inputs.password && value.length >= 10;
 
-  const handleUsernameChange = (value: string) => {
-    setUsername(value);
-    setUsernameError(value.length > 0 && value.trim().length < 2);
-  };
+  const handleInputChange = (name: keyof typeof inputs, value: string) => {
+    setInputs(prev => ({ ...prev, [name]: value }));
 
-  const handleEmailChange = (value: string) => {
-    setEmail(value);
     if (value.length === 0) {
-      setEmailError(false);
+      setErrors(prev => ({ ...prev, [name]: false }));
       return;
     }
-    setEmailError(!validateEmail(value));
-  };
 
-  const handlePasswordChange = (value: string) => {
-    setPassword(value);
-    setPasswordError(value.length > 0 && value.length < 6);
+    switch (name) {
+      case 'username':
+        setErrors(prev => ({ ...prev, username: !validateUsername(value) }));
+        break;
+      case 'email':
+        setErrors(prev => ({ ...prev, email: !validateEmail(value) }));
+        break;
+      case 'password':
+        setErrors(prev => ({ ...prev, password: !validatePassword(value) }));
+        if (inputs.confirm.length > 0) {
+          setErrors(prev => ({ ...prev, confirm: value !== inputs.confirm }));
+        }
+        break;
+      case 'confirm':
+        setErrors(prev => ({ ...prev, confirm: !validatePasswordConfirm(value) }));
+        break;
+    }
   };
 
   const handleSubmit = async () => {
-    const isUsernameValid = username.trim().length >= 2;
-    const isEmailValid = validateEmail(email);
-    const isPasswordValid = password.length >= 6;
+    if (!inputs.email || !inputs.username || !inputs.password || !inputs.confirm) {
+      return;
+    }
 
-    if (!isUsernameValid) { setUsernameError(true); return; }
-    if (!isEmailValid) { setEmailError(true); return; }
-    if (!isPasswordValid) { setPasswordError(true); return; }
+    if (inputs.password !== inputs.confirm) {
+      setErrors(prev => ({ ...prev, confirm: true }));
+      return;
+    }
+
+    if (!validateUsername(inputs.username)) {
+      setErrors(prev => ({ ...prev, username: true }));
+      return;
+    }
+
+    if (!validateEmail(inputs.email)) {
+      setErrors(prev => ({ ...prev, email: true }));
+      return;
+    }
+
+    if (!validatePassword(inputs.password)) {
+      setErrors(prev => ({ ...prev, password: true }));
+      return;
+    }
+
+    if (errors.username || errors.email || errors.password || errors.confirm) {
+      return;
+    }
 
     analyticsService.logEvent('signup_start', { method: 'email' });
-    await onSubmit(username.trim(), email, password);
+    await onSubmit(inputs.username.trim(), inputs.email, inputs.password);
   };
 
   return (
@@ -82,15 +121,15 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
         <Text style={styles.label}>Username *</Text>
         <TextInput
           testID="register-username-input"
-          style={[styles.input, usernameError && styles.inputError]}
-          value={username}
-          onChangeText={handleUsernameChange}
+          style={[styles.input, errors.username && styles.inputError]}
+          value={inputs.username}
+          onChangeText={(value) => handleInputChange('username', value)}
           autoCapitalize="none"
           placeholder="Choose a username"
           placeholderTextColor="#999"
           editable={!isLoading}
         />
-        {usernameError && (
+        {errors.username && (
           <Text style={styles.errorText}>Username must be at least 2 characters</Text>
         )}
       </View>
@@ -100,16 +139,16 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
         <Text style={styles.label}>Email *</Text>
         <TextInput
           testID="register-email-input"
-          style={[styles.input, emailError && styles.inputError]}
-          value={email}
-          onChangeText={handleEmailChange}
+          style={[styles.input, errors.email && styles.inputError]}
+          value={inputs.email}
+          onChangeText={(value) => handleInputChange('email', value)}
           keyboardType="email-address"
           autoCapitalize="none"
           placeholder="your@email.com"
           placeholderTextColor="#999"
           editable={!isLoading}
         />
-        {emailError && (
+        {errors.email && (
           <Text style={styles.errorText}>Please enter a valid email address</Text>
         )}
       </View>
@@ -120,11 +159,11 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
         <View style={styles.passwordRow}>
           <TextInput
             testID="register-password-input"
-            style={[styles.input, passwordError && styles.inputError, styles.passwordInput]}
-            value={password}
-            onChangeText={handlePasswordChange}
+            style={[styles.input, errors.password && styles.inputError, styles.passwordInput]}
+            value={inputs.password}
+            onChangeText={(value) => handleInputChange('password', value)}
             secureTextEntry={!showPassword}
-            placeholder="Min 6 characters"
+            placeholder="Min 10 characters"
             placeholderTextColor="#999"
             editable={!isLoading}
           />
@@ -137,8 +176,36 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
             <Text style={styles.passwordToggleText}>{showPassword ? 'Hide' : 'Show'}</Text>
           </TouchableOpacity>
         </View>
-        {passwordError && (
-          <Text style={styles.errorText}>Password must be at least 6 characters</Text>
+        {errors.password && (
+          <Text style={styles.errorText}>Password must be at least 10 characters</Text>
+        )}
+      </View>
+
+      {/* Confirm Password */}
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>Confirm Password *</Text>
+        <View style={styles.passwordRow}>
+          <TextInput
+            testID="register-confirm-password-input"
+            style={[styles.input, errors.confirm && styles.inputError, styles.passwordInput]}
+            value={inputs.confirm}
+            onChangeText={(value) => handleInputChange('confirm', value)}
+            secureTextEntry={!showConfirm}
+            placeholder="Confirm your password"
+            placeholderTextColor="#999"
+            editable={!isLoading}
+          />
+          <TouchableOpacity
+            testID="toggle-confirm-visibility"
+            style={styles.passwordToggle}
+            onPress={() => setShowConfirm(prev => !prev)}
+            disabled={isLoading}
+          >
+            <Text style={styles.passwordToggleText}>{showConfirm ? 'Hide' : 'Show'}</Text>
+          </TouchableOpacity>
+        </View>
+        {errors.confirm && (
+          <Text style={styles.errorText}>Passwords do not match</Text>
         )}
       </View>
 
