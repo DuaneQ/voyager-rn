@@ -177,11 +177,15 @@ describe('PopularDestinationsCarousel', () => {
     expect(onPress).toHaveBeenCalledWith('Paris, France');
   });
 
-  it('does not throw when tapped without onDestinationPress provided', () => {
+  it('renders a non-button card when onDestinationPress is not provided', () => {
     const { getByTestId } = render(
       <PopularDestinationsCarousel destinations={SINGLE} loading={false} />,
     );
-    expect(() => fireEvent.press(getByTestId('destination-card'))).not.toThrow();
+    const card = getByTestId('destination-card');
+    expect(card.props.accessibilityRole).not.toBe('button');
+    expect(card.props.accessibilityLabel).toMatch('Paris, France');
+    expect(card.props.accessibilityLabel).toMatch('5 travelers');
+    expect(card.props.accessibilityLabel).toMatch('Slide 1 of 1');
   });
 
   // ── Accessibility ─────────────────────────────────────────────────────────

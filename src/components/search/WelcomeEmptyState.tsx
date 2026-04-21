@@ -34,9 +34,6 @@ interface WelcomeEmptyStateProps {
   onAddItinerary: () => void;
   destinations: PopularDestination[];
   destinationsLoading: boolean;
-  /** Profile completion fraction 0–1 */
-  profileCompletion: number;
-  missingFields: string[];
 }
 
 export const WelcomeEmptyState: React.FC<WelcomeEmptyStateProps> = ({
@@ -44,8 +41,6 @@ export const WelcomeEmptyState: React.FC<WelcomeEmptyStateProps> = ({
   onAddItinerary,
   destinations,
   destinationsLoading,
-  profileCompletion,
-  missingFields,
 }) => {
   const greeting = username ? `Welcome, ${username}!` : 'Welcome!';
 
@@ -54,23 +49,10 @@ export const WelcomeEmptyState: React.FC<WelcomeEmptyStateProps> = ({
       {/* Welcome header */}
       <Text style={styles.greeting}>{greeting}</Text>
       <Text style={styles.subtitle}>
-        Find travel companions heading to the same destination
+        Find Traval companions heading to the same destination
       </Text>
 
       {/* Profile completion nudge */}
-      {profileCompletion < 1 && missingFields.length > 0 && (
-        <View style={styles.profileNudge}>
-          <View style={styles.progressBarTrack}>
-            <View style={[styles.progressBarFill, { width: `${Math.round(profileCompletion * 100)}%` }]} />
-          </View>
-          <Text style={styles.nudgeText}>
-            Complete your profile ({Math.round(profileCompletion * 100)}%) to get better matches
-          </Text>
-          <Text style={styles.nudgeMissing}>
-            Missing: {missingFields.join(', ')}
-          </Text>
-        </View>
-      )}
 
       {/* Prominent Add Itinerary CTA */}
       <TouchableOpacity
@@ -145,38 +127,6 @@ const styles = StyleSheet.create({
     textShadowRadius: 2,
   },
   // Profile completion nudge
-  profileNudge: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: r(12),
-    padding: r(12),
-    width: '100%',
-    maxWidth: r(350),
-    marginBottom: r(16),
-  },
-  progressBarTrack: {
-    height: r(6),
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: r(3),
-    overflow: 'hidden',
-    marginBottom: r(8),
-  },
-  progressBarFill: {
-    height: '100%',
-    backgroundColor: '#4CAF50',
-    borderRadius: r(3),
-  },
-  nudgeText: {
-    fontSize: r(13),
-    color: '#FFFFFF',
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  nudgeMissing: {
-    fontSize: r(11),
-    color: 'rgba(255,255,255,0.7)',
-    textAlign: 'center',
-    marginTop: r(4),
-  },
   // CTA button
   ctaButton: {
     flexDirection: 'row',

@@ -84,33 +84,49 @@ export const PopularDestinationsCarousel: React.FC<PopularDestinationsCarouselPr
   if (destinations.length === 0) return null;
 
   const current = destinations[index];
+  const isInteractive = typeof onDestinationPress === 'function';
+  const cardAccessibilityLabel = `${current.destination}, ${current.count} traveler${current.count !== 1 ? 's' : ''} planning to visit. Slide ${index + 1} of ${destinations.length}.`;
+
+  const cardContent = (
+    <Animated.View
+      style={[
+        styles.card,
+        { opacity: fadeAnim, transform: [{ scale: scaleAnim }] },
+      ]}
+    >
+      <Text style={styles.emoji}>{getEmoji(current.destination, index)}</Text>
+      <Text style={styles.destination}>{current.destination}</Text>
+      <View style={styles.badge}>
+        <Text style={styles.badgeText}>
+          {current.count} traveler{current.count !== 1 ? 's' : ''} planning this trip
+        </Text>
+      </View>
+    </Animated.View>
+  );
 
   return (
     <View style={styles.container}>
       <Text style={styles.heading}>🔥 Trending Destinations</Text>
 
-      <TouchableOpacity
-        testID="destination-card"
-        activeOpacity={onDestinationPress ? 0.8 : 1}
-        onPress={() => onDestinationPress?.(current.destination)}
-        accessibilityRole={onDestinationPress ? 'button' : 'none'}
-        accessibilityLabel={`${current.destination}, ${current.count} traveler${current.count !== 1 ? 's' : ''} planning to visit. Slide ${index + 1} of ${destinations.length}.`}
-      >
-        <Animated.View
-          style={[
-            styles.card,
-            { opacity: fadeAnim, transform: [{ scale: scaleAnim }] },
-          ]}
+      {isInteractive ? (
+        <TouchableOpacity
+          testID="destination-card"
+          activeOpacity={0.8}
+          onPress={() => onDestinationPress(current.destination)}
+          accessibilityRole="button"
+          accessibilityLabel={cardAccessibilityLabel}
         >
-          <Text style={styles.emoji}>{getEmoji(current.destination, index)}</Text>
-          <Text style={styles.destination}>{current.destination}</Text>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>
-              {current.count} traveler{current.count !== 1 ? 's' : ''} planning this trip
-            </Text>
-          </View>
-        </Animated.View>
-      </TouchableOpacity>
+          {cardContent}
+        </TouchableOpacity>
+      ) : (
+        <View
+          testID="destination-card"
+          accessible
+          accessibilityLabel={cardAccessibilityLabel}
+        >
+          {cardContent}
+        </View>
+      )}
 
       {/* Dot indicators */}
       {destinations.length > 1 && (

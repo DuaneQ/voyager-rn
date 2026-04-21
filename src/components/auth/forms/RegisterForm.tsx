@@ -1,174 +1,208 @@
 /**
- * RegisterForm Component (Multi-Step Passwordless)
+ * RegisterForm Component
  * 
- * Redesigned for conversion optimization:
- * - Step 1: Email input + Google/Apple social buttons (no password, no username)
- * - Step 2: "Check your inbox" verification pending screen
+ * Email + password registration form with Google/Apple social sign-up options.
+ * Collects username, email, and password. Sends a verification email after sign-up.
  * 
  * Follows S.O.L.I.D principles:
- * - Single Responsibility: Handles only registration form UI and step transitions
- * - Open/Closed: Steps can be extended through composition
+ * - Single Responsibility: Handles only registration form UI
  * - Dependency Inversion: Depends on callbacks, not concrete implementations
  */
 
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import GoogleIcon from '../../icons/GoogleIcon';
 import AppleSignInButton from '../buttons/AppleSignInButton';
-import StepIndicator from '../StepIndicator';
 import { analyticsService } from '../../../services/analytics/AnalyticsService';
 import styles from './authFormStyles';
 
 interface RegisterFormProps {
-  onEmailLink: (email: string) => Promise<void>;
+  onSubmit: (username: string, email: string, password: string) => Promise<void>;
   onGoogleSignUp: () => void;
   onAppleSignUp: () => void;
   onSignInPress: () => void;
   isLoading?: boolean;
-  /** Suppress analytics (e.g. when rendered as a loading placeholder) */
-  suppressAnalytics?: boolean;
 }
 
 const RegisterForm: React.FC<RegisterFormProps> = ({
-  onEmailLink,
+  onSubmit,
   onGoogleSignUp,
   onAppleSignUp,
   onSignInPress,
   isLoading = false,
-  suppressAnalytics = false,
 }) => {
-  const [step, setStep] = useState<1 | 2>(1);
-  const [email, setEmail] = useState('');
-  const [emailError, setEmailError] = useState(false);
+  const [inputs, setInputs] = useState({
+    username: '',
+    email: '',
+    password: '',
+    confirm: '',
+  });
 
-  // Track signup_start on first render (skip for non-signup contexts)
-  useEffect(() => {
-    if (!suppressAnalytics) {
-      analyticsService.logEvent('signup_start', { method: 'email_link' });
-    }
-  }, [suppressAnalytics]);
+  const [errors, setErrors] = useState({
+    username: false,
+    email: false,
+    password: false,
+    confirm: false,
+  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const validateEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+  const validateUsername = (value: string) => value.trim().length >= 2;
+  const validatePassword = (value: string) => value.length >= 10;
+  const validatePasswordConfirm = (value: string) => value === inputs.password && value.length >= 10;
 
-  const handleEmailChange = (value: string) => {
-    setEmail(value);
+  const handleInputChange = (name: keyof typeof inputs, value: string) => {
+    setInputs(prev => ({ ...prev, [name]: value }));
+
     if (value.length === 0) {
-      setEmailError(false);
+      setErrors(prev => ({ ...prev, [name]: false }));
       return;
     }
-    setEmailError(!validateEmail(value));
+
+    switch (name) {
+      case 'username':
+        setErrors(prev => ({ ...prev, username: !validateUsername(value) }));
+        break;
+      case 'email':
+        setErrors(prev => ({ ...prev, email: !validateEmail(value) }));
+        break;
+      case 'password':
+        setErrors(prev => ({ ...prev, password: !validatePassword(value) }));
+        if (inputs.confirm.length > 0) {
+          setErrors(prev => ({ ...prev, confirm: value !== inputs.confirm }));
+        }
+        break;
+      case 'confirm':
+        setErrors(prev => ({ ...prev, confirm: !validatePasswordConfirm(value) }));
+        break;
+    }
   };
 
-  const handleSendLink = async () => {
-    if (!email || !validateEmail(email)) {
-      setEmailError(true);
+  const handleSubmit = async () => {
+    const nextErrors = {
+      username: !validateUsername(inputs.username),
+      email: !validateEmail(inputs.email),
+      password: !validatePassword(inputs.password),
+      confirm: !validatePasswordConfirm(inputs.confirm),
+    };
+
+    setErrors(nextErrors);
+
+    if (nextErrors.username || nextErrors.email || nextErrors.password || nextErrors.confirm) {
       return;
     }
-    analyticsService.logEvent('signup_email_entered', { step: 1 });
-    await onEmailLink(email);
-    analyticsService.logEvent('signup_verification_sent', { step: 2 });
-    setStep(2);
+
+    analyticsService.logEvent('signup_start', { method: 'email' });
+    await onSubmit(inputs.username.trim(), inputs.email, inputs.password);
   };
-
-  const handleResend = async () => {
-    await onEmailLink(email);
-  };
-
-  const handleUseDifferentEmail = () => {
-    setStep(1);
-  };
-
-  if (step === 2) {
-    return (
-      <View>
-        <StepIndicator currentStep={2} totalSteps={2} />
-        <Text style={styles.title}>Check your inbox</Text>
-        <Text style={registerStyles.verifyDescription}>
-          We sent a sign-in link to{'\n'}
-          <Text style={registerStyles.emailHighlight}>{email}</Text>
-        </Text>
-        <Text style={registerStyles.verifyHint}>
-          Click the link in your email to sign in. Check your spam folder if you don't see it.
-        </Text>
-
-        <TouchableOpacity
-          testID="resend-link-button"
-          style={[styles.button, styles.primaryButton, isLoading && styles.buttonDisabled]}
-          onPress={handleResend}
-          disabled={isLoading}
-        >
-          <Text style={styles.buttonText}>
-            {isLoading ? 'SENDING...' : 'RESEND LINK'}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          testID="different-email-button"
-          style={registerStyles.secondaryAction}
-          onPress={handleUseDifferentEmail}
-          disabled={isLoading}
-        >
-          <Text style={registerStyles.secondaryActionText}>Use a different email</Text>
-        </TouchableOpacity>
-
-        <View style={styles.dividerContainer}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>or</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        <View style={styles.signinContainer}>
-          <Text style={styles.signinText}>Already have an account? </Text>
-          <TouchableOpacity
-            testID="signin-link"
-            onPress={onSignInPress}
-            disabled={isLoading}
-          >
-            <Text style={styles.signinLink}>Sign in</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
 
   return (
     <View>
-      <StepIndicator currentStep={1} totalSteps={2} />
-
-      {/* Header */}
       <Text style={styles.title}>Sign up</Text>
-      <Text style={registerStyles.subtitle}>
-        Free forever · No card required · Just your email
-      </Text>
 
-      {/* Email Input */}
+      {/* Username */}
       <View style={styles.inputContainer}>
-        <Text style={styles.label}>Email</Text>
+        <Text style={styles.label}>Username *</Text>
+        <TextInput
+          testID="register-username-input"
+          style={[styles.input, errors.username && styles.inputError]}
+          value={inputs.username}
+          onChangeText={(value) => handleInputChange('username', value)}
+          autoCapitalize="none"
+          placeholder="Choose a username"
+          placeholderTextColor="#999"
+          editable={!isLoading}
+        />
+        {errors.username && (
+          <Text style={styles.errorText}>Username must be at least 2 characters</Text>
+        )}
+      </View>
+
+      {/* Email */}
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>Email *</Text>
         <TextInput
           testID="register-email-input"
-          style={[styles.input, emailError && styles.inputError]}
-          value={email}
-          onChangeText={handleEmailChange}
+          style={[styles.input, errors.email && styles.inputError]}
+          value={inputs.email}
+          onChangeText={(value) => handleInputChange('email', value)}
           keyboardType="email-address"
           autoCapitalize="none"
           placeholder="your@email.com"
           placeholderTextColor="#999"
           editable={!isLoading}
         />
-        {emailError && (
+        {errors.email && (
           <Text style={styles.errorText}>Please enter a valid email address</Text>
         )}
       </View>
 
-      {/* Continue with Email Button */}
+      {/* Password */}
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>Password *</Text>
+        <View style={styles.passwordRow}>
+          <TextInput
+            testID="register-password-input"
+            style={[styles.input, errors.password && styles.inputError, styles.passwordInput]}
+            value={inputs.password}
+            onChangeText={(value) => handleInputChange('password', value)}
+            secureTextEntry={!showPassword}
+            placeholder="Min 10 characters"
+            placeholderTextColor="#999"
+            editable={!isLoading}
+          />
+          <TouchableOpacity
+            testID="toggle-password-visibility"
+            style={styles.passwordToggle}
+            onPress={() => setShowPassword(prev => !prev)}
+            disabled={isLoading}
+          >
+            <Text style={styles.passwordToggleText}>{showPassword ? 'Hide' : 'Show'}</Text>
+          </TouchableOpacity>
+        </View>
+        {errors.password && (
+          <Text style={styles.errorText}>Password must be at least 10 characters</Text>
+        )}
+      </View>
+
+      {/* Confirm Password */}
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>Confirm Password *</Text>
+        <View style={styles.passwordRow}>
+          <TextInput
+            testID="register-confirm-password-input"
+            style={[styles.input, errors.confirm && styles.inputError, styles.passwordInput]}
+            value={inputs.confirm}
+            onChangeText={(value) => handleInputChange('confirm', value)}
+            secureTextEntry={!showConfirm}
+            placeholder="Confirm your password"
+            placeholderTextColor="#999"
+            editable={!isLoading}
+          />
+          <TouchableOpacity
+            testID="toggle-confirm-visibility"
+            style={styles.passwordToggle}
+            onPress={() => setShowConfirm(prev => !prev)}
+            disabled={isLoading}
+          >
+            <Text style={styles.passwordToggleText}>{showConfirm ? 'Hide' : 'Show'}</Text>
+          </TouchableOpacity>
+        </View>
+        {errors.confirm && (
+          <Text style={styles.errorText}>Passwords do not match</Text>
+        )}
+      </View>
+
+      {/* Submit */}
       <TouchableOpacity
         testID="signup-button"
         style={[styles.button, styles.primaryButton, isLoading && styles.buttonDisabled]}
-        onPress={handleSendLink}
+        onPress={handleSubmit}
         disabled={isLoading}
       >
         <Text style={styles.buttonText}>
-          {isLoading ? 'SENDING...' : 'CONTINUE WITH EMAIL'}
+          {isLoading ? 'CREATING ACCOUNT...' : 'CREATE ACCOUNT'}
         </Text>
       </TouchableOpacity>
 
@@ -221,41 +255,5 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
   );
 };
 
-const registerStyles = StyleSheet.create({
-  subtitle: {
-    fontSize: 13,
-    color: '#666',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  verifyDescription: {
-    fontSize: 15,
-    color: '#333',
-    textAlign: 'center',
-    marginBottom: 12,
-    lineHeight: 22,
-  },
-  emailHighlight: {
-    fontWeight: '600',
-    color: '#1976d2',
-  },
-  verifyHint: {
-    fontSize: 13,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 20,
-    lineHeight: 18,
-  },
-  secondaryAction: {
-    alignItems: 'center',
-    marginTop: 12,
-    paddingVertical: 8,
-  },
-  secondaryActionText: {
-    color: '#1976d2',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-});
-
 export default RegisterForm;
+

@@ -1,7 +1,7 @@
 /**
  * AddItineraryTooltip
  * Coach-mark tooltip shown once on first visit, pointing up at the
- * "+ Add Itinerary" button. Dismissed on tap or after 6 seconds.
+ * "Add/Edit Itinerary" button. Dismissed on tap or after 10 seconds.
  * Shown state is persisted in AsyncStorage so it only ever shows once.
  */
 
@@ -51,7 +51,7 @@ export const AddItineraryTooltip: React.FC<AddItineraryTooltipProps> = ({
 
   return (
     <Animated.View style={[styles.wrapper, { opacity, top }]}>
-      {/* Arrow pointing up toward the Add Itinerary button */}
+      {/* Arrow pointing up toward the Add/Edit Itinerary button */}
       <View style={styles.arrow} />
       <TouchableOpacity
         style={styles.bubble}
@@ -63,7 +63,7 @@ export const AddItineraryTooltip: React.FC<AddItineraryTooltipProps> = ({
         <Text style={styles.emoji}>✈️</Text>
         <Text style={styles.title}>Start here!</Text>
         <Text style={styles.body}>
-          Tap "+ Add Itinerary" above to create your first trip and get matched with fellow travelers.
+          Tap "Add/Edit Itinerary" above to create your first trip and get matched with fellow travelers.
         </Text>
         <Text style={styles.hint}>
           It only takes a minute — just pick a destination and dates.
