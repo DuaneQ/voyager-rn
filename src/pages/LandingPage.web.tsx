@@ -22,6 +22,10 @@ import { CookiePolicyModal } from '../components/modals/legal/CookiePolicyModal'
 
 // Base URL for meta tags
 const BASE_URL = 'https://travalpass.com';
+const IOS_STORE_URL = 'https://apps.apple.com/us/app/travalpass-traval-together/id6756789856';
+const ANDROID_STORE_URL = 'https://play.google.com/store/apps/details?id=com.travalpass.app';
+const APP_STORE_BADGE_URL = 'https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg';
+const PLAY_STORE_BADGE_URL = 'https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png';
 
 // ── SEO meta tags injection ─────────────────────────────────────────────
 const injectSEOMetaTags = () => {
@@ -376,6 +380,22 @@ const LANDING_CSS = `
   gap: 6px;
 }
 .lp-hero-microcopy .check { color: var(--green); font-size: 15px; }
+.lp-store-badges {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.lp-store-badge-link {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+.lp-store-badge-link img {
+  display: block;
+  height: 46px;
+  width: auto;
+}
 
 /* ─── UGC VIDEO ─── */
 .lp-ugc-wrap {
@@ -812,6 +832,14 @@ const LANDING_CSS = `
 }
 .lp-footer-links button:hover { color: #b0bec5; }
 .lp-footer-copy { font-size: 13.2px; color: #455a64; margin: 0; }
+.lp-footer-store-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin: 4px 0 10px;
+  flex-wrap: wrap;
+}
 
 /* ─── STICKY BAR ─── */
 .lp-sticky-bar {
@@ -892,6 +920,8 @@ const LANDING_CSS = `
   .lp-btn-primary-lg { padding: 16px 28px; font-size: 16px; }
   .lp-hero-microcopy span { font-size: 12px; }
   .lp-hero-microcopy .check { font-size: 13px; }
+  .lp-store-badges { justify-content: center; }
+  .lp-store-badge-link img { height: 40px; }
   .lp-sticky-bar { padding: 10px 12px; gap: 8px; flex-wrap: nowrap; }
   .lp-sticky-bar span { font-size: 13px; flex: 1; }
   .lp-sticky-bar-btn { padding: 8px 16px; font-size: 13px; }
@@ -1166,6 +1196,26 @@ export const LandingPage: React.FC = () => {
                   <span><span className="check">✓</span> No card required</span>
                   <span><span className="check">✓</span> Just your email</span>
                 </div>
+                <div className="lp-store-badges" aria-label="Download TravalPass mobile app">
+                  <a
+                    className="lp-store-badge-link"
+                    href={IOS_STORE_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="Download TravalPass on the App Store"
+                  >
+                    <img src={APP_STORE_BADGE_URL} alt="Download on the App Store" loading="lazy" />
+                  </a>
+                  <a
+                    className="lp-store-badge-link"
+                    href={ANDROID_STORE_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="Get TravalPass on Google Play"
+                  >
+                    <img src={PLAY_STORE_BADGE_URL} alt="Get it on Google Play" loading="lazy" />
+                  </a>
+                </div>
               </div>
             </div>
 
@@ -1341,6 +1391,26 @@ export const LandingPage: React.FC = () => {
               <button onClick={() => setShowTermsModal(true)}>Terms of Service</button>
               <button onClick={() => setShowSafetyModal(true)}>Safety Guidelines</button>
               <button onClick={() => setShowCookieModal(true)}>Cookie Policy</button>
+            </div>
+            <div className="lp-footer-store-row" aria-label="Mobile app store links">
+              <a
+                className="lp-store-badge-link"
+                href={IOS_STORE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Download TravalPass on the App Store"
+              >
+                <img src={APP_STORE_BADGE_URL} alt="Download on the App Store" loading="lazy" />
+              </a>
+              <a
+                className="lp-store-badge-link"
+                href={ANDROID_STORE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Get TravalPass on Google Play"
+              >
+                <img src={PLAY_STORE_BADGE_URL} alt="Get it on Google Play" loading="lazy" />
+              </a>
             </div>
             <p className="lp-footer-copy">© 2026 TravalPass. All rights reserved.</p>
           </div>
