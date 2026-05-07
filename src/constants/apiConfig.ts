@@ -6,16 +6,18 @@
  */
 
 // Google Places API Key for location autocomplete
-// TODO: Set this via environment variables in production
+// Configure this via environment variables in build/runtime.
+const GOOGLE_PLACES_SENTINEL = 'YOUR_GOOGLE_PLACES_API_KEY_HERE';
+
 export const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY || 
   process.env.REACT_APP_GOOGLE_PLACES_API_KEY || 
-  'AIzaSyCQolwDq5uPmixFqKYhmloGy3hkUPk6PTE';
+  GOOGLE_PLACES_SENTINEL;
 
 // Fallback to placeholder if no key is configured
 // The app should handle graceful degradation when API key is missing
 export const getGooglePlacesApiKey = (): string => {
-  if (GOOGLE_PLACES_API_KEY === 'YOUR_GOOGLE_PLACES_API_KEY_HERE') {
-    console.warn('Google Places API key not configured. Please add your API key to constants/apiConfig.ts');
+  if (!GOOGLE_PLACES_API_KEY || GOOGLE_PLACES_API_KEY === GOOGLE_PLACES_SENTINEL) {
+    console.warn('Google Places API key not configured. Set GOOGLE_PLACES_API_KEY or REACT_APP_GOOGLE_PLACES_API_KEY.');
   }
   return GOOGLE_PLACES_API_KEY;
 };
