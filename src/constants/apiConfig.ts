@@ -9,7 +9,7 @@
 // TODO: Set this via environment variables in production
 export const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY || 
   process.env.REACT_APP_GOOGLE_PLACES_API_KEY || 
-  'AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8'; // Replace with actual API key
+  'AIzaSyCQolwDq5uPmixFqKYhmloGy3hkUPk6PTE';
 
 // Fallback to placeholder if no key is configured
 // The app should handle graceful degradation when API key is missing
