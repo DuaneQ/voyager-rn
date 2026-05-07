@@ -173,7 +173,7 @@
                 "establishment"
               ],
               "photos": [
-                "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU5eq41MxJzbJFQkbDXjW8QRp8W8yn1qo5DkZuy1sikIpWpe9QCabgq8moNUmWt1DOY1Sz17hcjzsNgmXU26FVJNZiidigIka9j4OGbuhicaeTmQ32ZO5-k3pQKY-2J1re6nbYvFJFijJQw6h2mNyUJGlenGeP2Xo3XlGn8PNok52koPk7BzlUjgtr_NYfg2qNNF4j37O03bBHCkcvouIDBoDN_QJx2gpqVeXVpDTzoiepKJC6x0SwHmPoUl3EnJ8Xwm3JlYkZRY2Sl4aCWJmxzgfdTMN80ATBMrqzu_sEp3ptd2m7c&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+                "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU5eq41MxJzbJFQkbDXjW8QRp8W8yn1qo5DkZuy1sikIpWpe9QCabgq8moNUmWt1DOY1Sz17hcjzsNgmXU26FVJNZiidigIka9j4OGbuhicaeTmQ32ZO5-k3pQKY-2J1re6nbYvFJFijJQw6h2mNyUJGlenGeP2Xo3XlGn8PNok52koPk7BzlUjgtr_NYfg2qNNF4j37O03bBHCkcvouIDBoDN_QJx2gpqVeXVpDTzoiepKJC6x0SwHmPoUl3EnJ8Xwm3JlYkZRY2Sl4aCWJmxzgfdTMN80ATBMrqzu_sEp3ptd2m7c&key=REDACTED_GOOGLE_PLACES_API_KEY"
               ],
               "rating": 4.5,
               "address": "300 Reunion Blvd, Dallas, TX 75207, United States",
@@ -242,7 +242,7 @@
                 "establishment"
               ],
               "photos": [
-                "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU6CPE7fA1INNqk5WgGsH3iysnrtIwGnZMOhyqt-W6GmeK_5sURRoI6yTgfrK1eHBiNib0b08G4wSdxhWWYje_WGZyCxn1V8JVxboqYOu4vW4V167n1BKewY0EbHi78S46MswCWOz1wi7azr_qwstU8ZZjjVfV_yYnZGVlKLK7JOW2B2-M8kE_OxsVwO0MX046r9tYpWXzqxNQzWpg4Pv1O7W_iLT-yMFPb9UVleF_MjEpeCqrM14i8n7MS9E7Fe3nI2LGxNKn6ycX10GnPs115q6u39RyAOm2WjQE2oiV46DXUWLIU&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+                "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU6CPE7fA1INNqk5WgGsH3iysnrtIwGnZMOhyqt-W6GmeK_5sURRoI6yTgfrK1eHBiNib0b08G4wSdxhWWYje_WGZyCxn1V8JVxboqYOu4vW4V167n1BKewY0EbHi78S46MswCWOz1wi7azr_qwstU8ZZjjVfV_yYnZGVlKLK7JOW2B2-M8kE_OxsVwO0MX046r9tYpWXzqxNQzWpg4Pv1O7W_iLT-yMFPb9UVleF_MjEpeCqrM14i8n7MS9E7Fe3nI2LGxNKn6ycX10GnPs115q6u39RyAOm2WjQE2oiV46DXUWLIU&key=REDACTED_GOOGLE_PLACES_API_KEY"
               ],
               "rating": 4.3,
               "address": "2201 N Stemmons Fwy, Dallas, TX 75207, United States",
@@ -313,7 +313,7 @@
                 "establishment"
               ],
               "photos": [
-                "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU5MWIv5Dnqsb6ZgOheq2NOmLUVyrihsdEHeJdEPh1uExm5xEgGjxPJj9Alvxf4m9J401jovRGEXSP0EJY1Mvmy9cbrkP4EYE0vZNJF5Ua2QB5-D5cI5leAvQaxeY1WXYdeBjOpTxzmESBei26bFQTUc1wSMJ5OujSGjukV9JKJNPyTJixriQJ7iJ4QZTftve5ZPwcoyWSfwfOwU0PPlbjB3aFlxvs9--dM04NG0jkQg_9yjPavHwmwNAHtnlEc-QGVX5NsoK18j-YArpavGS6aKZWZSTAFkJtxNFCzI4MCSgWq94TQ&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+                "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU5MWIv5Dnqsb6ZgOheq2NOmLUVyrihsdEHeJdEPh1uExm5xEgGjxPJj9Alvxf4m9J401jovRGEXSP0EJY1Mvmy9cbrkP4EYE0vZNJF5Ua2QB5-D5cI5leAvQaxeY1WXYdeBjOpTxzmESBei26bFQTUc1wSMJ5OujSGjukV9JKJNPyTJixriQJ7iJ4QZTftve5ZPwcoyWSfwfOwU0PPlbjB3aFlxvs9--dM04NG0jkQg_9yjPavHwmwNAHtnlEc-QGVX5NsoK18j-YArpavGS6aKZWZSTAFkJtxNFCzI4MCSgWq94TQ&key=REDACTED_GOOGLE_PLACES_API_KEY"
               ],
               "rating": 4.4,
               "address": "1717 N Akard St, Dallas, TX 75201, United States",
@@ -384,7 +384,7 @@
                 "establishment"
               ],
               "photos": [
-                "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU7xamkckxqf9rQgHeblUsIjWzMrfhUgVxlJAOJTaWvRhP0HzL_JUgy9pxNHPBFqD8fE_aTSiJDmuJ3vW6_1F8afIior3HRadtqHMswNGS2lE3KKxuGaUNFplJ4ODRuYeNezE9Z_YPEQ6edPBwbswIqZjFfhLu1HFglUd5UnKt_L3XZR2GpS2VUmwXOYz9v1B03M94jrYHWGyNwwPLiSSuvb52kx3p-kg65IPM2sLcrqufyWCMNT_qy68UYgJn62bXfpGtiFOEt-J9rzGvIF39F9yPnJ1KRTnhEzLBxNQ6i57OEdIaw&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+                "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU7xamkckxqf9rQgHeblUsIjWzMrfhUgVxlJAOJTaWvRhP0HzL_JUgy9pxNHPBFqD8fE_aTSiJDmuJ3vW6_1F8afIior3HRadtqHMswNGS2lE3KKxuGaUNFplJ4ODRuYeNezE9Z_YPEQ6edPBwbswIqZjFfhLu1HFglUd5UnKt_L3XZR2GpS2VUmwXOYz9v1B03M94jrYHWGyNwwPLiSSuvb52kx3p-kg65IPM2sLcrqufyWCMNT_qy68UYgJn62bXfpGtiFOEt-J9rzGvIF39F9yPnJ1KRTnhEzLBxNQ6i57OEdIaw&key=REDACTED_GOOGLE_PLACES_API_KEY"
               ],
               "rating": 4.2,
               "address": "1600 Pacific Ave, Dallas, TX 75201, United States",
@@ -453,7 +453,7 @@
                 "establishment"
               ],
               "photos": [
-                "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU7jEPNeIMVGXjgaRImo1KGFHREM4rf2Kiz-YWIDl4JJ0JoQg2eb8SaWzqr63MGAQOgVd6h38DvboHGsEvfusY8Dl9T_A6WJVAg9yIZIcqwI08HB-meO8v602icA7xBYEMbAsGB4NJoVtztVW0SPFSqwyhqCR9w74MGrQeDqHI86MhKQBKMGa-yC9MF7YyIvIs_HfK7KNZfbDw_jhZoi-erwhaI-pdboLNy4otaYHLIjqjG5KKuN8EPrYSwsBf2t0_cUUARYp6RFiJ6d0BqZ6Bdl_NI6qardP29IkVxRt7J0vT1gVOA&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+                "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU7jEPNeIMVGXjgaRImo1KGFHREM4rf2Kiz-YWIDl4JJ0JoQg2eb8SaWzqr63MGAQOgVd6h38DvboHGsEvfusY8Dl9T_A6WJVAg9yIZIcqwI08HB-meO8v602icA7xBYEMbAsGB4NJoVtztVW0SPFSqwyhqCR9w74MGrQeDqHI86MhKQBKMGa-yC9MF7YyIvIs_HfK7KNZfbDw_jhZoi-erwhaI-pdboLNy4otaYHLIjqjG5KKuN8EPrYSwsBf2t0_cUUARYp6RFiJ6d0BqZ6Bdl_NI6qardP29IkVxRt7J0vT1gVOA&key=REDACTED_GOOGLE_PLACES_API_KEY"
               ],
               "rating": 4.6,
               "address": "2332 Leonard St, Dallas, TX 75201, United States",
@@ -525,7 +525,7 @@
                 "establishment"
               ],
               "photos": [
-                "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU5HuObsDHKkKZQGQH0Aqfij83yEz9B_TnFWdDZUlagNfhViTgX79lrre_pSZK09YmnYwshQeCMQpfIywHLTRVyFJRTm8VuYEgHjZa9tMd5CyulqWoD4ClOdbNP9JVY5oopYt9sHT0_c3sCA1CBqSzerYbOt-yH8FqO_msI2S4OH1CNZaqh4Tdb6fChNMiCt3tviymlvdQlx2Ptu74Gl5JmstY6JQvgkLMzfcFW7hrb2g6RInB6eHp1zdHdMjTtyXGlXtyPxVgJ3JCF4Np7numCk4Pzt7ey1wFX2JdNTF2ofhZWiZZA&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+                "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU5HuObsDHKkKZQGQH0Aqfij83yEz9B_TnFWdDZUlagNfhViTgX79lrre_pSZK09YmnYwshQeCMQpfIywHLTRVyFJRTm8VuYEgHjZa9tMd5CyulqWoD4ClOdbNP9JVY5oopYt9sHT0_c3sCA1CBqSzerYbOt-yH8FqO_msI2S4OH1CNZaqh4Tdb6fChNMiCt3tviymlvdQlx2Ptu74Gl5JmstY6JQvgkLMzfcFW7hrb2g6RInB6eHp1zdHdMjTtyXGlXtyPxVgJ3JCF4Np7numCk4Pzt7ey1wFX2JdNTF2ofhZWiZZA&key=REDACTED_GOOGLE_PLACES_API_KEY"
               ],
               "rating": 4,
               "address": "800 N Main St, Duncanville, TX 75116, United States",
@@ -594,7 +594,7 @@
                 "establishment"
               ],
               "photos": [
-                "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU4RhsHmtPuOyFwBCiQdawKdVnYQwnJfWpyqvTsetL8CAScDPgBsOEdPWVMXhYlbNOlJx4Vkbb3pCOvB2tn8WD3go5IZgLNhFqYTSliLnBcCdE_btLsHlrfqdddlUCfGCNtsoHyUtca95WD6FLQ0PfkQWNdA41XNgBhSuK099cgmBkZ66SIFSV4sOu2L-Dcz-50jI_0hnj2NCsghrZKs8b3RnHeyxtO0LKM4cknSWHMel6nWtQTY3Ve7m6yhie_qM6S4CcdGk1-1s_GKTs2beGJwpIXDLvsH-e96UOlqANvHf_FGawE&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+                "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU4RhsHmtPuOyFwBCiQdawKdVnYQwnJfWpyqvTsetL8CAScDPgBsOEdPWVMXhYlbNOlJx4Vkbb3pCOvB2tn8WD3go5IZgLNhFqYTSliLnBcCdE_btLsHlrfqdddlUCfGCNtsoHyUtca95WD6FLQ0PfkQWNdA41XNgBhSuK099cgmBkZ66SIFSV4sOu2L-Dcz-50jI_0hnj2NCsghrZKs8b3RnHeyxtO0LKM4cknSWHMel6nWtQTY3Ve7m6yhie_qM6S4CcdGk1-1s_GKTs2beGJwpIXDLvsH-e96UOlqANvHf_FGawE&key=REDACTED_GOOGLE_PLACES_API_KEY"
               ],
               "rating": 4.2,
               "address": "1700 Rodeo Dr, Mesquite, TX 75149, United States",
@@ -663,7 +663,7 @@
                 "establishment"
               ],
               "photos": [
-                "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU7JXSmzGRx5npRyIdy7pWucQDQlCkVeHpUqVmJeMIhbmcDtm0OoSAQWNUjmwgP8v5pLbMpHORuYh4lLbag1yptuAOV6gJDEtZ6WsjCknlrpnw7TQfvEt-SVubmNswL0w95omvp-aqicEsBfgdu1qgC9pXpIo09Fg_2cms6cY93HsfIrcM8r9vszmnIXXk1uqpCL2M8NtDW_XI_LYsR9kBwW6226TUlrx6xc-2LAkMMPuLzq1VO9n0Go9DXvRrMGsTHDyBXdT3tSqFTHhU6MOuaY24nXsHQXIFYz9d7z4J0SJFCn&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+                "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU7JXSmzGRx5npRyIdy7pWucQDQlCkVeHpUqVmJeMIhbmcDtm0OoSAQWNUjmwgP8v5pLbMpHORuYh4lLbag1yptuAOV6gJDEtZ6WsjCknlrpnw7TQfvEt-SVubmNswL0w95omvp-aqicEsBfgdu1qgC9pXpIo09Fg_2cms6cY93HsfIrcM8r9vszmnIXXk1uqpCL2M8NtDW_XI_LYsR9kBwW6226TUlrx6xc-2LAkMMPuLzq1VO9n0Go9DXvRrMGsTHDyBXdT3tSqFTHhU6MOuaY24nXsHQXIFYz9d7z4J0SJFCn&key=REDACTED_GOOGLE_PLACES_API_KEY"
               ],
               "rating": 4.3,
               "address": "1445 Turtle Creek Blvd, Dallas, TX 75207, United States",
@@ -735,7 +735,7 @@
                 "establishment"
               ],
               "photos": [
-                "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU75wJ65CsJSQAvwBuQ6k63YeoSufZQ9xMDhIj2NktI55QlD4Rq1F3Ay0mMjSG3pT2TbleoK8cHkY0MynNFe6FX2DTWTqqzsw78dbQSwDVXiXO_So6mQLhbOynZxPJ024WgpHJ57C6duIqCltCuBWcc99els9V3Ch3HV-oX3OUE7Qf728iboq5SrGMCocaGviwlzQW6w07N4T-Uk2mcD1EUHhrIix3aBIyb7_yweF8yY30tfoaFGoURjwShDdOeAtKndLt2SL97UunmpsfptsoqrCH1KOCygjaK8J3Z5zhqRSj7xtYI&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+                "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU75wJ65CsJSQAvwBuQ6k63YeoSufZQ9xMDhIj2NktI55QlD4Rq1F3Ay0mMjSG3pT2TbleoK8cHkY0MynNFe6FX2DTWTqqzsw78dbQSwDVXiXO_So6mQLhbOynZxPJ024WgpHJ57C6duIqCltCuBWcc99els9V3Ch3HV-oX3OUE7Qf728iboq5SrGMCocaGviwlzQW6w07N4T-Uk2mcD1EUHhrIix3aBIyb7_yweF8yY30tfoaFGoURjwShDdOeAtKndLt2SL97UunmpsfptsoqrCH1KOCygjaK8J3Z5zhqRSj7xtYI&key=REDACTED_GOOGLE_PLACES_API_KEY"
               ],
               "rating": 3.7,
               "address": "8703 E R L Thornton Fwy, Dallas, TX 75228, United States",
@@ -804,7 +804,7 @@
                 "establishment"
               ],
               "photos": [
-                "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU6c3xnr2Wl-aImGMsVWN5TRFZjiUBR0dx1LsJ42AYTRTH_wdRho5r3VCowYWAX4UmkbkD1DArSw9qM42GF5fSaCciKH3VTMydh-oWR7sjPIz4vUXnLbG_JZn3ckXk9rfeQ3GVWD2CRCZQuf28YPEOYrzl1XEtVtcZRwHKlwccI1emP27re3TBC0pqWPzj9063W0WWvQbDKy7w5UtvkGdRztZozSlbcBzmIGL5K5QHMOoCbN6B-eq-SnugBYKaj4wknKwi1H42_cOhspZ0430zXP9WjP8_BsIn4GSKtlw8pt7gjNoRM&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+                "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU6c3xnr2Wl-aImGMsVWN5TRFZjiUBR0dx1LsJ42AYTRTH_wdRho5r3VCowYWAX4UmkbkD1DArSw9qM42GF5fSaCciKH3VTMydh-oWR7sjPIz4vUXnLbG_JZn3ckXk9rfeQ3GVWD2CRCZQuf28YPEOYrzl1XEtVtcZRwHKlwccI1emP27re3TBC0pqWPzj9063W0WWvQbDKy7w5UtvkGdRztZozSlbcBzmIGL5K5QHMOoCbN6B-eq-SnugBYKaj4wknKwi1H42_cOhspZ0430zXP9WjP8_BsIn4GSKtlw8pt7gjNoRM&key=REDACTED_GOOGLE_PLACES_API_KEY"
               ],
               "rating": 3.8,
               "address": "13165 N Central Expy, Dallas, TX 75243, United States",
@@ -873,7 +873,7 @@
                 "establishment"
               ],
               "photos": [
-                "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU4hCYe8oIbxhqbdDbukJtPUo20NK38hqzWrjfpV3jgmAlV4lcXhyPH2jS216NU6mtEH2Aw0IwtpXKA-8gLqRZ0CaDDNME04dbs_RC_wcz7fZLQEH-bvk_s0uaLxBDZxrnfoLXaEE4-r1fFTWno7_r1PBSz0fR-i6fqrqjaYG-JS2WQ_zMnnC0_Qqkz7nslic59aQCZK_UYNZ3dEQWfGkpdVbKpyu6M3gCskElMXty7VAd9laoTJiNqJpCboNEVdVWy_kk10Mc4BNS9_Dik-UrDyPUo4RjajnC6JzZwXareX953pgsY&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+                "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU4hCYe8oIbxhqbdDbukJtPUo20NK38hqzWrjfpV3jgmAlV4lcXhyPH2jS216NU6mtEH2Aw0IwtpXKA-8gLqRZ0CaDDNME04dbs_RC_wcz7fZLQEH-bvk_s0uaLxBDZxrnfoLXaEE4-r1fFTWno7_r1PBSz0fR-i6fqrqjaYG-JS2WQ_zMnnC0_Qqkz7nslic59aQCZK_UYNZ3dEQWfGkpdVbKpyu6M3gCskElMXty7VAd9laoTJiNqJpCboNEVdVWy_kk10Mc4BNS9_Dik-UrDyPUo4RjajnC6JzZwXareX953pgsY&key=REDACTED_GOOGLE_PLACES_API_KEY"
               ],
               "rating": 4,
               "address": "10325 N Central Expy, Dallas, TX 75231, United States",
@@ -942,7 +942,7 @@
                 "establishment"
               ],
               "photos": [
-                "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU4AnwWjrMezU6a6ZfEEi94ouelNjg3VTk_ZchZAcB5CYXhkpFtLg-dcFbh9pphrP8qBHVNS9miNAZzQC6szJupDgL3GTqHX3QhfWH0LMtwGJttY5Ohns4P-3OQMCmm3c94pOThAyMYEiryAgdXRd29JMzbCH-d_yFtzjMwigHpNf8qUyyjycK8k844JsY7c4zi_sz4gfWKfoE6yWv09GNV3ahPWs04FI6rgXp_hr3r2EgToOduKTAiMY1mQ4J6HoAZQKhtbaB26WGQjTYaZzjiE7OaSBdZMwnIfRzPzXeZ6CbzZbTc&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+                "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU4AnwWjrMezU6a6ZfEEi94ouelNjg3VTk_ZchZAcB5CYXhkpFtLg-dcFbh9pphrP8qBHVNS9miNAZzQC6szJupDgL3GTqHX3QhfWH0LMtwGJttY5Ohns4P-3OQMCmm3c94pOThAyMYEiryAgdXRd29JMzbCH-d_yFtzjMwigHpNf8qUyyjycK8k844JsY7c4zi_sz4gfWKfoE6yWv09GNV3ahPWs04FI6rgXp_hr3r2EgToOduKTAiMY1mQ4J6HoAZQKhtbaB26WGQjTYaZzjiE7OaSBdZMwnIfRzPzXeZ6CbzZbTc&key=REDACTED_GOOGLE_PLACES_API_KEY"
               ],
               "rating": 4.1,
               "address": "1000 Dowdy Ferry Rd, Hutchins, TX 75141, United States",
@@ -1014,7 +1014,7 @@
                 "establishment"
               ],
               "photos": [
-                "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU52QT7O8-LQy7ugE-iVuvxcG5mjfIi8AJqVhVaJU7PZXiQF7GjAf6RCuwd0XZixe-3xJjtBIdFVRjKHDQ048-n4snore1tLz9Xwqp_Pr5CSO88lYIU1XUu1KCqWjds9BAKPVk2b-gZJfZxuAlPDqC-phaSEjkn2WSaohzELHYKbnf9PKsEfcAPrqU79ZXMeNX9-9GvgGPcKOnFjSKXUcMBAANSkbM1PI9bbZLKW0Z7iOUL0UzNeUBkwr15WQeiMWuQZFdha0UOi6JCVsaXcFY6x1Pb_fqFxm6K8Vy3A0uJH95nsm8k&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+                "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU52QT7O8-LQy7ugE-iVuvxcG5mjfIi8AJqVhVaJU7PZXiQF7GjAf6RCuwd0XZixe-3xJjtBIdFVRjKHDQ048-n4snore1tLz9Xwqp_Pr5CSO88lYIU1XUu1KCqWjds9BAKPVk2b-gZJfZxuAlPDqC-phaSEjkn2WSaohzELHYKbnf9PKsEfcAPrqU79ZXMeNX9-9GvgGPcKOnFjSKXUcMBAANSkbM1PI9bbZLKW0Z7iOUL0UzNeUBkwr15WQeiMWuQZFdha0UOi6JCVsaXcFY6x1Pb_fqFxm6K8Vy3A0uJH95nsm8k&key=REDACTED_GOOGLE_PLACES_API_KEY"
               ],
               "rating": 4,
               "address": "5110 N President George Bush Hwy, Garland, TX 75040, United States",
@@ -1083,7 +1083,7 @@
                 "establishment"
               ],
               "photos": [
-                "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU5w0VZ8X5D3phPhGzHYPBPHCniJ7e2stZXEYDKBVkdOFdjE23ngFoQFUmbhmzxmb-PnHGmGADsoVADhPUB_GKmEu5DRX2CpEFGR9xPKbuXowxYG5I6ZEA4H2vT3EXmLLP-adeTO7o43KjEUM3ZiGKgTDHGghTs7-rijzySuo3gAOHL5z11jFoYpqngjylQUX5_dDkV2nuU4AwEmLlQtpBW7iOeg8Z5ZMpVe47RDCtjZsS3HCu8-Srd9Zhal9HXjLgvpN9AG9hVhtus_TVW0UyvL_z2dSE3RDqTu3yvfIYDfs6r2Ps0&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+                "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU5w0VZ8X5D3phPhGzHYPBPHCniJ7e2stZXEYDKBVkdOFdjE23ngFoQFUmbhmzxmb-PnHGmGADsoVADhPUB_GKmEu5DRX2CpEFGR9xPKbuXowxYG5I6ZEA4H2vT3EXmLLP-adeTO7o43KjEUM3ZiGKgTDHGghTs7-rijzySuo3gAOHL5z11jFoYpqngjylQUX5_dDkV2nuU4AwEmLlQtpBW7iOeg8Z5ZMpVe47RDCtjZsS3HCu8-Srd9Zhal9HXjLgvpN9AG9hVhtus_TVW0UyvL_z2dSE3RDqTu3yvfIYDfs6r2Ps0&key=REDACTED_GOOGLE_PLACES_API_KEY"
               ],
               "rating": 4,
               "address": "4412 Bass Pro Dr, Garland, TX 75043, United States",
@@ -1152,7 +1152,7 @@
                 "establishment"
               ],
               "photos": [
-                "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU7kzEEmVb6iAKAX45z3J8CT7HQm9F8ipB2_mJRa7eEgWAaJTo8FnOKCKAtqAinoEsP29YaIhJotP5W2V7DCGV91dDSWAPuxfOvxSEoZXJzmbRTKE2zQoWn2BZRaoC60fPCCLaoFOq4Y7G17uWKsBM7SeOL4h8S48krX6JLJnHqh8gspxOUoHEm38F0Fzhbz32rybu1Mt3T3Jz2FHJd5JhWps-Zhqj-5FsZC8Vf0rSVIl6Xhypu-DRW2DxfcQII9uKzGey93ziSfSFZzAapfo33h2NXfg044YhmFX7FDVRw9kNTMhdU&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+                "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU7kzEEmVb6iAKAX45z3J8CT7HQm9F8ipB2_mJRa7eEgWAaJTo8FnOKCKAtqAinoEsP29YaIhJotP5W2V7DCGV91dDSWAPuxfOvxSEoZXJzmbRTKE2zQoWn2BZRaoC60fPCCLaoFOq4Y7G17uWKsBM7SeOL4h8S48krX6JLJnHqh8gspxOUoHEm38F0Fzhbz32rybu1Mt3T3Jz2FHJd5JhWps-Zhqj-5FsZC8Vf0rSVIl6Xhypu-DRW2DxfcQII9uKzGey93ziSfSFZzAapfo33h2NXfg044YhmFX7FDVRw9kNTMhdU&key=REDACTED_GOOGLE_PLACES_API_KEY"
               ],
               "rating": 3.9,
               "address": "21850 I-635, Mesquite, TX 75149, United States",
@@ -1221,7 +1221,7 @@
                 "establishment"
               ],
               "photos": [
-                "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU6gYc8MntwWH2FnqhS74KnAtygdmXhTdswr8r47pvM6igqY0MAaorMNXL1YWGia-9IKGhKsNHXLB2q4Oj9I__qwkir42YizPx34NFFDOsraT1kAXZH7NtpuSK9-dMJYV-rIJxBdP_jPAqOkD8YDWoGzi65QqvMsl1FJA-d6jDCUtVX_TSJyl2DJlG2NGiM0AjFxOMgWzYMZcU0GC828uvwjgOYnwExseNZPD7duvpCQ7MJjzc-tg6zEYS739hhDNeeagqWxZVxywQElXhOYMgbBIVihOiC-yBhJxDPWvIhPdEVZJGQ&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+                "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU6gYc8MntwWH2FnqhS74KnAtygdmXhTdswr8r47pvM6igqY0MAaorMNXL1YWGia-9IKGhKsNHXLB2q4Oj9I__qwkir42YizPx34NFFDOsraT1kAXZH7NtpuSK9-dMJYV-rIJxBdP_jPAqOkD8YDWoGzi65QqvMsl1FJA-d6jDCUtVX_TSJyl2DJlG2NGiM0AjFxOMgWzYMZcU0GC828uvwjgOYnwExseNZPD7duvpCQ7MJjzc-tg6zEYS739hhDNeeagqWxZVxywQElXhOYMgbBIVihOiC-yBhJxDPWvIhPdEVZJGQ&key=REDACTED_GOOGLE_PLACES_API_KEY"
               ],
               "rating": 4.1,
               "address": "2001 E President George Bush Hwy, Plano, TX 75074, United States",
@@ -1290,7 +1290,7 @@
                 "establishment"
               ],
               "photos": [
-                "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU4pNT-ffU1aJJkhzj4d5I4nQ7WnVwCXuLsqcvxnkJPFXwqMWnKS435C0mWZF1Npg732iOdTzWxRyZGyIu0bh4hUbYyWSQANCuOmw6fSruY95OxDedxPvliW7Mu747HwiXpdiyoGIrNCqEw4nrVRTZbbR6OUIaC3Bh8U1yuvLBmyTriOyRAbWuy-RA0Ictv9WfwNRVtPbpXK8xK-hd5uHqqoT51HTWlLOsclBqqjOaJu8XH_yFm61KPz4ScBi9tZHWEgS5jjSqkQu4-PJoBHruf7ru36pacUx4-FaW-250K2vALxun4&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+                "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU4pNT-ffU1aJJkhzj4d5I4nQ7WnVwCXuLsqcvxnkJPFXwqMWnKS435C0mWZF1Npg732iOdTzWxRyZGyIu0bh4hUbYyWSQANCuOmw6fSruY95OxDedxPvliW7Mu747HwiXpdiyoGIrNCqEw4nrVRTZbbR6OUIaC3Bh8U1yuvLBmyTriOyRAbWuy-RA0Ictv9WfwNRVtPbpXK8xK-hd5uHqqoT51HTWlLOsclBqqjOaJu8XH_yFm61KPz4ScBi9tZHWEgS5jjSqkQu4-PJoBHruf7ru36pacUx4-FaW-250K2vALxun4&key=REDACTED_GOOGLE_PLACES_API_KEY"
               ],
               "rating": 3.3,
               "address": "8687 E R L Thornton Fwy, Dallas, TX 75228, United States",
@@ -1362,7 +1362,7 @@
                 "establishment"
               ],
               "photos": [
-                "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU4ntWAfpcJ97dwiWSM4s_wxEhEiCM4Lb1Nn07tiEnv0sizX2af8-NiXfsR-KzqS3npxUDt4lom553YSlOvQ_Ry0ljyGWuJmq3ODz6EwUU2844kRS1yt3amHuyh4XDAatGoayWkx-nT3AQUdJRvpsu4sHRnZvp9DTXnc_oQEzFFkaCNwmOVE5bbO1eQ9Ah5TL6WecaBmw3LOuRi3Q7EQh-CiUckFTdwzp3OICz_-sMo0LJk2eLL0dCuzIBt--S_jMPLLGGWBkm7FxFgR6d3i4zPoXzcUIN8FE1sG0zKvCGgVuzKfYjk&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+                "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU4ntWAfpcJ97dwiWSM4s_wxEhEiCM4Lb1Nn07tiEnv0sizX2af8-NiXfsR-KzqS3npxUDt4lom553YSlOvQ_Ry0ljyGWuJmq3ODz6EwUU2844kRS1yt3amHuyh4XDAatGoayWkx-nT3AQUdJRvpsu4sHRnZvp9DTXnc_oQEzFFkaCNwmOVE5bbO1eQ9Ah5TL6WecaBmw3LOuRi3Q7EQh-CiUckFTdwzp3OICz_-sMo0LJk2eLL0dCuzIBt--S_jMPLLGGWBkm7FxFgR6d3i4zPoXzcUIN8FE1sG0zKvCGgVuzKfYjk&key=REDACTED_GOOGLE_PLACES_API_KEY"
               ],
               "rating": 2.9,
               "address": "1015 Elm St, Dallas, TX 75202, United States",
@@ -1431,7 +1431,7 @@
                 "establishment"
               ],
               "photos": [
-                "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU4qZNqBYdV0r_X_3n4FaCf67sA3xSX-L7nc-lcrAicMspsIuE2XsBeMvlxT3MNfl6HggNRGLeoIdTOpiWBivodRwuTDzaIrr1Pz0fFc3ecCvMkkKSUmuIAne9f3wSO7EbPLZyMevO5YH9s66USUQnVhNDdIBxHOAmPfFIfswZQ9cJitymPO6OO_p1WkhHSrMJPaUMu8LuajeR4qWt-JawuKSwwhb79i85xd6I-QxZ7x-kt8zltIFknFPf7DkVhPSb9dK-KadgpokSc-cS4hUA0cZoAUsgumdQIFz7Ql1twMXJQrqa4&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+                "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU4qZNqBYdV0r_X_3n4FaCf67sA3xSX-L7nc-lcrAicMspsIuE2XsBeMvlxT3MNfl6HggNRGLeoIdTOpiWBivodRwuTDzaIrr1Pz0fFc3ecCvMkkKSUmuIAne9f3wSO7EbPLZyMevO5YH9s66USUQnVhNDdIBxHOAmPfFIfswZQ9cJitymPO6OO_p1WkhHSrMJPaUMu8LuajeR4qWt-JawuKSwwhb79i85xd6I-QxZ7x-kt8zltIFknFPf7DkVhPSb9dK-KadgpokSc-cS4hUA0cZoAUsgumdQIFz7Ql1twMXJQrqa4&key=REDACTED_GOOGLE_PLACES_API_KEY"
               ],
               "rating": 4.6,
               "address": "5630 Village Glen Dr, Dallas, TX 75206, United States",
@@ -1500,7 +1500,7 @@
                 "establishment"
               ],
               "photos": [
-                "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU5VfHcDMFEh9zgrgsLuU4yt-CongufYdNc0JbPO5AVerz4Er1dQZH_FOANLUZUYFGhXvEak0gql63ffNMZ1DlH3jbLON8TQTGiTpc1J2xxDKFrMIK91S7bUKIiYSrl2EQYgTy3m2R3yMLiXcbDm-a17yxH2jl_k70BEElVHWiXc95hY9GB_JMqRmfkHHr6Ml3MhJix-Ibkn5TF-vt6YAXnDm5DXbYI6B0pkiL3pWs7KImKDxJWiqyk0xNviMKjTsWpss4Pv8YZ6GlawiokbYH6b6aYr46mvqRMfb2SZsyi4WgFHVRM&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+                "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU5VfHcDMFEh9zgrgsLuU4yt-CongufYdNc0JbPO5AVerz4Er1dQZH_FOANLUZUYFGhXvEak0gql63ffNMZ1DlH3jbLON8TQTGiTpc1J2xxDKFrMIK91S7bUKIiYSrl2EQYgTy3m2R3yMLiXcbDm-a17yxH2jl_k70BEElVHWiXc95hY9GB_JMqRmfkHHr6Ml3MhJix-Ibkn5TF-vt6YAXnDm5DXbYI6B0pkiL3pWs7KImKDxJWiqyk0xNviMKjTsWpss4Pv8YZ6GlawiokbYH6b6aYr46mvqRMfb2SZsyi4WgFHVRM&key=REDACTED_GOOGLE_PLACES_API_KEY"
               ],
               "rating": 3.6,
               "address": "1839 Fort Worth Ave, Dallas, TX 75208, United States",
@@ -1575,7 +1575,7 @@
               "establishment"
             ],
             "photos": [
-              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU5eq41MxJzbJFQkbDXjW8QRp8W8yn1qo5DkZuy1sikIpWpe9QCabgq8moNUmWt1DOY1Sz17hcjzsNgmXU26FVJNZiidigIka9j4OGbuhicaeTmQ32ZO5-k3pQKY-2J1re6nbYvFJFijJQw6h2mNyUJGlenGeP2Xo3XlGn8PNok52koPk7BzlUjgtr_NYfg2qNNF4j37O03bBHCkcvouIDBoDN_QJx2gpqVeXVpDTzoiepKJC6x0SwHmPoUl3EnJ8Xwm3JlYkZRY2Sl4aCWJmxzgfdTMN80ATBMrqzu_sEp3ptd2m7c&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU5eq41MxJzbJFQkbDXjW8QRp8W8yn1qo5DkZuy1sikIpWpe9QCabgq8moNUmWt1DOY1Sz17hcjzsNgmXU26FVJNZiidigIka9j4OGbuhicaeTmQ32ZO5-k3pQKY-2J1re6nbYvFJFijJQw6h2mNyUJGlenGeP2Xo3XlGn8PNok52koPk7BzlUjgtr_NYfg2qNNF4j37O03bBHCkcvouIDBoDN_QJx2gpqVeXVpDTzoiepKJC6x0SwHmPoUl3EnJ8Xwm3JlYkZRY2Sl4aCWJmxzgfdTMN80ATBMrqzu_sEp3ptd2m7c&key=REDACTED_GOOGLE_PLACES_API_KEY"
             ],
             "rating": 4.5,
             "address": "300 Reunion Blvd, Dallas, TX 75207, United States",
@@ -1644,7 +1644,7 @@
               "establishment"
             ],
             "photos": [
-              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU6CPE7fA1INNqk5WgGsH3iysnrtIwGnZMOhyqt-W6GmeK_5sURRoI6yTgfrK1eHBiNib0b08G4wSdxhWWYje_WGZyCxn1V8JVxboqYOu4vW4V167n1BKewY0EbHi78S46MswCWOz1wi7azr_qwstU8ZZjjVfV_yYnZGVlKLK7JOW2B2-M8kE_OxsVwO0MX046r9tYpWXzqxNQzWpg4Pv1O7W_iLT-yMFPb9UVleF_MjEpeCqrM14i8n7MS9E7Fe3nI2LGxNKn6ycX10GnPs115q6u39RyAOm2WjQE2oiV46DXUWLIU&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU6CPE7fA1INNqk5WgGsH3iysnrtIwGnZMOhyqt-W6GmeK_5sURRoI6yTgfrK1eHBiNib0b08G4wSdxhWWYje_WGZyCxn1V8JVxboqYOu4vW4V167n1BKewY0EbHi78S46MswCWOz1wi7azr_qwstU8ZZjjVfV_yYnZGVlKLK7JOW2B2-M8kE_OxsVwO0MX046r9tYpWXzqxNQzWpg4Pv1O7W_iLT-yMFPb9UVleF_MjEpeCqrM14i8n7MS9E7Fe3nI2LGxNKn6ycX10GnPs115q6u39RyAOm2WjQE2oiV46DXUWLIU&key=REDACTED_GOOGLE_PLACES_API_KEY"
             ],
             "rating": 4.3,
             "address": "2201 N Stemmons Fwy, Dallas, TX 75207, United States",
@@ -1715,7 +1715,7 @@
               "establishment"
             ],
             "photos": [
-              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU5MWIv5Dnqsb6ZgOheq2NOmLUVyrihsdEHeJdEPh1uExm5xEgGjxPJj9Alvxf4m9J401jovRGEXSP0EJY1Mvmy9cbrkP4EYE0vZNJF5Ua2QB5-D5cI5leAvQaxeY1WXYdeBjOpTxzmESBei26bFQTUc1wSMJ5OujSGjukV9JKJNPyTJixriQJ7iJ4QZTftve5ZPwcoyWSfwfOwU0PPlbjB3aFlxvs9--dM04NG0jkQg_9yjPavHwmwNAHtnlEc-QGVX5NsoK18j-YArpavGS6aKZWZSTAFkJtxNFCzI4MCSgWq94TQ&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU5MWIv5Dnqsb6ZgOheq2NOmLUVyrihsdEHeJdEPh1uExm5xEgGjxPJj9Alvxf4m9J401jovRGEXSP0EJY1Mvmy9cbrkP4EYE0vZNJF5Ua2QB5-D5cI5leAvQaxeY1WXYdeBjOpTxzmESBei26bFQTUc1wSMJ5OujSGjukV9JKJNPyTJixriQJ7iJ4QZTftve5ZPwcoyWSfwfOwU0PPlbjB3aFlxvs9--dM04NG0jkQg_9yjPavHwmwNAHtnlEc-QGVX5NsoK18j-YArpavGS6aKZWZSTAFkJtxNFCzI4MCSgWq94TQ&key=REDACTED_GOOGLE_PLACES_API_KEY"
             ],
             "rating": 4.4,
             "address": "1717 N Akard St, Dallas, TX 75201, United States",
@@ -1786,7 +1786,7 @@
               "establishment"
             ],
             "photos": [
-              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU7xamkckxqf9rQgHeblUsIjWzMrfhUgVxlJAOJTaWvRhP0HzL_JUgy9pxNHPBFqD8fE_aTSiJDmuJ3vW6_1F8afIior3HRadtqHMswNGS2lE3KKxuGaUNFplJ4ODRuYeNezE9Z_YPEQ6edPBwbswIqZjFfhLu1HFglUd5UnKt_L3XZR2GpS2VUmwXOYz9v1B03M94jrYHWGyNwwPLiSSuvb52kx3p-kg65IPM2sLcrqufyWCMNT_qy68UYgJn62bXfpGtiFOEt-J9rzGvIF39F9yPnJ1KRTnhEzLBxNQ6i57OEdIaw&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU7xamkckxqf9rQgHeblUsIjWzMrfhUgVxlJAOJTaWvRhP0HzL_JUgy9pxNHPBFqD8fE_aTSiJDmuJ3vW6_1F8afIior3HRadtqHMswNGS2lE3KKxuGaUNFplJ4ODRuYeNezE9Z_YPEQ6edPBwbswIqZjFfhLu1HFglUd5UnKt_L3XZR2GpS2VUmwXOYz9v1B03M94jrYHWGyNwwPLiSSuvb52kx3p-kg65IPM2sLcrqufyWCMNT_qy68UYgJn62bXfpGtiFOEt-J9rzGvIF39F9yPnJ1KRTnhEzLBxNQ6i57OEdIaw&key=REDACTED_GOOGLE_PLACES_API_KEY"
             ],
             "rating": 4.2,
             "address": "1600 Pacific Ave, Dallas, TX 75201, United States",
@@ -1855,7 +1855,7 @@
               "establishment"
             ],
             "photos": [
-              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU7jEPNeIMVGXjgaRImo1KGFHREM4rf2Kiz-YWIDl4JJ0JoQg2eb8SaWzqr63MGAQOgVd6h38DvboHGsEvfusY8Dl9T_A6WJVAg9yIZIcqwI08HB-meO8v602icA7xBYEMbAsGB4NJoVtztVW0SPFSqwyhqCR9w74MGrQeDqHI86MhKQBKMGa-yC9MF7YyIvIs_HfK7KNZfbDw_jhZoi-erwhaI-pdboLNy4otaYHLIjqjG5KKuN8EPrYSwsBf2t0_cUUARYp6RFiJ6d0BqZ6Bdl_NI6qardP29IkVxRt7J0vT1gVOA&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU7jEPNeIMVGXjgaRImo1KGFHREM4rf2Kiz-YWIDl4JJ0JoQg2eb8SaWzqr63MGAQOgVd6h38DvboHGsEvfusY8Dl9T_A6WJVAg9yIZIcqwI08HB-meO8v602icA7xBYEMbAsGB4NJoVtztVW0SPFSqwyhqCR9w74MGrQeDqHI86MhKQBKMGa-yC9MF7YyIvIs_HfK7KNZfbDw_jhZoi-erwhaI-pdboLNy4otaYHLIjqjG5KKuN8EPrYSwsBf2t0_cUUARYp6RFiJ6d0BqZ6Bdl_NI6qardP29IkVxRt7J0vT1gVOA&key=REDACTED_GOOGLE_PLACES_API_KEY"
             ],
             "rating": 4.6,
             "address": "2332 Leonard St, Dallas, TX 75201, United States",
@@ -1927,7 +1927,7 @@
               "establishment"
             ],
             "photos": [
-              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU5HuObsDHKkKZQGQH0Aqfij83yEz9B_TnFWdDZUlagNfhViTgX79lrre_pSZK09YmnYwshQeCMQpfIywHLTRVyFJRTm8VuYEgHjZa9tMd5CyulqWoD4ClOdbNP9JVY5oopYt9sHT0_c3sCA1CBqSzerYbOt-yH8FqO_msI2S4OH1CNZaqh4Tdb6fChNMiCt3tviymlvdQlx2Ptu74Gl5JmstY6JQvgkLMzfcFW7hrb2g6RInB6eHp1zdHdMjTtyXGlXtyPxVgJ3JCF4Np7numCk4Pzt7ey1wFX2JdNTF2ofhZWiZZA&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU5HuObsDHKkKZQGQH0Aqfij83yEz9B_TnFWdDZUlagNfhViTgX79lrre_pSZK09YmnYwshQeCMQpfIywHLTRVyFJRTm8VuYEgHjZa9tMd5CyulqWoD4ClOdbNP9JVY5oopYt9sHT0_c3sCA1CBqSzerYbOt-yH8FqO_msI2S4OH1CNZaqh4Tdb6fChNMiCt3tviymlvdQlx2Ptu74Gl5JmstY6JQvgkLMzfcFW7hrb2g6RInB6eHp1zdHdMjTtyXGlXtyPxVgJ3JCF4Np7numCk4Pzt7ey1wFX2JdNTF2ofhZWiZZA&key=REDACTED_GOOGLE_PLACES_API_KEY"
             ],
             "rating": 4,
             "address": "800 N Main St, Duncanville, TX 75116, United States",
@@ -1996,7 +1996,7 @@
               "establishment"
             ],
             "photos": [
-              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU4RhsHmtPuOyFwBCiQdawKdVnYQwnJfWpyqvTsetL8CAScDPgBsOEdPWVMXhYlbNOlJx4Vkbb3pCOvB2tn8WD3go5IZgLNhFqYTSliLnBcCdE_btLsHlrfqdddlUCfGCNtsoHyUtca95WD6FLQ0PfkQWNdA41XNgBhSuK099cgmBkZ66SIFSV4sOu2L-Dcz-50jI_0hnj2NCsghrZKs8b3RnHeyxtO0LKM4cknSWHMel6nWtQTY3Ve7m6yhie_qM6S4CcdGk1-1s_GKTs2beGJwpIXDLvsH-e96UOlqANvHf_FGawE&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU4RhsHmtPuOyFwBCiQdawKdVnYQwnJfWpyqvTsetL8CAScDPgBsOEdPWVMXhYlbNOlJx4Vkbb3pCOvB2tn8WD3go5IZgLNhFqYTSliLnBcCdE_btLsHlrfqdddlUCfGCNtsoHyUtca95WD6FLQ0PfkQWNdA41XNgBhSuK099cgmBkZ66SIFSV4sOu2L-Dcz-50jI_0hnj2NCsghrZKs8b3RnHeyxtO0LKM4cknSWHMel6nWtQTY3Ve7m6yhie_qM6S4CcdGk1-1s_GKTs2beGJwpIXDLvsH-e96UOlqANvHf_FGawE&key=REDACTED_GOOGLE_PLACES_API_KEY"
             ],
             "rating": 4.2,
             "address": "1700 Rodeo Dr, Mesquite, TX 75149, United States",
@@ -2065,7 +2065,7 @@
               "establishment"
             ],
             "photos": [
-              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU7JXSmzGRx5npRyIdy7pWucQDQlCkVeHpUqVmJeMIhbmcDtm0OoSAQWNUjmwgP8v5pLbMpHORuYh4lLbag1yptuAOV6gJDEtZ6WsjCknlrpnw7TQfvEt-SVubmNswL0w95omvp-aqicEsBfgdu1qgC9pXpIo09Fg_2cms6cY93HsfIrcM8r9vszmnIXXk1uqpCL2M8NtDW_XI_LYsR9kBwW6226TUlrx6xc-2LAkMMPuLzq1VO9n0Go9DXvRrMGsTHDyBXdT3tSqFTHhU6MOuaY24nXsHQXIFYz9d7z4J0SJFCn&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU7JXSmzGRx5npRyIdy7pWucQDQlCkVeHpUqVmJeMIhbmcDtm0OoSAQWNUjmwgP8v5pLbMpHORuYh4lLbag1yptuAOV6gJDEtZ6WsjCknlrpnw7TQfvEt-SVubmNswL0w95omvp-aqicEsBfgdu1qgC9pXpIo09Fg_2cms6cY93HsfIrcM8r9vszmnIXXk1uqpCL2M8NtDW_XI_LYsR9kBwW6226TUlrx6xc-2LAkMMPuLzq1VO9n0Go9DXvRrMGsTHDyBXdT3tSqFTHhU6MOuaY24nXsHQXIFYz9d7z4J0SJFCn&key=REDACTED_GOOGLE_PLACES_API_KEY"
             ],
             "rating": 4.3,
             "address": "1445 Turtle Creek Blvd, Dallas, TX 75207, United States",
@@ -2137,7 +2137,7 @@
               "establishment"
             ],
             "photos": [
-              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU75wJ65CsJSQAvwBuQ6k63YeoSufZQ9xMDhIj2NktI55QlD4Rq1F3Ay0mMjSG3pT2TbleoK8cHkY0MynNFe6FX2DTWTqqzsw78dbQSwDVXiXO_So6mQLhbOynZxPJ024WgpHJ57C6duIqCltCuBWcc99els9V3Ch3HV-oX3OUE7Qf728iboq5SrGMCocaGviwlzQW6w07N4T-Uk2mcD1EUHhrIix3aBIyb7_yweF8yY30tfoaFGoURjwShDdOeAtKndLt2SL97UunmpsfptsoqrCH1KOCygjaK8J3Z5zhqRSj7xtYI&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU75wJ65CsJSQAvwBuQ6k63YeoSufZQ9xMDhIj2NktI55QlD4Rq1F3Ay0mMjSG3pT2TbleoK8cHkY0MynNFe6FX2DTWTqqzsw78dbQSwDVXiXO_So6mQLhbOynZxPJ024WgpHJ57C6duIqCltCuBWcc99els9V3Ch3HV-oX3OUE7Qf728iboq5SrGMCocaGviwlzQW6w07N4T-Uk2mcD1EUHhrIix3aBIyb7_yweF8yY30tfoaFGoURjwShDdOeAtKndLt2SL97UunmpsfptsoqrCH1KOCygjaK8J3Z5zhqRSj7xtYI&key=REDACTED_GOOGLE_PLACES_API_KEY"
             ],
             "rating": 3.7,
             "address": "8703 E R L Thornton Fwy, Dallas, TX 75228, United States",
@@ -2206,7 +2206,7 @@
               "establishment"
             ],
             "photos": [
-              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU6c3xnr2Wl-aImGMsVWN5TRFZjiUBR0dx1LsJ42AYTRTH_wdRho5r3VCowYWAX4UmkbkD1DArSw9qM42GF5fSaCciKH3VTMydh-oWR7sjPIz4vUXnLbG_JZn3ckXk9rfeQ3GVWD2CRCZQuf28YPEOYrzl1XEtVtcZRwHKlwccI1emP27re3TBC0pqWPzj9063W0WWvQbDKy7w5UtvkGdRztZozSlbcBzmIGL5K5QHMOoCbN6B-eq-SnugBYKaj4wknKwi1H42_cOhspZ0430zXP9WjP8_BsIn4GSKtlw8pt7gjNoRM&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU6c3xnr2Wl-aImGMsVWN5TRFZjiUBR0dx1LsJ42AYTRTH_wdRho5r3VCowYWAX4UmkbkD1DArSw9qM42GF5fSaCciKH3VTMydh-oWR7sjPIz4vUXnLbG_JZn3ckXk9rfeQ3GVWD2CRCZQuf28YPEOYrzl1XEtVtcZRwHKlwccI1emP27re3TBC0pqWPzj9063W0WWvQbDKy7w5UtvkGdRztZozSlbcBzmIGL5K5QHMOoCbN6B-eq-SnugBYKaj4wknKwi1H42_cOhspZ0430zXP9WjP8_BsIn4GSKtlw8pt7gjNoRM&key=REDACTED_GOOGLE_PLACES_API_KEY"
             ],
             "rating": 3.8,
             "address": "13165 N Central Expy, Dallas, TX 75243, United States",
@@ -2275,7 +2275,7 @@
               "establishment"
             ],
             "photos": [
-              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU4hCYe8oIbxhqbdDbukJtPUo20NK38hqzWrjfpV3jgmAlV4lcXhyPH2jS216NU6mtEH2Aw0IwtpXKA-8gLqRZ0CaDDNME04dbs_RC_wcz7fZLQEH-bvk_s0uaLxBDZxrnfoLXaEE4-r1fFTWno7_r1PBSz0fR-i6fqrqjaYG-JS2WQ_zMnnC0_Qqkz7nslic59aQCZK_UYNZ3dEQWfGkpdVbKpyu6M3gCskElMXty7VAd9laoTJiNqJpCboNEVdVWy_kk10Mc4BNS9_Dik-UrDyPUo4RjajnC6JzZwXareX953pgsY&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU4hCYe8oIbxhqbdDbukJtPUo20NK38hqzWrjfpV3jgmAlV4lcXhyPH2jS216NU6mtEH2Aw0IwtpXKA-8gLqRZ0CaDDNME04dbs_RC_wcz7fZLQEH-bvk_s0uaLxBDZxrnfoLXaEE4-r1fFTWno7_r1PBSz0fR-i6fqrqjaYG-JS2WQ_zMnnC0_Qqkz7nslic59aQCZK_UYNZ3dEQWfGkpdVbKpyu6M3gCskElMXty7VAd9laoTJiNqJpCboNEVdVWy_kk10Mc4BNS9_Dik-UrDyPUo4RjajnC6JzZwXareX953pgsY&key=REDACTED_GOOGLE_PLACES_API_KEY"
             ],
             "rating": 4,
             "address": "10325 N Central Expy, Dallas, TX 75231, United States",
@@ -2344,7 +2344,7 @@
               "establishment"
             ],
             "photos": [
-              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU4AnwWjrMezU6a6ZfEEi94ouelNjg3VTk_ZchZAcB5CYXhkpFtLg-dcFbh9pphrP8qBHVNS9miNAZzQC6szJupDgL3GTqHX3QhfWH0LMtwGJttY5Ohns4P-3OQMCmm3c94pOThAyMYEiryAgdXRd29JMzbCH-d_yFtzjMwigHpNf8qUyyjycK8k844JsY7c4zi_sz4gfWKfoE6yWv09GNV3ahPWs04FI6rgXp_hr3r2EgToOduKTAiMY1mQ4J6HoAZQKhtbaB26WGQjTYaZzjiE7OaSBdZMwnIfRzPzXeZ6CbzZbTc&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU4AnwWjrMezU6a6ZfEEi94ouelNjg3VTk_ZchZAcB5CYXhkpFtLg-dcFbh9pphrP8qBHVNS9miNAZzQC6szJupDgL3GTqHX3QhfWH0LMtwGJttY5Ohns4P-3OQMCmm3c94pOThAyMYEiryAgdXRd29JMzbCH-d_yFtzjMwigHpNf8qUyyjycK8k844JsY7c4zi_sz4gfWKfoE6yWv09GNV3ahPWs04FI6rgXp_hr3r2EgToOduKTAiMY1mQ4J6HoAZQKhtbaB26WGQjTYaZzjiE7OaSBdZMwnIfRzPzXeZ6CbzZbTc&key=REDACTED_GOOGLE_PLACES_API_KEY"
             ],
             "rating": 4.1,
             "address": "1000 Dowdy Ferry Rd, Hutchins, TX 75141, United States",
@@ -2416,7 +2416,7 @@
               "establishment"
             ],
             "photos": [
-              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU52QT7O8-LQy7ugE-iVuvxcG5mjfIi8AJqVhVaJU7PZXiQF7GjAf6RCuwd0XZixe-3xJjtBIdFVRjKHDQ048-n4snore1tLz9Xwqp_Pr5CSO88lYIU1XUu1KCqWjds9BAKPVk2b-gZJfZxuAlPDqC-phaSEjkn2WSaohzELHYKbnf9PKsEfcAPrqU79ZXMeNX9-9GvgGPcKOnFjSKXUcMBAANSkbM1PI9bbZLKW0Z7iOUL0UzNeUBkwr15WQeiMWuQZFdha0UOi6JCVsaXcFY6x1Pb_fqFxm6K8Vy3A0uJH95nsm8k&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU52QT7O8-LQy7ugE-iVuvxcG5mjfIi8AJqVhVaJU7PZXiQF7GjAf6RCuwd0XZixe-3xJjtBIdFVRjKHDQ048-n4snore1tLz9Xwqp_Pr5CSO88lYIU1XUu1KCqWjds9BAKPVk2b-gZJfZxuAlPDqC-phaSEjkn2WSaohzELHYKbnf9PKsEfcAPrqU79ZXMeNX9-9GvgGPcKOnFjSKXUcMBAANSkbM1PI9bbZLKW0Z7iOUL0UzNeUBkwr15WQeiMWuQZFdha0UOi6JCVsaXcFY6x1Pb_fqFxm6K8Vy3A0uJH95nsm8k&key=REDACTED_GOOGLE_PLACES_API_KEY"
             ],
             "rating": 4,
             "address": "5110 N President George Bush Hwy, Garland, TX 75040, United States",
@@ -2485,7 +2485,7 @@
               "establishment"
             ],
             "photos": [
-              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU5w0VZ8X5D3phPhGzHYPBPHCniJ7e2stZXEYDKBVkdOFdjE23ngFoQFUmbhmzxmb-PnHGmGADsoVADhPUB_GKmEu5DRX2CpEFGR9xPKbuXowxYG5I6ZEA4H2vT3EXmLLP-adeTO7o43KjEUM3ZiGKgTDHGghTs7-rijzySuo3gAOHL5z11jFoYpqngjylQUX5_dDkV2nuU4AwEmLlQtpBW7iOeg8Z5ZMpVe47RDCtjZsS3HCu8-Srd9Zhal9HXjLgvpN9AG9hVhtus_TVW0UyvL_z2dSE3RDqTu3yvfIYDfs6r2Ps0&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU5w0VZ8X5D3phPhGzHYPBPHCniJ7e2stZXEYDKBVkdOFdjE23ngFoQFUmbhmzxmb-PnHGmGADsoVADhPUB_GKmEu5DRX2CpEFGR9xPKbuXowxYG5I6ZEA4H2vT3EXmLLP-adeTO7o43KjEUM3ZiGKgTDHGghTs7-rijzySuo3gAOHL5z11jFoYpqngjylQUX5_dDkV2nuU4AwEmLlQtpBW7iOeg8Z5ZMpVe47RDCtjZsS3HCu8-Srd9Zhal9HXjLgvpN9AG9hVhtus_TVW0UyvL_z2dSE3RDqTu3yvfIYDfs6r2Ps0&key=REDACTED_GOOGLE_PLACES_API_KEY"
             ],
             "rating": 4,
             "address": "4412 Bass Pro Dr, Garland, TX 75043, United States",
@@ -2554,7 +2554,7 @@
               "establishment"
             ],
             "photos": [
-              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU7kzEEmVb6iAKAX45z3J8CT7HQm9F8ipB2_mJRa7eEgWAaJTo8FnOKCKAtqAinoEsP29YaIhJotP5W2V7DCGV91dDSWAPuxfOvxSEoZXJzmbRTKE2zQoWn2BZRaoC60fPCCLaoFOq4Y7G17uWKsBM7SeOL4h8S48krX6JLJnHqh8gspxOUoHEm38F0Fzhbz32rybu1Mt3T3Jz2FHJd5JhWps-Zhqj-5FsZC8Vf0rSVIl6Xhypu-DRW2DxfcQII9uKzGey93ziSfSFZzAapfo33h2NXfg044YhmFX7FDVRw9kNTMhdU&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU7kzEEmVb6iAKAX45z3J8CT7HQm9F8ipB2_mJRa7eEgWAaJTo8FnOKCKAtqAinoEsP29YaIhJotP5W2V7DCGV91dDSWAPuxfOvxSEoZXJzmbRTKE2zQoWn2BZRaoC60fPCCLaoFOq4Y7G17uWKsBM7SeOL4h8S48krX6JLJnHqh8gspxOUoHEm38F0Fzhbz32rybu1Mt3T3Jz2FHJd5JhWps-Zhqj-5FsZC8Vf0rSVIl6Xhypu-DRW2DxfcQII9uKzGey93ziSfSFZzAapfo33h2NXfg044YhmFX7FDVRw9kNTMhdU&key=REDACTED_GOOGLE_PLACES_API_KEY"
             ],
             "rating": 3.9,
             "address": "21850 I-635, Mesquite, TX 75149, United States",
@@ -2623,7 +2623,7 @@
               "establishment"
             ],
             "photos": [
-              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU6gYc8MntwWH2FnqhS74KnAtygdmXhTdswr8r47pvM6igqY0MAaorMNXL1YWGia-9IKGhKsNHXLB2q4Oj9I__qwkir42YizPx34NFFDOsraT1kAXZH7NtpuSK9-dMJYV-rIJxBdP_jPAqOkD8YDWoGzi65QqvMsl1FJA-d6jDCUtVX_TSJyl2DJlG2NGiM0AjFxOMgWzYMZcU0GC828uvwjgOYnwExseNZPD7duvpCQ7MJjzc-tg6zEYS739hhDNeeagqWxZVxywQElXhOYMgbBIVihOiC-yBhJxDPWvIhPdEVZJGQ&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU6gYc8MntwWH2FnqhS74KnAtygdmXhTdswr8r47pvM6igqY0MAaorMNXL1YWGia-9IKGhKsNHXLB2q4Oj9I__qwkir42YizPx34NFFDOsraT1kAXZH7NtpuSK9-dMJYV-rIJxBdP_jPAqOkD8YDWoGzi65QqvMsl1FJA-d6jDCUtVX_TSJyl2DJlG2NGiM0AjFxOMgWzYMZcU0GC828uvwjgOYnwExseNZPD7duvpCQ7MJjzc-tg6zEYS739hhDNeeagqWxZVxywQElXhOYMgbBIVihOiC-yBhJxDPWvIhPdEVZJGQ&key=REDACTED_GOOGLE_PLACES_API_KEY"
             ],
             "rating": 4.1,
             "address": "2001 E President George Bush Hwy, Plano, TX 75074, United States",
@@ -2692,7 +2692,7 @@
               "establishment"
             ],
             "photos": [
-              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU4pNT-ffU1aJJkhzj4d5I4nQ7WnVwCXuLsqcvxnkJPFXwqMWnKS435C0mWZF1Npg732iOdTzWxRyZGyIu0bh4hUbYyWSQANCuOmw6fSruY95OxDedxPvliW7Mu747HwiXpdiyoGIrNCqEw4nrVRTZbbR6OUIaC3Bh8U1yuvLBmyTriOyRAbWuy-RA0Ictv9WfwNRVtPbpXK8xK-hd5uHqqoT51HTWlLOsclBqqjOaJu8XH_yFm61KPz4ScBi9tZHWEgS5jjSqkQu4-PJoBHruf7ru36pacUx4-FaW-250K2vALxun4&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU4pNT-ffU1aJJkhzj4d5I4nQ7WnVwCXuLsqcvxnkJPFXwqMWnKS435C0mWZF1Npg732iOdTzWxRyZGyIu0bh4hUbYyWSQANCuOmw6fSruY95OxDedxPvliW7Mu747HwiXpdiyoGIrNCqEw4nrVRTZbbR6OUIaC3Bh8U1yuvLBmyTriOyRAbWuy-RA0Ictv9WfwNRVtPbpXK8xK-hd5uHqqoT51HTWlLOsclBqqjOaJu8XH_yFm61KPz4ScBi9tZHWEgS5jjSqkQu4-PJoBHruf7ru36pacUx4-FaW-250K2vALxun4&key=REDACTED_GOOGLE_PLACES_API_KEY"
             ],
             "rating": 3.3,
             "address": "8687 E R L Thornton Fwy, Dallas, TX 75228, United States",
@@ -2764,7 +2764,7 @@
               "establishment"
             ],
             "photos": [
-              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU4ntWAfpcJ97dwiWSM4s_wxEhEiCM4Lb1Nn07tiEnv0sizX2af8-NiXfsR-KzqS3npxUDt4lom553YSlOvQ_Ry0ljyGWuJmq3ODz6EwUU2844kRS1yt3amHuyh4XDAatGoayWkx-nT3AQUdJRvpsu4sHRnZvp9DTXnc_oQEzFFkaCNwmOVE5bbO1eQ9Ah5TL6WecaBmw3LOuRi3Q7EQh-CiUckFTdwzp3OICz_-sMo0LJk2eLL0dCuzIBt--S_jMPLLGGWBkm7FxFgR6d3i4zPoXzcUIN8FE1sG0zKvCGgVuzKfYjk&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU4ntWAfpcJ97dwiWSM4s_wxEhEiCM4Lb1Nn07tiEnv0sizX2af8-NiXfsR-KzqS3npxUDt4lom553YSlOvQ_Ry0ljyGWuJmq3ODz6EwUU2844kRS1yt3amHuyh4XDAatGoayWkx-nT3AQUdJRvpsu4sHRnZvp9DTXnc_oQEzFFkaCNwmOVE5bbO1eQ9Ah5TL6WecaBmw3LOuRi3Q7EQh-CiUckFTdwzp3OICz_-sMo0LJk2eLL0dCuzIBt--S_jMPLLGGWBkm7FxFgR6d3i4zPoXzcUIN8FE1sG0zKvCGgVuzKfYjk&key=REDACTED_GOOGLE_PLACES_API_KEY"
             ],
             "rating": 2.9,
             "address": "1015 Elm St, Dallas, TX 75202, United States",
@@ -2833,7 +2833,7 @@
               "establishment"
             ],
             "photos": [
-              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU4qZNqBYdV0r_X_3n4FaCf67sA3xSX-L7nc-lcrAicMspsIuE2XsBeMvlxT3MNfl6HggNRGLeoIdTOpiWBivodRwuTDzaIrr1Pz0fFc3ecCvMkkKSUmuIAne9f3wSO7EbPLZyMevO5YH9s66USUQnVhNDdIBxHOAmPfFIfswZQ9cJitymPO6OO_p1WkhHSrMJPaUMu8LuajeR4qWt-JawuKSwwhb79i85xd6I-QxZ7x-kt8zltIFknFPf7DkVhPSb9dK-KadgpokSc-cS4hUA0cZoAUsgumdQIFz7Ql1twMXJQrqa4&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU4qZNqBYdV0r_X_3n4FaCf67sA3xSX-L7nc-lcrAicMspsIuE2XsBeMvlxT3MNfl6HggNRGLeoIdTOpiWBivodRwuTDzaIrr1Pz0fFc3ecCvMkkKSUmuIAne9f3wSO7EbPLZyMevO5YH9s66USUQnVhNDdIBxHOAmPfFIfswZQ9cJitymPO6OO_p1WkhHSrMJPaUMu8LuajeR4qWt-JawuKSwwhb79i85xd6I-QxZ7x-kt8zltIFknFPf7DkVhPSb9dK-KadgpokSc-cS4hUA0cZoAUsgumdQIFz7Ql1twMXJQrqa4&key=REDACTED_GOOGLE_PLACES_API_KEY"
             ],
             "rating": 4.6,
             "address": "5630 Village Glen Dr, Dallas, TX 75206, United States",
@@ -2902,7 +2902,7 @@
               "establishment"
             ],
             "photos": [
-              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU5VfHcDMFEh9zgrgsLuU4yt-CongufYdNc0JbPO5AVerz4Er1dQZH_FOANLUZUYFGhXvEak0gql63ffNMZ1DlH3jbLON8TQTGiTpc1J2xxDKFrMIK91S7bUKIiYSrl2EQYgTy3m2R3yMLiXcbDm-a17yxH2jl_k70BEElVHWiXc95hY9GB_JMqRmfkHHr6Ml3MhJix-Ibkn5TF-vt6YAXnDm5DXbYI6B0pkiL3pWs7KImKDxJWiqyk0xNviMKjTsWpss4Pv8YZ6GlawiokbYH6b6aYr46mvqRMfb2SZsyi4WgFHVRM&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU5VfHcDMFEh9zgrgsLuU4yt-CongufYdNc0JbPO5AVerz4Er1dQZH_FOANLUZUYFGhXvEak0gql63ffNMZ1DlH3jbLON8TQTGiTpc1J2xxDKFrMIK91S7bUKIiYSrl2EQYgTy3m2R3yMLiXcbDm-a17yxH2jl_k70BEElVHWiXc95hY9GB_JMqRmfkHHr6Ml3MhJix-Ibkn5TF-vt6YAXnDm5DXbYI6B0pkiL3pWs7KImKDxJWiqyk0xNviMKjTsWpss4Pv8YZ6GlawiokbYH6b6aYr46mvqRMfb2SZsyi4WgFHVRM&key=REDACTED_GOOGLE_PLACES_API_KEY"
             ],
             "rating": 3.6,
             "address": "1839 Fort Worth Ave, Dallas, TX 75208, United States",
@@ -3017,7 +3017,7 @@
               "establishment"
             ],
             "photos": [
-              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU5eq41MxJzbJFQkbDXjW8QRp8W8yn1qo5DkZuy1sikIpWpe9QCabgq8moNUmWt1DOY1Sz17hcjzsNgmXU26FVJNZiidigIka9j4OGbuhicaeTmQ32ZO5-k3pQKY-2J1re6nbYvFJFijJQw6h2mNyUJGlenGeP2Xo3XlGn8PNok52koPk7BzlUjgtr_NYfg2qNNF4j37O03bBHCkcvouIDBoDN_QJx2gpqVeXVpDTzoiepKJC6x0SwHmPoUl3EnJ8Xwm3JlYkZRY2Sl4aCWJmxzgfdTMN80ATBMrqzu_sEp3ptd2m7c&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU5eq41MxJzbJFQkbDXjW8QRp8W8yn1qo5DkZuy1sikIpWpe9QCabgq8moNUmWt1DOY1Sz17hcjzsNgmXU26FVJNZiidigIka9j4OGbuhicaeTmQ32ZO5-k3pQKY-2J1re6nbYvFJFijJQw6h2mNyUJGlenGeP2Xo3XlGn8PNok52koPk7BzlUjgtr_NYfg2qNNF4j37O03bBHCkcvouIDBoDN_QJx2gpqVeXVpDTzoiepKJC6x0SwHmPoUl3EnJ8Xwm3JlYkZRY2Sl4aCWJmxzgfdTMN80ATBMrqzu_sEp3ptd2m7c&key=REDACTED_GOOGLE_PLACES_API_KEY"
             ],
             "rating": 4.5,
             "address": "300 Reunion Blvd, Dallas, TX 75207, United States",
@@ -3086,7 +3086,7 @@
               "establishment"
             ],
             "photos": [
-              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU6CPE7fA1INNqk5WgGsH3iysnrtIwGnZMOhyqt-W6GmeK_5sURRoI6yTgfrK1eHBiNib0b08G4wSdxhWWYje_WGZyCxn1V8JVxboqYOu4vW4V167n1BKewY0EbHi78S46MswCWOz1wi7azr_qwstU8ZZjjVfV_yYnZGVlKLK7JOW2B2-M8kE_OxsVwO0MX046r9tYpWXzqxNQzWpg4Pv1O7W_iLT-yMFPb9UVleF_MjEpeCqrM14i8n7MS9E7Fe3nI2LGxNKn6ycX10GnPs115q6u39RyAOm2WjQE2oiV46DXUWLIU&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU6CPE7fA1INNqk5WgGsH3iysnrtIwGnZMOhyqt-W6GmeK_5sURRoI6yTgfrK1eHBiNib0b08G4wSdxhWWYje_WGZyCxn1V8JVxboqYOu4vW4V167n1BKewY0EbHi78S46MswCWOz1wi7azr_qwstU8ZZjjVfV_yYnZGVlKLK7JOW2B2-M8kE_OxsVwO0MX046r9tYpWXzqxNQzWpg4Pv1O7W_iLT-yMFPb9UVleF_MjEpeCqrM14i8n7MS9E7Fe3nI2LGxNKn6ycX10GnPs115q6u39RyAOm2WjQE2oiV46DXUWLIU&key=REDACTED_GOOGLE_PLACES_API_KEY"
             ],
             "rating": 4.3,
             "address": "2201 N Stemmons Fwy, Dallas, TX 75207, United States",
@@ -3157,7 +3157,7 @@
               "establishment"
             ],
             "photos": [
-              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU5MWIv5Dnqsb6ZgOheq2NOmLUVyrihsdEHeJdEPh1uExm5xEgGjxPJj9Alvxf4m9J401jovRGEXSP0EJY1Mvmy9cbrkP4EYE0vZNJF5Ua2QB5-D5cI5leAvQaxeY1WXYdeBjOpTxzmESBei26bFQTUc1wSMJ5OujSGjukV9JKJNPyTJixriQJ7iJ4QZTftve5ZPwcoyWSfwfOwU0PPlbjB3aFlxvs9--dM04NG0jkQg_9yjPavHwmwNAHtnlEc-QGVX5NsoK18j-YArpavGS6aKZWZSTAFkJtxNFCzI4MCSgWq94TQ&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU5MWIv5Dnqsb6ZgOheq2NOmLUVyrihsdEHeJdEPh1uExm5xEgGjxPJj9Alvxf4m9J401jovRGEXSP0EJY1Mvmy9cbrkP4EYE0vZNJF5Ua2QB5-D5cI5leAvQaxeY1WXYdeBjOpTxzmESBei26bFQTUc1wSMJ5OujSGjukV9JKJNPyTJixriQJ7iJ4QZTftve5ZPwcoyWSfwfOwU0PPlbjB3aFlxvs9--dM04NG0jkQg_9yjPavHwmwNAHtnlEc-QGVX5NsoK18j-YArpavGS6aKZWZSTAFkJtxNFCzI4MCSgWq94TQ&key=REDACTED_GOOGLE_PLACES_API_KEY"
             ],
             "rating": 4.4,
             "address": "1717 N Akard St, Dallas, TX 75201, United States",
@@ -3228,7 +3228,7 @@
               "establishment"
             ],
             "photos": [
-              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU7xamkckxqf9rQgHeblUsIjWzMrfhUgVxlJAOJTaWvRhP0HzL_JUgy9pxNHPBFqD8fE_aTSiJDmuJ3vW6_1F8afIior3HRadtqHMswNGS2lE3KKxuGaUNFplJ4ODRuYeNezE9Z_YPEQ6edPBwbswIqZjFfhLu1HFglUd5UnKt_L3XZR2GpS2VUmwXOYz9v1B03M94jrYHWGyNwwPLiSSuvb52kx3p-kg65IPM2sLcrqufyWCMNT_qy68UYgJn62bXfpGtiFOEt-J9rzGvIF39F9yPnJ1KRTnhEzLBxNQ6i57OEdIaw&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU7xamkckxqf9rQgHeblUsIjWzMrfhUgVxlJAOJTaWvRhP0HzL_JUgy9pxNHPBFqD8fE_aTSiJDmuJ3vW6_1F8afIior3HRadtqHMswNGS2lE3KKxuGaUNFplJ4ODRuYeNezE9Z_YPEQ6edPBwbswIqZjFfhLu1HFglUd5UnKt_L3XZR2GpS2VUmwXOYz9v1B03M94jrYHWGyNwwPLiSSuvb52kx3p-kg65IPM2sLcrqufyWCMNT_qy68UYgJn62bXfpGtiFOEt-J9rzGvIF39F9yPnJ1KRTnhEzLBxNQ6i57OEdIaw&key=REDACTED_GOOGLE_PLACES_API_KEY"
             ],
             "rating": 4.2,
             "address": "1600 Pacific Ave, Dallas, TX 75201, United States",
@@ -3297,7 +3297,7 @@
               "establishment"
             ],
             "photos": [
-              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU7jEPNeIMVGXjgaRImo1KGFHREM4rf2Kiz-YWIDl4JJ0JoQg2eb8SaWzqr63MGAQOgVd6h38DvboHGsEvfusY8Dl9T_A6WJVAg9yIZIcqwI08HB-meO8v602icA7xBYEMbAsGB4NJoVtztVW0SPFSqwyhqCR9w74MGrQeDqHI86MhKQBKMGa-yC9MF7YyIvIs_HfK7KNZfbDw_jhZoi-erwhaI-pdboLNy4otaYHLIjqjG5KKuN8EPrYSwsBf2t0_cUUARYp6RFiJ6d0BqZ6Bdl_NI6qardP29IkVxRt7J0vT1gVOA&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU7jEPNeIMVGXjgaRImo1KGFHREM4rf2Kiz-YWIDl4JJ0JoQg2eb8SaWzqr63MGAQOgVd6h38DvboHGsEvfusY8Dl9T_A6WJVAg9yIZIcqwI08HB-meO8v602icA7xBYEMbAsGB4NJoVtztVW0SPFSqwyhqCR9w74MGrQeDqHI86MhKQBKMGa-yC9MF7YyIvIs_HfK7KNZfbDw_jhZoi-erwhaI-pdboLNy4otaYHLIjqjG5KKuN8EPrYSwsBf2t0_cUUARYp6RFiJ6d0BqZ6Bdl_NI6qardP29IkVxRt7J0vT1gVOA&key=REDACTED_GOOGLE_PLACES_API_KEY"
             ],
             "rating": 4.6,
             "address": "2332 Leonard St, Dallas, TX 75201, United States",
@@ -3369,7 +3369,7 @@
               "establishment"
             ],
             "photos": [
-              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU5HuObsDHKkKZQGQH0Aqfij83yEz9B_TnFWdDZUlagNfhViTgX79lrre_pSZK09YmnYwshQeCMQpfIywHLTRVyFJRTm8VuYEgHjZa9tMd5CyulqWoD4ClOdbNP9JVY5oopYt9sHT0_c3sCA1CBqSzerYbOt-yH8FqO_msI2S4OH1CNZaqh4Tdb6fChNMiCt3tviymlvdQlx2Ptu74Gl5JmstY6JQvgkLMzfcFW7hrb2g6RInB6eHp1zdHdMjTtyXGlXtyPxVgJ3JCF4Np7numCk4Pzt7ey1wFX2JdNTF2ofhZWiZZA&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU5HuObsDHKkKZQGQH0Aqfij83yEz9B_TnFWdDZUlagNfhViTgX79lrre_pSZK09YmnYwshQeCMQpfIywHLTRVyFJRTm8VuYEgHjZa9tMd5CyulqWoD4ClOdbNP9JVY5oopYt9sHT0_c3sCA1CBqSzerYbOt-yH8FqO_msI2S4OH1CNZaqh4Tdb6fChNMiCt3tviymlvdQlx2Ptu74Gl5JmstY6JQvgkLMzfcFW7hrb2g6RInB6eHp1zdHdMjTtyXGlXtyPxVgJ3JCF4Np7numCk4Pzt7ey1wFX2JdNTF2ofhZWiZZA&key=REDACTED_GOOGLE_PLACES_API_KEY"
             ],
             "rating": 4,
             "address": "800 N Main St, Duncanville, TX 75116, United States",
@@ -3438,7 +3438,7 @@
               "establishment"
             ],
             "photos": [
-              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU4RhsHmtPuOyFwBCiQdawKdVnYQwnJfWpyqvTsetL8CAScDPgBsOEdPWVMXhYlbNOlJx4Vkbb3pCOvB2tn8WD3go5IZgLNhFqYTSliLnBcCdE_btLsHlrfqdddlUCfGCNtsoHyUtca95WD6FLQ0PfkQWNdA41XNgBhSuK099cgmBkZ66SIFSV4sOu2L-Dcz-50jI_0hnj2NCsghrZKs8b3RnHeyxtO0LKM4cknSWHMel6nWtQTY3Ve7m6yhie_qM6S4CcdGk1-1s_GKTs2beGJwpIXDLvsH-e96UOlqANvHf_FGawE&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU4RhsHmtPuOyFwBCiQdawKdVnYQwnJfWpyqvTsetL8CAScDPgBsOEdPWVMXhYlbNOlJx4Vkbb3pCOvB2tn8WD3go5IZgLNhFqYTSliLnBcCdE_btLsHlrfqdddlUCfGCNtsoHyUtca95WD6FLQ0PfkQWNdA41XNgBhSuK099cgmBkZ66SIFSV4sOu2L-Dcz-50jI_0hnj2NCsghrZKs8b3RnHeyxtO0LKM4cknSWHMel6nWtQTY3Ve7m6yhie_qM6S4CcdGk1-1s_GKTs2beGJwpIXDLvsH-e96UOlqANvHf_FGawE&key=REDACTED_GOOGLE_PLACES_API_KEY"
             ],
             "rating": 4.2,
             "address": "1700 Rodeo Dr, Mesquite, TX 75149, United States",
@@ -3507,7 +3507,7 @@
               "establishment"
             ],
             "photos": [
-              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU7JXSmzGRx5npRyIdy7pWucQDQlCkVeHpUqVmJeMIhbmcDtm0OoSAQWNUjmwgP8v5pLbMpHORuYh4lLbag1yptuAOV6gJDEtZ6WsjCknlrpnw7TQfvEt-SVubmNswL0w95omvp-aqicEsBfgdu1qgC9pXpIo09Fg_2cms6cY93HsfIrcM8r9vszmnIXXk1uqpCL2M8NtDW_XI_LYsR9kBwW6226TUlrx6xc-2LAkMMPuLzq1VO9n0Go9DXvRrMGsTHDyBXdT3tSqFTHhU6MOuaY24nXsHQXIFYz9d7z4J0SJFCn&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU7JXSmzGRx5npRyIdy7pWucQDQlCkVeHpUqVmJeMIhbmcDtm0OoSAQWNUjmwgP8v5pLbMpHORuYh4lLbag1yptuAOV6gJDEtZ6WsjCknlrpnw7TQfvEt-SVubmNswL0w95omvp-aqicEsBfgdu1qgC9pXpIo09Fg_2cms6cY93HsfIrcM8r9vszmnIXXk1uqpCL2M8NtDW_XI_LYsR9kBwW6226TUlrx6xc-2LAkMMPuLzq1VO9n0Go9DXvRrMGsTHDyBXdT3tSqFTHhU6MOuaY24nXsHQXIFYz9d7z4J0SJFCn&key=REDACTED_GOOGLE_PLACES_API_KEY"
             ],
             "rating": 4.3,
             "address": "1445 Turtle Creek Blvd, Dallas, TX 75207, United States",
@@ -3579,7 +3579,7 @@
               "establishment"
             ],
             "photos": [
-              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU75wJ65CsJSQAvwBuQ6k63YeoSufZQ9xMDhIj2NktI55QlD4Rq1F3Ay0mMjSG3pT2TbleoK8cHkY0MynNFe6FX2DTWTqqzsw78dbQSwDVXiXO_So6mQLhbOynZxPJ024WgpHJ57C6duIqCltCuBWcc99els9V3Ch3HV-oX3OUE7Qf728iboq5SrGMCocaGviwlzQW6w07N4T-Uk2mcD1EUHhrIix3aBIyb7_yweF8yY30tfoaFGoURjwShDdOeAtKndLt2SL97UunmpsfptsoqrCH1KOCygjaK8J3Z5zhqRSj7xtYI&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU75wJ65CsJSQAvwBuQ6k63YeoSufZQ9xMDhIj2NktI55QlD4Rq1F3Ay0mMjSG3pT2TbleoK8cHkY0MynNFe6FX2DTWTqqzsw78dbQSwDVXiXO_So6mQLhbOynZxPJ024WgpHJ57C6duIqCltCuBWcc99els9V3Ch3HV-oX3OUE7Qf728iboq5SrGMCocaGviwlzQW6w07N4T-Uk2mcD1EUHhrIix3aBIyb7_yweF8yY30tfoaFGoURjwShDdOeAtKndLt2SL97UunmpsfptsoqrCH1KOCygjaK8J3Z5zhqRSj7xtYI&key=REDACTED_GOOGLE_PLACES_API_KEY"
             ],
             "rating": 3.7,
             "address": "8703 E R L Thornton Fwy, Dallas, TX 75228, United States",
@@ -3648,7 +3648,7 @@
               "establishment"
             ],
             "photos": [
-              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU6c3xnr2Wl-aImGMsVWN5TRFZjiUBR0dx1LsJ42AYTRTH_wdRho5r3VCowYWAX4UmkbkD1DArSw9qM42GF5fSaCciKH3VTMydh-oWR7sjPIz4vUXnLbG_JZn3ckXk9rfeQ3GVWD2CRCZQuf28YPEOYrzl1XEtVtcZRwHKlwccI1emP27re3TBC0pqWPzj9063W0WWvQbDKy7w5UtvkGdRztZozSlbcBzmIGL5K5QHMOoCbN6B-eq-SnugBYKaj4wknKwi1H42_cOhspZ0430zXP9WjP8_BsIn4GSKtlw8pt7gjNoRM&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU6c3xnr2Wl-aImGMsVWN5TRFZjiUBR0dx1LsJ42AYTRTH_wdRho5r3VCowYWAX4UmkbkD1DArSw9qM42GF5fSaCciKH3VTMydh-oWR7sjPIz4vUXnLbG_JZn3ckXk9rfeQ3GVWD2CRCZQuf28YPEOYrzl1XEtVtcZRwHKlwccI1emP27re3TBC0pqWPzj9063W0WWvQbDKy7w5UtvkGdRztZozSlbcBzmIGL5K5QHMOoCbN6B-eq-SnugBYKaj4wknKwi1H42_cOhspZ0430zXP9WjP8_BsIn4GSKtlw8pt7gjNoRM&key=REDACTED_GOOGLE_PLACES_API_KEY"
             ],
             "rating": 3.8,
             "address": "13165 N Central Expy, Dallas, TX 75243, United States",
@@ -3717,7 +3717,7 @@
               "establishment"
             ],
             "photos": [
-              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU4hCYe8oIbxhqbdDbukJtPUo20NK38hqzWrjfpV3jgmAlV4lcXhyPH2jS216NU6mtEH2Aw0IwtpXKA-8gLqRZ0CaDDNME04dbs_RC_wcz7fZLQEH-bvk_s0uaLxBDZxrnfoLXaEE4-r1fFTWno7_r1PBSz0fR-i6fqrqjaYG-JS2WQ_zMnnC0_Qqkz7nslic59aQCZK_UYNZ3dEQWfGkpdVbKpyu6M3gCskElMXty7VAd9laoTJiNqJpCboNEVdVWy_kk10Mc4BNS9_Dik-UrDyPUo4RjajnC6JzZwXareX953pgsY&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU4hCYe8oIbxhqbdDbukJtPUo20NK38hqzWrjfpV3jgmAlV4lcXhyPH2jS216NU6mtEH2Aw0IwtpXKA-8gLqRZ0CaDDNME04dbs_RC_wcz7fZLQEH-bvk_s0uaLxBDZxrnfoLXaEE4-r1fFTWno7_r1PBSz0fR-i6fqrqjaYG-JS2WQ_zMnnC0_Qqkz7nslic59aQCZK_UYNZ3dEQWfGkpdVbKpyu6M3gCskElMXty7VAd9laoTJiNqJpCboNEVdVWy_kk10Mc4BNS9_Dik-UrDyPUo4RjajnC6JzZwXareX953pgsY&key=REDACTED_GOOGLE_PLACES_API_KEY"
             ],
             "rating": 4,
             "address": "10325 N Central Expy, Dallas, TX 75231, United States",
@@ -3786,7 +3786,7 @@
               "establishment"
             ],
             "photos": [
-              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU4AnwWjrMezU6a6ZfEEi94ouelNjg3VTk_ZchZAcB5CYXhkpFtLg-dcFbh9pphrP8qBHVNS9miNAZzQC6szJupDgL3GTqHX3QhfWH0LMtwGJttY5Ohns4P-3OQMCmm3c94pOThAyMYEiryAgdXRd29JMzbCH-d_yFtzjMwigHpNf8qUyyjycK8k844JsY7c4zi_sz4gfWKfoE6yWv09GNV3ahPWs04FI6rgXp_hr3r2EgToOduKTAiMY1mQ4J6HoAZQKhtbaB26WGQjTYaZzjiE7OaSBdZMwnIfRzPzXeZ6CbzZbTc&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU4AnwWjrMezU6a6ZfEEi94ouelNjg3VTk_ZchZAcB5CYXhkpFtLg-dcFbh9pphrP8qBHVNS9miNAZzQC6szJupDgL3GTqHX3QhfWH0LMtwGJttY5Ohns4P-3OQMCmm3c94pOThAyMYEiryAgdXRd29JMzbCH-d_yFtzjMwigHpNf8qUyyjycK8k844JsY7c4zi_sz4gfWKfoE6yWv09GNV3ahPWs04FI6rgXp_hr3r2EgToOduKTAiMY1mQ4J6HoAZQKhtbaB26WGQjTYaZzjiE7OaSBdZMwnIfRzPzXeZ6CbzZbTc&key=REDACTED_GOOGLE_PLACES_API_KEY"
             ],
             "rating": 4.1,
             "address": "1000 Dowdy Ferry Rd, Hutchins, TX 75141, United States",
@@ -3858,7 +3858,7 @@
               "establishment"
             ],
             "photos": [
-              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU52QT7O8-LQy7ugE-iVuvxcG5mjfIi8AJqVhVaJU7PZXiQF7GjAf6RCuwd0XZixe-3xJjtBIdFVRjKHDQ048-n4snore1tLz9Xwqp_Pr5CSO88lYIU1XUu1KCqWjds9BAKPVk2b-gZJfZxuAlPDqC-phaSEjkn2WSaohzELHYKbnf9PKsEfcAPrqU79ZXMeNX9-9GvgGPcKOnFjSKXUcMBAANSkbM1PI9bbZLKW0Z7iOUL0UzNeUBkwr15WQeiMWuQZFdha0UOi6JCVsaXcFY6x1Pb_fqFxm6K8Vy3A0uJH95nsm8k&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU52QT7O8-LQy7ugE-iVuvxcG5mjfIi8AJqVhVaJU7PZXiQF7GjAf6RCuwd0XZixe-3xJjtBIdFVRjKHDQ048-n4snore1tLz9Xwqp_Pr5CSO88lYIU1XUu1KCqWjds9BAKPVk2b-gZJfZxuAlPDqC-phaSEjkn2WSaohzELHYKbnf9PKsEfcAPrqU79ZXMeNX9-9GvgGPcKOnFjSKXUcMBAANSkbM1PI9bbZLKW0Z7iOUL0UzNeUBkwr15WQeiMWuQZFdha0UOi6JCVsaXcFY6x1Pb_fqFxm6K8Vy3A0uJH95nsm8k&key=REDACTED_GOOGLE_PLACES_API_KEY"
             ],
             "rating": 4,
             "address": "5110 N President George Bush Hwy, Garland, TX 75040, United States",
@@ -3927,7 +3927,7 @@
               "establishment"
             ],
             "photos": [
-              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU5w0VZ8X5D3phPhGzHYPBPHCniJ7e2stZXEYDKBVkdOFdjE23ngFoQFUmbhmzxmb-PnHGmGADsoVADhPUB_GKmEu5DRX2CpEFGR9xPKbuXowxYG5I6ZEA4H2vT3EXmLLP-adeTO7o43KjEUM3ZiGKgTDHGghTs7-rijzySuo3gAOHL5z11jFoYpqngjylQUX5_dDkV2nuU4AwEmLlQtpBW7iOeg8Z5ZMpVe47RDCtjZsS3HCu8-Srd9Zhal9HXjLgvpN9AG9hVhtus_TVW0UyvL_z2dSE3RDqTu3yvfIYDfs6r2Ps0&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU5w0VZ8X5D3phPhGzHYPBPHCniJ7e2stZXEYDKBVkdOFdjE23ngFoQFUmbhmzxmb-PnHGmGADsoVADhPUB_GKmEu5DRX2CpEFGR9xPKbuXowxYG5I6ZEA4H2vT3EXmLLP-adeTO7o43KjEUM3ZiGKgTDHGghTs7-rijzySuo3gAOHL5z11jFoYpqngjylQUX5_dDkV2nuU4AwEmLlQtpBW7iOeg8Z5ZMpVe47RDCtjZsS3HCu8-Srd9Zhal9HXjLgvpN9AG9hVhtus_TVW0UyvL_z2dSE3RDqTu3yvfIYDfs6r2Ps0&key=REDACTED_GOOGLE_PLACES_API_KEY"
             ],
             "rating": 4,
             "address": "4412 Bass Pro Dr, Garland, TX 75043, United States",
@@ -3996,7 +3996,7 @@
               "establishment"
             ],
             "photos": [
-              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU7kzEEmVb6iAKAX45z3J8CT7HQm9F8ipB2_mJRa7eEgWAaJTo8FnOKCKAtqAinoEsP29YaIhJotP5W2V7DCGV91dDSWAPuxfOvxSEoZXJzmbRTKE2zQoWn2BZRaoC60fPCCLaoFOq4Y7G17uWKsBM7SeOL4h8S48krX6JLJnHqh8gspxOUoHEm38F0Fzhbz32rybu1Mt3T3Jz2FHJd5JhWps-Zhqj-5FsZC8Vf0rSVIl6Xhypu-DRW2DxfcQII9uKzGey93ziSfSFZzAapfo33h2NXfg044YhmFX7FDVRw9kNTMhdU&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU7kzEEmVb6iAKAX45z3J8CT7HQm9F8ipB2_mJRa7eEgWAaJTo8FnOKCKAtqAinoEsP29YaIhJotP5W2V7DCGV91dDSWAPuxfOvxSEoZXJzmbRTKE2zQoWn2BZRaoC60fPCCLaoFOq4Y7G17uWKsBM7SeOL4h8S48krX6JLJnHqh8gspxOUoHEm38F0Fzhbz32rybu1Mt3T3Jz2FHJd5JhWps-Zhqj-5FsZC8Vf0rSVIl6Xhypu-DRW2DxfcQII9uKzGey93ziSfSFZzAapfo33h2NXfg044YhmFX7FDVRw9kNTMhdU&key=REDACTED_GOOGLE_PLACES_API_KEY"
             ],
             "rating": 3.9,
             "address": "21850 I-635, Mesquite, TX 75149, United States",
@@ -4065,7 +4065,7 @@
               "establishment"
             ],
             "photos": [
-              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU6gYc8MntwWH2FnqhS74KnAtygdmXhTdswr8r47pvM6igqY0MAaorMNXL1YWGia-9IKGhKsNHXLB2q4Oj9I__qwkir42YizPx34NFFDOsraT1kAXZH7NtpuSK9-dMJYV-rIJxBdP_jPAqOkD8YDWoGzi65QqvMsl1FJA-d6jDCUtVX_TSJyl2DJlG2NGiM0AjFxOMgWzYMZcU0GC828uvwjgOYnwExseNZPD7duvpCQ7MJjzc-tg6zEYS739hhDNeeagqWxZVxywQElXhOYMgbBIVihOiC-yBhJxDPWvIhPdEVZJGQ&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU6gYc8MntwWH2FnqhS74KnAtygdmXhTdswr8r47pvM6igqY0MAaorMNXL1YWGia-9IKGhKsNHXLB2q4Oj9I__qwkir42YizPx34NFFDOsraT1kAXZH7NtpuSK9-dMJYV-rIJxBdP_jPAqOkD8YDWoGzi65QqvMsl1FJA-d6jDCUtVX_TSJyl2DJlG2NGiM0AjFxOMgWzYMZcU0GC828uvwjgOYnwExseNZPD7duvpCQ7MJjzc-tg6zEYS739hhDNeeagqWxZVxywQElXhOYMgbBIVihOiC-yBhJxDPWvIhPdEVZJGQ&key=REDACTED_GOOGLE_PLACES_API_KEY"
             ],
             "rating": 4.1,
             "address": "2001 E President George Bush Hwy, Plano, TX 75074, United States",
@@ -4134,7 +4134,7 @@
               "establishment"
             ],
             "photos": [
-              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU4pNT-ffU1aJJkhzj4d5I4nQ7WnVwCXuLsqcvxnkJPFXwqMWnKS435C0mWZF1Npg732iOdTzWxRyZGyIu0bh4hUbYyWSQANCuOmw6fSruY95OxDedxPvliW7Mu747HwiXpdiyoGIrNCqEw4nrVRTZbbR6OUIaC3Bh8U1yuvLBmyTriOyRAbWuy-RA0Ictv9WfwNRVtPbpXK8xK-hd5uHqqoT51HTWlLOsclBqqjOaJu8XH_yFm61KPz4ScBi9tZHWEgS5jjSqkQu4-PJoBHruf7ru36pacUx4-FaW-250K2vALxun4&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU4pNT-ffU1aJJkhzj4d5I4nQ7WnVwCXuLsqcvxnkJPFXwqMWnKS435C0mWZF1Npg732iOdTzWxRyZGyIu0bh4hUbYyWSQANCuOmw6fSruY95OxDedxPvliW7Mu747HwiXpdiyoGIrNCqEw4nrVRTZbbR6OUIaC3Bh8U1yuvLBmyTriOyRAbWuy-RA0Ictv9WfwNRVtPbpXK8xK-hd5uHqqoT51HTWlLOsclBqqjOaJu8XH_yFm61KPz4ScBi9tZHWEgS5jjSqkQu4-PJoBHruf7ru36pacUx4-FaW-250K2vALxun4&key=REDACTED_GOOGLE_PLACES_API_KEY"
             ],
             "rating": 3.3,
             "address": "8687 E R L Thornton Fwy, Dallas, TX 75228, United States",
@@ -4206,7 +4206,7 @@
               "establishment"
             ],
             "photos": [
-              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU4ntWAfpcJ97dwiWSM4s_wxEhEiCM4Lb1Nn07tiEnv0sizX2af8-NiXfsR-KzqS3npxUDt4lom553YSlOvQ_Ry0ljyGWuJmq3ODz6EwUU2844kRS1yt3amHuyh4XDAatGoayWkx-nT3AQUdJRvpsu4sHRnZvp9DTXnc_oQEzFFkaCNwmOVE5bbO1eQ9Ah5TL6WecaBmw3LOuRi3Q7EQh-CiUckFTdwzp3OICz_-sMo0LJk2eLL0dCuzIBt--S_jMPLLGGWBkm7FxFgR6d3i4zPoXzcUIN8FE1sG0zKvCGgVuzKfYjk&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU4ntWAfpcJ97dwiWSM4s_wxEhEiCM4Lb1Nn07tiEnv0sizX2af8-NiXfsR-KzqS3npxUDt4lom553YSlOvQ_Ry0ljyGWuJmq3ODz6EwUU2844kRS1yt3amHuyh4XDAatGoayWkx-nT3AQUdJRvpsu4sHRnZvp9DTXnc_oQEzFFkaCNwmOVE5bbO1eQ9Ah5TL6WecaBmw3LOuRi3Q7EQh-CiUckFTdwzp3OICz_-sMo0LJk2eLL0dCuzIBt--S_jMPLLGGWBkm7FxFgR6d3i4zPoXzcUIN8FE1sG0zKvCGgVuzKfYjk&key=REDACTED_GOOGLE_PLACES_API_KEY"
             ],
             "rating": 2.9,
             "address": "1015 Elm St, Dallas, TX 75202, United States",
@@ -4275,7 +4275,7 @@
               "establishment"
             ],
             "photos": [
-              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU4qZNqBYdV0r_X_3n4FaCf67sA3xSX-L7nc-lcrAicMspsIuE2XsBeMvlxT3MNfl6HggNRGLeoIdTOpiWBivodRwuTDzaIrr1Pz0fFc3ecCvMkkKSUmuIAne9f3wSO7EbPLZyMevO5YH9s66USUQnVhNDdIBxHOAmPfFIfswZQ9cJitymPO6OO_p1WkhHSrMJPaUMu8LuajeR4qWt-JawuKSwwhb79i85xd6I-QxZ7x-kt8zltIFknFPf7DkVhPSb9dK-KadgpokSc-cS4hUA0cZoAUsgumdQIFz7Ql1twMXJQrqa4&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU4qZNqBYdV0r_X_3n4FaCf67sA3xSX-L7nc-lcrAicMspsIuE2XsBeMvlxT3MNfl6HggNRGLeoIdTOpiWBivodRwuTDzaIrr1Pz0fFc3ecCvMkkKSUmuIAne9f3wSO7EbPLZyMevO5YH9s66USUQnVhNDdIBxHOAmPfFIfswZQ9cJitymPO6OO_p1WkhHSrMJPaUMu8LuajeR4qWt-JawuKSwwhb79i85xd6I-QxZ7x-kt8zltIFknFPf7DkVhPSb9dK-KadgpokSc-cS4hUA0cZoAUsgumdQIFz7Ql1twMXJQrqa4&key=REDACTED_GOOGLE_PLACES_API_KEY"
             ],
             "rating": 4.6,
             "address": "5630 Village Glen Dr, Dallas, TX 75206, United States",
@@ -4344,7 +4344,7 @@
               "establishment"
             ],
             "photos": [
-              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU5VfHcDMFEh9zgrgsLuU4yt-CongufYdNc0JbPO5AVerz4Er1dQZH_FOANLUZUYFGhXvEak0gql63ffNMZ1DlH3jbLON8TQTGiTpc1J2xxDKFrMIK91S7bUKIiYSrl2EQYgTy3m2R3yMLiXcbDm-a17yxH2jl_k70BEElVHWiXc95hY9GB_JMqRmfkHHr6Ml3MhJix-Ibkn5TF-vt6YAXnDm5DXbYI6B0pkiL3pWs7KImKDxJWiqyk0xNviMKjTsWpss4Pv8YZ6GlawiokbYH6b6aYr46mvqRMfb2SZsyi4WgFHVRM&key=AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+              "https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=AWn5SU5VfHcDMFEh9zgrgsLuU4yt-CongufYdNc0JbPO5AVerz4Er1dQZH_FOANLUZUYFGhXvEak0gql63ffNMZ1DlH3jbLON8TQTGiTpc1J2xxDKFrMIK91S7bUKIiYSrl2EQYgTy3m2R3yMLiXcbDm-a17yxH2jl_k70BEElVHWiXc95hY9GB_JMqRmfkHHr6Ml3MhJix-Ibkn5TF-vt6YAXnDm5DXbYI6B0pkiL3pWs7KImKDxJWiqyk0xNviMKjTsWpss4Pv8YZ6GlawiokbYH6b6aYr46mvqRMfb2SZsyi4WgFHVRM&key=REDACTED_GOOGLE_PLACES_API_KEY"
             ],
             "rating": 3.6,
             "address": "1839 Fort Worth Ave, Dallas, TX 75208, United States",

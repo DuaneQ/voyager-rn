@@ -45,7 +45,7 @@ That's it! The config plugin automatically adds the API key to AndroidManifest.x
 ### 3. API Key Already Configured ✅
 **File**: `src/constants/apiConfig.ts`
 ```typescript
-export const GOOGLE_PLACES_API_KEY = 'AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8';
+export const GOOGLE_PLACES_API_KEY = 'REDACTED_GOOGLE_PLACES_API_KEY';
 ```
 
 ---
@@ -69,7 +69,7 @@ npx expo run:android
 ```xml
 <meta-data
   android:name="com.google.android.geo.API_KEY"
-  android:value="AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8" />
+  android:value="REDACTED_GOOGLE_PLACES_API_KEY" />
 ```
 
 ---
@@ -163,7 +163,7 @@ To use different API keys per environment:
 
 ```bash
 # Development
-export GOOGLE_PLACES_API_KEY="AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8"
+export GOOGLE_PLACES_API_KEY="REDACTED_GOOGLE_PLACES_API_KEY"
 npx expo prebuild --platform android
 
 # Production

@@ -90,7 +90,7 @@ Replace `YOUR_ANDROID_API_KEY_HERE` with your actual Android API key from Step 2
 The API key in `src/constants/apiConfig.ts` is already configured:
 
 ```typescript
-export const GOOGLE_PLACES_API_KEY = 'AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8';
+export const GOOGLE_PLACES_API_KEY = 'REDACTED_GOOGLE_PLACES_API_KEY';
 ```
 
 This key is used by the JavaScript side of the library, but Android also needs it in the manifest.
@@ -144,7 +144,7 @@ module.exports = function withGooglePlacesAndroid(config) {
       application['meta-data'].push({
         $: {
           'android:name': 'com.google.android.geo.API_KEY',
-          'android:value': process.env.GOOGLE_PLACES_API_KEY || 'AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8'
+          'android:value': process.env.GOOGLE_PLACES_API_KEY || 'REDACTED_GOOGLE_PLACES_API_KEY'
         }
       });
     }
@@ -308,7 +308,7 @@ Use the Expo config plugin approach (see above) to automatically inject configur
 ## Testing on Different Environments
 
 ### Development (mundo1-dev)
-- API Key: `AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8`
+- API Key: `REDACTED_GOOGLE_PLACES_API_KEY`
 - Package: `com.travalpass.app`
 - Firebase: `mundo1-dev`
 
