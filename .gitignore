@@ -71,3 +71,6 @@ credentials/
 
 # Firebase Admin SDK service account key
 mundo1-dev-firebase-adminsdk*.json
+
+# Firebase CLI hosting cache (local only)
+.firebase/

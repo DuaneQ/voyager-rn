@@ -2,7 +2,7 @@
   "expo": {
     "name": "TravalPass",
     "slug": "voyager-rn",
-    "version": "1.8.3",
+    "version": "1.8.4",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "icon": "./assets/icon.png",
@@ -15,7 +15,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.travalpass.app",
-      "buildNumber": "52",
+      "buildNumber": "53",
       "googleServicesFile": "./GoogleService-Info.plist",
       "entitlements": {
         "com.apple.developer.applesignin": [
@@ -35,11 +35,6 @@
             "CFBundleURLSchemes": [
               "com.googleusercontent.apps.533074391000-quot684rc8kugrni3eh2c6bsq3u5rcqs"
             ]
-          },
-          {
-            "CFBundleURLSchemes": [
-              "com.googleusercontent.apps.533074391000-quot684rc8kugrni3eh2c6bsq3u5rcqs"
-            ]
           }
         ],
         "ITSAppUsesNonExemptEncryption": false
@@ -47,7 +42,7 @@
     },
     "android": {
       "package": "com.travalpass.app",
-      "versionCode": 52,
+      "versionCode": 53,
       "googleServicesFile": "./google-services.json",
       "icon": "./AppIcons/playstore.png",
       "softwareKeyboardLayoutMode": "resize",
@@ -57,7 +52,9 @@
         "CAMERA",
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE",
-        "POST_NOTIFICATIONS"
+        "POST_NOTIFICATIONS",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
       ],
       "intentFilters": [
         {
@@ -75,7 +72,10 @@
               "pathPrefix": "/auth"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -124,6 +124,12 @@
       "eas": {
         "projectId": "6fc90234-4d23-427c-918f-75d141efe8ed"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/6fc90234-4d23-427c-918f-75d141efe8ed"
     }
   }
 }

@@ -146,36 +146,30 @@ export const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
       // Get session token for this search session
       const sessionToken = getTokenWithTimeout();
 
-      if (Platform.OS === 'web' && typeof window !== 'undefined' && (window as any).google) {
-        // Use Google Maps JavaScript SDK on web
-        const service = new (window as any).google.maps.places.AutocompleteService();
-        
-        // Create a SessionToken object for web SDK
-        const webSessionToken = new (window as any).google.maps.places.AutocompleteSessionToken();
-        
-        service.getPlacePredictions(
-          {
-            input: searchText,
-            types: ['geocode'],
-            language: 'en',
-            sessionToken: webSessionToken, // Web SDK uses its own token object
-          },
-          (predictions: any, status: any) => {
-            if (status === 'OK' && predictions) {
-              setSuggestions(predictions.map((p: any) => ({
-                place_id: p.place_id,
-                description: p.description,
-              })));
-              setShowSuggestions(true);
-            } else {
-              console.warn('[PlacesAutocomplete] API error:', status);
-              setSuggestions([]);
-            }
-            setLoading(false);
-          }
-        );
+      if (Platform.OS === 'web') {
+        // Browser: must use JS SDK (REST API is blocked by CORS from browsers)
+        // Requires "Places API (New)" enabled in Google Cloud Console
+        const { AutocompleteSuggestion, AutocompleteSessionToken } =
+          (window as any).google?.maps?.places || {};
+        if (!AutocompleteSuggestion) {
+          console.warn('[PlacesAutocomplete] Google Maps JS SDK not loaded');
+          setLoading(false);
+          return;
+        }
+        const webToken = new AutocompleteSessionToken();
+        const { suggestions } = await AutocompleteSuggestion.fetchAutocompleteSuggestions({
+          input: searchText,
+          sessionToken: webToken,
+        });
+        const mapped = (suggestions || []).map((s: any) => ({
+          place_id: s.placePrediction?.placeId ?? '',
+          description: s.placePrediction?.text?.text ?? '',
+        })).filter((s: any) => s.description);
+        setSuggestions(mapped);
+        setShowSuggestions(mapped.length > 0);
+        setLoading(false);
       } else {
-        // Use axios for mobile with session token
+        // Mobile: direct REST call works fine (no CORS restrictions)
         const response = await axios.get(
           'https://maps.googleapis.com/maps/api/place/autocomplete/json',
           {
@@ -184,11 +178,10 @@ export const PlacesAutocomplete: React.FC<PlacesAutocompleteProps> = ({
               key: getGooglePlacesApiKey(),
               types: 'geocode',
               language: 'en',
-              sessiontoken: sessionToken, // Groups all requests into one billing session
+              sessiontoken: sessionToken,
             },
           }
         );
-
         if (response.data.status === 'OK') {
           setSuggestions(response.data.predictions || []);
           setShowSuggestions(true);
