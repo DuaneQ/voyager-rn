@@ -13,16 +13,59 @@
  * android/app/src/main/AndroidManifest.xml
  */
 
-const { withAndroidManifest } = require('@expo/config-plugins');
+const { withAndroidManifest, withAppBuildGradle } = require('@expo/config-plugins');
 
-/**
- * Get Google Places API key from environment or use default
- */
-function getGooglePlacesApiKey() {
-  // Priority: ENV variable > hardcoded fallback
-  return process.env.GOOGLE_PLACES_API_KEY || 
-         process.env.REACT_APP_GOOGLE_PLACES_API_KEY ||
-         'AIzaSyC4VMlBMjgmvO_K1-wPOrQP1JKTvV7zmo8'; // Default dev key
+const GOOGLE_MAPS_PLACEHOLDER = '${GOOGLE_MAPS_API_KEY}';
+
+function injectManifestPlaceholder(config) {
+  return withAndroidManifest(config, async (config) => {
+    const androidManifest = config.modResults;
+    const application = androidManifest.manifest.application[0];
+
+    if (!application['meta-data']) {
+      application['meta-data'] = [];
+    }
+
+    const existingMetaDataIndex = application['meta-data'].findIndex(
+      item => item.$['android:name'] === 'com.google.android.geo.API_KEY'
+    );
+
+    const metaDataEntry = {
+      $: {
+        'android:name': 'com.google.android.geo.API_KEY',
+        'android:value': GOOGLE_MAPS_PLACEHOLDER
+      }
+    };
+
+    if (existingMetaDataIndex !== -1) {
+      application['meta-data'][existingMetaDataIndex] = metaDataEntry;
+    } else {
+      application['meta-data'].push(metaDataEntry);
+    }
+
+    return config;
+  });
+}
+
+function injectBuildGradleManifestPlaceholder(config) {
+  return withAppBuildGradle(config, (config) => {
+    const contents = config.modResults.contents;
+
+    if (contents.includes('GOOGLE_MAPS_API_KEY')) {
+      return config;
+    }
+
+    const defaultConfigRegex = /defaultConfig\s*\{\n/;
+    const placeholderLine =
+      '        manifestPlaceholders = [GOOGLE_MAPS_API_KEY: (System.getenv("GOOGLE_PLACES_API_KEY") ?: System.getenv("REACT_APP_GOOGLE_PLACES_API_KEY") ?: "")]\n';
+
+    if (!defaultConfigRegex.test(contents)) {
+      throw new Error('Unable to find defaultConfig block in android/app/build.gradle for Google Maps placeholder injection.');
+    }
+
+    config.modResults.contents = contents.replace(defaultConfigRegex, (match) => `${match}${placeholderLine}`);
+    return config;
+  });
 }
 
 /**
@@ -32,38 +75,9 @@ function getGooglePlacesApiKey() {
  * @returns {object} Modified config object
  */
 function withGooglePlacesAndroid(config) {
-  return withAndroidManifest(config, async (config) => {
-    const androidManifest = config.modResults;
-    const application = androidManifest.manifest.application[0];
-
-    // Ensure meta-data array exists
-    if (!application['meta-data']) {
-      application['meta-data'] = [];
-    }
-
-    const apiKey = getGooglePlacesApiKey();
-
-    // Check if Google Places API key already exists
-    const existingMetaDataIndex = application['meta-data'].findIndex(
-      item => item.$['android:name'] === 'com.google.android.geo.API_KEY'
-    );
-
-    const metaDataEntry = {
-      $: {
-        'android:name': 'com.google.android.geo.API_KEY',
-        'android:value': apiKey
-      }
-    };
-
-    if (existingMetaDataIndex !== -1) {
-      // Update existing entry
-      application['meta-data'][existingMetaDataIndex] = metaDataEntry;
-    } else {
-      // Add new entry
-      application['meta-data'].push(metaDataEntry);
-    }
-    return config;
-  });
+  config = injectManifestPlaceholder(config);
+  config = injectBuildGradleManifestPlaceholder(config);
+  return config;
 }
 
 module.exports = withGooglePlacesAndroid;

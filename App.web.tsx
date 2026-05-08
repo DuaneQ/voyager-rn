@@ -36,11 +36,31 @@ export default function App() {
   // Clarity: configure via environment variable or global window var.
   // Set `EXPO_PUBLIC_CLARITY_ID` (preferred for Expo),
   // or `REACT_APP_CLARITY_ID`, or `window.__CLARITY_PROJECT_ID__` at runtime.
+  // Google Maps SDK key — Metro inlines EXPO_PUBLIC_ vars at bundle time
+  const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || '';
+
   const CLARITY_PROJECT_ID =
     (typeof process !== 'undefined' && process.env && (process.env.EXPO_PUBLIC_CLARITY_ID as unknown as string)) ||
     (typeof process !== 'undefined' && process.env && (process.env.REACT_APP_CLARITY_ID as unknown as string)) ||
     (typeof window !== 'undefined' && (window as any).__CLARITY_PROJECT_ID__) ||
     'REPLACE_WITH_CLARITY_ID';
+
+  useEffect(() => {
+    // Inject Google Maps SDK on web only
+    if (typeof document === 'undefined') return;
+    if (!GOOGLE_MAPS_API_KEY) {
+      console.warn('Google Maps SDK not loaded: set EXPO_PUBLIC_GOOGLE_PLACES_API_KEY');
+      return;
+    }
+    const scriptId = 'google-maps-sdk';
+    if (!document.getElementById(scriptId)) {
+      const script = document.createElement('script');
+      script.id = scriptId;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&v=beta`;
+      script.defer = true;
+      document.head.appendChild(script);
+    }
+  }, [GOOGLE_MAPS_API_KEY]);
 
   useEffect(() => {
     // Inject Clarity script on web only

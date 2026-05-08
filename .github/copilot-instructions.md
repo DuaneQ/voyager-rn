@@ -2,6 +2,26 @@
 
 # TravalPass React Native (Expo) Development Guide
 
+## 🚨 GATHER INFORMATION BEFORE SUGGESTING OR MAKING CHANGES 🚨
+
+**ABSOLUTE RULE**: Before suggesting OR implementing any fix, you MUST first understand the full context of how the feature works across the entire codebase.
+
+**Required steps before any diagnosis or fix**:
+1. ✅ **Find how the same feature works elsewhere**: Search both `voyager-RN` AND `voyager-pwa` for existing implementations of the same feature. The PWA is the source of truth.
+2. ✅ **Read the actual error**: Identify whether the failure is in code, configuration, infrastructure, or permissions — before writing a single line.
+3. ✅ **Prefer the simplest fix**: If a configuration change (e.g., Google Cloud Console, Firebase console) fixes the issue, suggest that FIRST before writing any code.
+4. ✅ **Do not add complexity**: Never add new Cloud Functions, new libraries, or new code paths to work around a problem that is caused by misconfiguration or permissions.
+5. ✅ **Trace the working path first**: If something worked before and broke, find what changed (key rotation, API deprecation, env variable, etc.) and fix that specifically.
+
+**Examples of violations**:
+- Adding a server-side Firebase Function proxy because a browser API key needs a permission fix in Google Cloud Console
+- Switching to a new deprecated API without first checking if the old API still works
+- Changing component code when the real issue is an environment variable not being set
+
+**If you violate this rule, you waste the user's time with unnecessary complexity. NO EXCEPTIONS.**
+
+---
+
 ## ⚠️ CRITICAL TESTING RULES - READ FIRST ⚠️
 
 ### 🚨 NEVER TOUCH AUTH SIGN-UP FLOW WITHOUT EXTREME CAUTION 🚨
